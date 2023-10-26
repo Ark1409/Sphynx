@@ -11,6 +11,8 @@ namespace Sphynx.Server.Client
     {
         public Socket UserSocket { get; private set; }
 
+        public SphynxUserStatus UserStatus { get; private set; }
+
         public string UserName { get; private set; }
 
         public string Email { get; private set; }

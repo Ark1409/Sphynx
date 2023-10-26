@@ -14,6 +14,7 @@ namespace Sphynx.Server.State
             Console.WriteLine("##                   SPHYNX SERVER                   ##");
             Console.WriteLine("#######################################################");
             Console.WriteLine();
+            Console.ReadLine();
 
             return null;
         }

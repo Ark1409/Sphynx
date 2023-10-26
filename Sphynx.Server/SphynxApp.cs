@@ -46,11 +46,12 @@ namespace Sphynx.Server
         {
             StateCollection = new StateCollection();
             CurrentState = StateCollection.GetState<MenuState>();
-            Server = new SphynxServer();
-
             Arguments = args;
 
-            while(CurrentState != null && (Running = true))
+            Server = new SphynxServer();
+            Server.Start();
+
+            while (CurrentState != null && (Running = true))
             {
                 CurrentState = CurrentState.Run();
             }
