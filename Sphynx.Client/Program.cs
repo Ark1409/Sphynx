@@ -6,9 +6,7 @@ namespace Sphynx.Client
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello, World!");
-            SphynxClient c  = new SphynxClient();
-            c.Start();
+            new SphynxClient().Start();
         }
     }
 }

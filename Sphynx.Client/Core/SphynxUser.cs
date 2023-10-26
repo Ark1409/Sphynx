@@ -10,7 +10,7 @@ namespace Sphynx.Client.Core
     {
         public enum UserStatus : byte
         {
-            OFFLINE,
+            OFFLINE = 0,
             ONLINE,
             AWAY,
             DND
@@ -18,16 +18,20 @@ namespace Sphynx.Client.Core
 
         public UserStatus Status { get; set; } = UserStatus.OFFLINE;
 
-        public string Name { get; protected set; }
+        public string Name { get; private set; } = "";
 
-        public string Password { get; set; }
+        public string? Password { get; private set; }
 
-        // TODO Implement with server
-        public static bool IsValid(string username, string password) => true;
+        public static SphynxUser? GetUser(string username)
+        {
+            // TODO implement with server
+            return new SphynxUser() { Name = username };
+        }
 
-        public static SphynxUser? Login(string username, string password) => IsValid(username, password) ?
-            new SphynxUser() { Status = UserStatus.OFFLINE, Name = username, Password = password } : null;
-
-
+        public static bool ValidateUser(string username, string password)
+        {
+            // TODO implement with server
+            return true;
+        }
     }
 }
