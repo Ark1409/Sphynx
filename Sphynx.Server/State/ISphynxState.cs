@@ -12,7 +12,7 @@ namespace Sphynx.Server.State
     public interface ISphynxState
     {
         /// <summary>
-        /// Runs the currents application state, blocking until it is finished; and returns the next state, or null if there are no
+        /// Runs the current application state, blocking until it is finished; and returns the next state, or null if there are no
         /// more states to run.
         /// </summary>
         /// <returns>The next state to run, or null if there are no more.</returns>

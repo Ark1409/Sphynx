@@ -50,8 +50,9 @@ namespace Sphynx.Server
 
             Server = new SphynxServer();
             Server.Start();
+            Running = true;
 
-            while (CurrentState != null && (Running = true))
+            while (CurrentState != null)
             {
                 CurrentState = CurrentState.Run();
             }

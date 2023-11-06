@@ -4,9 +4,11 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
+using Sphynx.Server.ChatRooms;
 using Sphynx.Server.Client;
 
 namespace Sphynx.Server
@@ -45,9 +47,12 @@ namespace Sphynx.Server
         /// <summary>
         /// Returns the users connected to this server.
         /// </summary>
-        public ReadOnlyCollection<SphynxUserInfo> Users => _users.AsReadOnly();
+        public ICollection<SphynxUserInfo> Users => _users.Values;
 
-        private readonly List<SphynxUserInfo> _users;
+        /// <summary>
+        /// Return a list of all available chat rooms.
+        /// </summary>
+        public ICollection<ChatRoom> ChatRooms => _chatRooms.Values;
 
         /// <summary>
         /// Retrives the running state of the server.
@@ -59,14 +64,16 @@ namespace Sphynx.Server
         /// </summary>
         public IPEndPoint EndPoint { get; private set; }
 
-        private readonly Socket _serverSocket;
+        private readonly Dictionary<Guid, SphynxUserInfo> _users;
+        private readonly Dictionary<Guid, ChatRoom> _chatRooms;
 
+        private readonly Socket _serverSocket;
         private readonly Thread _serverThread;
         private object _disposeLock = new object();
         private bool _disposed;
 
         /// <summary>
-        /// Creates a new Sphynx server, associating it with <see cref="EndPoint"/>.
+        /// Creates a new Sphynx server, associating it with <see cref="DefaultEndPoint"/>.
         /// </summary>
         public SphynxServer() : this(DefaultEndPoint)
         {
@@ -81,9 +88,11 @@ namespace Sphynx.Server
         {
             EndPoint = serverEndpoint;
             _serverSocket = new Socket(serverEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            _serverSocket.SendBufferSize = _serverSocket.ReceiveBufferSize = BufferSize;
             _serverThread = new Thread(Run);
 
-            _users = new List<SphynxUserInfo>();
+            _users = new Dictionary<Guid, SphynxUserInfo>();
+            _chatRooms = new Dictionary<Guid, ChatRoom>();
         }
 
         /// <summary>
@@ -94,53 +103,61 @@ namespace Sphynx.Server
             Running = true;
             _serverThread.Start();
         }
-
+        int intCount = 0;
         private void Run()
         {
             _serverSocket.Bind(EndPoint);
             _serverSocket.Listen(Backlog);
-            _serverSocket.Blocking = false;
 
             while (Running)
             {
-                try
-                {
-                    AddUser(_serverSocket.Accept());
-                }
-                catch (SocketException ex)
-                {
-                    if (ex.SocketErrorCode == SocketError.WouldBlock)
-                    {
-                    }
-                }
-
-                Thread.Sleep(1000);
-                Console.CursorLeft = 0;
-                Console.CursorTop = Console.WindowHeight - 1;
-                Console.Write($"Running server @ {SphynxApp.Server!.EndPoint}.");
+                var user = AddUser(_serverSocket.Accept());
+                Task.Factory.StartNew(() => HandleUser(user));
             }
         }
 
-        private void AddUser(Socket clientSocket) => _users.Add(new SphynxUserInfo(clientSocket));
+        public void HandleUser(SphynxUserInfo user)
+        {
+            // Receive user messages and broadcast
+            // Retrieve user status (online or away) and broadcast
+            // Receive request for going into a specific room
+        }
+
+        private SphynxUserInfo AddUser(Socket clientSocket)
+        {
+            var user = new SphynxUserInfo(clientSocket);
+            _users.Add(user.UserId, user);
+
+            BroadcastStatus(user);
+
+            return user;
+        }
+
+        private void BroadcastStatus(SphynxUserInfo user)
+        {
+
+        }
 
         /// <inheritdoc/>
         public void Dispose()
         {
             lock (_disposeLock)
             {
-                if (_disposed)
-                    return;
+                if (_disposed) return;
 
                 _disposed = true;
-
                 Running = false;
+
+                foreach (var user in _users)
+                {
+                    user.Value.Dispose();
+                }
+
                 if (_serverThread.IsAlive)
+                {
+                    _serverSocket.Dispose();
                     _serverThread.Join();
-
-                for (int i = 0; i < _users.Count; i++)
-                    _users[i].Dispose();
-
-                _serverSocket.Dispose();
+                }
             }
         }
     }
