@@ -1,17 +1,75 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Sphynx.Client.Core;
+using Sphynx.Client.State;
 
-namespace Sphynx.Client.Core
+namespace Sphynx.Client
 {
-    public class SphynxClient
+    public class SphynxClient : IDisposable
     {
+        /// <summary>
+        /// The current state of the program
+        /// </summary>
+        public ISphynxState? State { get; private set; }
+
+        /// <summary>
+        /// Holds the server the client is connected to
+        /// </summary>
+        public SphynxServer Server { get; private set; }
+
         /// <summary>
         /// Holds header string
         /// </summary>
         private static StringBuilder? _headerPool;
+
+        /// <summary>
+        /// Starts the client
+        /// </summary>
+        public void Start()
+        {
+            Init();
+
+            var t = new Thread(Run);
+            t.Start();
+            t.Join();
+
+            Dispose();
+        }
+
+        /// <summary>
+        /// Intializes the client before startup
+        /// </summary>
+        private void Init()
+        {
+            // Connect to server
+            Server = new SphynxServer(IPAddress.Parse("127.0.0.1"));
+
+            // Set current state to login
+            State = new SphynxLoginState(this);
+        }
+
+        /// <summary>
+        /// Calls cleanup on the program
+        /// </summary>
+        public void Dispose()
+        {
+            State = null;
+        }
+
+        /// <summary>
+        /// Runs the application loop
+        /// </summary>
+        private void Run()
+        {
+            while (State != null)
+            {
+                State = State.Run();
+            }
+        }
 
         /// <summary>
         /// Retreives global header for the program
@@ -52,7 +110,7 @@ namespace Sphynx.Client.Core
 
                 for (int i = (headerWidth + HEADER_PROGRAM_NAME.Length) / 2; i < headerWidth; i++)
                 {
-                    _headerPool.Append((i == headerWidth - 1) ? '#' : ' ');
+                    _headerPool.Append(i == headerWidth - 1 ? '#' : ' ');
                 }
                 _headerPool.Append('\n');
             }
@@ -71,48 +129,6 @@ namespace Sphynx.Client.Core
             _headerPool.Append("\n");
 
             return _headerPool.ToString();
-        }
-
-        /// <summary>
-        /// The current state of the program
-        /// </summary>
-        private ISphynxState? State { get; set; }
-        private void Init()
-        {
-            State = new SphynxLoginState();
-        }
-
-        /// <summary>
-        /// Calls cleanup on the program
-        /// </summary>
-        private void Cleanup()
-        {
-            State = null;
-        }
-
-        /// <summary>
-        /// Starts the client
-        /// </summary>
-        public void Start()
-        {
-            Init();
-
-            var t = new Thread(Run);
-            t.Start();
-            t.Join();
-
-            Cleanup();
-        }
-
-        /// <summary>
-        /// Runs the application loop
-        /// </summary>
-        private void Run()
-        {
-            while (State != null)
-            {
-                State = State.Run();
-            }
         }
     }
 }
