@@ -21,18 +21,14 @@ namespace Sphynx.Core
             Patch = patch;
         }
 
-        public override int GetHashCode() => ToInt32();
+        public override readonly int GetHashCode() => ToInt32();
 
-        public int ToInt32() => Major << 16 | Minor << 8 | Patch;
+        public readonly int ToInt32() => Major << 16 | Minor << 8 | Patch;
 
-        public static Version FromInt32(int ver)
-        {
-            byte[] bytes = BitConverter.GetBytes(ver);
-            return new Version(bytes[2], bytes[1], bytes[0]);
-        }
+        public static Version FromInt32(int ver) => new Version((byte)(ver & 0xff0000 >> 16), (byte)(ver & 0xff00 >> 8), (byte)(ver & 0xff));
 
-        public override string ToString() { return Major.ToString() + "." + Minor.ToString() + Patch.ToString(); }
+        public override readonly string ToString() => Major.ToString() + "." + Minor.ToString() + Patch.ToString();
 
-        public bool Equals(Version? other) => Major == other?.Major && Minor == other?.Minor && Patch == other?.Patch;
+        public readonly bool Equals(Version? other) => Major == other?.Major && Minor == other?.Minor && Patch == other?.Patch;
     }
 }
