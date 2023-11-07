@@ -7,7 +7,7 @@ using System.Net.Sockets;
 
 using UserId = System.Guid;
 
-namespace Sphynx.Client.Core
+namespace Sphynx.Core
 {
     public class SphynxSessionUser : IDisposable
     {

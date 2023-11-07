@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Sphynx.Client.Core;
@@ -21,8 +22,8 @@ namespace Sphynx.Client.State
         public ISphynxState? Run()
         {
             ClearConsole();
-            Console.WriteLine($"Lobby state for {_client.Server.GetUsername(_user)}");
-            Thread.Sleep(3000);
+            Console.WriteLine($"Lobby state for {_client.Server!.GetUsername(_user)}");
+            Thread.Sleep(5000);
             return null;
         }
 

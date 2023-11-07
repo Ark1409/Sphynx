@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Sphynx.Client.Core;
+using Sphynx.Core;
 
 namespace Sphynx.Client.State
 {
@@ -54,7 +56,7 @@ namespace Sphynx.Client.State
                             goto Username;
                         }
 
-                        User = _client.Server.ConnectAs(username, password, out var err);
+                        User = _client.Server!.ConnectAs(username, password, out var err);
 
                         switch (err)
                         {

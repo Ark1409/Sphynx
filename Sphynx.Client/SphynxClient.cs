@@ -12,6 +12,11 @@ namespace Sphynx.Client
     public class SphynxClient : IDisposable
     {
         /// <summary>
+        /// The version of the client
+        /// </summary>
+        public static readonly Version Version = new Version(1, 0, 0);
+
+        /// <summary>
         /// The current state of the program
         /// </summary>
         public ISphynxState? State { get; private set; }
@@ -19,7 +24,7 @@ namespace Sphynx.Client
         /// <summary>
         /// Holds the server the client is connected to
         /// </summary>
-        public SphynxServer Server { get; private set; }
+        public SphynxServer? Server { get; private set; }
 
         /// <summary>
         /// Holds header string
