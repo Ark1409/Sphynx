@@ -71,5 +71,35 @@ namespace Sphynx.Core
 
         /// <inheritdoc/>
         public readonly int CompareTo(Version other) => ToInt32() - other.ToInt32();
+
+        public static bool operator ==(Version left, Version right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Version left, Version right)
+        {
+            return !(left == right);
+        }
+
+        public static bool operator <(Version left, Version right)
+        {
+            return left.CompareTo(right) < 0;
+        }
+
+        public static bool operator <=(Version left, Version right)
+        {
+            return left.CompareTo(right) <= 0;
+        }
+
+        public static bool operator >(Version left, Version right)
+        {
+            return left.CompareTo(right) > 0;
+        }
+
+        public static bool operator >=(Version left, Version right)
+        {
+            return left.CompareTo(right) >= 0;
+        }
     }
 }
