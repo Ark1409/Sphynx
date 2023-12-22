@@ -103,7 +103,7 @@ namespace Sphynx.Server
             Running = true;
             _serverThread.Start();
         }
-        int intCount = 0;
+
         private void Run()
         {
             _serverSocket.Bind(EndPoint);
@@ -111,8 +111,15 @@ namespace Sphynx.Server
 
             while (Running)
             {
-                var user = AddUser(_serverSocket.Accept());
-                Task.Factory.StartNew(() => HandleUser(user));
+                try
+                {
+                    var user = AddUser(_serverSocket.Accept());
+                    Task.Factory.StartNew(() => HandleUser(user));
+                }
+                catch (SocketException)
+                {
+                    Console.WriteLine("Interrupted");
+                }
             }
         }
 
@@ -121,6 +128,7 @@ namespace Sphynx.Server
             // Receive user messages and broadcast
             // Retrieve user status (online or away) and broadcast
             // Receive request for going into a specific room
+
         }
 
         private SphynxUserInfo AddUser(Socket clientSocket)
@@ -128,14 +136,34 @@ namespace Sphynx.Server
             var user = new SphynxUserInfo(clientSocket);
             _users.Add(user.UserId, user);
 
-            BroadcastStatus(user);
-
             return user;
         }
 
-        private void BroadcastStatus(SphynxUserInfo user)
+        public void AddRoom(ChatRoom room)
         {
+            room.MessageAdded += BroadcastRoomMessage;
+        }
 
+        public void BroadcastRoomMessage(ChatRoomMessage message)
+        {
+            var messageData = message.Serialize(Encoding);
+
+            foreach (var user in message.Room.Users)
+            {
+                if (user.UserId != message.Sender.UserId)
+                {
+                    byte[] header = { (byte)SocketMessageType.MessageSend };
+                    byte[] userId = user.UserId.ToByteArray();
+                    byte[] userName = Encoding.GetBytes(user.UserName);
+
+                    user.UserSocket.Send(header);
+                    user.UserSocket.Send(userId);
+                    user.UserSocket.Send(userName);
+                    //user.UserSocket.Send(messageData.RoomId);
+                    //user.UserSocket.Send(messageData.Timestamp);
+                    //user.UserSocket.Send(messageData.Content);
+                }
+            }
         }
 
         /// <inheritdoc/>
@@ -143,7 +171,8 @@ namespace Sphynx.Server
         {
             lock (_disposeLock)
             {
-                if (_disposed) return;
+                if (_disposed) 
+                    return;
 
                 _disposed = true;
                 Running = false;

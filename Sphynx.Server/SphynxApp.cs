@@ -44,6 +44,9 @@ namespace Sphynx.Server
         /// <param name="args">The program arguments.</param>
         public static void Run(string[] args)
         {
+            if (Running)
+                return;
+
             StateCollection = new StateCollection();
             CurrentState = StateCollection.GetState<MenuState>();
             Arguments = args;

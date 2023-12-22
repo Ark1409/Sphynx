@@ -8,7 +8,7 @@ namespace Sphynx.Server
         static void Main(string[] args)
         {
             SphynxApp.Run(args);
-            
+
             //string hostName = Dns.GetHostName();
             //var entry = Dns.GetHostEntry(hostName);
             //var entries = Dns.GetHostEntry("127.0.0.1");

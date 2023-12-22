@@ -13,7 +13,7 @@ namespace Sphynx.Server.ChatRooms
     {
         public virtual string Name { get; protected set; }
         public virtual string? Password { get; protected set; }
-        public virtual Guid RoomId { get; protected set; }
+        public virtual Guid Id { get; protected set; }
         public virtual ICollection<SphynxUserInfo> Users => _users.Values;
         public virtual List<ChatRoomMessage> Messages { get; protected set; }
         public event ChatRoomMessageEvent? MessageAdded;
@@ -30,7 +30,7 @@ namespace Sphynx.Server.ChatRooms
             Name = name;
             _users = new Dictionary<Guid, SphynxUserInfo>();
             Messages = new List<ChatRoomMessage>();
-            RoomId = Guid.NewGuid();
+            Id = Guid.NewGuid();
         }
 
         public virtual void AddMessage(ChatRoomMessage message)
