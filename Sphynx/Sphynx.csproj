@@ -1,18 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net6.0</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-		<DocumentationFile>$(MSBuildProjectDirectory)\docs\documentation.xml</DocumentationFile>
-	</PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <DocumentationFile>$(MSBuildProjectDirectory)\docs\documentation.xml</DocumentationFile>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<Compile Remove="docs\**" />
-		<EmbeddedResource Remove="docs\**" />
-		<None Remove="docs\**" />
-	</ItemGroup>
+  <ItemGroup>
+    <Compile Remove="docs\**" />
+    <EmbeddedResource Remove="docs\**" />
+    <None Remove="docs\**" />
+  </ItemGroup>
 
 </Project>
