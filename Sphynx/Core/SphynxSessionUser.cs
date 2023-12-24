@@ -9,16 +9,8 @@ using UserId = System.Guid;
 
 namespace Sphynx.Core
 {
-    public class SphynxSessionUser : IDisposable
+    public sealed class SphynxSessionUser : IDisposable
     {
-        public enum UserStatus : byte
-        {
-            OFFLINE = 0,
-            ONLINE,
-            AWAY,
-            DND
-        }
-
         public UserId Id { get; private set; }
 
         public Socket? UserSocket { get; internal set; }
