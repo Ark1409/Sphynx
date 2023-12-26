@@ -23,7 +23,7 @@ namespace Sphynx.Packet
         /// Creates a new <see cref="SphynxResponseHeader"/> from raw packet bytes.
         /// </summary>
         /// <param name="packet">The raw packet bytes.</param>
-        public SphynxResponseHeader(byte[] packet) : this(new Span<byte>(packet))
+        public SphynxResponseHeader(byte[] packet) : this(new ReadOnlySpan<byte>(packet))
         {
 
         }
@@ -32,7 +32,7 @@ namespace Sphynx.Packet
         /// Creates a new <see cref="SphynxResponseHeader"/> from raw packet bytes.
         /// </summary>
         /// <param name="packet">The raw packet bytes.</param>
-        public SphynxResponseHeader(Span<byte> packet) : base(SphynxPacketType.NOP, packet.Length)
+        public SphynxResponseHeader(ReadOnlySpan<byte> packet) : base(SphynxPacketType.NOP, packet.Length)
         {
             if (packet.Length != HEADER_SIZE)
                 throw new ArgumentException("Raw packet is not of valid size", nameof(packet));

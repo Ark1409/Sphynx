@@ -1,5 +1,4 @@
-﻿using System.Net.Sockets;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace Sphynx.Packet
 {
@@ -41,7 +40,7 @@ namespace Sphynx.Packet
         /// Creates a new <see cref="SphynxRequestHeader"/> from raw packet bytes.
         /// </summary>
         /// <param name="packet">The raw packet bytes.</param>
-        public SphynxRequestHeader(byte[] packet) : this(new Span<byte>(packet))
+        public SphynxRequestHeader(byte[] packet) : this(new ReadOnlySpan<byte>(packet))
         {
 
         }
@@ -50,7 +49,7 @@ namespace Sphynx.Packet
         /// Creates a new <see cref="SphynxRequestHeader"/> from raw packet bytes.
         /// </summary>
         /// <param name="packet">The raw packet bytes.</param>
-        public SphynxRequestHeader(Span<byte> packet) : base(SphynxPacketType.NOP, packet.Length)
+        public SphynxRequestHeader(ReadOnlySpan<byte> packet) : base(SphynxPacketType.NOP, packet.Length)
         {
             if (packet.Length != HEADER_SIZE)
                 throw new ArgumentException("Raw packet is not of valid size", nameof(packet));

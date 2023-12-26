@@ -49,7 +49,7 @@ namespace Sphynx.Packet
         /// </summary>
         /// <param name="serializedSig">Signature bytes.</param>
         /// <returns><see langword="true"/> if the signature is correct; <see langword="false"/> otherwise.</returns>
-        protected bool VerifySignature(Span<byte> serializedSig)
+        protected bool VerifySignature(ReadOnlySpan<byte> serializedSig)
         {
             return MemoryMarshal.Cast<byte, ushort>(serializedSig)[0] == SIGNATURE;
         }
@@ -61,7 +61,7 @@ namespace Sphynx.Packet
         protected unsafe virtual void SerializeSignature(Span<byte> stream)
         {
             ReadOnlySpan<ushort> sigBytes = stackalloc ushort[] { SIGNATURE };
-            var serializedSig = MemoryMarshal.Cast<ushort, byte>(sigBytes);
+            ReadOnlySpan<byte> serializedSig = MemoryMarshal.Cast<ushort, byte>(sigBytes);
             serializedSig.CopyTo(stream);
         }
 
@@ -73,7 +73,7 @@ namespace Sphynx.Packet
         protected unsafe virtual void SerializePacketType(Span<byte> stream, SphynxPacketType packetType)
         {
             ReadOnlySpan<uint> packetTypeBytes = stackalloc uint[] { (uint)packetType };
-            var serializedPacketType = MemoryMarshal.Cast<uint, byte>(packetTypeBytes);
+            ReadOnlySpan<byte> serializedPacketType = MemoryMarshal.Cast<uint, byte>(packetTypeBytes);
             serializedPacketType.CopyTo(stream);
         }
 
@@ -84,7 +84,7 @@ namespace Sphynx.Packet
         protected unsafe virtual void SerializeContentSize(Span<byte> stream)
         {
             ReadOnlySpan<int> contentSizeBytes = stackalloc int[] { ContentSize };
-            var serializedContentSize = MemoryMarshal.Cast<int, byte>(contentSizeBytes);
+            ReadOnlySpan<byte> serializedContentSize = MemoryMarshal.Cast<int, byte>(contentSizeBytes);
             serializedContentSize.CopyTo(stream);
         }
     }
