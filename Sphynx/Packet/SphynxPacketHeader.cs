@@ -1,4 +1,4 @@
-﻿using Sphynx.Utils;
+﻿using System.Runtime.InteropServices;
 
 namespace Sphynx.Packet
 {
@@ -10,22 +10,33 @@ namespace Sphynx.Packet
         /// <summary>
         /// The packet signature to safe-guards against corrupted packets.
         /// </summary>
-        public static readonly byte[] SIGNATURE = { 0x53, 0x50 };
+        public const ushort SIGNATURE = 0x5350;
 
         /// <summary>
         /// The type of this packet.
         /// </summary>
-        public SphynxPacketType PacketType { get; protected set; }
+        public SphynxPacketType PacketType { get; set; }
 
         /// <summary>
         /// The size of the content in this packet in bytes. 
         /// </summary>
-        public int ContentSize { get; protected set; }
+        public int ContentSize { get; set; }
 
         /// <summary>
         /// Returns the size of this particular header in bytes.
         /// </summary>
-        public abstract int Size { get; }
+        public abstract int HeaderSize { get; }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxPacketHeader"/>.
+        /// </summary>
+        /// <param name="packetType">The type of packet.</param>
+        /// <param name="contentSize">The size of the packet's contents.</param>
+        public SphynxPacketHeader(SphynxPacketType packetType, int contentSize)
+        {
+            PacketType = packetType;
+            ContentSize = contentSize;
+        }
 
         /// <summary>
         /// Serializes this header into a stream of bytes.
@@ -34,12 +45,24 @@ namespace Sphynx.Packet
         public abstract void Serialize(Span<byte> stream);
 
         /// <summary>
+        /// Verifies signature bytes against <see cref="SIGNATURE"/>.
+        /// </summary>
+        /// <param name="serializedSig">Signature bytes.</param>
+        /// <returns><see langword="true"/> if the signature is correct; <see langword="false"/> otherwise.</returns>
+        protected bool VerifySignature(Span<byte> serializedSig)
+        {
+            return MemoryMarshal.Cast<byte, ushort>(serializedSig)[0] == SIGNATURE;
+        }
+
+        /// <summary>
         /// Serializes the <see cref="SIGNATURE"/> into the <paramref name="stream"/>.
         /// </summary>
         /// <param name="stream">The stream to serialize into.</param>
-        protected virtual void SerializeSignature(Span<byte> stream)
+        protected unsafe virtual void SerializeSignature(Span<byte> stream)
         {
-            stream.CopyFrom(SIGNATURE);
+            ReadOnlySpan<ushort> sigBytes = stackalloc ushort[] { SIGNATURE };
+            var serializedSig = MemoryMarshal.Cast<ushort, byte>(sigBytes);
+            serializedSig.CopyTo(stream);
         }
 
         /// <summary>
@@ -49,15 +72,9 @@ namespace Sphynx.Packet
         /// <param name="packetType">The packet type.</param>
         protected unsafe virtual void SerializePacketType(Span<byte> stream, SphynxPacketType packetType)
         {
-            uint rawPacketType = (uint)packetType;
-            byte* serializedPacketType = stackalloc byte[sizeof(SphynxPacketType)];
-
-            for (int i = 0; i < sizeof(SphynxPacketType); i++)
-            {
-                serializedPacketType[i] = (byte)((rawPacketType >> 8 * i) & 0xFF);
-            }
-
-            stream.CopyFrom(serializedPacketType, sizeof(SphynxPacketType));
+            ReadOnlySpan<uint> packetTypeBytes = stackalloc uint[] { (uint)packetType };
+            var serializedPacketType = MemoryMarshal.Cast<uint, byte>(packetTypeBytes);
+            serializedPacketType.CopyTo(stream);
         }
 
         /// <summary>
@@ -66,15 +83,9 @@ namespace Sphynx.Packet
         /// <param name="stream">The stream to serialize into.</param>
         protected unsafe virtual void SerializeContentSize(Span<byte> stream)
         {
-            const int CONTENT_SIZE_SIZE = sizeof(int);
-            byte* serializedPacketType = stackalloc byte[CONTENT_SIZE_SIZE];
-
-            for (int i = 0; i < CONTENT_SIZE_SIZE; i++)
-            {
-                serializedPacketType[i] = (byte)((ContentSize >> 8 * i) & 0xFF);
-            }
-
-            stream.CopyFrom(serializedPacketType, CONTENT_SIZE_SIZE);
+            ReadOnlySpan<int> contentSizeBytes = stackalloc int[] { ContentSize };
+            var serializedContentSize = MemoryMarshal.Cast<int, byte>(contentSizeBytes);
+            serializedContentSize.CopyTo(stream);
         }
     }
 }
