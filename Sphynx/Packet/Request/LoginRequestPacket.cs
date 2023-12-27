@@ -3,7 +3,7 @@
 namespace Sphynx.Packet.Request
 {
     /// <inheritdoc cref="SphynxPacketType.LOGIN_REQ"/>
-    public sealed class LoginRequestPacket : SphynxPacket
+    public sealed class LoginRequestPacket : SphynxRequestPacket
     {
         /// <summary>
         /// Email entered by user for login.
@@ -20,20 +20,21 @@ namespace Sphynx.Packet.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_REQ;
 
+        private const int EMAIL_SIZE_OFFSET = 0;
+        private const int EMAIL_OFFSET = EMAIL_SIZE_OFFSET + sizeof(int);
+
         /// <summary>
         /// Creates a <see cref="LoginRequestPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         public LoginRequestPacket(ReadOnlySpan<byte> contents)
         {
-            int emailSize = MemoryMarshal.Cast<byte, int>(contents.Slice(0, sizeof(int)))[0];
-
-            const int EMAIL_OFFSET = sizeof(int) + 1;
+            int emailSize = MemoryMarshal.Cast<byte, int>(contents.Slice(EMAIL_SIZE_OFFSET, sizeof(int)))[0];
             Email = TEXT_ENCODING.GetString(contents.Slice(EMAIL_OFFSET, emailSize));
 
-            //                              //
+            // ---------------------------- //
             // TODO: Read password bytes    //
-            //                              //
+            // ---------------------------- //
         }
 
         /// <summary>
@@ -52,29 +53,27 @@ namespace Sphynx.Packet.Request
         {
             int emailSize = TEXT_ENCODING.GetByteCount(Email);
             const int PASSWORD_SIZE = 256;
-            int contentSize = emailSize + PASSWORD_SIZE;
+            int contentSize = sizeof(int) + emailSize + PASSWORD_SIZE;
 
             byte[] serializedBytes = new byte[SphynxRequestHeader.HEADER_SIZE + contentSize];
+            var serializationSpan = new Span<byte>(serializedBytes);
 
-            SerializeData(new Span<byte>(serializedBytes), contentSize, emailSize);
+            SerializeHeader(serializationSpan.Slice(0, SphynxRequestHeader.HEADER_SIZE), contentSize);
+            SerializeContents(serializationSpan.Slice(SphynxRequestHeader.HEADER_SIZE), emailSize);
 
             return serializedBytes;
         }
-
-        private void SerializeData(Span<byte> stream, int contentSize, int emailSize)
+        
+        private void SerializeContents(Span<byte> stream, int emailSize)
         {
-            var header = new SphynxRequestHeader(PacketType, contentSize);
-            header.Serialize(stream.Slice(0, SphynxRequestHeader.HEADER_SIZE));
+            Span<byte> emailSizeBytes = MemoryMarshal.Cast<int, byte>(stackalloc int[] { emailSize });
+            emailSizeBytes.CopyTo(stream.Slice(EMAIL_SIZE_OFFSET, sizeof(int)));
 
-            Span<byte> serializedEmailSize = MemoryMarshal.Cast<int, byte>(stackalloc int[] { emailSize });
-            serializedEmailSize.CopyTo(stream.Slice(SphynxRequestHeader.HEADER_SIZE));
-
-            int EMAIL_OFFSET = SphynxRequestHeader.HEADER_SIZE + serializedEmailSize.Length;
             TEXT_ENCODING.GetBytes(Email, stream.Slice(EMAIL_OFFSET, emailSize));
 
-            //                                  //
+            // -------------------------------- //
             // TODO: Serialize hashed password  //
-            //                                  //
+            // -------------------------------- //
         }
     }
 }
