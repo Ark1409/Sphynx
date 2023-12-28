@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Net.Sockets;
+using System.Runtime.InteropServices;
 
 namespace Sphynx.Packet
 {
@@ -58,6 +59,10 @@ namespace Sphynx.Packet
                 throw new ArgumentException("Packet unidentifiable", nameof(packet));
 
             PacketType = (SphynxPacketType)MemoryMarshal.Cast<byte, uint>(packet.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)))[0];
+
+            if (((int)PacketType) < 0)
+                throw new ArgumentException($"Raw packet ({PacketType}) type must be request packet", nameof(PacketType));
+
             UserId = new Guid(packet.Slice(USER_ID_OFFSET, GUID_SIZE));
             SessionId = new Guid(packet.Slice(SESSION_ID_OFFSET, GUID_SIZE));
             ContentSize = MemoryMarshal.Cast<byte, int>(packet.Slice(CONTENT_SIZE_OFFSET, sizeof(int)))[0];
