@@ -60,14 +60,14 @@ namespace Sphynx.Packet.Response
             return serializedBytes;
         }
 
-        private void SerializeContents(Span<byte> stream, int errorMsgSize)
+        private void SerializeContents(Span<byte> buffer, int errorMsgSize)
         {
-            stream[ERROR_CODE_OFFSET] = (byte)ErrorCode;
+            buffer[ERROR_CODE_OFFSET] = (byte)ErrorCode;
             
             Span<byte> errorMsgSizeBytes = MemoryMarshal.Cast<int, byte>(stackalloc int[] { errorMsgSize });
-            errorMsgSizeBytes.CopyTo(stream.Slice(ERROR_MSG_SIZE_OFFSET, sizeof(int)));
+            errorMsgSizeBytes.CopyTo(buffer.Slice(ERROR_MSG_SIZE_OFFSET, sizeof(int)));
 
-            TEXT_ENCODING.GetBytes(ErrorMessage, stream.Slice(ERROR_MSG_OFFSET, errorMsgSize));
+            TEXT_ENCODING.GetBytes(ErrorMessage, buffer.Slice(ERROR_MSG_OFFSET, errorMsgSize));
         }
     }
 }

@@ -91,21 +91,21 @@ namespace Sphynx.Packet
         }
 
         /// <inheritdoc/>
-        public override void Serialize(Span<byte> stream)
+        public override void Serialize(Span<byte> buffer)
         {
-            if (stream.Length < HEADER_SIZE)
-                throw new ArgumentException($"Cannot serialize response header into {stream.Length} bytes");
+            if (buffer.Length < HEADER_SIZE)
+                throw new ArgumentException($"Cannot serialize response header into {buffer.Length} bytes");
 
-            SerializeSignature(stream.Slice(SIGNATURE_OFFSET, sizeof(ushort)));
-            SerializePacketType(stream.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), PacketType);
+            SerializeSignature(buffer.Slice(SIGNATURE_OFFSET, sizeof(ushort)));
+            SerializePacketType(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), PacketType);
 
             // Prepare NOP packet on failure
-            if (!UserId.TryWriteBytes(stream.Slice(USER_ID_OFFSET, GUID_SIZE)) || !SessionId.TryWriteBytes(stream.Slice(SESSION_ID_OFFSET, GUID_SIZE)))
+            if (!UserId.TryWriteBytes(buffer.Slice(USER_ID_OFFSET, GUID_SIZE)) || !SessionId.TryWriteBytes(buffer.Slice(SESSION_ID_OFFSET, GUID_SIZE)))
             {
-                SerializePacketType(stream.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), SphynxPacketType.NOP);
+                SerializePacketType(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), SphynxPacketType.NOP);
             }
 
-            SerializeContentSize(stream.Slice(CONTENT_SIZE_OFFSET, sizeof(int)));
+            SerializeContentSize(buffer.Slice(CONTENT_SIZE_OFFSET, sizeof(int)));
         }
     }
 }

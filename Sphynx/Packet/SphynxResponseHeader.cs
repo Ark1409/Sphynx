@@ -57,14 +57,14 @@ namespace Sphynx.Packet
         }
 
         /// <inheritdoc/>
-        public override void Serialize(Span<byte> stream)
+        public override void Serialize(Span<byte> buffer)
         {
-            if (stream.Length < HEADER_SIZE)
-                throw new ArgumentException($"Cannot serialize response header into {stream.Length} bytes");
+            if (buffer.Length < HEADER_SIZE)
+                throw new ArgumentException($"Cannot serialize response header into {buffer.Length} bytes");
 
-            SerializeSignature(stream.Slice(SIGNATURE_OFFSET, sizeof(ushort)));
-            SerializePacketType(stream.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), PacketType);
-            SerializeContentSize(stream.Slice(CONTENT_SIZE_OFFSET, sizeof(int)));
+            SerializeSignature(buffer.Slice(SIGNATURE_OFFSET, sizeof(ushort)));
+            SerializePacketType(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), PacketType);
+            SerializeContentSize(buffer.Slice(CONTENT_SIZE_OFFSET, sizeof(int)));
         }
     }
 }

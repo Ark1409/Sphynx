@@ -39,10 +39,10 @@ namespace Sphynx.Packet
         }
 
         /// <summary>
-        /// Serializes this header into a stream of bytes.
+        /// Serializes this header into a buffer of bytes.
         /// </summary>
-        /// <param name="stream">The stream to serialize this header into.</param>
-        public abstract void Serialize(Span<byte> stream);
+        /// <param name="buffer">The buffer to serialize this header into.</param>
+        public abstract void Serialize(Span<byte> buffer);
 
         /// <summary>
         /// Verifies signature bytes against <see cref="SIGNATURE"/>.
@@ -55,37 +55,37 @@ namespace Sphynx.Packet
         }
 
         /// <summary>
-        /// Serializes the <see cref="SIGNATURE"/> into the <paramref name="stream"/>.
+        /// Serializes the <see cref="SIGNATURE"/> into the <paramref name="buffer"/>.
         /// </summary>
-        /// <param name="stream">The stream to serialize into.</param>
-        protected unsafe virtual void SerializeSignature(Span<byte> stream)
+        /// <param name="buffer">The buffer to serialize into.</param>
+        protected unsafe virtual void SerializeSignature(Span<byte> buffer)
         {
             ReadOnlySpan<ushort> sigBytes = stackalloc ushort[] { SIGNATURE };
             ReadOnlySpan<byte> serializedSig = MemoryMarshal.Cast<ushort, byte>(sigBytes);
-            serializedSig.CopyTo(stream);
+            serializedSig.CopyTo(buffer);
         }
 
         /// <summary>
-        /// Serializes a <see cref="SphynxPacketType"/> into the <paramref name="stream"/>.
+        /// Serializes a <see cref="SphynxPacketType"/> into the <paramref name="buffer"/>.
         /// </summary>
-        /// <param name="stream">The stream to serialize into.</param>
+        /// <param name="buffer">The buffer to serialize into.</param>
         /// <param name="packetType">The packet type.</param>
-        protected unsafe virtual void SerializePacketType(Span<byte> stream, SphynxPacketType packetType)
+        protected unsafe virtual void SerializePacketType(Span<byte> buffer, SphynxPacketType packetType)
         {
             ReadOnlySpan<uint> packetTypeBytes = stackalloc uint[] { (uint)packetType };
             ReadOnlySpan<byte> serializedPacketType = MemoryMarshal.Cast<uint, byte>(packetTypeBytes);
-            serializedPacketType.CopyTo(stream);
+            serializedPacketType.CopyTo(buffer);
         }
 
         /// <summary>
-        /// Serializes the <see cref="ContentSize"/> into the <paramref name="stream"/>.
+        /// Serializes the <see cref="ContentSize"/> into the <paramref name="buffer"/>.
         /// </summary>
-        /// <param name="stream">The stream to serialize into.</param>
-        protected unsafe virtual void SerializeContentSize(Span<byte> stream)
+        /// <param name="buffer">The buffer to serialize into.</param>
+        protected unsafe virtual void SerializeContentSize(Span<byte> buffer)
         {
             ReadOnlySpan<int> contentSizeBytes = stackalloc int[] { ContentSize };
             ReadOnlySpan<byte> serializedContentSize = MemoryMarshal.Cast<int, byte>(contentSizeBytes);
-            serializedContentSize.CopyTo(stream);
+            serializedContentSize.CopyTo(buffer);
         }
     }
 }

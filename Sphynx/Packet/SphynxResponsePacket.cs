@@ -6,14 +6,14 @@
     public abstract class SphynxResponsePacket : SphynxPacket
     {
         /// <summary>
-        /// Serializes a packet header into the specified <paramref name="stream"/>.
+        /// Serializes a packet header into the specified <paramref name="buffer"/>.
         /// </summary>
-        /// <param name="stream">The stream to serialize this header into.</param>
+        /// <param name="buffer">The buffer to serialize this header into.</param>
         /// <param name="contentSize">The <see cref="SphynxPacketHeader.ContentSize"/>.</param>
-        protected virtual SphynxResponseHeader SerializeHeader(Span<byte> stream, int contentSize)
+        protected virtual SphynxResponseHeader SerializeHeader(Span<byte> buffer, int contentSize)
         {
             var header = new SphynxResponseHeader(PacketType, contentSize);
-            header.Serialize(stream.Slice(0, SphynxResponseHeader.HEADER_SIZE));
+            header.Serialize(buffer.Slice(0, SphynxResponseHeader.HEADER_SIZE));
             return header;
         }
     }

@@ -64,12 +64,12 @@ namespace Sphynx.Packet.Request
             return serializedBytes;
         }
         
-        private void SerializeContents(Span<byte> stream, int emailSize)
+        private void SerializeContents(Span<byte> buffer, int emailSize)
         {
             Span<byte> emailSizeBytes = MemoryMarshal.Cast<int, byte>(stackalloc int[] { emailSize });
-            emailSizeBytes.CopyTo(stream.Slice(EMAIL_SIZE_OFFSET, sizeof(int)));
+            emailSizeBytes.CopyTo(buffer.Slice(EMAIL_SIZE_OFFSET, sizeof(int)));
 
-            TEXT_ENCODING.GetBytes(Email, stream.Slice(EMAIL_OFFSET, emailSize));
+            TEXT_ENCODING.GetBytes(Email, buffer.Slice(EMAIL_OFFSET, emailSize));
 
             // -------------------------------- //
             // TODO: Serialize hashed password  //

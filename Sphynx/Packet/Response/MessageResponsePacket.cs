@@ -82,20 +82,20 @@ namespace Sphynx.Packet.Response
             return serializedBytes;
         }
 
-        private bool SerializeContents(Span<byte> stream, int messageLength)
+        private bool SerializeContents(Span<byte> buffer, int messageLength)
         {
-            stream[RECIPIENT_TYPE_OFFSET] = (byte)(RecipientIsUser ? 1 : 0);
+            buffer[RECIPIENT_TYPE_OFFSET] = (byte)(RecipientIsUser ? 1 : 0);
 
             // Prepare NOP on failure - good way to simply ignore message
-            if (!RecipientId.TryWriteBytes(stream.Slice(RECIPIENT_ID_OFFSET, RECIPIENT_ID_SIZE)))
+            if (!RecipientId.TryWriteBytes(buffer.Slice(RECIPIENT_ID_OFFSET, RECIPIENT_ID_SIZE)))
             {
                 return false;
             }
 
             Span<byte> messageLengthBytes = MemoryMarshal.Cast<int, byte>(stackalloc int[] { messageLength });
-            messageLengthBytes.CopyTo(stream.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)));
+            messageLengthBytes.CopyTo(buffer.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)));
 
-            TEXT_ENCODING.GetBytes(Message, stream.Slice(MESSAGE_OFFSET, messageLength));
+            TEXT_ENCODING.GetBytes(Message, buffer.Slice(MESSAGE_OFFSET, messageLength));
             return true;
         }
     }
