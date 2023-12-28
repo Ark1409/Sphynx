@@ -13,7 +13,7 @@ namespace Sphynx.Packet.Request
         /// <summary>
         /// The password for the chat room, or null if the room is not guarded by a password.
         /// </summary>
-        public string? Password { private get; set; }
+        public string? Password { get; set; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_CREATE_REQ;

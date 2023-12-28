@@ -14,7 +14,7 @@ namespace Sphynx.Packet.Request
         /// Password entered by user for login.
         /// </summary>
         // TODO: !!! Temporary !!!
-        public string Password { private get; set; }
+        public string Password { get; set; }
         // TODO: !!! Temporary !!!
 
         /// <inheritdoc/>
@@ -63,7 +63,7 @@ namespace Sphynx.Packet.Request
 
             return serializedBytes;
         }
-        
+
         private void SerializeContents(Span<byte> buffer, int emailSize)
         {
             Span<byte> emailSizeBytes = MemoryMarshal.Cast<int, byte>(stackalloc int[] { emailSize });
