@@ -14,7 +14,7 @@ namespace Sphynx.Packet.Request
         /// Password entered by user for login.
         /// </summary>
         // TODO: !!! Temporary !!!
-        public string Password { get; set; }
+        public string Password { private get; set; }
         // TODO: !!! Temporary !!!
 
         /// <inheritdoc/>
@@ -22,6 +22,7 @@ namespace Sphynx.Packet.Request
 
         private const int EMAIL_SIZE_OFFSET = 0;
         private const int EMAIL_OFFSET = EMAIL_SIZE_OFFSET + sizeof(int);
+        private const int PASSWORD_SIZE = 256;
 
         /// <summary>
         /// Creates a <see cref="LoginRequestPacket"/>.
@@ -52,7 +53,6 @@ namespace Sphynx.Packet.Request
         public override byte[] Serialize()
         {
             int emailSize = TEXT_ENCODING.GetByteCount(Email);
-            const int PASSWORD_SIZE = 256;
             int contentSize = sizeof(int) + emailSize + PASSWORD_SIZE;
 
             byte[] serializedBytes = new byte[SphynxRequestHeader.HEADER_SIZE + contentSize];
