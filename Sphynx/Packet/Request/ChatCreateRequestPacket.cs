@@ -52,7 +52,7 @@ namespace Sphynx.Packet.Request
         {
             int nameSize = TEXT_ENCODING.GetByteCount(Name);
             const int PASSWORD_SIZE = 256;
-            int contentSize = sizeof(int) + nameSize + sizeof(int) + PASSWORD_SIZE;
+            int contentSize = sizeof(int) + nameSize + PASSWORD_SIZE;
 
             byte[] serializedBytes = new byte[SphynxRequestHeader.HEADER_SIZE + contentSize];
             var serializationSpan = new Span<byte>(serializedBytes);

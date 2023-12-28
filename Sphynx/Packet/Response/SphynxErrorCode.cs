@@ -3,7 +3,7 @@
     /// <summary>
     /// Error code for packet responses.
     /// </summary>
-    public enum SphynxErrorCode : sbyte
+    public enum SphynxErrorCode : byte
     {
         /// <summary>
         /// Action has been completed succesfully.
@@ -16,7 +16,7 @@
         INVALID_EMAIL,
 
         /// <summary>
-        /// Invalid password for account email at login.
+        /// Invalid password for authentication (whether it be account email at login or room password).
         /// </summary>
         INVALID_PASSWORD
     }
