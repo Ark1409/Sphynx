@@ -8,7 +8,7 @@ using NUnit.Framework.Constraints;
 namespace Sphynx.Test
 {
     [TestFixture]
-    public class RequestPacketTests
+    public class PacketHeaderTests
     {
         private const int GUID_SIZE = 16;
 
