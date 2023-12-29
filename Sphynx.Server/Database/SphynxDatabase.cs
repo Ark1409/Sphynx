@@ -56,6 +56,16 @@ namespace Sphynx.Server.Database
 
         }
 
+        /// <summary>
+        /// Constructor instance of SphynxDatabase
+        /// </summary>
+        public SphynxDatabase(string collection, string prefix = "Sphynx")
+            : this(new MongoClient("mongodb+srv://admin:{password}@sphynxcluster.vpdimph.mongodb.net/"),
+                  "Sphynx", collection, prefix)
+        {
+
+        }
+
         public T? GetOneDocumentByID(Guid id)
         {
             var collection = Collection;

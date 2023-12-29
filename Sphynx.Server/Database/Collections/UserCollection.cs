@@ -11,7 +11,7 @@ namespace Sphynx.Server.Database.Collections
 {
     internal class UserCollection
     {
-        private SphynxDatabase<SphynxUserInfo> _database;
+        private SphynxDatabase<SphynxUserInfo> _database = new SphynxDatabase<SphynxUserInfo>("users");
 
         public SphynxUserInfo? GetUser(Guid userId)
         {
