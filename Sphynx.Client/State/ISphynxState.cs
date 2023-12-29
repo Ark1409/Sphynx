@@ -13,7 +13,7 @@ namespace Sphynx.Client.State
         /// <summary>
         /// Starts execution of the current state
         /// </summary>
-        /// <returns>The next state to be ran, or null if the program should (immediately) termiante</returns>
+        /// <returns>The next state to be ran, or null if the program should (immediately) terminate</returns>
         ISphynxState? Run();
     }
 }
