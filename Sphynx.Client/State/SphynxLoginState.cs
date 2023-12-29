@@ -48,7 +48,6 @@ namespace Sphynx.Client.State
                     {
                         Console.WriteLine($"User: {username}\n");
                         Console.Write("Enter your password: ");
-
                         string? password = ReadPassword();
 
                         if (string.IsNullOrEmpty(password))
@@ -93,6 +92,29 @@ namespace Sphynx.Client.State
                                     }
                                     break;
                                 }
+                            default:
+                                {
+                                    {
+                                        ClearConsole();
+                                        var currentForeground = Console.ForegroundColor;
+                                        Console.ForegroundColor = ConsoleColor.Red;
+                                        Console.WriteLine("An error occured when trying to connect to the server...\n");
+                                        Console.ForegroundColor = currentForeground;
+                                    }
+
+                                    Console.WriteLine("Retrying in...");
+                                    const int redoLoginWaitTime = 2;
+                                    int redoBarWidth = (Console.BufferWidth - "[] 100s".Length) / 3;
+                                    for (DateTime beginWait = DateTime.Now, currenTime = DateTime.Now; currenTime.Subtract(beginWait).TotalSeconds < redoLoginWaitTime; currenTime = DateTime.Now)
+                                    {
+                                        double diff = currenTime.Subtract(beginWait).TotalSeconds;
+                                        WriteLoadingBar(redoBarWidth, diff / redoLoginWaitTime);
+                                        Console.Write((int)(redoLoginWaitTime - diff + 1) + "s");
+                                        Thread.Sleep(32);
+                                    }
+                                    goto Username;
+                                }
+                                
                         }
                     }
                     ClearConsole();
