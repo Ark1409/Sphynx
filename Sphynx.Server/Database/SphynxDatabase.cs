@@ -12,189 +12,117 @@ using Sphynx.Server.ChatRooms;
 namespace Sphynx.Server.Database
 {
     /// <summary>
-    /// Represents a database helper using MongoDB
+    /// Represents a generic class as MongoDB helper
     /// </summary>
-    public sealed class SphynxDatabase
+    public sealed class SphynxDatabase<T> where T : class
     {
         private readonly string _prefix;
         public MongoClient Client { get; }
         public IMongoDatabase Database { get; }
+        public IMongoCollection<T> Collection { get; }
 
         /// <summary>
         /// Constructor instance of SphynxDatabase
         /// </summary>
-        /// <param name="client"></param>
-        /// <param name="database"></param>
-        /// <param name="prefix"></param>
-        public SphynxDatabase(MongoClient client, string database, string prefix = "Sphynx")
+        public SphynxDatabase(MongoClient client, string database, string collection, string prefix = "Sphynx")
         {
             _prefix = prefix;
-            Client = client;
-            Database = Client.GetDatabase(database);
+            try
+            {
+                Client = client;
+                Database = Client.GetDatabase(database);
+                Collection = Database.GetCollection<T>(collection);
+            }
+            catch (MongoConfigurationException ex)
+            {
+                // Console.WriteLine("Failed to connect to MongoDB (MongoEx): " + ex.Message);
+                // Console.WriteLine(ex.StackTrace);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Console.WriteLine("Failed to connect to MongoDB (SystemEx): " + ex.Message);
+                // Console.WriteLine(ex.StackTrace);
+                throw;
+            }
         }
 
         /// <summary>
         /// Constructor instance of SphynxDatabase
         /// </summary>
-        /// <param name="uri"></param>
-        /// <param name="client"></param>
-        /// <param name="database"></param>
-        /// <param name="prefix"></param>
-        public SphynxDatabase(string uri, IMongoClient client, string database, string prefix = "Sphynx")
-            : this(new MongoClient(uri), database, prefix)
+        public SphynxDatabase(string uri, string database, string collection, string prefix = "Sphynx")
+            : this(new MongoClient(uri), database, collection, prefix)
         {
 
         }
 
-        public IMongoCollection<SphynxUserInfo> UserCollection 
-            => Database.GetCollection<SphynxUserInfo>(_prefix + ".users");
-
-        public IMongoCollection<ChatRoom> RoomCollection 
-            => Database.GetCollection<ChatRoom>(_prefix + ".rooms");
-
-        /// <summary>
-        /// Gets user data by ID
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns> Returns an instance of <see cref="SphynxUserInfo"/> </returns>
-        public SphynxUserInfo? GetUser(Guid id)
+        public T? GetOneDocumentByID(Guid id)
         {
-            var collection = UserCollection;
-            return collection.Find(u => u.UserId == id).SingleOrDefault();
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            return collection.Find(filter).SingleOrDefault();
         }
 
-        /// <summary>
-        /// Gets user data by username
-        /// </summary>
-        /// <param name="username"></param>
-        /// <returns> Returns an instance of user </returns>
-        public SphynxUserInfo? GetUser(string username)
+        public T? GetOneDocumentByField(string field, string value)
         {
-            var collection = UserCollection;
-            return collection.Find(u => u.UserName == username).SingleOrDefault();
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq(field, value);
+            return collection.Find(filter).SingleOrDefault();
         }
 
-        /// <summary>
-        /// Gets all user datas
-        /// </summary>
-        /// <returns></returns>
-        public IEnumerable<SphynxUserInfo> GetUsers()
+        public IEnumerable<T> GetAllDocuments()
         {
-            var collection = UserCollection;
-            return collection.Find(u => true).ToEnumerable();
+            var collection = Collection;
+            return collection.Find(t => true).ToEnumerable();
         }
 
-        /// <summary>
-        /// Inserts user data to database
-        /// </summary>
-        /// <param name="user"></param>
-        public void InsertUser(SphynxUserInfo user)
+        public void AddOneDocument(T document)
         {
-            var collection = UserCollection;
-            collection.InsertOne(user);
+            var collection = Collection;
+            collection.InsertOne(document);
         }
 
-        /// <summary>
-        /// Inserts many user datas to database
-        /// </summary>
-        /// <param name="users"></param>
-        public void InsertUsers(IEnumerable<SphynxUserInfo> users)
+        public void AddManyDocuments(IEnumerable<T> documents)
         {
-            var collection = UserCollection;
-            collection.InsertMany(users);
+            var collection = Collection;
+            collection.InsertMany(documents);
         }
 
-        /// <summary>
-        /// Updates the user data
-        /// If not exists, inserts user data to database
-        /// </summary>
-        /// <param name="user"></param>
-        /// <param name="id"></param>
-        public void UpsertUser(SphynxUserInfo user, Guid id)
+        public void AddElementToArrayInDocument(Guid id, string arrayName, object element)
         {
-            var collection = UserCollection;
-            collection.ReplaceOne(u => u.UserId == id, user, new ReplaceOptions { IsUpsert = true });
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            var update = Builders<T>.Update.Push(arrayName, element);
+            collection.UpdateOne(filter, update);
         }
 
-        /// <summary>
-        /// Delete user data by ID
-        /// </summary>
-        /// <param name="id"></param>
-        public void DeleteUser(Guid id)
+        public void UpdateFieldInDocument(Guid id, string field, string value)
         {
-            var collection = UserCollection;
-            collection.DeleteOne(u => u.UserId == id);
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            var update = Builders<T>.Update.Set(field, value);
+            collection.UpdateOne(filter, update);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="roomId"></param>
-        public ChatRoom? GetRoom(Guid id)
+        public void ReplaceOneDocument(Guid id, T document)
         {
-            var collection = RoomCollection;
-            return collection.Find(r => r.Id == id).SingleOrDefault();
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            collection.ReplaceOne(filter, document);
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="roomName"></param>
-        public ChatRoom? GetRoom(string roomName)
+        public void UpsertOneDocument(Guid id, T document)
         {
-            var collection = RoomCollection;
-            return collection.Find(r => r.Name == roomName).SingleOrDefault();
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            collection.ReplaceOne(filter, document, new ReplaceOptions { IsUpsert = true });
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <returns></returns>
-        public IEnumerable<ChatRoom> GetRooms()
+        public void DeleteOneDocumentByID(Guid id)
         {
-            var collection = RoomCollection;
-            return collection.Find(r => true).ToEnumerable();
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="room"></param>
-        public void InsertRoom(ChatRoom room)
-        {
-            var collection = RoomCollection;
-            collection.InsertOne(room);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="rooms"></param>
-        public void InsertRoom(IEnumerable<ChatRoom> rooms)
-        {
-            var collection = RoomCollection;
-            collection.InsertMany(rooms);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="room"></param>
-        /// <param name="id"></param>
-        public void UpsertRoom(ChatRoom room, Guid id)
-        {
-            var collection = RoomCollection;
-            collection.ReplaceOne(r => r.Id == id, room, new ReplaceOptions { IsUpsert = true });
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="id"></param>
-        public void DeleteRoom(Guid id)
-        {
-            var collection = RoomCollection;
-            collection.DeleteOne(r => r.Id == id);
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            collection.DeleteOne(filter);
         }
     }
 }
