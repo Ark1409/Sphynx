@@ -1,7 +1,7 @@
 ﻿namespace Sphynx.Packet.Response
 {
     /// <inheritdoc cref="SphynxPacketType.CHAT_CREATE_RES"/>
-    public sealed class ChatCreateResponsePacket : SphynxResponsePacket
+    public sealed class ChatCreateResponsePacket : SphynxResponsePacket, IEquatable<ChatCreateResponsePacket>
     {
         /// <summary>
         /// Room ID assigned to the newly created room.
@@ -51,5 +51,8 @@
             // TODO: Handle writing error
             RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, ROOM_ID_SIZE));
         }
+
+        /// <inheritdoc/>
+        public bool Equals(ChatCreateResponsePacket? other) => RoomId == other?.RoomId;
     }
 }

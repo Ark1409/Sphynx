@@ -1,9 +1,11 @@
 ﻿using System.Runtime.InteropServices;
 
+using Sphynx.Utils;
+
 namespace Sphynx.Packet.Request
 {
     /// <inheritdoc cref="SphynxPacketType.CHAT_CREATE_REQ"/>
-    public sealed class ChatCreateRequestPacket : SphynxRequestPacket
+    public sealed class ChatCreateRequestPacket : SphynxRequestPacket, IEquatable<ChatCreateRequestPacket>
     {
         /// <summary>
         /// The name of the chat room.
@@ -28,7 +30,7 @@ namespace Sphynx.Packet.Request
         /// <param name="contents">Packet contents, excluding the header.</param>
         public ChatCreateRequestPacket(ReadOnlySpan<byte> contents)
         {
-            int nameSize = MemoryMarshal.Cast<byte, int>(contents.Slice(NAME_SIZE_OFFSET, sizeof(int)))[0];
+            int nameSize = contents.Slice(NAME_SIZE_OFFSET, sizeof(int)).ReadInt32();
             Name = TEXT_ENCODING.GetString(contents.Slice(NAME_OFFSET, nameSize));
 
             // ---------------------------- //
@@ -65,9 +67,7 @@ namespace Sphynx.Packet.Request
 
         private void SerializeContents(Span<byte> buffer, int nameSize)
         {
-            Span<byte> nameSizeBytes = MemoryMarshal.Cast<int, byte>(stackalloc int[] { nameSize });
-            nameSizeBytes.CopyTo(buffer.Slice(NAME_SIZE_OFFSET, sizeof(int)));
-
+            nameSize.WriteBytes(buffer.Slice(NAME_SIZE_OFFSET, sizeof(int)));
             TEXT_ENCODING.GetBytes(Name, buffer.Slice(NAME_OFFSET, nameSize));
 
             int PASSWORD_OFFSET = NAME_OFFSET + nameSize;
@@ -75,5 +75,8 @@ namespace Sphynx.Packet.Request
             // TODO: Serialize hashed password  //
             // -------------------------------- //
         }
+
+        /// <inheritdoc/>
+        public bool Equals(ChatCreateRequestPacket? other) => Name == other?.Name && Password == other?.Password;
     }
 }

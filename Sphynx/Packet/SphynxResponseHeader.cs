@@ -1,12 +1,11 @@
-﻿using System.Net.Sockets;
-using System.Runtime.InteropServices;
+﻿using Sphynx.Utils;
 
 namespace Sphynx.Packet
 {
     /// <summary>
     /// The packet header for a request sent from the server to a client.
     /// </summary>
-    public sealed class SphynxResponseHeader : SphynxPacketHeader
+    public sealed class SphynxResponseHeader : SphynxPacketHeader, IEquatable<SphynxResponseHeader>
     {
         /// <summary>
         /// The size of a response header in bytes.
@@ -38,15 +37,15 @@ namespace Sphynx.Packet
             if (packet.Length != HEADER_SIZE)
                 throw new ArgumentException("Raw packet is not of valid size", nameof(packet));
 
-            if (!VerifySignature(packet.Slice(SIGNATURE_OFFSET, sizeof(ushort))))
+            if (SIGNATURE != packet.Slice(SIGNATURE_OFFSET, sizeof(ushort)).ReadUInt16())
                 throw new ArgumentException("Packet unidentifiable", nameof(packet));
 
-            PacketType = (SphynxPacketType)MemoryMarshal.Cast<byte, uint>(packet.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)))[0];
-            
-            if (((int)PacketType) > 0)
-                throw new ArgumentException($"Raw packet ({PacketType}) type must be response packet", nameof(PacketType));
+            PacketType = (SphynxPacketType)packet.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)).ReadUInt32();
 
-            ContentSize = MemoryMarshal.Cast<byte, int>(packet.Slice(CONTENT_SIZE_OFFSET, sizeof(int)))[0];
+            if (((int)PacketType) > 0)
+                throw new InvalidDataException($"Raw packet ({PacketType}) type must be response packet");
+
+            ContentSize = packet.Slice(CONTENT_SIZE_OFFSET, sizeof(int)).ReadInt32();
         }
 
         /// <summary>
@@ -67,9 +66,15 @@ namespace Sphynx.Packet
             if (buffer.Length < HEADER_SIZE)
                 throw new ArgumentException($"Cannot serialize response header into {buffer.Length} bytes");
 
-            SerializeSignature(buffer.Slice(SIGNATURE_OFFSET, sizeof(ushort)));
-            SerializePacketType(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), PacketType);
-            SerializeContentSize(buffer.Slice(CONTENT_SIZE_OFFSET, sizeof(int)));
+            SIGNATURE.WriteBytes(buffer.Slice(SIGNATURE_OFFSET, sizeof(ushort)));
+            ((uint)PacketType).WriteBytes(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)));
+            ContentSize.WriteBytes(buffer.Slice(CONTENT_SIZE_OFFSET, sizeof(int)));
         }
+
+        /// <inheritdoc/>
+        public override bool Equals(SphynxPacketHeader? other) => other is SphynxResponseHeader && base.Equals(other);
+
+        /// <inheritdoc/>
+        public bool Equals(SphynxResponseHeader? other) => Equals(other as SphynxPacketHeader);
     }
 }

@@ -1,7 +1,7 @@
 ﻿namespace Sphynx.Packet.Request
 {
     /// <inheritdoc cref="SphynxPacketType.CHAT_DEL_REQ"/>
-    public sealed class ChatDeleteRequestPacket : SphynxRequestPacket
+    public sealed class ChatDeleteRequestPacket : SphynxRequestPacket, IEquatable<ChatDeleteRequestPacket>
     {
         /// <summary>
         /// The ID of the room to delete.
@@ -69,5 +69,8 @@
             // TODO: Serialize hashed password  //
             // -------------------------------- //
         }
+
+        /// <inheritdoc/>
+        public bool Equals(ChatDeleteRequestPacket? other) => RoomId == other?.RoomId && Password == other?.Password;
     }
 }

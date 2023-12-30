@@ -1,9 +1,11 @@
 ﻿using System.Runtime.InteropServices;
 
+using Sphynx.Utils;
+
 namespace Sphynx.Packet.Request
 {
     /// <inheritdoc cref="SphynxPacketType.MSG_REQ"/>.
-    public sealed class MessageRequestPacket : SphynxRequestPacket
+    public sealed class MessageRequestPacket : SphynxRequestPacket, IEquatable<MessageRequestPacket>
     {
         /// <summary>
         /// Whether the recipient is a room or a single end-user.
@@ -40,7 +42,7 @@ namespace Sphynx.Packet.Request
             RecipientIsUser = contents[RECIPIENT_TYPE_OFFSET] != 0;
             RecipientId = new Guid(contents.Slice(RECIPIENT_ID_OFFSET, RECIPIENT_ID_SIZE));
 
-            int messageLength = MemoryMarshal.Cast<byte, int>(contents.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)))[0];
+            int messageLength = contents.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)).ReadInt32();
             Message = TEXT_ENCODING.GetString(contents.Slice(MESSAGE_OFFSET, messageLength));
         }
 
@@ -90,11 +92,14 @@ namespace Sphynx.Packet.Request
                 return false;
             }
 
-            Span<byte> messageLengthBytes = MemoryMarshal.Cast<int, byte>(stackalloc int[] { messageLength });
-            messageLengthBytes.CopyTo(buffer.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)));
-
+            messageLength.WriteBytes(buffer.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)));
             TEXT_ENCODING.GetBytes(Message, buffer.Slice(MESSAGE_OFFSET, messageLength));
+
             return true;
         }
+
+        /// <inheritdoc/>
+        public bool Equals(MessageRequestPacket? other) => 
+            RecipientIsUser == other?.RecipientIsUser && RecipientId == other?.RecipientId && Message == other?.Message;
     }
 }

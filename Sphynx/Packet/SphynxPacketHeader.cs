@@ -1,11 +1,9 @@
-﻿using System.Runtime.InteropServices;
-
-namespace Sphynx.Packet
+﻿namespace Sphynx.Packet
 {
     /// <summary>
     /// Represents the header of a <see cref="SphynxPacket"/>.
     /// </summary>
-    public abstract class SphynxPacketHeader
+    public abstract class SphynxPacketHeader : IEquatable<SphynxPacketHeader>
     {
         /// <summary>
         /// The packet signature to safe-guards against corrupted packets.
@@ -44,48 +42,7 @@ namespace Sphynx.Packet
         /// <param name="buffer">The buffer to serialize this header into.</param>
         public abstract void Serialize(Span<byte> buffer);
 
-        /// <summary>
-        /// Verifies signature bytes against <see cref="SIGNATURE"/>.
-        /// </summary>
-        /// <param name="serializedSig">Signature bytes.</param>
-        /// <returns><see langword="true"/> if the signature is correct; <see langword="false"/> otherwise.</returns>
-        protected bool VerifySignature(ReadOnlySpan<byte> serializedSig)
-        {
-            return MemoryMarshal.Cast<byte, ushort>(serializedSig)[0] == SIGNATURE;
-        }
-
-        /// <summary>
-        /// Serializes the <see cref="SIGNATURE"/> into the <paramref name="buffer"/>.
-        /// </summary>
-        /// <param name="buffer">The buffer to serialize into.</param>
-        protected unsafe virtual void SerializeSignature(Span<byte> buffer)
-        {
-            ReadOnlySpan<ushort> sigBytes = stackalloc ushort[] { SIGNATURE };
-            ReadOnlySpan<byte> serializedSig = MemoryMarshal.Cast<ushort, byte>(sigBytes);
-            serializedSig.CopyTo(buffer);
-        }
-
-        /// <summary>
-        /// Serializes a <see cref="SphynxPacketType"/> into the <paramref name="buffer"/>.
-        /// </summary>
-        /// <param name="buffer">The buffer to serialize into.</param>
-        /// <param name="packetType">The packet type.</param>
-        protected unsafe virtual void SerializePacketType(Span<byte> buffer, SphynxPacketType packetType)
-        {
-            ReadOnlySpan<uint> packetTypeBytes = stackalloc uint[] { (uint)packetType };
-            ReadOnlySpan<byte> serializedPacketType = MemoryMarshal.Cast<uint, byte>(packetTypeBytes);
-            serializedPacketType.CopyTo(buffer);
-        }
-
-        /// <summary>
-        /// Serializes the <see cref="ContentSize"/> into the <paramref name="buffer"/>.
-        /// </summary>
-        /// <param name="buffer">The buffer to serialize into.</param>
-        protected unsafe virtual void SerializeContentSize(Span<byte> buffer)
-        {
-            ReadOnlySpan<int> contentSizeBytes = stackalloc int[] { ContentSize };
-            ReadOnlySpan<byte> serializedContentSize = MemoryMarshal.Cast<int, byte>(contentSizeBytes);
-            serializedContentSize.CopyTo(buffer);
-        }
+        /// <inheritdoc/>
+        public virtual bool Equals(SphynxPacketHeader? other) => PacketType == other?.PacketType && ContentSize == other?.ContentSize;
     }
 }

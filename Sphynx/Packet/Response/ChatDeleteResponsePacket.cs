@@ -1,9 +1,11 @@
 ﻿using System.Runtime.InteropServices;
 
+using Sphynx.Utils;
+
 namespace Sphynx.Packet.Response
 {
     /// <inheritdoc cref="SphynxPacketType.CHAT_DEL_RES"/>
-    public sealed class ChatDeleteResponsePacket : SphynxResponsePacket
+    public sealed class ChatDeleteResponsePacket : SphynxResponsePacket, IEquatable<ChatDeleteResponsePacket>
     {
         /// <summary>
         /// Error code for password authentication.
@@ -30,7 +32,7 @@ namespace Sphynx.Packet.Response
         {
             ErrorCode = (SphynxErrorCode)contents[ERROR_CODE_OFFSET];
 
-            int errorMsgSize = MemoryMarshal.Cast<byte, int>(contents.Slice(ERROR_MSG_SIZE_OFFSET, sizeof(int)))[0];
+            int errorMsgSize = contents.Slice(ERROR_MSG_OFFSET, sizeof(int)).ReadInt32();
             ErrorMessage = TEXT_ENCODING.GetString(contents.Slice(ERROR_MSG_OFFSET, errorMsgSize));
         }
 
@@ -38,7 +40,7 @@ namespace Sphynx.Packet.Response
         /// Creates a new <see cref="ChatDeleteResponsePacket"/>.
         /// </summary>
         /// <param name="errorCode">Error code for room password authentication.</param>
-        /// <param name="errorMessage">Error code for room password authentication.</param>
+        /// <param name="errorMessage">Error message for <paramref name="errorCode"/>.</param>
         public ChatDeleteResponsePacket(SphynxErrorCode errorCode, string errorMessage)
         {
             ErrorCode = errorCode;
@@ -64,10 +66,11 @@ namespace Sphynx.Packet.Response
         {
             buffer[ERROR_CODE_OFFSET] = (byte)ErrorCode;
 
-            Span<byte> errorMsgSizeBytes = MemoryMarshal.Cast<int, byte>(stackalloc int[] { errorMsgSize });
-            errorMsgSizeBytes.CopyTo(buffer.Slice(ERROR_MSG_SIZE_OFFSET, sizeof(int)));
-
+            errorMsgSize.WriteBytes(buffer.Slice(ERROR_MSG_OFFSET, sizeof(int)));
             TEXT_ENCODING.GetBytes(ErrorMessage, buffer.Slice(ERROR_MSG_OFFSET, errorMsgSize));
         }
+
+        /// <inheritdoc/>
+        public bool Equals(ChatDeleteResponsePacket? other) => ErrorCode == other?.ErrorCode && ErrorMessage == other?.ErrorMessage;
     }
 }

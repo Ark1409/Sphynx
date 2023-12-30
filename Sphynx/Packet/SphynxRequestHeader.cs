@@ -1,12 +1,11 @@
-﻿using System.Net.Sockets;
-using System.Runtime.InteropServices;
+﻿using Sphynx.Utils;
 
 namespace Sphynx.Packet
 {
     /// <summary>
     /// The packet header for a request sent from a client to the server.
     /// </summary>
-    public sealed class SphynxRequestHeader : SphynxPacketHeader
+    public sealed class SphynxRequestHeader : SphynxPacketHeader, IEquatable<SphynxRequestHeader>
     {
         /// <summary>
         /// The size of a request header in bytes.
@@ -55,17 +54,17 @@ namespace Sphynx.Packet
             if (packet.Length != HEADER_SIZE)
                 throw new ArgumentException("Raw packet is not of valid size", nameof(packet));
 
-            if (!VerifySignature(packet.Slice(SIGNATURE_OFFSET, sizeof(ushort))))
+            if (SIGNATURE != packet.Slice(SIGNATURE_OFFSET, sizeof(ushort)).ReadUInt16())
                 throw new ArgumentException("Packet unidentifiable", nameof(packet));
 
-            PacketType = (SphynxPacketType)MemoryMarshal.Cast<byte, uint>(packet.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)))[0];
+            PacketType = (SphynxPacketType)packet.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)).ReadUInt32();
 
             if (((int)PacketType) < 0)
-                throw new ArgumentException($"Raw packet ({PacketType}) type must be request packet", nameof(PacketType));
+                throw new InvalidDataException($"Raw packet ({PacketType}) type must be request packet");
 
             UserId = new Guid(packet.Slice(USER_ID_OFFSET, GUID_SIZE));
             SessionId = new Guid(packet.Slice(SESSION_ID_OFFSET, GUID_SIZE));
-            ContentSize = MemoryMarshal.Cast<byte, int>(packet.Slice(CONTENT_SIZE_OFFSET, sizeof(int)))[0];
+            ContentSize = packet.Slice(CONTENT_SIZE_OFFSET, sizeof(int)).ReadInt32();
         }
 
         /// <summary>
@@ -101,16 +100,23 @@ namespace Sphynx.Packet
             if (buffer.Length < HEADER_SIZE)
                 throw new ArgumentException($"Cannot serialize response header into {buffer.Length} bytes");
 
-            SerializeSignature(buffer.Slice(SIGNATURE_OFFSET, sizeof(ushort)));
-            SerializePacketType(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), PacketType);
+            SIGNATURE.WriteBytes(buffer.Slice(SIGNATURE_OFFSET, sizeof(ushort)));
+            ((uint)PacketType).WriteBytes(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)));
 
             // Prepare NOP packet on failure
             if (!UserId.TryWriteBytes(buffer.Slice(USER_ID_OFFSET, GUID_SIZE)) || !SessionId.TryWriteBytes(buffer.Slice(SESSION_ID_OFFSET, GUID_SIZE)))
             {
-                SerializePacketType(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)), SphynxPacketType.NOP);
+                ((uint)SphynxPacketType.NOP).WriteBytes(buffer.Slice(PACKET_TYPE_OFFSET, sizeof(SphynxPacketType)));
             }
 
-            SerializeContentSize(buffer.Slice(CONTENT_SIZE_OFFSET, sizeof(int)));
+            ContentSize.WriteBytes(buffer.Slice(CONTENT_SIZE_OFFSET, sizeof(int)));
         }
+
+        /// <inheritdoc/>
+        public override bool Equals(SphynxPacketHeader? other) => other is SphynxRequestHeader req &&
+            base.Equals(other) && UserId == req.UserId && SessionId == req.SessionId;
+
+        /// <inheritdoc/>
+        public bool Equals(SphynxRequestHeader? other) => Equals(other as SphynxPacketHeader);
     }
 }
