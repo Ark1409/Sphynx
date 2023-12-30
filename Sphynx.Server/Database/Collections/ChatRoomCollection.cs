@@ -12,9 +12,24 @@ namespace Sphynx.Server.Database.Collections
     {
         private SphynxDatabase<ChatRoom> _database = new SphynxDatabase<ChatRoom>("rooms");
 
-        IEnumerable<ChatRoom> GetRooms()
+        public ChatRoom? GetRoom(Guid roomId)
+        {
+            return _database.GetOneDocumentByID(roomId);
+        }
+
+        public IEnumerable<ChatRoom> GetRooms()
         {
             return _database.GetAllDocuments();
+        }
+
+        public ICollection<SphynxUserInfo>? GetAllUsersInRoom(Guid roomId)
+        {
+            return GetRoom(roomId)?.Users;
+        }
+
+        public void AddRoom(ChatRoom room)
+        {
+            _database.AddOneDocument(room);
         }
 
         public void UpdateRoomName(Guid roomId,  string newRoomName)

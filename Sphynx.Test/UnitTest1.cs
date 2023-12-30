@@ -1,3 +1,6 @@
+using MongoDB.Driver;
+using Sphynx.Server.Database;
+
 namespace Sphynx.Test
 {
     public class Tests
@@ -10,7 +13,7 @@ namespace Sphynx.Test
         [Test]
         public void Test1()
         {
-            Assert.Pass();
+            Assert.DoesNotThrow(() => new MongoClient("mongodb+srv://admin:UvG1TxcHOZJ0VjBB@sphynxcluster.vpdimph.mongodb.net/"));
         }
     }
 }

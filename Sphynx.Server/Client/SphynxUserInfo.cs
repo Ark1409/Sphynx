@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MongoDB.Bson.Serialization.Attributes;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -9,10 +10,11 @@ namespace Sphynx.Server.Client
 {
     public sealed class SphynxUserInfo : IDisposable, IEquatable<SphynxUserInfo>
     {
+        [BsonId]
+        public Guid UserId { get; private set; }
         public Socket UserSocket { get; private set; }
         public string UserName { get; private set; }
         public SphynxUserStatus UserStatus { get; private set; }
-        public Guid UserId { get; private set; }
         public string Email { get; private set; }
 
         private bool _disposed;

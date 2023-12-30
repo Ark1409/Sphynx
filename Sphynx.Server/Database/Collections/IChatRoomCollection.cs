@@ -12,6 +12,7 @@ namespace Sphynx.Server.Database.Collections
     {
         ChatRoom? GetRoom(int roomId);
         IEnumerable<ChatRoom> GetAllRooms();
+        ICollection<SphynxUserInfo> GetAllUsersInRoom();
         void AddRoom(ChatRoom room);
         void UpdateRoomName(string newRoomName);
         void UpdatePassword(string newPassword);

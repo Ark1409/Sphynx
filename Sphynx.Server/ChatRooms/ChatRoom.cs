@@ -4,16 +4,18 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using MongoDB.Bson.Serialization.Attributes;
 using Sphynx.Server.Client;
 
 namespace Sphynx.Server.ChatRooms
 {
     public abstract class ChatRoom
     {
+        [BsonId]
+        public virtual Guid Id { get; protected set; }
         public virtual string Name { get; protected set; }
         public virtual string? Password { get; protected set; }
-        public virtual Guid Id { get; protected set; }
+        [BsonRequired]
         public virtual ICollection<SphynxUserInfo> Users => _users.Values;
         public virtual List<ChatRoomMessage> Messages { get; protected set; }
         public event ChatRoomMessageEvent? MessageAdded;
