@@ -1,7 +1,4 @@
-using System.Data.SqlTypes;
-using System.Net.Sockets;
 using System.Reflection.PortableExecutable;
-using System.Runtime.InteropServices;
 
 using NUnit.Framework.Constraints;
 
@@ -10,38 +7,114 @@ namespace Sphynx.Test
     [TestFixture]
     public class PacketHeaderTests
     {
-        private const int GUID_SIZE = 16;
+        private const int SIGNATURE_SIZE = sizeof(ushort);
 
-        [Test]
-        public void RequestPacketHeader_ShouldSerializeWithCorrectFormat()
+        [TestCase(SphynxPacketType.MSG_REQ, 10)]
+        public void RequestPacketHeader_ShouldSerializeWithCorrectFormat(SphynxPacketType packetType, int contentSize)
         {
-            Span<byte> emptyHeader = SerializeRequestHeader(SphynxPacketType.NOP, 0);
-            Assert.That(emptyHeader.Length, Is.EqualTo(SphynxRequestHeader.HEADER_SIZE));
-            CheckEmptyHeader(emptyHeader);
+            if ((int)packetType > 0)
+            {
+                // Empty header test
+                byte[] emptyHeader = SerializeRequestHeader(SphynxPacketType.NOP, 0);
+                Assert.That(emptyHeader, Has.Length.EqualTo(SphynxRequestHeader.HEADER_SIZE));
 
-            var samplePacketType = SphynxPacketType.MSG_REQ;
-            var sampleUserId = Guid.NewGuid();
-            var sampleSessionId = Guid.NewGuid();
-            int sampleContentSize = 10;
-            Span<byte> sampleHeader = SerializeRequestHeader(samplePacketType, sampleUserId, sampleSessionId, sampleContentSize);
-            Assert.That(sampleHeader.Length, Is.EqualTo(SphynxRequestHeader.HEADER_SIZE));
+                // Implicitly verifies signature
+                Assert.DoesNotThrow(() => new SphynxRequestHeader(emptyHeader));
+                for (int i = SIGNATURE_SIZE; i < emptyHeader.Length; i++)
+                {
+                    Assert.That(emptyHeader[i], Is.Zero);
+                }
 
-            CheckSignature(sampleHeader.Slice(0, sizeof(ushort)));
-            CheckPacketType(sampleHeader.Slice(sizeof(ushort), sizeof(SphynxPacketType)), samplePacketType);
-            CheckGuid(sampleHeader.Slice(sizeof(ushort) + sizeof(SphynxPacketType), GUID_SIZE), in sampleUserId);
-            CheckGuid(sampleHeader.Slice(sizeof(ushort) + sizeof(SphynxPacketType) + GUID_SIZE, GUID_SIZE), in sampleSessionId);
-            CheckContentSize(sampleHeader.Slice(sizeof(ushort) + sizeof(SphynxPacketType) + 2 * GUID_SIZE, sizeof(int)), sampleContentSize);
+                // Sample test - we should be able to deserialize the serialization
+                var sampleUserId = Guid.NewGuid();
+                var sampleSessionId = Guid.NewGuid();
+                Span<byte> sampleHeader = SerializeRequestHeader(packetType, sampleUserId, sampleSessionId, contentSize);
+                var deserializedHeader = new SphynxRequestHeader(sampleHeader);
 
-            Assert.Throws(new InstanceOfTypeConstraint(typeof(Exception)), () => SerializeRequestHeader(SphynxPacketType.LOGIN_RES, 10));
+                Assert.That(deserializedHeader, Is.EqualTo(new SphynxRequestHeader(packetType, sampleUserId, sampleSessionId, contentSize)));
+            }
+            else
+            {
+                Assert.Throws(new InstanceOfTypeConstraint(typeof(Exception)), () => SerializeRequestHeader(packetType, contentSize));
+            }
         }
 
-        private void CheckEmptyHeader(ReadOnlySpan<byte> header)
+        [TestCase(SphynxPacketType.CHAT_CREATE_REQ, 32)]
+        [TestCase(SphynxPacketType.CHAT_SELECT_REQ, 8421)]
+        [TestCase(SphynxPacketType.MSG_REQ, 1024)]
+        [TestCase(SphynxPacketType.LOGIN_RES, 512)]
+        public void RequestPacketHeader_ShouldDeserializeWithCorrectData(SphynxPacketType packetType, int contentSize)
         {
-            CheckSignature(header.Slice(0, sizeof(ushort)));
-
-            for (int i = sizeof(ushort); i < header.Length; i++)
+            if ((int)packetType > 0)
             {
-                Assert.That(header[i], Is.Zero);
+                var sampleUserId = Guid.NewGuid();
+                var sampleSessionId = Guid.NewGuid();
+                ReadOnlySpan<byte> sampleHeader = SerializeRequestHeader(packetType, sampleUserId, sampleSessionId, contentSize);
+                var deserializedHeader = new SphynxRequestHeader(sampleHeader);
+
+                Assert.That(deserializedHeader, Is.EqualTo(new SphynxRequestHeader(packetType, sampleUserId, sampleSessionId, contentSize)));
+            }
+            else
+            {
+                // Force into request packet
+                byte[] incorrectHeader = SerializeRequestHeader((SphynxPacketType)((uint)packetType & 0b01111111), contentSize);
+                incorrectHeader[SIGNATURE_SIZE + sizeof(int) - 1] |= 1 << 7;
+
+                Assert.Throws(new InstanceOfTypeConstraint(typeof(Exception)), () => new SphynxRequestHeader(incorrectHeader));
+            }
+        }
+
+        [TestCase(SphynxPacketType.MSG_RES, 10)]
+        [TestCase(SphynxPacketType.LOGIN_RES, 1024)]
+        [TestCase(SphynxPacketType.CHAT_INV_RES, 25565)]
+        [TestCase(SphynxPacketType.CHAT_KICK_REQ, 1234)]
+        public void ResponsePacketHeader_ShouldSerializeWithCorrectFormat(SphynxPacketType packetType, int contentSize)
+        {
+            if ((int)packetType < 0)
+            {
+                // Empty header test
+                byte[] emptyHeader = SerializeResponseHeader(SphynxPacketType.NOP, 0);
+                Assert.That(emptyHeader, Has.Length.EqualTo(SphynxResponseHeader.HEADER_SIZE));
+
+                // Implicitly verifies signature
+                Assert.DoesNotThrow(() => new SphynxResponseHeader(emptyHeader));
+                for (int i = SIGNATURE_SIZE; i < emptyHeader.Length; i++)
+                {
+                    Assert.That(emptyHeader[i], Is.Zero);
+                }
+
+                // Sample test - we should be able to deserialize the serialization
+                Span<byte> sampleHeader = SerializeResponseHeader(packetType, contentSize);
+                var deserializedHeader = new SphynxResponseHeader(sampleHeader);
+
+                Assert.That(deserializedHeader, Is.EqualTo(new SphynxResponseHeader(packetType, contentSize)));
+            }
+            else
+            {
+                Assert.Throws(new InstanceOfTypeConstraint(typeof(Exception)), () => SerializeResponseHeader(packetType, contentSize));
+            }
+        }
+
+        [TestCase(SphynxPacketType.CHAT_CREATE_RES, 32)]
+        [TestCase(SphynxPacketType.LOGIN_RES, 32678)]
+        [TestCase(SphynxPacketType.CHAT_SELECT_RES, 100)]
+        [TestCase(SphynxPacketType.CHAT_KICK_REQ, 9999)]
+        public void ResponsePacketHeader_ShouldDeserializeWithCorrectData(SphynxPacketType packetType, int contentSize)
+        {
+            if ((int)packetType < 0)
+            {
+                Span<byte> sampleHeader = SerializeResponseHeader(packetType, contentSize);
+                var deserializedHeader = new SphynxResponseHeader(sampleHeader);
+
+                Assert.That(deserializedHeader, Is.EqualTo(new SphynxResponseHeader(packetType, contentSize)));
+            }
+            else
+            {
+                // Force into response packet
+                byte[] incorrectHeader = SerializeResponseHeader((SphynxPacketType)((uint)packetType | (1 << 31)), contentSize);
+                incorrectHeader[SIGNATURE_SIZE + sizeof(int) - 1] &= 0b01111111;
+
+                Assert.Throws(new InstanceOfTypeConstraint(typeof(Exception)), () => new SphynxResponseHeader(incorrectHeader));
             }
         }
 
@@ -63,59 +136,6 @@ namespace Sphynx.Test
             return serializedHeader;
         }
 
-        [Test]
-        public void RequestPacketHeader_ShouldDeserializeWithCorrectData()
-        {
-            var samplePacketType = SphynxPacketType.CHAT_CREATE_REQ;
-            var sampleUserId = Guid.NewGuid();
-            var sampleSessionId = Guid.NewGuid();
-            int sampleContentSize = 32;
-            Span<byte> sampleHeader = SerializeRequestHeader(samplePacketType, sampleUserId, sampleSessionId, sampleContentSize);
-
-            var deserializedHeader = new SphynxRequestHeader(sampleHeader);
-            Assert.Multiple(() =>
-            {
-                Assert.That(deserializedHeader.PacketType, Is.EqualTo(samplePacketType));
-                Assert.That(deserializedHeader.UserId, Is.EqualTo(sampleUserId));
-                Assert.That(deserializedHeader.SessionId, Is.EqualTo(sampleSessionId));
-                Assert.That(deserializedHeader.ContentSize, Is.EqualTo(sampleContentSize));
-            });
-        }
-
-        [Test]
-        public void ResponsePacketHeader_ShouldSerializeWithCorrectFormat()
-        {
-            Span<byte> emptyHeader = SerializeResponseHeader(SphynxPacketType.NOP, 0);
-            Assert.That(emptyHeader.Length, Is.EqualTo(SphynxResponseHeader.HEADER_SIZE));
-            CheckEmptyHeader(emptyHeader);
-
-            var samplePacketType = SphynxPacketType.MSG_RES;
-            int sampleContentSize = 10;
-            Span<byte> sampleHeader = SerializeResponseHeader(samplePacketType, sampleContentSize);
-            Assert.That(sampleHeader.Length, Is.EqualTo(SphynxResponseHeader.HEADER_SIZE));
-
-            CheckSignature(sampleHeader.Slice(0, sizeof(ushort)));
-            CheckPacketType(sampleHeader.Slice(sizeof(ushort), sizeof(SphynxPacketType)), samplePacketType);
-            CheckContentSize(sampleHeader.Slice(sizeof(ushort) + sizeof(SphynxPacketType), sizeof(int)), sampleContentSize);
-
-            Assert.Throws(new InstanceOfTypeConstraint(typeof(Exception)), () => SerializeResponseHeader(SphynxPacketType.CHAT_DEL_REQ, 10));
-        }
-
-        [Test]
-        public void ResponsePacketHeader_ShouldDeserializeWithCorrectData()
-        {
-            var samplePacketType = SphynxPacketType.CHAT_CREATE_RES;
-            int sampleContentSize = 32;
-            Span<byte> sampleHeader = SerializeResponseHeader(samplePacketType, sampleContentSize);
-
-            var deserializedHeader = new SphynxResponseHeader(sampleHeader);
-            Assert.Multiple(() =>
-            {
-                Assert.That(deserializedHeader.PacketType, Is.EqualTo(samplePacketType));
-                Assert.That(deserializedHeader.ContentSize, Is.EqualTo(sampleContentSize));
-            });
-        }
-
         private byte[] SerializeResponseHeader(SphynxPacketType packetType, int contentSize)
         {
             var header = new SphynxResponseHeader(packetType, contentSize);
@@ -123,33 +143,6 @@ namespace Sphynx.Test
             byte[] serializedHeader = new byte[SphynxResponseHeader.HEADER_SIZE];
             header.Serialize(serializedHeader);
             return serializedHeader;
-        }
-
-        private void CheckSignature(ReadOnlySpan<byte> sigBytes)
-        {
-            var signatureSpan = MemoryMarshal.Cast<byte, ushort>(sigBytes);
-            Assert.That(signatureSpan.Length, Is.EqualTo(1));
-            Assert.That(signatureSpan[0], Is.EqualTo(SphynxPacketHeader.SIGNATURE));
-        }
-
-        private void CheckPacketType(ReadOnlySpan<byte> packetTypeBytes, SphynxPacketType packetType)
-        {
-            var packetTypeSpan = MemoryMarshal.Cast<byte, SphynxPacketType>(packetTypeBytes);
-            Assert.That(packetTypeSpan.Length, Is.EqualTo(1));
-            Assert.That(packetTypeSpan[0], Is.EqualTo(packetType));
-        }
-
-        private void CheckGuid(ReadOnlySpan<byte> guidBytes, in Guid guid)
-        {
-            var guidSpan = new Guid(guidBytes);
-            Assert.That(guidSpan, Is.EqualTo(guid));
-        }
-
-        private void CheckContentSize(ReadOnlySpan<byte> contentSizeBytes, int contentSize)
-        {
-            var contentSizeSpan = MemoryMarshal.Cast<byte, int>(contentSizeBytes);
-            Assert.That(contentSizeSpan.Length, Is.EqualTo(1));
-            Assert.That(contentSizeSpan[0], Is.EqualTo(contentSize));
         }
     }
 }
