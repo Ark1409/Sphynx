@@ -81,5 +81,10 @@
         /// A packet sent from server to client containing all information required when loading a chat room.
         /// </summary>
         CHAT_SELECT_RES = 0x80000040,
+
+        /// <summary>
+        /// A packet that is sent from the client to the server when a user attempts to logout.
+        /// </summary>
+        LOGOUT_REQ = 0x00000080,
     }
 }

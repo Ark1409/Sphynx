@@ -18,6 +18,11 @@
         /// <summary>
         /// Invalid password for authentication (whether it be account email at login or room password).
         /// </summary>
-        INVALID_PASSWORD
+        INVALID_PASSWORD,
+
+        /// <summary>
+        /// When the user attempts to complete an action but does not have sufficient permissions.
+        /// </summary>
+        INSUFFICIENT_PERMS,
     }
 }
