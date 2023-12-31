@@ -83,7 +83,7 @@ namespace Sphynx.Server.Database
         public IEnumerable<T> GetAllDocuments()
         {
             var collection = Collection;
-            return collection.Find(t => true).ToEnumerable();
+            return collection.Find(t => true).ToList();
         }
 
         public void AddOneDocument(T document)
@@ -103,6 +103,23 @@ namespace Sphynx.Server.Database
             var collection = Collection;
             var filter = Builders<T>.Filter.Eq("_id", id);
             var update = Builders<T>.Update.Push(arrayName, element);
+            collection.UpdateOne(filter, update);
+        }
+
+        public void RemoveElementFromArrayInDocument(Guid id, string arrayName, object element)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            var update = Builders<T>.Update.Pull(arrayName, element);
+            collection.UpdateOne(filter, update);
+        }
+
+        public void RemoveDocumentFromNestedCollection<TNested>(Guid id, string nestedName, Guid nestedId)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            var nestedFilter = Builders<TNested>.Filter.Eq("_id", nestedId);
+            var update = Builders<T>.Update.PullFilter(nestedName, nestedFilter);
             collection.UpdateOne(filter, update);
         }
 
@@ -133,6 +150,86 @@ namespace Sphynx.Server.Database
             var collection = Collection;
             var filter = Builders<T>.Filter.Eq("_id", id);
             collection.DeleteOne(filter);
+        }
+
+        // Async methods
+
+        public async Task<T?> GetOneDocumentByIDAsync(Guid id)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            return await collection.Find(filter).SingleOrDefaultAsync();
+        }
+
+        public async Task<T?> GetOneDocumentByFieldAsync(string field, string value)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq(field, value);
+            return await collection.Find(filter).SingleOrDefaultAsync();
+        }
+
+        public async Task<IEnumerable<T>> GetAllDocumentsAsync()
+        {
+            var collection = Collection;
+            return await collection.Find(t => true).ToListAsync();
+        }
+
+        public async Task AddOneDocumentAsync(T document)
+        {
+            var collection = Collection;
+            await collection.InsertOneAsync(document);
+        }
+
+        public async Task AddManyDocumentsAsync(IEnumerable<T> documents)
+        {
+            var collection = Collection;
+            await collection.InsertManyAsync(documents);
+        }
+
+        public async Task AddElementToArrayInDocumentAsync(Guid id, string arrayName, object element)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            var update = Builders<T>.Update.Push(arrayName, element);
+            await collection.UpdateOneAsync(filter, update);
+        }
+
+        public async Task RemoveDocumentFromNestedCollectionAsync<TNested>(Guid id, string nestedName, Guid nestedId)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            var nestedFilter = Builders<TNested>.Filter.Eq("_id", nestedId);
+            var update = Builders<T>.Update.PullFilter(nestedName, nestedFilter);
+            await collection.UpdateOneAsync(filter, update);
+        }
+
+        public async Task UpdateFieldInDocumentAsync(Guid id, string field, string value)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            var update = Builders<T>.Update.Set(field, value);
+            await collection.UpdateOneAsync(filter, update);
+        }
+
+        public async Task ReplaceOneDocumentAsync(Guid id, T document)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            await collection.ReplaceOneAsync(filter, document);
+        }
+
+        public async Task UpsertOneDocumentAsync(Guid id, T document)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            await collection.ReplaceOneAsync(filter, document, new ReplaceOptions { IsUpsert = true });
+        }
+
+        public async Task DeleteOneDocumentByIDAsync(Guid id)
+        {
+            var collection = Collection;
+            var filter = Builders<T>.Filter.Eq("_id", id);
+            await collection.DeleteOneAsync(filter);
         }
     }
 }

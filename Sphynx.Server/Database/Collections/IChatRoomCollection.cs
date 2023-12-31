@@ -12,12 +12,24 @@ namespace Sphynx.Server.Database.Collections
     {
         ChatRoom? GetRoom(int roomId);
         IEnumerable<ChatRoom> GetAllRooms();
-        ICollection<SphynxUserInfo> GetAllUsersInRoom();
         void AddRoom(ChatRoom room);
-        void UpdateRoomName(string newRoomName);
-        void UpdatePassword(string newPassword);
+        void UpdateRoomName(Guid roomId, string newRoomName);
+        void UpdatePassword(Guid roomId, string newPassword);
         void AddNewUser(Guid roomId, SphynxUserInfo user);
         void AddNewMessage(Guid roomId, ChatRoomMessage message);
         void RemoveRoom(Guid roomId);
+        void RemoveMessage(Guid roomId, ChatRoomMessage message);
+        void RemoveUser(Guid roomId, Guid userId);
+
+        // Async methods
+
+        Task<ChatRoom?> GetRoomAsync(int roomId);
+        Task<IEnumerable<ChatRoom>> GetAllRoomsAsync();
+        Task AddRoomAsync(ChatRoom room);
+        Task UpdateRoomNameAsync(string newRoomName);
+        Task UpdatePasswordAsync(string newPassword);
+        Task AddNewUserAsync(Guid roomId, SphynxUserInfo user);
+        Task AddNewMessageAsync(Guid roomId, ChatRoomMessage message);
+        Task RemoveRoomAsync(Guid roomId);
     }
 }
