@@ -37,6 +37,33 @@
         }
 
         /// <summary>
+        /// Checks whether the <paramref name="packetType"/> is a <see cref="Request.SphynxRequestHeader"/>.
+        /// </summary>
+        /// <param name="packetType"></param>
+        /// <returns>true if the <paramref name="packetType"/> is meant for a <see cref="Request.SphynxRequestHeader"/>;
+        /// false otherwise.</returns>
+        public static bool IsRequest(SphynxPacketType packetType) => (int)packetType > 0;
+
+        /// <summary>
+        /// Checks whether the <paramref name="packetType"/> is a <see cref="Response.SphynxResponseHeader"/>.
+        /// </summary>
+        /// <param name="packetType"></param>
+        /// <returns>true if the <paramref name="packetType"/> is meant for a <see cref="Response.SphynxResponseHeader"/>;
+        /// false otherwise.</returns>
+        public static bool IsResponse(SphynxPacketType packetType) => (int)packetType < 0;
+
+        /// <summary>
+        /// Serializes this packet header into a tightly-packed byte array.
+        /// </summary>
+        /// <returns>This packet header serialized as a byte array.</returns>
+        public virtual byte[] Serialize()
+        {
+            byte[] bytes = new byte[HeaderSize];
+            Serialize(bytes);
+            return bytes;
+        }
+
+        /// <summary>
         /// Serializes this header into a buffer of bytes.
         /// </summary>
         /// <param name="buffer">The buffer to serialize this header into.</param>
