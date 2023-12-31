@@ -6,7 +6,7 @@ namespace Sphynx.Client
     {
         static void Main(string[] args)
         {
-            new SphynxClient().Start();
+            new SphynxClient(args).Start();
         }
     }
 }
