@@ -22,5 +22,12 @@ namespace Sphynx.Packet
         /// </summary>
         /// <returns>This packet serialized as a byte array.</returns>
         public abstract byte[] Serialize();
+
+        /// <summary>
+        /// Serializes a packet header into the specified <paramref name="buffer"/>.
+        /// </summary>
+        /// <param name="buffer">The buffer to serialize this header into.</param>
+        /// <param name="contentSize">The <see cref="SphynxPacketHeader.ContentSize"/>.</param>
+        protected abstract SphynxPacketHeader SerializeHeader(Span<byte> buffer, int contentSize);
     }
 }
