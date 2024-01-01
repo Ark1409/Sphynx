@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-using Sphynx.Utils;
+﻿using Sphynx.Utils;
 
 namespace Sphynx.Packet.Request
 {
@@ -8,14 +6,9 @@ namespace Sphynx.Packet.Request
     public sealed class MessageRequestPacket : SphynxRequestPacket, IEquatable<MessageRequestPacket>
     {
         /// <summary>
-        /// Whether the recipient is a room or a single end-user.
+        /// The room ID for the message.
         /// </summary>
-        public bool RecipientIsUser { get; set; }
-
-        /// <summary>
-        /// ID of recipient (whether it be a room or user).
-        /// </summary>
-        public Guid RecipientId { get; set; }
+        public Guid RoomID { get; set; }
 
         /// <summary>
         /// The contents of the chat message.
@@ -25,13 +18,10 @@ namespace Sphynx.Packet.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_REQ;
 
-        private const int RECIPIENT_TYPE_SIZE = sizeof(bool);
-        private const int RECIPIENT_ID_SIZE = 16;
-
-        private const int RECIPIENT_TYPE_OFFSET = 0;
-        private const int RECIPIENT_ID_OFFSET = RECIPIENT_TYPE_OFFSET + RECIPIENT_TYPE_SIZE;
-        private const int MESSAGE_LENGTH_OFFSET = RECIPIENT_ID_OFFSET + RECIPIENT_ID_SIZE;
-        private const int MESSAGE_OFFSET = MESSAGE_LENGTH_OFFSET + sizeof(int);
+        private const int GUID_SIZE = 16;
+        private const int ROOM_ID_OFFSET = 0;
+        private const int MESSAGE_SIZE_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
+        private const int MESSAGE_OFFSET = MESSAGE_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
         /// Creates a <see cref="MessageRequestPacket"/>.
@@ -39,67 +29,52 @@ namespace Sphynx.Packet.Request
         /// <param name="contents">Packet contents, excluding the header.</param>
         public MessageRequestPacket(ReadOnlySpan<byte> contents)
         {
-            RecipientIsUser = contents[RECIPIENT_TYPE_OFFSET] != 0;
-            RecipientId = new Guid(contents.Slice(RECIPIENT_ID_OFFSET, RECIPIENT_ID_SIZE));
+            RoomID = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
 
-            int messageLength = contents.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)).ReadInt32();
+            int messageLength = contents.ReadInt32(MESSAGE_SIZE_OFFSET);
             Message = TEXT_ENCODING.GetString(contents.Slice(MESSAGE_OFFSET, messageLength));
         }
 
         /// <summary>
         /// Creates a new <see cref="MessageRequestPacket"/>.
         /// </summary>
-        /// <param name="recipientIsUser">Whether the recipient is a room or a single end-user.</param>
-        /// <param name="recipientId">ID of recipient (whether it be a room or user).</param>
+        /// <param name="roomId">The room ID for the message.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessageRequestPacket(bool recipientIsUser, Guid recipientId, string message)
+        public MessageRequestPacket(Guid roomId, string message)
         {
-            RecipientIsUser = recipientIsUser;
-            RecipientId = recipientId;
+            RoomID = roomId;
             Message = message;
         }
 
         /// <inheritdoc/>
         public override byte[] Serialize()
         {
-            int messageLength = TEXT_ENCODING.GetByteCount(Message);
-            int contentSize = RECIPIENT_TYPE_SIZE + RECIPIENT_ID_SIZE + sizeof(int) + messageLength;
+            int messageSize = TEXT_ENCODING.GetByteCount(Message);
+            int contentSize = GUID_SIZE + sizeof(int) + messageSize;
 
-            byte[] serializedBytes = new byte[SphynxRequestHeader.HEADER_SIZE + contentSize];
-            var serializationSpan = new Span<byte>(serializedBytes);
+            byte[] packetBytes = new byte[SphynxRequestHeader.HEADER_SIZE + contentSize];
+            var packetSpan = new Span<byte>(packetBytes);
 
-            // Serialize contents first instead of header to prepare for NOP case
-            if (SerializeContents(serializationSpan.Slice(SphynxRequestHeader.HEADER_SIZE), messageLength))
-            {
-                SerializeHeader(serializationSpan.Slice(0, SphynxRequestHeader.HEADER_SIZE), contentSize);
-            }
-            else
-            {
-                var header = new SphynxRequestHeader(SphynxPacketType.NOP, serializationSpan.Slice(SphynxRequestHeader.HEADER_SIZE).Length);
-                header.Serialize(serializationSpan.Slice(0, SphynxRequestHeader.HEADER_SIZE));
-            }
+            SerializeHeader(packetSpan.Slice(0, SphynxRequestHeader.HEADER_SIZE), contentSize);
+            SerializeContents(packetSpan.Slice(SphynxRequestHeader.HEADER_SIZE), messageSize);
 
-            return serializedBytes;
+            return packetBytes;
         }
 
-        private bool SerializeContents(Span<byte> buffer, int messageLength)
+        private void SerializeContents(Span<byte> buffer, int messageSize)
         {
-            buffer[RECIPIENT_TYPE_OFFSET] = (byte)(RecipientIsUser ? 1 : 0);
+            // Assume it writes; already performed length check
+            RoomID.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
 
-            // Prepare NOP on failure - good way to simply ignore message
-            if (!RecipientId.TryWriteBytes(buffer.Slice(RECIPIENT_ID_OFFSET, RECIPIENT_ID_SIZE)))
-            {
-                return false;
-            }
-
-            messageLength.WriteBytes(buffer.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)));
-            TEXT_ENCODING.GetBytes(Message, buffer.Slice(MESSAGE_OFFSET, messageLength));
-
-            return true;
+            messageSize.WriteBytes(buffer, MESSAGE_SIZE_OFFSET);
+            TEXT_ENCODING.GetBytes(Message, buffer.Slice(MESSAGE_OFFSET, messageSize));
         }
 
         /// <inheritdoc/>
-        public bool Equals(MessageRequestPacket? other) => 
-            RecipientIsUser == other?.RecipientIsUser && RecipientId == other?.RecipientId && Message == other?.Message;
+        public override bool Equals(SphynxRequestPacket? other) => other is MessageRequestPacket req && Equals(req);
+
+        /// <inheritdoc/>
+        public bool Equals(MessageRequestPacket? other) => base.Equals(other) &&
+            RoomID == other?.RoomID && Message == other?.Message;
     }
 }
