@@ -18,16 +18,17 @@
         /// Creates a <see cref="ChatCreateResponsePacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
-        public ChatCreateResponsePacket(ReadOnlySpan<byte> contents)
+        public ChatCreateResponsePacket(ReadOnlySpan<byte> contents) : base(SphynxErrorCode.FAILED_INIT)
         {
             RoomId = new Guid(contents.Slice(ROOM_ID_OFFSET, ROOM_ID_SIZE));
+            ErrorCode = SphynxErrorCode.SUCCESS;
         }
 
         /// <summary>
         /// Creates a new <see cref="ChatCreateResponsePacket"/>.
         /// </summary>
         /// <param name="roomId">Room ID assigned to the newly created room.</param>
-        public ChatCreateResponsePacket(Guid roomId)
+        public ChatCreateResponsePacket(Guid roomId) : base(SphynxErrorCode.SUCCESS)
         {
             RoomId = roomId;
         }
@@ -37,18 +38,18 @@
         {
             int contentSize = ROOM_ID_SIZE;
 
-            byte[] serializedBytes = new byte[SphynxResponseHeader.HEADER_SIZE + contentSize];
-            var serialzationSpan = new Span<byte>(serializedBytes);
+            byte[] packetBytes = new byte[SphynxResponseHeader.HEADER_SIZE + contentSize];
+            var packetSpan = new Span<byte>(packetBytes);
 
-            SerializeHeader(serialzationSpan.Slice(0, SphynxResponseHeader.HEADER_SIZE), contentSize);
-            SerializeContents(serialzationSpan.Slice(SphynxResponseHeader.HEADER_SIZE));
+            SerializeHeader(packetSpan.Slice(0, SphynxResponseHeader.HEADER_SIZE), contentSize);
+            SerializeContents(packetSpan.Slice(SphynxResponseHeader.HEADER_SIZE));
 
-            return serializedBytes;
+            return packetBytes;
         }
 
         private void SerializeContents(Span<byte> buffer)
         {
-            // TODO: Handle writing error
+            // Assume it writes; already performed length check
             RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, ROOM_ID_SIZE));
         }
 

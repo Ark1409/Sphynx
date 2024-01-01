@@ -32,15 +32,6 @@ namespace Sphynx.Packet.Response
         /// Creates a new <see cref="SphynxResponseHeader"/> from raw packet bytes.
         /// </summary>
         /// <param name="packetHeader">The raw packet header bytes.</param>
-        public SphynxResponseHeader(byte[] packetHeader) : this(new ReadOnlySpan<byte>(packetHeader))
-        {
-
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="SphynxResponseHeader"/> from raw packet bytes.
-        /// </summary>
-        /// <param name="packetHeader">The raw packet header bytes.</param>
         public SphynxResponseHeader(ReadOnlySpan<byte> packetHeader) : base(SphynxPacketType.NOP, default)
         {
             // Exception are accptable on the client
@@ -63,13 +54,19 @@ namespace Sphynx.Packet.Response
         /// Creates a new <see cref="SphynxResponseHeader"/>.
         /// </summary>
         /// <param name="packetType">The type of packet.</param>
+        /// <param name="errorCode">The error code for the response packet.</param>
         /// <param name="contentSize">The size of the packet's contents.</param>
-        public SphynxResponseHeader(SphynxPacketType packetType, int contentSize) : base(packetType, contentSize)
+        public SphynxResponseHeader(SphynxPacketType packetType, SphynxErrorCode errorCode, int contentSize) : base(packetType, contentSize)
         {
             // Avoid exception on the server
             if (!IsResponse(packetType))
             {
                 PacketType = SphynxPacketType.NOP;
+                ErrorCode = SphynxErrorCode.FAILED_INIT;
+            }
+            else
+            {
+                ErrorCode = errorCode;
             }
         }
 
@@ -79,8 +76,13 @@ namespace Sphynx.Packet.Response
             // Avoid exception on the server
             if (buffer.Length < HEADER_SIZE)
             {
-                // Attempt to write NOP
-                if (buffer.Length >= PACKET_TYPE_OFFSET + sizeof(SphynxPacketType))
+                // Attempt to write NOP & FAILED_INIT
+                if (buffer.Length >= ERROR_CODE_OFFSET + sizeof(SphynxErrorCode))
+                {
+                    ((uint)PacketType).WriteBytes(buffer, PACKET_TYPE_OFFSET);
+                    buffer[ERROR_CODE_OFFSET] = (byte)SphynxErrorCode.FAILED_INIT;
+                }
+                else if (buffer.Length >= PACKET_TYPE_OFFSET + sizeof(SphynxPacketType))
                 {
                     ((uint)PacketType).WriteBytes(buffer, PACKET_TYPE_OFFSET);
                 }

@@ -1,37 +1,29 @@
-﻿using Sphynx.Utils;
-
-namespace Sphynx.Packet.Response
+﻿namespace Sphynx.Packet.Response
 {
     /// <inheritdoc cref="SphynxPacketType.CHAT_INV_RES"/>
-    public sealed class ChatInviteResponsePacket : SphynxResponsePacket
+    public sealed class ChatInviteResponsePacket : SphynxResponsePacket, IEquatable<ChatInviteResponsePacket>
     {
         /// <summary>
-        /// Error code chat invitation.
+        /// The ID of the requesting user.
         /// </summary>
-        public SphynxErrorCode ErrorCode { get; set; }
+        public Guid UserId { get; set; }
 
         /// <summary>
-        /// The message for the <see cref="ErrorCode"/>.
+        /// The ID of the room to which the requesting user performed the invitation to.
         /// </summary>
-        public string ErrorMessage { get; set; }
+        public Guid RoomId { get; set; }
+
+        private const int GUID_SIZE = 16;
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_RES;
-
-        private const int ERROR_CODE_OFFSET = 0;
-        private const int ERROR_MSG_SIZE_OFFSET = ERROR_CODE_OFFSET + sizeof(SphynxErrorCode);
-        private const int ERROR_MSG_OFFSET = ERROR_MSG_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
         /// Creates a <see cref="ChatInviteResponsePacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
-        public ChatInviteResponsePacket(ReadOnlySpan<byte> contents)
+        public ChatInviteResponsePacket(ReadOnlySpan<byte> contents) : base(SphynxErrorCode.FAILED_INIT)
         {
-            ErrorCode = (SphynxErrorCode)contents[ERROR_CODE_OFFSET];
-
-            int errorMsgSize = contents.Slice(ERROR_MSG_OFFSET, sizeof(int)).ReadInt32();
-            ErrorMessage = TEXT_ENCODING.GetString(contents.Slice(ERROR_MSG_OFFSET, errorMsgSize));
         }
 
         /// <summary>
@@ -39,36 +31,33 @@ namespace Sphynx.Packet.Response
         /// </summary>
         /// <param name="errorCode">Error code for chat invitation..</param>
         /// <param name="errorMessage">Error message for <paramref name="errorCode"/>.</param>
-        public ChatInviteResponsePacket(SphynxErrorCode errorCode, string errorMessage)
+        public ChatInviteResponsePacket(SphynxErrorCode errorCode, string errorMessage) : base(SphynxErrorCode.FAILED_INIT)
         {
-            ErrorCode = errorCode;
-            ErrorMessage = errorMessage;
+
         }
 
         /// <inheritdoc/>
         public override byte[] Serialize()
         {
-            int errorMsgSize = TEXT_ENCODING.GetByteCount(ErrorMessage);
-            int contentSize = sizeof(SphynxErrorCode) + sizeof(int) + errorMsgSize;
+            const int CONTENT_SIZE = GUID_SIZE + GUID_SIZE;
 
-            byte[] serializedBytes = new byte[SphynxResponseHeader.HEADER_SIZE + contentSize];
-            var serialzationSpan = new Span<byte>(serializedBytes);
+            byte[] packetBytes = new byte[SphynxResponseHeader.HEADER_SIZE + CONTENT_SIZE];
+            var packetSpan = new Span<byte>(packetBytes);
 
-            SerializeHeader(serialzationSpan.Slice(0, SphynxResponseHeader.HEADER_SIZE), contentSize);
-            SerializeContents(serialzationSpan.Slice(SphynxResponseHeader.HEADER_SIZE), errorMsgSize);
+            SerializeHeader(packetSpan.Slice(0, SphynxResponseHeader.HEADER_SIZE), CONTENT_SIZE);
+            SerializeContents(packetSpan.Slice(SphynxResponseHeader.HEADER_SIZE));
 
-            return serializedBytes;
+            return packetBytes;
         }
 
-        private void SerializeContents(Span<byte> buffer, int errorMsgSize)
+        private void SerializeContents(Span<byte> buffer)
         {
-            buffer[ERROR_CODE_OFFSET] = (byte)ErrorCode;
-
-            errorMsgSize.WriteBytes(buffer.Slice(ERROR_MSG_OFFSET, sizeof(int)));
-            TEXT_ENCODING.GetBytes(ErrorMessage, buffer.Slice(ERROR_MSG_OFFSET, errorMsgSize));
+            // Assume it writes; already performed length check
+            UserId.TryWriteBytes(buffer);
+            RoomId.TryWriteBytes(buffer);
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatDeleteResponsePacket? other) => ErrorCode == other?.ErrorCode && ErrorMessage == other?.ErrorMessage;
+        public bool Equals(ChatInviteResponsePacket? other) => base.Equals(other) && UserId == other?.UserId && RoomId == other?.RoomId;
     }
 }

@@ -22,7 +22,7 @@ namespace Sphynx.Packet.Response
         public string Message { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.MSG_REQ;
+        public override SphynxPacketType PacketType => SphynxPacketType.MSG_RES;
 
         private const int RECIPIENT_TYPE_SIZE = sizeof(bool);
         private const int RECIPIENT_ID_SIZE = 16;
@@ -36,13 +36,14 @@ namespace Sphynx.Packet.Response
         /// Creates a <see cref="MessageResponsePacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
-        public MessageResponsePacket(ReadOnlySpan<byte> contents)
+        public MessageResponsePacket(ReadOnlySpan<byte> contents) : base(SphynxErrorCode.FAILED_INIT)
         {
             RecipientIsUser = contents[RECIPIENT_TYPE_OFFSET] != 0;
             RecipientId = new Guid(contents.Slice(RECIPIENT_ID_OFFSET, RECIPIENT_ID_SIZE));
 
-            int messageLength = contents.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)).ReadInt32();
+            int messageLength = contents.ReadInt32(MESSAGE_LENGTH_OFFSET);
             Message = TEXT_ENCODING.GetString(contents.Slice(MESSAGE_OFFSET, messageLength));
+            ErrorCode = SphynxErrorCode.SUCCESS;
         }
 
         /// <summary>
@@ -52,7 +53,7 @@ namespace Sphynx.Packet.Response
         /// where room has same id as user.</param>
         /// <param name="recipientId">ID of intended recipient (whether it be a room or user).</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessageResponsePacket(bool recipientIsUser, Guid recipientId, string message)
+        public MessageResponsePacket(bool recipientIsUser, Guid recipientId, string message) : base(SphynxErrorCode.SUCCESS)
         {
             RecipientIsUser = recipientIsUser;
             RecipientId = recipientId;
@@ -65,40 +66,31 @@ namespace Sphynx.Packet.Response
             int messageLength = TEXT_ENCODING.GetByteCount(Message);
             int contentSize = RECIPIENT_TYPE_SIZE + RECIPIENT_ID_SIZE + sizeof(int) + messageLength;
 
-            byte[] serializedBytes = new byte[SphynxResponseHeader.HEADER_SIZE + contentSize];
-            var serializationSpan = new Span<byte>(serializedBytes);
+            byte[] packetBytes = new byte[SphynxResponseHeader.HEADER_SIZE + contentSize];
+            var packetSpan = new Span<byte>(packetBytes);
 
-            // Serialize contents first instead of header to prepare for NOP case
-            if (SerializeContents(serializationSpan.Slice(SphynxResponseHeader.HEADER_SIZE), messageLength))
-            {
-                SerializeHeader(serializationSpan.Slice(0, SphynxResponseHeader.HEADER_SIZE), contentSize);
-            }
-            else
-            {
-                var header = new SphynxResponseHeader(SphynxPacketType.NOP, serializationSpan.Slice(SphynxResponseHeader.HEADER_SIZE).Length);
-                header.Serialize(serializationSpan.Slice(0, SphynxResponseHeader.HEADER_SIZE));
-            }
+            SerializeHeader(packetSpan.Slice(0, SphynxResponseHeader.HEADER_SIZE), contentSize);
+            SerializeContents(packetSpan.Slice(SphynxResponseHeader.HEADER_SIZE), messageLength);
 
-            return serializedBytes;
+            return packetBytes;
         }
 
-        private bool SerializeContents(Span<byte> buffer, int messageLength)
+        private void SerializeContents(Span<byte> buffer, int messageLength)
         {
             buffer[RECIPIENT_TYPE_OFFSET] = (byte)(RecipientIsUser ? 1 : 0);
 
-            // Prepare NOP on failure - good way to simply ignore message
-            if (!RecipientId.TryWriteBytes(buffer.Slice(RECIPIENT_ID_OFFSET, RECIPIENT_ID_SIZE)))
-            {
-                return false;
-            }
+            // Assume it writes; already performed length check
+            RecipientId.TryWriteBytes(buffer.Slice(RECIPIENT_ID_OFFSET, RECIPIENT_ID_SIZE));
 
-            messageLength.WriteBytes(buffer.Slice(MESSAGE_LENGTH_OFFSET, sizeof(int)));
+            messageLength.WriteBytes(buffer, MESSAGE_LENGTH_OFFSET);
             TEXT_ENCODING.GetBytes(Message, buffer.Slice(MESSAGE_OFFSET, messageLength));
-
-            return true;
         }
 
         /// <inheritdoc/>
-        public bool Equals(MessageResponsePacket? other) => RecipientIsUser == other?.RecipientIsUser && RecipientId == other?.RecipientId && Message == other?.Message;
+        public override bool Equals(SphynxResponsePacket? other) => other is MessageResponsePacket res && Equals(res);
+
+        /// <inheritdoc/>
+        public bool Equals(MessageResponsePacket? other) =>
+            base.Equals(other) && RecipientIsUser == other?.RecipientIsUser && RecipientId == other?.RecipientId && Message == other?.Message;
     }
 }
