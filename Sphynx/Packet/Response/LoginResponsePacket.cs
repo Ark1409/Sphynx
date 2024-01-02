@@ -23,15 +23,38 @@
 
         }
 
-        /// <inheritdoc/>
-        public override byte[] Serialize()
+        /// <summary>
+        /// Attempts to deserialize a <see cref="LoginResponsePacket"/>.
+        /// </summary>
+        /// <param name="contents">Packet contents, excluding the header.</param>
+        /// <param name="packet">The deserialized packet.</param>
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, out LoginResponsePacket? packet)
         {
-            byte[] packetBytes = new byte[SphynxResponseHeader.HEADER_SIZE];
+            if (TryDeserialize(contents, out SphynxErrorCode? errorCode))
+            {
+                packet = new LoginResponsePacket(errorCode.Value);
+                return true;
+            }
+
+            packet = null;
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public override bool TrySerialize(out byte[]? packetBytes)
+        {
+            int contentSize = sizeof(SphynxErrorCode);
+
+            packetBytes = new byte[contentSize];
             var packetSpan = new Span<byte>(packetBytes);
 
-            SerializeHeader(packetSpan, 0);
+            if (TrySerializeHeader(packetSpan, contentSize) && TrySerialize(packetSpan[SphynxPacketHeader.HEADER_SIZE..]))
+            {
+                return true;
+            }
 
-            return packetBytes;
+            packetBytes = null;
+            return false;
         }
 
         /// <inheritdoc/>

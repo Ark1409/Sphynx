@@ -13,21 +13,37 @@ namespace Sphynx.Packet
         public static readonly Encoding TEXT_ENCODING = Encoding.UTF8;
 
         /// <summary>
+        /// <see langword="sizeof"/>(<see cref="Guid"/>)
+        /// </summary>
+        protected const int GUID_SIZE = 16;
+
+        /// <summary>
         /// Packet type for this packet.
         /// </summary>
         public abstract SphynxPacketType PacketType { get; }
 
         /// <summary>
-        /// Serializes this packet into a tightly-packed byte array.
+        /// Attempts to serialize this packet into a tightly-packed byte array.
         /// </summary>
-        /// <returns>This packet serialized as a byte array.</returns>
-        public abstract byte[] Serialize();
+        /// <param name="packetBytes">This packet serialized as a byte array.</param>
+        public abstract bool TrySerialize(out byte[]? packetBytes);
 
         /// <summary>
         /// Serializes a packet header into the specified <paramref name="buffer"/>.
         /// </summary>
         /// <param name="buffer">The buffer to serialize this header into.</param>
         /// <param name="contentSize">The <see cref="SphynxPacketHeader.ContentSize"/>.</param>
-        protected abstract SphynxPacketHeader SerializeHeader(Span<byte> buffer, int contentSize);
+        protected virtual bool TrySerializeHeader(Span<byte> buffer, int contentSize)
+        {
+            var header = new SphynxPacketHeader(PacketType, contentSize);
+            return header.TrySerialize(buffer[..SphynxPacketHeader.HEADER_SIZE]);
+        }
+
+        /// <summary>
+        /// Indicates whether the current packet has the same packet type as another packet.
+        /// </summary>
+        /// <param name="other">A packet to compare with this packet.</param>
+        /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
+        protected bool Equals(SphynxPacket? other) => PacketType == other?.PacketType;
     }
 }
