@@ -66,7 +66,7 @@ namespace Sphynx.Packet.Request
         /// </summary>
         /// <param name="buffer">The buffer to serialize this packet into.</param>
         /// <returns>true if this packet could be serialized; false otherwise.</returns>
-        protected bool TrySerialize(Span<byte> buffer)
+        protected virtual bool TrySerialize(Span<byte> buffer)
         {
             if (buffer.Length >= GUID_SIZE * 2)
             {

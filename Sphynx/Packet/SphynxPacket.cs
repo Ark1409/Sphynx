@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace Sphynx.Packet
 {
@@ -26,7 +27,7 @@ namespace Sphynx.Packet
         /// Attempts to serialize this packet into a tightly-packed byte array.
         /// </summary>
         /// <param name="packetBytes">This packet serialized as a byte array.</param>
-        public abstract bool TrySerialize(out byte[]? packetBytes);
+        public abstract bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes);
 
         /// <summary>
         /// Serializes a packet header into the specified <paramref name="buffer"/>.
@@ -44,6 +45,6 @@ namespace Sphynx.Packet
         /// </summary>
         /// <param name="other">A packet to compare with this packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxPacket? other) => PacketType == other?.PacketType;
+        protected virtual bool Equals(SphynxPacket? other) => PacketType == other?.PacketType;
     }
 }

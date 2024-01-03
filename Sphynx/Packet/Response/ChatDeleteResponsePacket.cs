@@ -1,4 +1,6 @@
-﻿namespace Sphynx.Packet.Response
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Sphynx.Packet.Response
 {
     /// <inheritdoc cref="SphynxPacketType.CHAT_DEL_RES"/>
     public sealed class ChatDeleteResponsePacket : SphynxResponsePacket, IEquatable<ChatDeleteResponsePacket>
@@ -7,7 +9,7 @@
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_DEL_RES;
 
         /// <summary>
-        /// Creates a <see cref="ChatDeleteResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// Creates a new <see cref="ChatDeleteResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
         public ChatDeleteResponsePacket() : this(SphynxErrorCode.SUCCESS)
         {
@@ -17,21 +19,44 @@
         /// <summary>
         /// Creates a new <see cref="ChatDeleteResponsePacket"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for attempted room deletion.</param>
+        /// <param name="errorCode">Error code for login attempt.</param>
         public ChatDeleteResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
 
         }
 
-        /// <inheritdoc/>
-        public override byte[] Serialize()
+        /// <summary>
+        /// Attempts to deserialize a <see cref="ChatDeleteResponsePacket"/>.
+        /// </summary>
+        /// <param name="contents">Packet contents, excluding the header.</param>
+        /// <param name="packet">The deserialized packet.</param>
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatDeleteResponsePacket? packet)
         {
-            byte[] packetBytes = new byte[SphynxResponseHeader.HEADER_SIZE];
+            if (TryDeserialize(contents, out SphynxErrorCode? errorCode))
+            {
+                packet = new ChatDeleteResponsePacket(errorCode.Value);
+                return true;
+            }
+
+            packet = null;
+            return false;
+        }
+
+        /// <inheritdoc/>
+        public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
+        {
+            int contentSize = sizeof(SphynxErrorCode);
+
+            packetBytes = new byte[contentSize];
             var packetSpan = new Span<byte>(packetBytes);
 
-            SerializeHeader(packetSpan, 0);
+            if (TrySerializeHeader(packetSpan, contentSize) && TrySerialize(packetSpan[SphynxPacketHeader.HEADER_SIZE..]))
+            {
+                return true;
+            }
 
-            return packetBytes;
+            packetBytes = null;
+            return false;
         }
 
         /// <inheritdoc/>

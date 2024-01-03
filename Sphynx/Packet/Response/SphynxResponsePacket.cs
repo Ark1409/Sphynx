@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-using Sphynx.Packet.Request;
 using Sphynx.Utils;
 
 namespace Sphynx.Packet.Response
@@ -16,6 +15,7 @@ namespace Sphynx.Packet.Response
         public SphynxErrorCode ErrorCode { get; set; }
 
         protected const int ERROR_CODE_OFFSET = 0;
+        protected const int DEFAULT_CONTENT_SIZE = sizeof(SphynxErrorCode);
 
         /// <summary>
         /// Creates a new <see cref="SphynxResponsePacket"/>.
@@ -27,7 +27,7 @@ namespace Sphynx.Packet.Response
         }
 
         /// <summary>
-        /// Attempts to serialize this <see cref="SphynxResponsePacket"/> into the <paramref name="buffer"/>.
+        /// Attempts to serialize the <see cref="ErrorCode"/> into the <paramref name="buffer"/>.
         /// </summary>
         /// <param name="buffer">The buffer to serialize this packet into.</param>
         /// <returns>true if this packet could be serialized; false otherwise.</returns>

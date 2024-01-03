@@ -2,37 +2,37 @@
 
 namespace Sphynx.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.LOGIN_RES"/>
-    public sealed class LoginResponsePacket : SphynxResponsePacket, IEquatable<LoginResponsePacket>
+    /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_RES"/>
+    public sealed class ChatJoinResponsePacket : SphynxResponsePacket, IEquatable<ChatJoinResponsePacket>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_RES;
+        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_RES;
 
         /// <summary>
-        /// Creates a new <see cref="LoginResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// Creates a new <see cref="ChatJoinResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
-        public LoginResponsePacket() : this(SphynxErrorCode.SUCCESS)
+        public ChatJoinResponsePacket() : this(SphynxErrorCode.SUCCESS)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="LoginResponsePacket"/>.
+        /// Creates a new <see cref="ChatJoinResponsePacket"/>.
         /// </summary>
         /// <param name="errorCode">Error code for login attempt.</param>
-        public LoginResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
+        public ChatJoinResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="LoginResponsePacket"/>.
+        /// Attempts to deserialize a <see cref="ChatJoinResponsePacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out LoginResponsePacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatJoinResponsePacket? packet)
         {
             if (TryDeserialize(contents, out SphynxErrorCode? errorCode))
             {
-                packet = new LoginResponsePacket(errorCode.Value);
+                packet = new ChatJoinResponsePacket(errorCode.Value);
                 return true;
             }
 
@@ -58,6 +58,6 @@ namespace Sphynx.Packet.Response
         }
 
         /// <inheritdoc/>
-        public bool Equals(LoginResponsePacket? other) => base.Equals(other);
+        public bool Equals(ChatJoinResponsePacket? other) => base.Equals(other);
     }
 }

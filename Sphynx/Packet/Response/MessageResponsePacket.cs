@@ -1,4 +1,6 @@
-﻿namespace Sphynx.Packet.Response
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Sphynx.Packet.Response
 {
     /// <inheritdoc cref="SphynxPacketType.MSG_RES"/>
     public sealed class MessageResponsePacket : SphynxResponsePacket, IEquatable<MessageResponsePacket>
@@ -11,7 +13,6 @@
         /// </summary>
         public MessageResponsePacket() : this(SphynxErrorCode.SUCCESS)
         {
-
         }
 
         /// <summary>
@@ -20,7 +21,6 @@
         /// <param name="errorCode">Error code for login attempt.</param>
         public MessageResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
-
         }
 
         /// <summary>
@@ -28,7 +28,7 @@
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, out MessageResponsePacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out MessageResponsePacket? packet)
         {
             if (TryDeserialize(contents, out SphynxErrorCode? errorCode))
             {
@@ -41,7 +41,7 @@
         }
 
         /// <inheritdoc/>
-        public override bool TrySerialize(out byte[]? packetBytes)
+        public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
             int contentSize = sizeof(SphynxErrorCode);
 

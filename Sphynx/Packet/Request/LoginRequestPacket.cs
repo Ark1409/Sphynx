@@ -1,7 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-using Microsoft.VisualBasic;
-
 using Sphynx.Utils;
 
 namespace Sphynx.Packet.Request
@@ -24,7 +22,7 @@ namespace Sphynx.Packet.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_REQ;
 
-        private const int EMAIL_SIZE_OFFSET = 0;
+        private const int EMAIL_SIZE_OFFSET = DEFAULT_CONTENT_SIZE;
         private const int EMAIL_OFFSET = EMAIL_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
@@ -57,21 +55,12 @@ namespace Sphynx.Packet.Request
         /// <param name="packet">The deserialized packet.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out LoginRequestPacket? packet)
         {
-            if (TryDeserialize(contents[..DEFAULT_CONTENT_SIZE], out var userId, out var sessionId) &&
-                TryDeserializeContents(contents[DEFAULT_CONTENT_SIZE..], out packet))
+            if (!TryDeserialize(contents[..DEFAULT_CONTENT_SIZE], out var userId, out var sessionId))
             {
-                packet.UserId = userId.Value;
-                packet.SessionId = sessionId.Value;
-                return true;
+                packet = null;
+                return false;
             }
 
-            packet = null;
-            return false;
-        }
-
-        private static bool TryDeserializeContents(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out LoginRequestPacket? packet)
-        {
-            // Avoid exceptions on server
             try
             {
                 int emailSize = contents.ReadInt32(EMAIL_SIZE_OFFSET);
@@ -84,7 +73,7 @@ namespace Sphynx.Packet.Request
                 int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                 string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
-                packet = new LoginRequestPacket(email, password);
+                packet = new LoginRequestPacket(userId.Value, sessionId.Value, email, password);
                 return true;
             }
             catch
@@ -105,27 +94,22 @@ namespace Sphynx.Packet.Request
             var packetSpan = new Span<byte>(packetBytes);
 
             if (TrySerializeHeader(packetSpan[..SphynxPacketHeader.HEADER_SIZE], contentSize) &&
-                TrySerialize(packetSpan.Slice(SphynxPacketHeader.HEADER_SIZE, DEFAULT_CONTENT_SIZE)))
+                TrySerialize(packetSpan = packetSpan[SphynxPacketHeader.HEADER_SIZE..]))
             {
-                SerializeContents(packetSpan[DEFAULT_CONTENT_SIZE..], emailSize, passwordSize);
+                emailSize.WriteBytes(packetSpan, EMAIL_SIZE_OFFSET);
+                TEXT_ENCODING.GetBytes(Email, packetSpan.Slice(EMAIL_OFFSET, emailSize));
+
+                // TODO: Serialize hashed password
+                int PASSWORD_SIZE_OFFSET = EMAIL_OFFSET + emailSize;
+                passwordSize.WriteBytes(packetSpan, PASSWORD_SIZE_OFFSET);
+
+                int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
+                TEXT_ENCODING.GetBytes(Password, packetSpan.Slice(PASSWORD_OFFSET, passwordSize));
                 return true;
             }
 
             packetBytes = null;
             return false;
-        }
-
-        private void SerializeContents(Span<byte> buffer, int emailSize, int passwordSize)
-        {
-            emailSize.WriteBytes(buffer, EMAIL_SIZE_OFFSET);
-            TEXT_ENCODING.GetBytes(Email, buffer.Slice(EMAIL_OFFSET, emailSize));
-
-            // TODO: Serialize hashed password
-            int PASSWORD_SIZE_OFFSET = EMAIL_OFFSET + emailSize;
-            passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
-
-            int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
-            TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));
         }
 
         /// <inheritdoc/>
