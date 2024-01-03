@@ -79,8 +79,7 @@ namespace Sphynx.Packet.Request
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int messageSize = TEXT_ENCODING.GetByteCount(Message);
-            int contentSize = DEFAULT_CONTENT_SIZE + RECIPIENT_TYPE_SIZE + GUID_SIZE + sizeof(int) + messageSize;
+            int contentSize = DEFAULT_CONTENT_SIZE + RECIPIENT_TYPE_SIZE + GUID_SIZE;
 
             packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
             var packetSpan = new Span<byte>(packetBytes);

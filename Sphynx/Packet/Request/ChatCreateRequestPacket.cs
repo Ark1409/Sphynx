@@ -77,7 +77,7 @@ namespace Sphynx.Packet.Request
             /// </summary>
             public Guid OtherId { get; set; }
 
-            private const int OTHER_ID_OFFSET = 0;
+            private const int OTHER_ID_OFFSET = ROOM_TYPE_OFFSET + sizeof(ChatRoomType);
 
             /// <summary>
             /// Creates a new <see cref="ChatCreateRequestPacket"/>.
@@ -106,7 +106,7 @@ namespace Sphynx.Packet.Request
             public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out Direct? packet)
             {
                 if (contents.Length < OTHER_ID_OFFSET + GUID_SIZE || !TryDeserialize(contents, out var userId, out var sessionId) ||
-                    (ChatRoomType)contents[ROOM_TYPE_OFFSET] != ChatRoomType.GROUP)
+                    (ChatRoomType)contents[ROOM_TYPE_OFFSET] != ChatRoomType.DIRECT_MSG)
                 {
                     packet = null;
                     return false;
@@ -119,7 +119,7 @@ namespace Sphynx.Packet.Request
             /// <inheritdoc/>
             public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
             {
-                int contentSize = OTHER_ID_OFFSET + GUID_SIZE;
+                int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + OTHER_ID_OFFSET + GUID_SIZE;
 
                 packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
                 var packetSpan = new Span<byte>(packetBytes);
@@ -224,7 +224,7 @@ namespace Sphynx.Packet.Request
             {
                 int nameSize = TEXT_ENCODING.GetByteCount(Name);
                 int passwordSize = TEXT_ENCODING.GetByteCount(Password ?? string.Empty);
-                int contentSize = sizeof(ChatRoomType) + sizeof(int) + nameSize + sizeof(int) + passwordSize;
+                int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + sizeof(int) + nameSize + sizeof(int) + passwordSize;
 
                 packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
                 var packetSpan = new Span<byte>(packetBytes);
