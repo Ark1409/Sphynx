@@ -16,18 +16,9 @@ namespace Sphynx.Packet.Response
         private const int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
 
         /// <summary>
-        /// Creates a <see cref="ChatCreateResponsePacket"/>.
-        /// </summary>
-        /// <param name="contents">Packet contents, excluding the header.</param>
-        public ChatCreateResponsePacket(ReadOnlySpan<byte> contents) : base(SphynxErrorCode.FAILED_INIT)
-        {
-
-        }
-
-        /// <summary>
         /// Creates a new <see cref="ChatCreateResponsePacket"/>.
         /// </summary>
-        /// <param name="errorCode">Room ID assigned to the newly created room.</param>
+        /// <param name="errorCode">Error code for room creation attempt.</param>
         public ChatCreateResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
         }

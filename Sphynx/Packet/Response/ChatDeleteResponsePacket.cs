@@ -19,7 +19,7 @@ namespace Sphynx.Packet.Response
         /// <summary>
         /// Creates a new <see cref="ChatDeleteResponsePacket"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for login attempt.</param>
+        /// <param name="errorCode">Error code for delete attempt.</param>
         public ChatDeleteResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
 

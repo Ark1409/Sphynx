@@ -2,37 +2,37 @@
 
 namespace Sphynx.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.MSG_RES"/>
-    public sealed class MessageResponsePacket : SphynxResponsePacket, IEquatable<MessageResponsePacket>
+    /// <inheritdoc cref="SphynxPacketType.LOGOUT_RES"/>
+    public sealed class LogoutResponsePacket : SphynxResponsePacket, IEquatable<LogoutResponsePacket>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.MSG_RES;
+        public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_RES;
 
         /// <summary>
-        /// Creates a new <see cref="MessageResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// Creates a new <see cref="LogoutResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
-        public MessageResponsePacket() : this(SphynxErrorCode.SUCCESS)
+        public LogoutResponsePacket() : this(SphynxErrorCode.SUCCESS)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="MessageResponsePacket"/>.
+        /// Creates a new <see cref="LogoutResponsePacket"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for message attempt.</param>
-        public MessageResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
+        /// <param name="errorCode">Error code for logout attempt.</param>
+        public LogoutResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="LoginResponsePacket"/>.
+        /// Attempts to deserialize a <see cref="LogoutResponsePacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out MessageResponsePacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out LogoutResponsePacket? packet)
         {
             if (TryDeserialize(contents, out SphynxErrorCode? errorCode))
             {
-                packet = new MessageResponsePacket(errorCode.Value);
+                packet = new LogoutResponsePacket(errorCode.Value);
                 return true;
             }
 
@@ -58,6 +58,6 @@ namespace Sphynx.Packet.Response
         }
 
         /// <inheritdoc/>
-        public bool Equals(MessageResponsePacket? other) => base.Equals(other);
+        public bool Equals(LogoutResponsePacket? other) => base.Equals(other);
     }
 }
