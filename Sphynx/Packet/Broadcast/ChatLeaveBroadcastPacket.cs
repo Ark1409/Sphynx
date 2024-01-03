@@ -22,7 +22,7 @@ namespace Sphynx.Packet.Broadcast
         private const int LEAVER_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="ChatJoinBroadcastPacket"/>.
+        /// Creates a new <see cref="ChatLeaveBroadcastPacket"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the room the user has left.</param>
         /// <param name="leaverId">The user ID of the user who left the room.</param>
@@ -33,17 +33,17 @@ namespace Sphynx.Packet.Broadcast
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatJoinBroadcastPacket"/>.
+        /// Attempts to deserialize a <see cref="ChatLeaveBroadcastPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatJoinBroadcastPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatLeaveBroadcastPacket? packet)
         {
             if (contents.Length >= LEAVER_ID_OFFSET + GUID_SIZE)
             {
                 var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
                 var leaverId = new Guid(contents.Slice(LEAVER_ID_OFFSET, GUID_SIZE));
-                packet = new ChatJoinBroadcastPacket(roomId, leaverId);
+                packet = new ChatLeaveBroadcastPacket(roomId, leaverId);
                 return true;
             }
 
@@ -61,6 +61,7 @@ namespace Sphynx.Packet.Broadcast
 
             if (TrySerializeHeader(packetSpan[..SphynxPacketHeader.HEADER_SIZE], contentSize))
             {
+                packetSpan = packetSpan[SphynxPacketHeader.HEADER_SIZE..];
                 RoomId.TryWriteBytes(packetSpan.Slice(ROOM_ID_OFFSET, GUID_SIZE));
                 LeaverId.TryWriteBytes(packetSpan.Slice(LEAVER_ID_OFFSET, GUID_SIZE));
                 return true;

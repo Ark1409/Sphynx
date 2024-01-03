@@ -226,7 +226,7 @@ namespace Sphynx.Packet.Broadcast
             public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
             {
                 int messageSize = TEXT_ENCODING.GetByteCount(Message);
-                int contentSize = MESSAGE_TYPE_OFFSET + GUID_SIZE + GUID_SIZE + sizeof(int) + messageSize;
+                int contentSize = sizeof(ChatRoomType) + GUID_SIZE + GUID_SIZE + sizeof(int) + messageSize;
 
                 packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
                 var packetSpan = new Span<byte>(packetBytes);

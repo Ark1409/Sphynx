@@ -61,6 +61,7 @@ namespace Sphynx.Packet.Broadcast
 
             if (TrySerializeHeader(packetSpan[..SphynxPacketHeader.HEADER_SIZE], contentSize))
             {
+                packetSpan = packetSpan[SphynxPacketHeader.HEADER_SIZE..];
                 RoomId.TryWriteBytes(packetSpan.Slice(ROOM_ID_OFFSET, GUID_SIZE));
                 JoinerId.TryWriteBytes(packetSpan.Slice(JOINER_ID_OFFSET, GUID_SIZE));
                 return true;

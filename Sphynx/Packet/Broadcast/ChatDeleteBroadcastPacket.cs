@@ -16,15 +16,6 @@ namespace Sphynx.Packet.Broadcast
         private const int ROOM_ID_OFFSET = 0;
 
         /// <summary>
-        /// Creates a <see cref="ChatDeleteBroadcastPacket"/>.
-        /// </summary>
-        /// <param name="contents">Packet contents, excluding the header.</param>
-        public ChatDeleteBroadcastPacket(ReadOnlySpan<byte> contents)
-        {
-
-        }
-
-        /// <summary>
         /// Creates a new <see cref="ChatDeleteBroadcastPacket"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the deleted room.</param>
