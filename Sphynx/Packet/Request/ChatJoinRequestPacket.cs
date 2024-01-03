@@ -82,7 +82,7 @@ namespace Sphynx.Packet.Request
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
             int passwordSize = TEXT_ENCODING.GetByteCount(Password ?? string.Empty);
-            int contentSize = GUID_SIZE + sizeof(int) + passwordSize;
+            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int) + passwordSize;
 
             packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
             var packetSpan = new Span<byte>(packetBytes);
@@ -95,6 +95,7 @@ namespace Sphynx.Packet.Request
                 // TOOD: Write hashed password
                 passwordSize.WriteBytes(packetSpan, PASSWORD_SIZE_OFFSET);
                 TEXT_ENCODING.GetBytes(Password, packetSpan.Slice(PASSWORD_OFFSET, passwordSize));
+                return true;
             }
 
             packetBytes = null;

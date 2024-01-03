@@ -26,15 +26,6 @@ namespace Sphynx.Packet.Request
         private const int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
-        /// Creates a <see cref="ChatDeleteRequestPacket"/>.
-        /// </summary>
-        /// <param name="contents">Packet contents, excluding the header.</param>
-        public ChatDeleteRequestPacket(ReadOnlySpan<byte> contents)
-        {
-
-        }
-
-        /// <summary>
         /// Creates new <see cref="ChatDeleteRequestPacket"/>.
         /// </summary>
         /// <param name="roomId">The ID of the room to delete.</param>
@@ -91,7 +82,7 @@ namespace Sphynx.Packet.Request
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
             int passwordSize = TEXT_ENCODING.GetByteCount(Password ?? string.Empty);
-            int contentSize = GUID_SIZE + sizeof(int) + passwordSize;
+            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int) + passwordSize;
 
             packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
             var packetSpan = new Span<byte>(packetBytes);
