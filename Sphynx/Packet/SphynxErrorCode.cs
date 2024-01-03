@@ -29,10 +29,5 @@
         /// When the user attempts to complete an action but does not have sufficient permissions.
         /// </summary>
         INSUFFICIENT_PERMS,
-
-        /// <summary>
-        /// If an error occurs during packet initialization.
-        /// </summary>
-        FAILED_INIT,
     }
 }

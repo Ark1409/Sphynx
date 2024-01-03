@@ -21,6 +21,11 @@ namespace Sphynx.Packet.Response
         /// <param name="errorCode">Error code for room creation attempt.</param>
         public ChatCreateResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
+            // Assume the room is to be created
+            if (errorCode == SphynxErrorCode.SUCCESS)
+            {
+                RoomId = Guid.NewGuid();
+            }
         }
 
         /// <summary>
@@ -39,7 +44,8 @@ namespace Sphynx.Packet.Response
         /// <param name="packet">The deserialized packet.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatCreateResponsePacket? packet)
         {
-            if (contents.Length < ROOM_ID_OFFSET + GUID_SIZE || !TryDeserialize(contents, out SphynxErrorCode? errorCode))
+            if (!TryDeserialize(contents, out SphynxErrorCode? errorCode) ||
+                (errorCode.Value == SphynxErrorCode.SUCCESS && contents.Length < ROOM_ID_OFFSET + GUID_SIZE))
             {
                 packet = null;
                 return false;

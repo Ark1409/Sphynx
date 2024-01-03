@@ -52,7 +52,7 @@ namespace Sphynx.Packet.Response
         {
             if (buffer.Length >= sizeof(SphynxErrorCode))
             {
-                errorCode = (SphynxErrorCode)buffer.ReadUInt32(ERROR_CODE_OFFSET);
+                errorCode = (SphynxErrorCode)buffer[ERROR_CODE_OFFSET];
                 return true;
             }
 

@@ -47,7 +47,7 @@ namespace Sphynx.Packet.Response
         {
             int contentSize = sizeof(SphynxErrorCode);
 
-            packetBytes = new byte[contentSize];
+            packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
             var packetSpan = new Span<byte>(packetBytes);
 
             if (TrySerializeHeader(packetSpan, contentSize) && TrySerialize(packetSpan[SphynxPacketHeader.HEADER_SIZE..]))
