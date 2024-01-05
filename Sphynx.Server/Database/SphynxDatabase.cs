@@ -8,6 +8,8 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using Sphynx.Server.Client;
 using Sphynx.Server.ChatRooms;
+using MongoDB.Bson.Serialization;
+using System.Diagnostics;
 
 namespace Sphynx.Server.Database
 {
@@ -20,7 +22,7 @@ namespace Sphynx.Server.Database
         public MongoClient Client { get; }
         public IMongoDatabase Database { get; }
         public IMongoCollection<T> Collection { get; }
-
+        
         /// <summary>
         /// Constructor instance of SphynxDatabase
         /// </summary>
@@ -75,6 +77,12 @@ namespace Sphynx.Server.Database
 
         public T? GetOneDocumentByField(string field, string value)
         {
+            // TODO: Add SearchFlags
+            if (Guid.TryParse(field, out var id))
+            {
+                return GetOneDocumentByID(id);
+            }
+
             var collection = Collection;
             var filter = Builders<T>.Filter.Eq(field, value);
             return collection.Find(filter).SingleOrDefault();
