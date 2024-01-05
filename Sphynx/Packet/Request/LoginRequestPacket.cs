@@ -8,9 +8,9 @@ namespace Sphynx.Packet.Request
     public sealed class LoginRequestPacket : SphynxRequestPacket, IEquatable<LoginRequestPacket>
     {
         /// <summary>
-        /// Email entered by user for login.
+        /// User name entered by user for login.
         /// </summary>
-        public string Email { get; set; }
+        public string UserName { get; set; }
 
         /// <summary>
         /// Password entered by user for login.
@@ -22,15 +22,15 @@ namespace Sphynx.Packet.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_REQ;
 
-        private const int EMAIL_SIZE_OFFSET = DEFAULT_CONTENT_SIZE;
-        private const int EMAIL_OFFSET = EMAIL_SIZE_OFFSET + sizeof(int);
+        private const int USERNAME_SIZE_OFFSET = DEFAULT_CONTENT_SIZE;
+        private const int USERNAME_OFFSET = USERNAME_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
         /// Creates a <see cref="LoginRequestPacket"/>.
         /// </summary>
-        /// <param name="email">Email entered by user for login.</param>
+        /// <param name="userName">User name entered by user for login.</param>
         /// <param name="password">Password entered by user for login.</param>
-        public LoginRequestPacket(string email, string password) : this(Guid.Empty, Guid.Empty, email, password)
+        public LoginRequestPacket(string userName, string password) : this(Guid.Empty, Guid.Empty, userName, password)
         {
 
         }
@@ -40,11 +40,11 @@ namespace Sphynx.Packet.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="email">Email entered by user for login.</param>
+        /// <param name="userName">User name entered by user for login.</param>
         /// <param name="password">Password entered by user for login.</param>
-        public LoginRequestPacket(Guid userId, Guid sessionId, string email, string password) : base(userId, sessionId)
+        public LoginRequestPacket(Guid userId, Guid sessionId, string userName, string password) : base(userId, sessionId)
         {
-            Email = email;
+            UserName = userName;
             Password = password;
         }
 
@@ -63,11 +63,11 @@ namespace Sphynx.Packet.Request
 
             try
             {
-                int emailSize = contents.ReadInt32(EMAIL_SIZE_OFFSET);
-                string email = TEXT_ENCODING.GetString(contents.Slice(EMAIL_OFFSET, emailSize));
+                int emailSize = contents.ReadInt32(USERNAME_SIZE_OFFSET);
+                string email = TEXT_ENCODING.GetString(contents.Slice(USERNAME_OFFSET, emailSize));
 
                 // TODO: Read hashed password bytes
-                int PASSWORD_SIZE_OFFSET = EMAIL_OFFSET + emailSize;
+                int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + emailSize;
                 int passwordSize = contents.ReadInt32(PASSWORD_SIZE_OFFSET);
 
                 int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
@@ -84,9 +84,9 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public override bool TrySerialize(out byte[]? packetBytes)
+        public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int emailSize = TEXT_ENCODING.GetByteCount(Email);
+            int emailSize = TEXT_ENCODING.GetByteCount(UserName);
             int passwordSize = TEXT_ENCODING.GetByteCount(Password);
             int contentSize = DEFAULT_CONTENT_SIZE + sizeof(int) + emailSize + sizeof(int) + passwordSize;
 
@@ -96,11 +96,11 @@ namespace Sphynx.Packet.Request
             if (TrySerializeHeader(packetSpan[..SphynxPacketHeader.HEADER_SIZE], contentSize) &&
                 TrySerialize(packetSpan = packetSpan[SphynxPacketHeader.HEADER_SIZE..]))
             {
-                emailSize.WriteBytes(packetSpan, EMAIL_SIZE_OFFSET);
-                TEXT_ENCODING.GetBytes(Email, packetSpan.Slice(EMAIL_OFFSET, emailSize));
+                emailSize.WriteBytes(packetSpan, USERNAME_SIZE_OFFSET);
+                TEXT_ENCODING.GetBytes(UserName, packetSpan.Slice(USERNAME_OFFSET, emailSize));
 
                 // TODO: Serialize hashed password
-                int PASSWORD_SIZE_OFFSET = EMAIL_OFFSET + emailSize;
+                int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + emailSize;
                 passwordSize.WriteBytes(packetSpan, PASSWORD_SIZE_OFFSET);
 
                 int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
@@ -113,6 +113,6 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(LoginRequestPacket? other) => base.Equals(other) && Email == other?.Email && Password == other?.Password;
+        public bool Equals(LoginRequestPacket? other) => base.Equals(other) && UserName == other?.UserName && Password == other?.Password;
     }
 }

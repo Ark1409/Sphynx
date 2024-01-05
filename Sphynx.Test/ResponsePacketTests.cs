@@ -1,4 +1,6 @@
-﻿namespace Sphynx.Test
+﻿using Sphynx.Packet.Response;
+
+namespace Sphynx.Test
 {
     [TestFixture]
     public class ResponsePacketTests

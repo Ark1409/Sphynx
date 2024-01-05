@@ -8,7 +8,7 @@ namespace Sphynx.Test
     public class PacketHeaderTests
     {
         [TestCase(SphynxPacketType.MSG_REQ, 10)]
-        [TestCase(SphynxPacketType.MSG_RES, 10)]
+        [TestCase(SphynxPacketType.MSG_RES, 24)]
         [TestCase(SphynxPacketType.LOGIN_RES, 1024)]
         [TestCase(SphynxPacketType.CHAT_JOIN_BCAST, 25565)]
         [TestCase(SphynxPacketType.CHAT_KICK_REQ, 1234)]

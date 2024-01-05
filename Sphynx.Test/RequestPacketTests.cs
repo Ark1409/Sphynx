@@ -1,4 +1,5 @@
 ﻿using Sphynx.ChatRoom;
+using Sphynx.Packet.Request;
 
 namespace Sphynx.Test
 {

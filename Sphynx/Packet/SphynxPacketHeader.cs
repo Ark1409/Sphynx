@@ -1,4 +1,6 @@
-﻿using Sphynx.Utils;
+﻿using System.Diagnostics.CodeAnalysis;
+
+using Sphynx.Utils;
 
 namespace Sphynx.Packet
 {
@@ -47,7 +49,7 @@ namespace Sphynx.Packet
         /// </summary>
         /// <param name="packetHeader">The raw bytes for a <see cref="SphynxPacketHeader"/>.</param>
         /// <param name="header">The deserialized header.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> packetHeader, out SphynxPacketHeader? header)
+        public static bool TryDeserialize(ReadOnlySpan<byte> packetHeader, [NotNullWhen(true)] out SphynxPacketHeader? header)
         {
             if (SIGNATURE == packetHeader.ReadUInt16(SIGNATURE_OFFSET) && packetHeader.Length >= HEADER_SIZE)
             {
