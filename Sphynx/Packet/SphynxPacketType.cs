@@ -66,7 +66,7 @@
         /// <summary>
         /// A packet sent from client to server when a leaves joins a chat room.
         /// </summary>
-        CHAT_LEAVE_REQ = 0x01000006u,
+        CHAT_LEAVE_REQ = 0x00000006u,
 
         /// <summary>
         /// A packet sent from server to requesting client indicating whether or not the leaving was successful.

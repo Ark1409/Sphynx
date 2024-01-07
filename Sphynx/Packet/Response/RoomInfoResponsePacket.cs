@@ -16,6 +16,23 @@ namespace Sphynx.Packet.Response
         {
         }
 
+        /// <summary>
+        /// Attempts to deserialize a <see cref="RoomInfoResponsePacket"/>.
+        /// </summary>
+        /// <param name="contents">Packet contents, excluding the header.</param>
+        /// <param name="packet">The deserialized packet.</param>
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomInfoResponsePacket? packet)
+        {
+            if (TryDeserialize(contents, out SphynxErrorCode? errorCode))
+            {
+                packet = new RoomInfoResponsePacket(errorCode.Value);
+                return true;
+            }
+
+            packet = null;
+            return false;
+        }
+
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
