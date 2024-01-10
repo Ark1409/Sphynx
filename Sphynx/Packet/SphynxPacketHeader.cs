@@ -45,6 +45,17 @@ namespace Sphynx.Packet
         }
 
         /// <summary>
+        /// Checks to make sure the first bytes of <paramref name="sigBytes"/> are equal to <see cref="SIGNATURE"/>.
+        /// </summary>
+        /// <param name="sigBytes">The bytes to check.</param>
+        /// <returns>true if the first bytes of <paramref name="sigBytes"/> are equal to <see cref="SIGNATURE"/>; false
+        /// otherwise.</returns>
+        public static bool CheckSignature(ReadOnlySpan<byte> sigBytes)
+        {
+            return sigBytes.ReadUInt16() == SIGNATURE;
+        }
+
+        /// <summary>
         /// Creates a new <see cref="SphynxPacketHeader"/> from the <paramref name="packetHeader"/>.
         /// </summary>
         /// <param name="packetHeader">The raw bytes for a <see cref="SphynxPacketHeader"/>.</param>

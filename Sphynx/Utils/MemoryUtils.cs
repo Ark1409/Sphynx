@@ -6,7 +6,7 @@
         {
             buffer[offset] = (byte)(src & 0xFF);
             buffer[offset + 1] = (byte)((src >> 8) & 0xFF);
-            buffer[offset + 2] = (byte)((src >> 16 & 0xFF));
+            buffer[offset + 2] = (byte)((src >> 16) & 0xFF);
             buffer[offset + 3] = (byte)((src >> 24) & 0xFF);
         }
 
@@ -14,7 +14,7 @@
         {
             buffer[offset] = (byte)(src & 0xFF);
             buffer[offset + 1] = (byte)((src >> 8) & 0xFF);
-            buffer[offset + 2] = (byte)((src >> 16 & 0xFF));
+            buffer[offset + 2] = (byte)((src >> 16) & 0xFF);
             buffer[offset + 3] = (byte)((src >> 24) & 0xFF);
         }
 
