@@ -1,4 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 using Sphynx.ChatRoom;
 using Sphynx.Utils;
@@ -16,7 +18,8 @@ namespace Sphynx.Packet.Request
         /// </summary>
         public abstract ChatRoomType RoomType { get; }
 
-        protected const int ROOM_TYPE_OFFSET = DEFAULT_CONTENT_SIZE;
+        protected static readonly int ROOM_TYPE_OFFSET = DEFAULT_CONTENT_SIZE;
+        protected static readonly int DEFAULTS_SIZE = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType);
 
         /// <summary>
         /// Creates a new <see cref="ChatCreateRequestPacket"/>.
@@ -61,6 +64,34 @@ namespace Sphynx.Packet.Request
             return false;
         }
 
+        protected override bool TrySerializeDefaults(Span<byte> buffer)
+        {
+            if (buffer.Length < DEFAULTS_SIZE || !base.TrySerializeDefaults(buffer))
+            {
+                return false;
+            }
+
+            buffer[ROOM_TYPE_OFFSET] = (byte)RoomType;
+            return true;
+        }
+
+        protected static bool TryDeserializeDefaults(ReadOnlySpan<byte> contents,
+            [NotNullWhen(true)] out Guid? userId,
+            [NotNullWhen(true)] out Guid? sessionId,
+            [NotNullWhen(true)] out ChatRoomType? roomType)
+        {
+            if (contents.Length < DEFAULTS_SIZE || !TryDeserializeDefaults(contents, out userId, out sessionId))
+            {
+                roomType = null;
+                userId = null;
+                sessionId = null;
+                return false;
+            }
+
+            roomType = (ChatRoomType)contents[ROOM_TYPE_OFFSET];
+            return true;
+        }
+
         /// <inheritdoc/>
         public bool Equals(ChatCreateRequestPacket? other) => base.Equals(other) && RoomType == other?.RoomType;
 
@@ -77,7 +108,7 @@ namespace Sphynx.Packet.Request
             /// </summary>
             public Guid OtherId { get; set; }
 
-            private const int OTHER_ID_OFFSET = ROOM_TYPE_OFFSET + sizeof(ChatRoomType);
+            private static readonly int OTHER_ID_OFFSET = DEFAULTS_SIZE;
 
             /// <summary>
             /// Creates a new <see cref="ChatCreateRequestPacket"/>.
@@ -105,34 +136,71 @@ namespace Sphynx.Packet.Request
             /// <param name="packet">The deserialized packet.</param>
             public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out Direct? packet)
             {
-                if (contents.Length < OTHER_ID_OFFSET + GUID_SIZE || !TryDeserialize(contents, out var userId, out var sessionId) ||
-                    (ChatRoomType)contents[ROOM_TYPE_OFFSET] != ChatRoomType.DIRECT_MSG)
+                int contentSize = DEFAULTS_SIZE + GUID_SIZE;
+
+                if (contents.Length < contentSize || !TryDeserializeDefaults(contents, out var userId, out var sessionId, out var roomType) ||
+                    roomType != ChatRoomType.DIRECT_MSG)
                 {
                     packet = null;
                     return false;
                 }
 
-                packet = new Direct(userId.Value, sessionId.Value, new Guid(contents.Slice(OTHER_ID_OFFSET, GUID_SIZE)));
+                var otherId = new Guid(contents.Slice(OTHER_ID_OFFSET, GUID_SIZE));
+                packet = new Direct(userId.Value, sessionId.Value, otherId);
+
                 return true;
             }
 
             /// <inheritdoc/>
             public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
             {
-                int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + OTHER_ID_OFFSET + GUID_SIZE;
+                int contentSize = DEFAULTS_SIZE + GUID_SIZE;
+                int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
-                packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
-                var packetSpan = new Span<byte>(packetBytes);
-
-                if (TrySerializeHeader(packetSpan[..SphynxPacketHeader.HEADER_SIZE], contentSize) &&
-                    TrySerialize(packetSpan = packetSpan[SphynxPacketHeader.HEADER_SIZE..]))
+                if (!TrySerialize(packetBytes = new byte[bufferSize]))
                 {
-                    packetSpan[ROOM_TYPE_OFFSET] = (byte)RoomType;
-                    OtherId.TryWriteBytes(packetSpan.Slice(OTHER_ID_OFFSET, GUID_SIZE));
+                    packetBytes = null;
+                    return false;
+                }
+
+                return true;
+            }
+
+            /// <inheritdoc/>
+            public override bool TrySerialize(Stream stream)
+            {
+                if (!stream.CanWrite) return false;
+
+                int contentSize = DEFAULTS_SIZE + GUID_SIZE;
+
+                int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                var buffer = rawBuffer.AsSpan()[..bufferSize];
+
+                try
+                {
+                    if (TrySerialize(buffer))
+                    {
+                        stream.Write(buffer);
+                        return true;
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(rawBuffer);
+                }
+
+                return false;
+            }
+
+            private bool TrySerialize(Span<byte> buffer)
+            {
+                if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+                {
+                    OtherId.TryWriteBytes(buffer.Slice(OTHER_ID_OFFSET, GUID_SIZE));
                     return true;
                 }
 
-                packetBytes = null;
                 return false;
             }
 
@@ -158,8 +226,8 @@ namespace Sphynx.Packet.Request
             /// <inheritdoc/>
             public override ChatRoomType RoomType => ChatRoomType.GROUP;
 
-            private const int NAME_SIZE_OFFSET = ROOM_TYPE_OFFSET + sizeof(ChatRoomType);
-            private const int NAME_OFFSET = NAME_SIZE_OFFSET + sizeof(int);
+            private static readonly int NAME_SIZE_OFFSET = DEFAULTS_SIZE;
+            private static readonly int NAME_OFFSET = NAME_SIZE_OFFSET + sizeof(int);
 
             /// <summary>
             /// Creates a new <see cref="ChatCreateRequestPacket"/>.
@@ -190,8 +258,10 @@ namespace Sphynx.Packet.Request
             /// <param name="packet">The deserialized packet.</param>
             public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out Group? packet)
             {
-                if (contents.Length <= NAME_OFFSET || !TryDeserialize(contents, out var userId, out var sessionId) ||
-                    (ChatRoomType)contents[ROOM_TYPE_OFFSET] != ChatRoomType.GROUP)
+                int minContentSize = DEFAULTS_SIZE + sizeof(int) + sizeof(int);
+
+                if (contents.Length < minContentSize || !TryDeserializeDefaults(contents, out var userId, out var sessionId, out var roomType) ||
+                    roomType != ChatRoomType.GROUP)
                 {
                     packet = null;
                     return false;
@@ -209,7 +279,7 @@ namespace Sphynx.Packet.Request
                     int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                     string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
-                    packet = new Group(userId.Value, sessionId.Value, name, passwordSize > 0 ? password : default);
+                    packet = new Group(userId.Value, sessionId.Value, name, passwordSize > 0 ? password : null);
                     return true;
                 }
                 catch
@@ -222,31 +292,70 @@ namespace Sphynx.Packet.Request
             /// <inheritdoc/>
             public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
             {
-                int nameSize = TEXT_ENCODING.GetByteCount(Name);
-                int passwordSize = TEXT_ENCODING.GetByteCount(Password ?? string.Empty);
-                int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + sizeof(int) + nameSize + sizeof(int) + passwordSize;
+                GetContents(out int nameSize, out int passwordSize, out int contentSize);
 
-                packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
-                var packetSpan = new Span<byte>(packetBytes);
+                int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
-                if (TrySerializeHeader(packetSpan[..SphynxPacketHeader.HEADER_SIZE], contentSize) &&
-                    TrySerialize(packetSpan = packetSpan[SphynxPacketHeader.HEADER_SIZE..]))
+                if (!TrySerialize(packetBytes = new byte[bufferSize], nameSize, passwordSize))
                 {
-                    packetSpan[ROOM_TYPE_OFFSET] = (byte)RoomType;
+                    packetBytes = null;
+                    return false;
+                }
 
-                    nameSize.WriteBytes(packetSpan, NAME_SIZE_OFFSET);
-                    TEXT_ENCODING.GetBytes(Name, packetSpan.Slice(NAME_OFFSET, nameSize));
+                return true;
+            }
+
+            /// <inheritdoc/>
+            public override bool TrySerialize(Stream stream)
+            {
+                if (!stream.CanWrite) return false;
+
+                GetContents(out int nameSize, out int passwordSize, out int contentSize);
+
+                int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                var buffer = rawBuffer.AsSpan()[..bufferSize];
+
+                try
+                {
+                    if (TrySerialize(buffer, nameSize, passwordSize))
+                    {
+                        stream.Write(buffer);
+                        return true;
+                    }
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(rawBuffer);
+                }
+
+                return false;
+            }
+
+            private void GetContents(out int nameSize, out int passwordSize, out int contentSize)
+            {
+                nameSize = TEXT_ENCODING.GetByteCount(Name);
+                passwordSize = !string.IsNullOrEmpty(Password) ? TEXT_ENCODING.GetByteCount(Password) : 0;
+                contentSize = DEFAULTS_SIZE + sizeof(int) + nameSize + sizeof(int) + passwordSize;
+            }
+
+            private bool TrySerialize(Span<byte> buffer, int nameSize, int passwordSize)
+            {
+                if (TrySerializeHeader(buffer) &&
+                    TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+                {
+                    nameSize.WriteBytes(buffer, NAME_SIZE_OFFSET);
+                    TEXT_ENCODING.GetBytes(Name, buffer.Slice(NAME_OFFSET, nameSize));
 
                     // TODO: Serialize hashed password
                     int PASSWORD_SIZE_OFFSET = NAME_OFFSET + nameSize;
-                    passwordSize.WriteBytes(packetSpan, PASSWORD_SIZE_OFFSET);
+                    passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
 
                     int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
-                    TEXT_ENCODING.GetBytes(Password, packetSpan.Slice(PASSWORD_OFFSET, passwordSize));
+                    TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));
                     return true;
                 }
 
-                packetBytes = null;
                 return false;
             }
 

@@ -17,9 +17,9 @@ namespace Sphynx.Packet.Request
         /// </summary>s
         public Guid SessionId { get; set; }
 
-        protected const int USER_ID_OFFSET = 0;
-        protected const int SESSION_ID_OFFSET = USER_ID_OFFSET + GUID_SIZE;
-        protected const int DEFAULT_CONTENT_SIZE = SESSION_ID_OFFSET + GUID_SIZE;
+        protected static readonly int USER_ID_OFFSET = 0;
+        protected static readonly int SESSION_ID_OFFSET = USER_ID_OFFSET + GUID_SIZE;
+        protected static readonly int DEFAULT_CONTENT_SIZE = GUID_SIZE + GUID_SIZE;
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequestPacket"/>.
@@ -47,35 +47,36 @@ namespace Sphynx.Packet.Request
         /// <param name="userId">The deserialized user ID.</param>
         /// <param name="sessionId">The deserialized session ID.</param>
         /// <returns>true if the data could be deserialized; false otherwise.</returns>
-        protected static bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out Guid? userId, [NotNullWhen(true)] out Guid? sessionId)
+        protected static bool TryDeserializeDefaults(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out Guid? userId, [NotNullWhen(true)] out Guid? sessionId)
         {
-            if (buffer.Length >= GUID_SIZE * 2)
+            if (buffer.Length < DEFAULT_CONTENT_SIZE)
             {
-                userId = new Guid(buffer.Slice(USER_ID_OFFSET, GUID_SIZE));
-                sessionId = new Guid(buffer.Slice(SESSION_ID_OFFSET, GUID_SIZE));
-                return true;
+                userId = null;
+                sessionId = null;
+                return false;
             }
 
-            userId = null;
-            sessionId = null;
-            return false;
+            userId = new Guid(buffer.Slice(USER_ID_OFFSET, GUID_SIZE));
+            sessionId = new Guid(buffer.Slice(SESSION_ID_OFFSET, GUID_SIZE));
+            return true;
         }
 
         /// <summary>
-        /// Attempts to serialize this <see cref="SphynxRequestPacket"/> into the <paramref name="buffer"/>.
+        /// Attempts to serialize the default properties (<see cref="UserId"/> and <see cref="SessionId"/>)
+        /// of this <see cref="SphynxRequestPacket"/> into the <paramref name="buffer"/>.
         /// </summary>
         /// <param name="buffer">The buffer to serialize this packet into.</param>
-        /// <returns>true if this packet could be serialized; false otherwise.</returns>
-        protected virtual bool TrySerialize(Span<byte> buffer)
+        /// <returns>true if the default properties could be serialized; false otherwise.</returns>
+        protected virtual bool TrySerializeDefaults(Span<byte> buffer)
         {
-            if (buffer.Length >= GUID_SIZE * 2)
+            if (buffer.Length < DEFAULT_CONTENT_SIZE || UserId == Guid.Empty || SessionId == Guid.Empty)
             {
-                UserId.TryWriteBytes(buffer[..GUID_SIZE]);
-                SessionId.TryWriteBytes(buffer.Slice(SESSION_ID_OFFSET, GUID_SIZE));
-                return true;
+                return false;
             }
 
-            return false;
+            UserId.TryWriteBytes(buffer.Slice(USER_ID_OFFSET, GUID_SIZE));
+            SessionId.TryWriteBytes(buffer.Slice(SESSION_ID_OFFSET, GUID_SIZE));
+            return true;
         }
 
         /// <summary>

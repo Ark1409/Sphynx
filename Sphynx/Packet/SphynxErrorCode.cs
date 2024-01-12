@@ -11,12 +11,12 @@
         SUCCESS = 0,
 
         /// <summary>
-        /// Invalid (unknown) email address at login.
+        /// Invalid (unknown) username address at login.
         /// </summary>
-        INVALID_EMAIL,
+        INVALID_USERNAME,
 
         /// <summary>
-        /// Invalid password for authentication (whether it be account email at login or room password).
+        /// Invalid password for authentication (whether it be account username at login or room password).
         /// </summary>
         INVALID_PASSWORD,
 
@@ -24,6 +24,11 @@
         /// Invalid session ID for user when performing an action.
         /// </summary>
         INVALID_SESSION,
+
+        /// <summary>
+        /// Invalid user ID for user when performing an action.
+        /// </summary>
+        INVALID_USER,
 
         /// <summary>
         /// When the user attempts to complete an action but does not have sufficient permissions.

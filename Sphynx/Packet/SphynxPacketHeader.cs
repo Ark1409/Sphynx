@@ -17,7 +17,7 @@ namespace Sphynx.Packet
         /// <summary>
         /// The size of this particular header in bytes.
         /// </summary>
-        public const short HEADER_SIZE = 10;
+        public const short HEADER_SIZE = sizeof(ushort) + sizeof(SphynxPacketType) + sizeof(int);
 
         /// <summary>
         /// The type of this packet.
@@ -52,7 +52,7 @@ namespace Sphynx.Packet
         /// otherwise.</returns>
         public static bool CheckSignature(ReadOnlySpan<byte> sigBytes)
         {
-            return sigBytes.ReadUInt16() == SIGNATURE;
+            return sigBytes.Length >= sizeof(ushort) && sigBytes.ReadUInt16() == SIGNATURE;
         }
 
         /// <summary>
@@ -62,7 +62,7 @@ namespace Sphynx.Packet
         /// <param name="header">The deserialized header.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> packetHeader, [NotNullWhen(true)] out SphynxPacketHeader? header)
         {
-            if (SIGNATURE == packetHeader.ReadUInt16(SIGNATURE_OFFSET) && packetHeader.Length >= HEADER_SIZE)
+            if (CheckSignature(packetHeader) && packetHeader.Length >= HEADER_SIZE)
             {
                 var packetType = (SphynxPacketType)packetHeader.ReadUInt32(PACKET_TYPE_OFFSET);
                 int contentSize = packetHeader.ReadInt32(CONTENT_SIZE_OFFSET);
@@ -78,13 +78,8 @@ namespace Sphynx.Packet
         /// <summary>
         /// Serializes this packet header into a tightly-packed byte array.
         /// </summary>
-        /// <returns>This packet header serialized as a byte array.</returns>
-        public byte[] Serialize()
-        {
-            byte[] bytes = new byte[HEADER_SIZE];
-            TrySerialize(bytes);
-            return bytes;
-        }
+        /// <param name="packetBytes">This packet header serialized as a byte array.</param>
+        public void TrySerialize(out byte[]? packetBytes) => TrySerialize(packetBytes = new byte[HEADER_SIZE]);
 
         /// <summary>
         /// Attempts to serializes this header into a buffer of bytes.
@@ -92,15 +87,15 @@ namespace Sphynx.Packet
         /// <param name="buffer">The buffer to serialize this header into.</param>
         public bool TrySerialize(Span<byte> buffer)
         {
-            if (buffer.Length >= HEADER_SIZE)
+            if (buffer.Length < HEADER_SIZE)
             {
-                SIGNATURE.WriteBytes(buffer, SIGNATURE_OFFSET);
-                ((uint)PacketType).WriteBytes(buffer, PACKET_TYPE_OFFSET);
-                ContentSize.WriteBytes(buffer, CONTENT_SIZE_OFFSET);
-                return true;
+                return false;
             }
 
-            return false;
+            SIGNATURE.WriteBytes(buffer, SIGNATURE_OFFSET);
+            ((uint)PacketType).WriteBytes(buffer, PACKET_TYPE_OFFSET);
+            ContentSize.WriteBytes(buffer, CONTENT_SIZE_OFFSET);
+            return true;
         }
 
         /// <inheritdoc/>

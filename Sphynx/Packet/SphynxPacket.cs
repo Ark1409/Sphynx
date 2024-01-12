@@ -1,4 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 using Sphynx.Packet.Broadcast;
@@ -20,7 +22,7 @@ namespace Sphynx.Packet
         /// <summary>
         /// <see langword="sizeof"/>(<see cref="Guid"/>)
         /// </summary>
-        protected const int GUID_SIZE = 16;
+        protected static unsafe readonly int GUID_SIZE = sizeof(Guid);
 
         /// <summary>
         /// Packet type for this packet.
@@ -28,7 +30,7 @@ namespace Sphynx.Packet
         public abstract SphynxPacketType PacketType { get; }
 
         /// <summary>
-        /// Creates the appropriate <see cref="SphynxPacket"/>.
+        /// Creates the appropriate <see cref="SphynxPacket"/> from the <paramref name="contents"/>.
         /// </summary>
         /// <param name="packetType">The packet type.</param>
         /// <param name="contents">The contents of the packet, excluding the header.</param>
@@ -251,20 +253,73 @@ namespace Sphynx.Packet
         }
 
         /// <summary>
+        /// Creates the appropriate <see cref="SphynxPacket"/> (specified by the 
+        /// <paramref name="header"/>'s <see cref="SphynxPacketHeader.PacketType"/>) reading from the <paramref name="contentStream"/>. 
+        /// Note that the stream must be positioned at the start of the packet contents (excluding the header).
+        /// </summary>
+        /// <param name="header">The header for the packet to create.</param>
+        /// <param name="contentStream">The contents of the packet, excluding the header. Must be positioned at the start 
+        /// of the packet contents (excluding the header)</param>
+        /// <param name="packet">The actual packet.</param>
+        /// <returns>true if the <see cref="SphynxPacket"/> could be created succesfully; false otherwise.</returns>
+        public static bool TryCreate(SphynxPacketHeader header, Stream contentStream, [NotNullWhen(true)] out SphynxPacket? packet)
+        {
+            if (!contentStream.CanRead)
+            {
+                packet = null;
+                return false;
+            }
+
+            var rawBuffer = ArrayPool<byte>.Shared.Rent(header.ContentSize);
+            var buffer = rawBuffer.AsSpan()[..header.ContentSize];
+
+            try
+            {
+                ReadBytes(contentStream, buffer);
+                if (TryCreate(header.PacketType, buffer, out packet))
+                {
+                    return true;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rawBuffer);
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ReadBytes(Stream stream, Span<byte> buffer)
+        {
+            int readCount = 0;
+            do
+            {
+                readCount += stream.Read(buffer[readCount..]);
+            } while (readCount < buffer.Length);
+        }
+
+        /// <summary>
         /// Attempts to serialize this packet into a tightly-packed byte array.
         /// </summary>
         /// <param name="packetBytes">This packet serialized as a byte array.</param>
         public abstract bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes);
 
         /// <summary>
-        /// Serializes a packet header into the specified <paramref name="buffer"/>.
+        /// Attempts to serialize this packet into the <paramref name="stream"/>.
         /// </summary>
-        /// <param name="buffer">The buffer to serialize this header into.</param>
-        /// <param name="contentSize">The <see cref="SphynxPacketHeader.ContentSize"/>.</param>
-        protected virtual bool TrySerializeHeader(Span<byte> buffer, int contentSize)
+        /// <param name="stream">The stream to serialize this packet into.</param>
+        public abstract bool TrySerialize(Stream stream);
+
+        /// <summary>
+        /// Serializes a packet header into the specified <paramref name="packetBuffer"/>, a tightly-packed
+        /// span which is expected to containly only the contents of this packet along with its header.
+        /// </summary>
+        /// <param name="packetBuffer">The buffer to serialize the header into.</param>
+        protected virtual bool TrySerializeHeader(Span<byte> packetBuffer)
         {
-            var header = new SphynxPacketHeader(PacketType, contentSize);
-            return header.TrySerialize(buffer[..SphynxPacketHeader.HEADER_SIZE]);
+            var header = new SphynxPacketHeader(PacketType, packetBuffer.Length - SphynxPacketHeader.HEADER_SIZE);
+            return header.TrySerialize(packetBuffer[..SphynxPacketHeader.HEADER_SIZE]);
         }
 
         /// <summary>
