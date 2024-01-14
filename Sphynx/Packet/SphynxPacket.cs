@@ -286,17 +286,12 @@ namespace Sphynx.Packet
             try
             {
                 ReadBytes(contentStream, buffer);
-                if (TryCreate(header.PacketType, buffer, out packet))
-                {
-                    return true;
-                }
+                return TryCreate(header.PacketType, buffer, out packet));
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
             }
-
-            return false;
         }
 
         /// <summary>

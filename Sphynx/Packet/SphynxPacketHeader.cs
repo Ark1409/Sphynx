@@ -1,4 +1,6 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 using Sphynx.Utils;
 
@@ -76,10 +78,47 @@ namespace Sphynx.Packet
         }
 
         /// <summary>
+        /// Creates a new <see cref="SphynxPacketHeader"/> by reading the bytes from the <paramref name="stream"/>.
+        /// </summary>
+        /// <param name="stream">The stream from which to read the raw bytes for a <see cref="SphynxPacketHeader"/>.</param>
+        /// <param name="header">The deserialized header.</param>
+        public static bool TryDeserialize(Stream stream, [NotNullWhen(true)] out SphynxPacketHeader? header)
+        {
+            if (!stream.CanRead)
+            {
+                header = null;
+                return false;
+            }
+
+            var rawBuffer = ArrayPool<byte>.Shared.Rent(HEADER_SIZE);
+            var buffer = rawBuffer.AsSpan()[..HEADER_SIZE];
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static void ReadBytes(Stream stream, Span<byte> buffer)
+            {
+                int readCount = 0;
+                do
+                {
+                    readCount += stream.Read(buffer[readCount..]);
+                } while (readCount < buffer.Length);
+            }
+
+            try
+            {
+                ReadBytes(stream, buffer);
+                return TryDeserialize(buffer, out header);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rawBuffer);
+            }
+        }
+
+        /// <summary>
         /// Serializes this packet header into a tightly-packed byte array.
         /// </summary>
         /// <param name="packetBytes">This packet header serialized as a byte array.</param>
-        public void TrySerialize(out byte[]? packetBytes) => TrySerialize(packetBytes = new byte[HEADER_SIZE]);
+        public void Serialize(out byte[]? packetBytes) => TrySerialize(packetBytes = new byte[HEADER_SIZE]);
 
         /// <summary>
         /// Attempts to serializes this header into a buffer of bytes.
