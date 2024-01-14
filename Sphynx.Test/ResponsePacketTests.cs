@@ -5,7 +5,7 @@ namespace Sphynx.Test
     [TestFixture]
     public class ResponsePacketTests
     {
-        [TestCase(SphynxErrorCode.INVALID_EMAIL)]
+        [TestCase(SphynxErrorCode.INVALID_USERNAME)]
         [TestCase(SphynxErrorCode.INVALID_PASSWORD)]
         [TestCase(SphynxErrorCode.SUCCESS)]
         public void LoginResponsePacket_ShouldSerializeWithCorrectFormat(SphynxErrorCode errorCode)
