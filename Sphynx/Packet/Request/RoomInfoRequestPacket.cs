@@ -64,6 +64,7 @@ namespace Sphynx.Packet.Request
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
             {
+                packetBytes = null;
                 return false;
             }
 

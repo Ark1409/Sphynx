@@ -254,7 +254,7 @@ namespace Sphynx.Packet
 
         /// <summary>
         /// Creates the appropriate <see cref="SphynxPacket"/> (specified by the 
-        /// <paramref name="header"/>'s <see cref="SphynxPacketHeader.PacketType"/>) reading from the <paramref name="contentStream"/>. 
+        /// <paramref name="header"/>'s <see cref="SphynxPacketHeader.PacketType"/>) by reading from the <paramref name="contentStream"/>. 
         /// Note that the stream must be positioned at the start of the packet contents (excluding the header).
         /// </summary>
         /// <param name="header">The header for the packet to create.</param>
@@ -273,6 +273,16 @@ namespace Sphynx.Packet
             var rawBuffer = ArrayPool<byte>.Shared.Rent(header.ContentSize);
             var buffer = rawBuffer.AsSpan()[..header.ContentSize];
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static void ReadBytes(Stream stream, Span<byte> buffer)
+            {
+                int readCount = 0;
+                do
+                {
+                    readCount += stream.Read(buffer[readCount..]);
+                } while (readCount < buffer.Length);
+            }
+
             try
             {
                 ReadBytes(contentStream, buffer);
@@ -287,16 +297,6 @@ namespace Sphynx.Packet
             }
 
             return false;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ReadBytes(Stream stream, Span<byte> buffer)
-        {
-            int readCount = 0;
-            do
-            {
-                readCount += stream.Read(buffer[readCount..]);
-            } while (readCount < buffer.Length);
         }
 
         /// <summary>

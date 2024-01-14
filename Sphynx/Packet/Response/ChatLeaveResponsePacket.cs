@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Packet.Response
 {
@@ -30,7 +31,7 @@ namespace Sphynx.Packet.Response
         /// <param name="packet">The deserialized packet.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatLeaveResponsePacket? packet)
         {
-            if (TryDeserialize(contents, out SphynxErrorCode? errorCode))
+            if (TryDeserializeDefaults(contents, out SphynxErrorCode? errorCode))
             {
                 packet = new ChatLeaveResponsePacket(errorCode.Value);
                 return true;
@@ -43,17 +44,42 @@ namespace Sphynx.Packet.Response
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int contentSize = sizeof(SphynxErrorCode);
+            int contentSize = DEFAULT_CONTENT_SIZE;
+            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
-            packetBytes = new byte[SphynxPacketHeader.HEADER_SIZE + contentSize];
-            var packetSpan = new Span<byte>(packetBytes);
-
-            if (TrySerializeHeader(packetSpan, contentSize) && TrySerialize(packetSpan[SphynxPacketHeader.HEADER_SIZE..]))
+            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) && TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
             {
-                return true;
+                packetBytes = null;
+                return false;
             }
 
-            packetBytes = null;
+            return true;
+        }
+
+        /// <inheritdoc/>
+        public override bool TrySerialize(Stream stream)
+        {
+            if (!stream.CanWrite) return false;
+
+            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
+
+            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+            var buffer = rawBuffer.AsSpan()[..bufferSize];
+
+            try
+            {
+                if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer[SphynxPacketHeader.HEADER_SIZE..]))
+                {
+                    stream.Write(buffer);
+                    return true;
+                }
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rawBuffer);
+            }
+
             return false;
         }
 

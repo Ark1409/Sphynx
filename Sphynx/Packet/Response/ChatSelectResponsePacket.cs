@@ -23,7 +23,7 @@ namespace Sphynx.Packet.Response
         /// <param name="packet">The deserialized packet.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatSelectResponsePacket? packet)
         {
-            if (TryDeserialize(contents, out SphynxErrorCode? errorCode))
+            if (TryDeserializeDefaults(contents, out SphynxErrorCode? errorCode))
             {
                 packet = new ChatSelectResponsePacket(errorCode.Value);
                 return true;
@@ -35,6 +35,12 @@ namespace Sphynx.Packet.Response
 
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
+        public override bool TrySerialize(Stream stream)
         {
             throw new NotImplementedException();
         }

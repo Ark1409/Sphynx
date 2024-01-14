@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-using System.Xml.Linq;
 
 using Sphynx.Utils;
 
@@ -154,6 +153,20 @@ namespace Sphynx.Packet.Request
             }
 
             return false;
+        }
+
+        // We need to be able to serialize a "null" UserId and SessionId
+        /// <inheritdoc/>
+        protected override bool TrySerializeDefaults(Span<byte> contents)
+        {
+            if (contents.Length < DEFAULT_CONTENT_SIZE)
+            {
+                return false;
+            }
+
+            UserId.TryWriteBytes(contents.Slice(USER_ID_OFFSET, GUID_SIZE));
+            SessionId.TryWriteBytes(contents.Slice(SESSION_ID_OFFSET, GUID_SIZE));
+            return true;
         }
 
         /// <inheritdoc/>

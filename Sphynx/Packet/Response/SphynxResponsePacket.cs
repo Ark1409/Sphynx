@@ -31,15 +31,15 @@ namespace Sphynx.Packet.Response
         /// </summary>
         /// <param name="buffer">The buffer to serialize this packet into.</param>
         /// <returns>true if this packet could be serialized; false otherwise.</returns>
-        protected bool TrySerialize(Span<byte> buffer)
+        protected bool TrySerializeDefaults(Span<byte> buffer)
         {
-            if (buffer.Length > 0)
+            if (buffer.Length < DEFAULT_CONTENT_SIZE)
             {
-                buffer[ERROR_CODE_OFFSET] = (byte)ErrorCode;
-                return true;
+                return false;
             }
 
-            return false;
+            buffer[ERROR_CODE_OFFSET] = (byte)ErrorCode;
+            return true;
         }
 
         /// <summary>
@@ -48,16 +48,16 @@ namespace Sphynx.Packet.Response
         /// <param name="buffer">The raw bytes to deserialize the data from.</param>
         /// <param name="errorCode">The deserialized error code.</param>
         /// <returns>true if the data could be deserialized; false otherwise.</returns>
-        protected static bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out SphynxErrorCode? errorCode)
+        protected static bool TryDeserializeDefaults(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out SphynxErrorCode? errorCode)
         {
-            if (buffer.Length >= sizeof(SphynxErrorCode))
+            if (buffer.Length < DEFAULT_CONTENT_SIZE)
             {
-                errorCode = (SphynxErrorCode)buffer[ERROR_CODE_OFFSET];
-                return true;
+                errorCode = null;
+                return false;
             }
 
-            errorCode = null;
-            return false;
+            errorCode = (SphynxErrorCode)buffer[ERROR_CODE_OFFSET];
+            return true;
         }
 
         /// <summary>

@@ -38,7 +38,7 @@ namespace Sphynx.Packet.Request
         /// <param name="packet">The deserialized packet.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatCreateRequestPacket? packet)
         {
-            if (contents.Length > ROOM_TYPE_OFFSET + sizeof(ChatRoomType))
+            if (contents.Length > DEFAULTS_SIZE)
             {
                 switch ((ChatRoomType)contents[ROOM_TYPE_OFFSET])
                 {
@@ -341,8 +341,7 @@ namespace Sphynx.Packet.Request
 
             private bool TrySerialize(Span<byte> buffer, int nameSize, int passwordSize)
             {
-                if (TrySerializeHeader(buffer) &&
-                    TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+                if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
                 {
                     nameSize.WriteBytes(buffer, NAME_SIZE_OFFSET);
                     TEXT_ENCODING.GetBytes(Name, buffer.Slice(NAME_OFFSET, nameSize));
