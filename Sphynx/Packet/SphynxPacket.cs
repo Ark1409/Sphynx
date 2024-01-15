@@ -286,7 +286,48 @@ namespace Sphynx.Packet
             try
             {
                 ReadBytes(contentStream, buffer);
-                return TryCreate(header.PacketType, buffer, out packet));
+                return TryCreate(header.PacketType, buffer, out packet);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rawBuffer);
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously creates the appropriate <see cref="SphynxPacket"/> (specified by the 
+        /// <paramref name="header"/>'s <see cref="SphynxPacketHeader.PacketType"/>) by reading from the <paramref name="contentStream"/>. 
+        /// Note that the stream must be positioned at the start of the packet contents (excluding the header).
+        /// </summary>
+        /// <param name="header">The header for the packet to create.</param>
+        /// <param name="contentStream">The contents of the packet, excluding the header. Must be positioned at the start 
+        /// of the packet contents (excluding the header)</param>
+        /// <returns>The actual packet, or null if it could not be deserialized.</returns>
+        public static async Task<SphynxPacket?> CreateAsync(SphynxPacketHeader header, Stream contentStream)
+        {
+            if (!contentStream.CanRead)
+            {
+                return null;
+            }
+
+            var rawBuffer = ArrayPool<byte>.Shared.Rent(header.ContentSize);
+            var buffer = rawBuffer.AsMemory();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static async Task ReadBytesAsync(Stream stream, Memory<byte> buffer)
+            {
+                int readCount = 0;
+                do
+                {
+                    readCount += await stream.ReadAsync(buffer[readCount..]);
+                } while (readCount < buffer.Length);
+            }
+
+            try
+            {
+                await ReadBytesAsync(contentStream, buffer);
+                _ = TryCreate(header.PacketType, buffer.Span, out var packet);
+                return packet;
             }
             finally
             {

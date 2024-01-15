@@ -20,7 +20,7 @@ namespace Sphynx.Packet.Broadcast
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
 
         private const int ROOM_ID_OFFSET = 0;
-        private const int LEAVER_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
+        private static readonly int LEAVER_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
 
         /// <summary>
         /// Creates a new <see cref="ChatLeaveBroadcastPacket"/>.
