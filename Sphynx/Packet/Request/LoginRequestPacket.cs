@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 using Sphynx.Utils;
 
@@ -66,17 +67,17 @@ namespace Sphynx.Packet.Request
 
             try
             {
-                int emailSize = contents.ReadInt32(USERNAME_SIZE_OFFSET);
-                string email = TEXT_ENCODING.GetString(contents.Slice(USERNAME_OFFSET, emailSize));
+                int usernameSize = contents.ReadInt32(USERNAME_SIZE_OFFSET);
+                string userName = TEXT_ENCODING.GetString(contents.Slice(USERNAME_OFFSET, usernameSize));
 
                 // TODO: Read hashed password bytes
-                int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + emailSize;
+                int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + usernameSize;
                 int passwordSize = contents.ReadInt32(PASSWORD_SIZE_OFFSET);
 
                 int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                 string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
-                packet = new LoginRequestPacket(userId.Value, sessionId.Value, email, password);
+                packet = new LoginRequestPacket(userId.Value, sessionId.Value, userName, password);
                 return true;
             }
             catch
@@ -89,7 +90,7 @@ namespace Sphynx.Packet.Request
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            GetContents(out int usernameSize, out int passwordSize, out int contentSize);
+            GetPacketInfo(out int usernameSize, out int passwordSize, out int contentSize);
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
@@ -103,21 +104,21 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public override bool TrySerialize(Stream stream)
+        public override async Task<bool> TrySerializeAsync(Stream stream)
         {
             if (!stream.CanWrite) return false;
 
-            GetContents(out int nameSize, out int passwordSize, out int contentSize);
+            GetPacketInfo(out int usernameSize, out int passwordSize, out int contentSize);
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-            var buffer = rawBuffer.AsSpan()[..bufferSize];
+            var buffer = rawBuffer.AsMemory()[..bufferSize];
 
             try
             {
-                if (TrySerialize(buffer, nameSize, passwordSize))
+                if (TrySerialize(buffer.Span, usernameSize, passwordSize))
                 {
-                    stream.Write(buffer);
+                    await stream.WriteAsync(buffer);
                     return true;
                 }
             }
@@ -129,7 +130,8 @@ namespace Sphynx.Packet.Request
             return false;
         }
 
-        private void GetContents(out int usernameSize, out int passwordSize, out int contentSize)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void GetPacketInfo(out int usernameSize, out int passwordSize, out int contentSize)
         {
             usernameSize = !string.IsNullOrEmpty(UserName) ? TEXT_ENCODING.GetByteCount(UserName) : 0;
             passwordSize = !string.IsNullOrEmpty(Password) ? TEXT_ENCODING.GetByteCount(Password) : 0;
@@ -146,7 +148,7 @@ namespace Sphynx.Packet.Request
                 // TODO: Serialize hashed password
                 int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + usernameSize;
                 passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
-
+                
                 int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                 TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));
                 return true;

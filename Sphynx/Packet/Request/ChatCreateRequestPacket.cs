@@ -167,7 +167,7 @@ namespace Sphynx.Packet.Request
             }
 
             /// <inheritdoc/>
-            public override bool TrySerialize(Stream stream)
+            public override async Task<bool> TrySerializeAsync(Stream stream)
             {
                 if (!stream.CanWrite) return false;
 
@@ -175,13 +175,13 @@ namespace Sphynx.Packet.Request
 
                 int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
                 var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-                var buffer = rawBuffer.AsSpan()[..bufferSize];
+                var buffer = rawBuffer.AsMemory()[..bufferSize];
 
                 try
                 {
-                    if (TrySerialize(buffer))
+                    if (TrySerialize(buffer.Span))
                     {
-                        stream.Write(buffer);
+                        await stream.WriteAsync(buffer);
                         return true;
                     }
                 }
@@ -292,7 +292,7 @@ namespace Sphynx.Packet.Request
             /// <inheritdoc/>
             public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
             {
-                GetContents(out int nameSize, out int passwordSize, out int contentSize);
+                GetPacketInfo(out int nameSize, out int passwordSize, out int contentSize);
 
                 int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
@@ -306,21 +306,21 @@ namespace Sphynx.Packet.Request
             }
 
             /// <inheritdoc/>
-            public override bool TrySerialize(Stream stream)
+            public override async Task<bool> TrySerializeAsync(Stream stream)
             {
                 if (!stream.CanWrite) return false;
 
-                GetContents(out int nameSize, out int passwordSize, out int contentSize);
+                GetPacketInfo(out int nameSize, out int passwordSize, out int contentSize);
 
                 int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
                 var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-                var buffer = rawBuffer.AsSpan()[..bufferSize];
+                var buffer = rawBuffer.AsMemory()[..bufferSize];
 
                 try
                 {
-                    if (TrySerialize(buffer, nameSize, passwordSize))
+                    if (TrySerialize(buffer.Span, nameSize, passwordSize))
                     {
-                        stream.Write(buffer);
+                        await stream.WriteAsync(buffer);
                         return true;
                     }
                 }
@@ -332,7 +332,8 @@ namespace Sphynx.Packet.Request
                 return false;
             }
 
-            private void GetContents(out int nameSize, out int passwordSize, out int contentSize)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private void GetPacketInfo(out int nameSize, out int passwordSize, out int contentSize)
             {
                 nameSize = TEXT_ENCODING.GetByteCount(Name);
                 passwordSize = !string.IsNullOrEmpty(Password) ? TEXT_ENCODING.GetByteCount(Password) : 0;

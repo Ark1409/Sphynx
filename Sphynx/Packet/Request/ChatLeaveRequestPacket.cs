@@ -71,7 +71,7 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public override bool TrySerialize(Stream stream)
+        public override async Task<bool> TrySerializeAsync(Stream stream)
         {
             if (!stream.CanWrite) return false;
 
@@ -79,13 +79,13 @@ namespace Sphynx.Packet.Request
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-            var buffer = rawBuffer.AsSpan()[..bufferSize];
+            var buffer = rawBuffer.AsMemory()[..bufferSize];
 
             try
             {
-                if (TrySerialize(buffer))
+                if (TrySerialize(buffer.Span))
                 {
-                    stream.Write(buffer);
+                    await stream.WriteAsync(buffer);
                     return true;
                 }
             }
