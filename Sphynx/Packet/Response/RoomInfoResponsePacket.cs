@@ -40,7 +40,7 @@ namespace Sphynx.Packet.Response
         }
 
         /// <inheritdoc/>
-        public override bool TrySerialize(Stream stream)
+        public override async Task<bool> TrySerializeAsync(Stream stream)
         {
             throw new NotImplementedException();
         }

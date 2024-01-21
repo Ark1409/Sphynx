@@ -1,7 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-
 using Sphynx.Utils;
 
 namespace Sphynx.Packet
@@ -62,7 +61,8 @@ namespace Sphynx.Packet
         /// </summary>
         /// <param name="packetHeader">The raw bytes for a <see cref="SphynxPacketHeader"/>.</param>
         /// <param name="header">The deserialized header.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> packetHeader, [NotNullWhen(true)] out SphynxPacketHeader? header)
+        public static bool TryDeserialize(ReadOnlySpan<byte> packetHeader,
+            [NotNullWhen(true)] out SphynxPacketHeader? header)
         {
             if (CheckSignature(packetHeader) && packetHeader.Length >= HEADER_SIZE)
             {
@@ -82,6 +82,7 @@ namespace Sphynx.Packet
         /// </summary>
         /// <param name="stream">The stream from which to read the raw bytes for a <see cref="SphynxPacketHeader"/>.</param>
         /// <param name="header">The deserialized header.</param>
+        [SkipLocalsInit]
         public static bool TryDeserialize(Stream stream, [NotNullWhen(true)] out SphynxPacketHeader? header)
         {
             if (!stream.CanRead)
@@ -90,8 +91,7 @@ namespace Sphynx.Packet
                 return false;
             }
 
-            var rawBuffer = ArrayPool<byte>.Shared.Rent(HEADER_SIZE);
-            var buffer = rawBuffer.AsSpan()[..HEADER_SIZE];
+            Span<byte> buffer = stackalloc byte[HEADER_SIZE];
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static void ReadBytes(Stream stream, Span<byte> buffer)
@@ -103,66 +103,24 @@ namespace Sphynx.Packet
                 } while (readCount < buffer.Length);
             }
 
-            try
-            {
-                ReadBytes(stream, buffer);
-                return TryDeserialize(buffer, out header);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(rawBuffer);
-            }
+            ReadBytes(stream, buffer);
+            return TryDeserialize(buffer, out header);
         }
 
         /// <summary>
-        /// Reads the <paramref name="stream"/> until the <see cref="SIGNATURE"/> is located and then proceeds .
+        /// Reads the <paramref name="stream"/> until the <see cref="SIGNATURE"/> is located and then proceeds to deserialize
+        /// the rest of the header.
         /// </summary>
         /// <param name="stream">The stream from which to read the raw bytes for a <see cref="SphynxPacketHeader"/>.</param>
         /// <param name="header">The deserialized header.</param>
         public static bool TryReceive(Stream stream, [NotNullWhen(true)] out SphynxPacketHeader? header)
         {
-            if (!stream.CanRead)
-            {
-                header = null;
-                return false;
-            }
-
-            var rawBuffer = ArrayPool<byte>.Shared.Rent(HEADER_SIZE);
-            var buffer = rawBuffer.AsSpan()[..HEADER_SIZE];
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static void ReadBytes(Stream stream, Span<byte> buffer)
-            {
-                int readCount = 0;
-                do
-                {
-                    readCount += stream.Read(buffer[readCount..]);
-                } while (readCount < buffer.Length);
-            }
-
-            try
-            {
-                // Read signature
-                ReadBytes(stream, buffer[..sizeof(ushort)]);
-
-                while (!CheckSignature(buffer[..sizeof(ushort)]))
-                {
-                    // Shift sig buffer - read next byte until correct
-                    buffer[0] = buffer[1];
-                    ReadBytes(stream, buffer.Slice(sizeof(byte), sizeof(byte)));
-                }
-
-                ReadBytes(stream, buffer[sizeof(ushort)..HEADER_SIZE]);
-                return TryDeserialize(buffer, out header);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(rawBuffer);
-            }
+            return (header = ReceiveAsync(stream).GetAwaiter().GetResult()) is not null;
         }
 
         /// <summary>
-        /// Reads the <paramref name="stream"/> asynchronously until the <see cref="SIGNATURE"/> is located and then proceeds .
+        /// Asynchronously reads the <paramref name="stream"/> until the <see cref="SIGNATURE"/> is located and then proceeds to deserialize the
+        /// rest of the header.
         /// </summary>
         /// <param name="stream">The stream from which to read the raw bytes for a <see cref="SphynxPacketHeader"/>.</param>
         /// <returns>The deserialized header, or null if it could not be deserialized.</returns>
@@ -174,7 +132,7 @@ namespace Sphynx.Packet
             }
 
             var rawBuffer = ArrayPool<byte>.Shared.Rent(HEADER_SIZE);
-            var buffer = rawBuffer.AsMemory();
+            var buffer = rawBuffer.AsMemory()[..HEADER_SIZE];
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static async Task ReadBytesAsync(Stream stream, Memory<byte> buffer)
@@ -182,24 +140,24 @@ namespace Sphynx.Packet
                 int readCount = 0;
                 do
                 {
-                    readCount += await stream.ReadAsync(buffer[readCount..]);
+                    readCount += await stream.ReadAsync(buffer[readCount..]).ConfigureAwait(false);
                 } while (readCount < buffer.Length);
             }
 
             try
             {
                 // Read signature
-                await ReadBytesAsync(stream, buffer[..sizeof(ushort)]);
+                await ReadBytesAsync(stream, buffer[..sizeof(ushort)]).ConfigureAwait(false);
 
                 while (!CheckSignature(buffer[..sizeof(ushort)].Span))
                 {
                     // Shift sig buffer - read next byte until correct
-                    // Array-backed Memory<T> will updates
+                    // Array-backed Memory<T> will update
                     rawBuffer[0] = rawBuffer[1];
-                    await ReadBytesAsync(stream, buffer.Slice(sizeof(byte), sizeof(byte)));
+                    await ReadBytesAsync(stream, buffer.Slice(sizeof(byte), sizeof(byte))).ConfigureAwait(false);
                 }
 
-                await ReadBytesAsync(stream, buffer[sizeof(ushort)..HEADER_SIZE]);
+                await ReadBytesAsync(stream, buffer[sizeof(ushort)..HEADER_SIZE]).ConfigureAwait(false);
                 _ = TryDeserialize(buffer.Span, out var header);
                 return header;
             }
@@ -233,6 +191,7 @@ namespace Sphynx.Packet
         }
 
         /// <inheritdoc/>
-        public bool Equals(SphynxPacketHeader? other) => PacketType == other?.PacketType && ContentSize == other?.ContentSize;
+        public bool Equals(SphynxPacketHeader? other) =>
+            PacketType == other?.PacketType && ContentSize == other?.ContentSize;
     }
 }

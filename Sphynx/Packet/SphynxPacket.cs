@@ -22,7 +22,7 @@ namespace Sphynx.Packet
         /// <summary>
         /// <see langword="sizeof"/>(<see cref="Guid"/>)
         /// </summary>
-        protected static unsafe readonly int GUID_SIZE = sizeof(Guid);
+        protected static readonly unsafe int GUID_SIZE = sizeof(Guid);
 
         /// <summary>
         /// Packet type for this packet.
@@ -35,7 +35,7 @@ namespace Sphynx.Packet
         /// <param name="packetType">The packet type.</param>
         /// <param name="contents">The contents of the packet, excluding the header.</param>
         /// <param name="packet">The actual packet.</param>
-        /// <returns>true if the <see cref="SphynxPacket"/> could be created succesfully; false otherwise.</returns>
+        /// <returns>true if the <see cref="SphynxPacket"/> could be created successfully; false otherwise.</returns>
         public static bool TryCreate(SphynxPacketType packetType, ReadOnlySpan<byte> contents, [NotNullWhen(true)] out SphynxPacket? packet)
         {
             packet = null;
@@ -261,37 +261,10 @@ namespace Sphynx.Packet
         /// <param name="contentStream">The contents of the packet, excluding the header. Must be positioned at the start 
         /// of the packet contents (excluding the header)</param>
         /// <param name="packet">The actual packet.</param>
-        /// <returns>true if the <see cref="SphynxPacket"/> could be created succesfully; false otherwise.</returns>
+        /// <returns>true if the <see cref="SphynxPacket"/> could be created successfully; false otherwise.</returns>
         public static bool TryCreate(SphynxPacketHeader header, Stream contentStream, [NotNullWhen(true)] out SphynxPacket? packet)
         {
-            if (!contentStream.CanRead)
-            {
-                packet = null;
-                return false;
-            }
-
-            var rawBuffer = ArrayPool<byte>.Shared.Rent(header.ContentSize);
-            var buffer = rawBuffer.AsSpan()[..header.ContentSize];
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static void ReadBytes(Stream stream, Span<byte> buffer)
-            {
-                int readCount = 0;
-                do
-                {
-                    readCount += stream.Read(buffer[readCount..]);
-                } while (readCount < buffer.Length);
-            }
-
-            try
-            {
-                ReadBytes(contentStream, buffer);
-                return TryCreate(header.PacketType, buffer, out packet);
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(rawBuffer);
-            }
+            return (packet = CreateAsync(header, contentStream).GetAwaiter().GetResult()) is not null;
         }
 
         /// <summary>
@@ -311,21 +284,21 @@ namespace Sphynx.Packet
             }
 
             var rawBuffer = ArrayPool<byte>.Shared.Rent(header.ContentSize);
-            var buffer = rawBuffer.AsMemory();
-
+            var buffer = rawBuffer.AsMemory()[..header.ContentSize];
+            
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static async Task ReadBytesAsync(Stream stream, Memory<byte> buffer)
             {
                 int readCount = 0;
                 do
                 {
-                    readCount += await stream.ReadAsync(buffer[readCount..]);
+                    readCount += await stream.ReadAsync(buffer[readCount..]).ConfigureAwait(false);
                 } while (readCount < buffer.Length);
             }
 
             try
             {
-                await ReadBytesAsync(contentStream, buffer);
+                await ReadBytesAsync(contentStream, buffer).ConfigureAwait(false);
                 _ = TryCreate(header.PacketType, buffer.Span, out var packet);
                 return packet;
             }
@@ -345,11 +318,17 @@ namespace Sphynx.Packet
         /// Attempts to serialize this packet into the <paramref name="stream"/>.
         /// </summary>
         /// <param name="stream">The stream to serialize this packet into.</param>
-        public abstract bool TrySerialize(Stream stream);
+        public virtual bool TrySerialize(Stream stream) => TrySerializeAsync(stream).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Attempts to asynchronously serialize this packet into the <paramref name="stream"/>.
+        /// </summary>
+        /// <param name="stream">The stream to serialize this packet into.</param>
+        public abstract Task<bool> TrySerializeAsync(Stream stream);
 
         /// <summary>
         /// Serializes a packet header into the specified <paramref name="packetBuffer"/>, a tightly-packed
-        /// span which is expected to containly only the contents of this packet along with its header.
+        /// span which is expected to contain only the contents of this packet along with its header.
         /// </summary>
         /// <param name="packetBuffer">The buffer to serialize the header into.</param>
         protected virtual bool TrySerializeHeader(Span<byte> packetBuffer)
