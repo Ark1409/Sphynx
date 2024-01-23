@@ -170,8 +170,13 @@ namespace Sphynx.Packet
         /// <summary>
         /// Serializes this packet header into a tightly-packed byte array.
         /// </summary>
-        /// <param name="packetBytes">This packet header serialized as a byte array.</param>
-        public void Serialize(out byte[]? packetBytes) => TrySerialize(packetBytes = new byte[HEADER_SIZE]);
+        /// <return>This packet header serialized as a byte array.</return>
+        public byte[] Serialize()
+        {
+            var packetBytes = new byte[HEADER_SIZE];
+            TrySerialize(packetBytes);
+            return packetBytes;
+        }
 
         /// <summary>
         /// Attempts to serializes this header into a buffer of bytes.
