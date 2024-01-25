@@ -1,12 +1,13 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-
 using Sphynx.Utils;
 
 namespace Sphynx.Packet.Request
 {
     /// <inheritdoc cref="SphynxPacketType.LOGIN_REQ"/>
+    /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
+    /// are not serialized for this packet.</remarks>
     public sealed class LoginRequestPacket : SphynxRequestPacket, IEquatable<LoginRequestPacket>
     {
         /// <summary>
@@ -24,27 +25,17 @@ namespace Sphynx.Packet.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_REQ;
 
-        private static readonly int USERNAME_SIZE_OFFSET = DEFAULT_CONTENT_SIZE;
-        private static readonly int USERNAME_OFFSET = USERNAME_SIZE_OFFSET + sizeof(int);
+        private const int USERNAME_SIZE_OFFSET = 0;
+        private const int USERNAME_OFFSET = USERNAME_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
         /// Creates a <see cref="LoginRequestPacket"/>.
         /// </summary>
         /// <param name="userName">User name entered by user for login.</param>
         /// <param name="password">Password entered by user for login.</param>
-        public LoginRequestPacket(string userName, string password) : this(Guid.Empty, Guid.Empty, userName, password)
-        {
-
-        }
-
-        /// <summary>
-        /// Creates a <see cref="LoginRequestPacket"/>.
-        /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="userName">User name entered by user for login.</param>
-        /// <param name="password">Password entered by user for login.</param>
-        public LoginRequestPacket(Guid userId, Guid sessionId, string userName, string password) : base(userId, sessionId)
+        /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
+        /// are not serialized for this packet.</remarks>
+        public LoginRequestPacket(string userName, string password) : base(Guid.Empty, Guid.Empty)
         {
             UserName = userName;
             Password = password;
@@ -55,11 +46,14 @@ namespace Sphynx.Packet.Request
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out LoginRequestPacket? packet)
+        /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
+        /// are not expected to be within the contents of the packet.</remarks>
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents,
+            [NotNullWhen(true)] out LoginRequestPacket? packet)
         {
-            int minContentSize = DEFAULT_CONTENT_SIZE + sizeof(int) + sizeof(int);
+            int minContentSize = sizeof(int) + sizeof(int); // UsernameSize, PasswordSize
 
-            if (contents.Length < minContentSize || !TryDeserializeDefaults(contents[..DEFAULT_CONTENT_SIZE], out var userId, out var sessionId))
+            if (contents.Length < minContentSize)
             {
                 packet = null;
                 return false;
@@ -73,11 +67,10 @@ namespace Sphynx.Packet.Request
                 // TODO: Read hashed password bytes
                 int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + usernameSize;
                 int passwordSize = contents.ReadInt32(PASSWORD_SIZE_OFFSET);
-
                 int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                 string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
-                packet = new LoginRequestPacket(userId.Value, sessionId.Value, userName, password);
+                packet = new LoginRequestPacket(userName, password);
                 return true;
             }
             catch
@@ -88,6 +81,8 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
+        /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
+        /// are not serialized for this packet.</remarks>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
             GetPacketInfo(out int usernameSize, out int passwordSize, out int contentSize);
@@ -104,6 +99,8 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
+        /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
+        /// are not serialized for this packet.</remarks>
         public override async Task<bool> TrySerializeAsync(Stream stream)
         {
             if (!stream.CanWrite) return false;
@@ -135,43 +132,32 @@ namespace Sphynx.Packet.Request
         {
             usernameSize = !string.IsNullOrEmpty(UserName) ? TEXT_ENCODING.GetByteCount(UserName) : 0;
             passwordSize = !string.IsNullOrEmpty(Password) ? TEXT_ENCODING.GetByteCount(Password) : 0;
-            contentSize = DEFAULT_CONTENT_SIZE + sizeof(int) + usernameSize + sizeof(int) + passwordSize;
+            contentSize = sizeof(int) + usernameSize + sizeof(int) + passwordSize;
         }
 
         private bool TrySerialize(Span<byte> buffer, int usernameSize, int passwordSize)
         {
-            if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
-            {
-                usernameSize.WriteBytes(buffer, USERNAME_SIZE_OFFSET);
-                TEXT_ENCODING.GetBytes(UserName, buffer.Slice(USERNAME_OFFSET, usernameSize));
-
-                // TODO: Serialize hashed password
-                int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + usernameSize;
-                passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
-                
-                int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
-                TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));
-                return true;
-            }
-
-            return false;
-        }
-
-        // We need to be able to serialize a "null" UserId and SessionId
-        /// <inheritdoc/>
-        protected override bool TrySerializeDefaults(Span<byte> contents)
-        {
-            if (contents.Length < DEFAULT_CONTENT_SIZE)
+            // Don't serialize UserId and SessionId for login packet
+            if (!TrySerializeHeader(buffer))
             {
                 return false;
             }
 
-            UserId.TryWriteBytes(contents.Slice(USER_ID_OFFSET, GUID_SIZE));
-            SessionId.TryWriteBytes(contents.Slice(SESSION_ID_OFFSET, GUID_SIZE));
+            buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
+
+            usernameSize.WriteBytes(buffer, USERNAME_SIZE_OFFSET);
+            TEXT_ENCODING.GetBytes(UserName, buffer.Slice(USERNAME_OFFSET, usernameSize));
+
+            // TODO: Serialize hashed password
+            int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + usernameSize;
+            passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
+            int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
+            TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));
+
             return true;
         }
 
         /// <inheritdoc/>
-        public bool Equals(LoginRequestPacket? other) => base.Equals(other) && UserName == other?.UserName && Password == other?.Password;
+        public bool Equals(LoginRequestPacket? other) => PacketType == other?.PacketType && UserName == other?.UserName && Password == other?.Password;
     }
 }

@@ -1,7 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-using Sphynx.Utils;
-
 namespace Sphynx.Packet.Response
 {
     /// <summary>
@@ -27,22 +25,6 @@ namespace Sphynx.Packet.Response
         }
 
         /// <summary>
-        /// Attempts to serialize the <see cref="ErrorCode"/> into the <paramref name="buffer"/>.
-        /// </summary>
-        /// <param name="buffer">The buffer to serialize this packet into.</param>
-        /// <returns>true if this packet could be serialized; false otherwise.</returns>
-        protected bool TrySerializeDefaults(Span<byte> buffer)
-        {
-            if (buffer.Length < DEFAULT_CONTENT_SIZE)
-            {
-                return false;
-            }
-
-            buffer[ERROR_CODE_OFFSET] = (byte)ErrorCode;
-            return true;
-        }
-
-        /// <summary>
         /// Attempts to retrieve a <see cref="ErrorCode"/> from the raw <paramref name="buffer"/> bytes.
         /// </summary>
         /// <param name="buffer">The raw bytes to deserialize the data from.</param>
@@ -57,6 +39,22 @@ namespace Sphynx.Packet.Response
             }
 
             errorCode = (SphynxErrorCode)buffer[ERROR_CODE_OFFSET];
+            return true;
+        }
+
+        /// <summary>
+        /// Attempts to serialize the <see cref="ErrorCode"/> into the <paramref name="buffer"/>.
+        /// </summary>
+        /// <param name="buffer">The buffer to serialize this packet into.</param>
+        /// <returns>true if this packet could be serialized; false otherwise.</returns>
+        protected bool TrySerializeDefaults(Span<byte> buffer)
+        {
+            if (buffer.Length < DEFAULT_CONTENT_SIZE)
+            {
+                return false;
+            }
+
+            buffer[ERROR_CODE_OFFSET] = (byte)ErrorCode;
             return true;
         }
 
