@@ -11,7 +11,7 @@ namespace Sphynx.Test
         [TestCase("Bryan", "j$u3#mo&sq")]
         public void LoginRequestPacket_ShouldSerializeWithCorrectFormat(string userName, string password)
         {
-            var samplePacket = new LoginRequestPacket(Guid.NewGuid(), Guid.NewGuid(), userName, password);
+            var samplePacket = new LoginRequestPacket(userName, password);
             Assert.That(samplePacket.TrySerialize(out var samplePacketBytes));
 
             Assert.Multiple(() =>

@@ -123,10 +123,9 @@ namespace Sphynx.Packet.Broadcast
             {
 
             }
-
-
+            
             /// <summary>
-            /// Attempts to deserialize a <see cref="Direct"/>.
+            /// Attempts to deserialize a <see cref="MessageBroadcastPacket.Direct"/>.
             /// </summary>
             /// <param name="contents">Packet contents, excluding the header.</param>
             /// <param name="packet">The deserialized packet.</param>
@@ -251,7 +250,7 @@ namespace Sphynx.Packet.Broadcast
             }
 
             /// <summary>
-            /// Attempts to deserialize a <see cref="Group"/>.
+            /// Attempts to deserialize a <see cref="MessageBroadcastPacket.Group"/>.
             /// </summary>
             /// <param name="contents">Packet contents, excluding the header.</param>
             /// <param name="packet">The deserialized packet.</param>
