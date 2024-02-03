@@ -59,6 +59,14 @@ namespace Sphynx.Packet.Response
         }
 
         /// <summary>
+        /// Checks whether this packet is <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// </summary>
+        /// <param name="packet">The packet to check.</param>
+        /// <returns>true if this packet is a <see cref="SphynxErrorCode.SUCCESS"/>, false otherwise.</returns>
+        public static implicit operator bool(SphynxResponsePacket packet) =>
+            packet.ErrorCode == SphynxErrorCode.SUCCESS;
+
+        /// <summary>
         /// Indicates whether the current packet has the same user and session ID as another request packet.
         /// </summary>
         /// <param name="other">A request packet to compare with this request packet.</param>

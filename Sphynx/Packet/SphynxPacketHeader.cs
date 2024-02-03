@@ -196,7 +196,6 @@ namespace Sphynx.Packet
         }
 
         /// <inheritdoc/>
-        public bool Equals(SphynxPacketHeader? other) =>
-            PacketType == other?.PacketType && ContentSize == other?.ContentSize;
+        public bool Equals(SphynxPacketHeader? other) => PacketType == other?.PacketType && ContentSize == other?.ContentSize;
     }
 }

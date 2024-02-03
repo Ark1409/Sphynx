@@ -111,10 +111,7 @@ namespace Sphynx.Packet.Response
         {
             if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
             {
-                if (RoomId.HasValue)
-                {
-                    RoomId.Value.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                }
+                RoomId?.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
                 return true;
             }
 

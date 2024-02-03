@@ -6,7 +6,7 @@
     public enum SphynxErrorCode : byte
     {
         /// <summary>
-        /// Action has been completed succesfully.
+        /// Action has been completed successfully.
         /// </summary>
         SUCCESS = 0,
 

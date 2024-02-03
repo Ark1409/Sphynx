@@ -319,7 +319,7 @@ namespace Sphynx.Packet
         /// Attempts to serialize this packet into the <paramref name="stream"/>.
         /// </summary>
         /// <param name="stream">The stream to serialize this packet into.</param>
-        public virtual bool TrySerialize(Stream stream) => TrySerializeAsync(stream).GetAwaiter().GetResult();
+        public bool TrySerialize(Stream stream) => TrySerializeAsync(stream).GetAwaiter().GetResult();
 
         /// <summary>
         /// Attempts to asynchronously serialize this packet into the <paramref name="stream"/>.
