@@ -108,7 +108,7 @@ namespace Sphynx.Packet.Request
             GetPacketInfo(out int usernameSize, out int passwordSize, out int contentSize);
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
-            var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+            byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
             try

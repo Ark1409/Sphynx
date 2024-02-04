@@ -18,7 +18,7 @@ namespace Sphynx.Test
         public void MessageBroadcastPacket_Direct_ShouldSerializeWithCorrectFormat(string message)
         {
             var samplePacket = new MessageBroadcastPacket.Direct(Guid.NewGuid(), message);
-            Assert.That(samplePacket.TrySerialize(out var samplePacketBytes));
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
 
             Assert.Multiple(() =>
             {
@@ -35,7 +35,7 @@ namespace Sphynx.Test
         public void MessageBroadcastPacket_Group_ShouldSerializeWithCorrectFormat(string message)
         {
             var samplePacket = new MessageBroadcastPacket.Group(Guid.NewGuid(), Guid.NewGuid(), message);
-            Assert.That(samplePacket.TrySerialize(out var samplePacketBytes));
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
 
             Assert.Multiple(() =>
             {
@@ -50,7 +50,7 @@ namespace Sphynx.Test
         public void ChatJoinBroadcastPacket_ShouldSerializeWithCorrectFormat()
         {
             var samplePacket = new ChatJoinBroadcastPacket(Guid.NewGuid(), Guid.NewGuid());
-            Assert.That(samplePacket.TrySerialize(out var samplePacketBytes));
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
 
             Assert.Multiple(() =>
             {
@@ -65,7 +65,7 @@ namespace Sphynx.Test
         public void ChatLeaveBroadcastPacket_ShouldSerializeWithCorrectFormat()
         {
             var samplePacket = new ChatLeaveBroadcastPacket(Guid.NewGuid(), Guid.NewGuid());
-            Assert.That(samplePacket.TrySerialize(out var samplePacketBytes));
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
 
             Assert.Multiple(() =>
             {
@@ -80,7 +80,7 @@ namespace Sphynx.Test
         public void ChatKickBroadcastPacket_ShouldSerializeWithCorrectFormat()
         {
             var samplePacket = new ChatKickBroadcastPacket(Guid.NewGuid(), Guid.NewGuid());
-            Assert.That(samplePacket.TrySerialize(out var samplePacketBytes));
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
 
             Assert.Multiple(() =>
             {
@@ -95,7 +95,7 @@ namespace Sphynx.Test
         public void ChatDeleteBroadcastPacket_ShouldSerializeWithCorrectFormat()
         {
             var samplePacket = new ChatDeleteBroadcastPacket(Guid.NewGuid());
-            Assert.That(samplePacket.TrySerialize(out var samplePacketBytes));
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
 
             Assert.Multiple(() =>
             {

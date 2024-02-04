@@ -131,7 +131,7 @@ namespace Sphynx.Packet
                 return null;
             }
 
-            var rawBuffer = ArrayPool<byte>.Shared.Rent(HEADER_SIZE);
+            byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(HEADER_SIZE);
             var buffer = rawBuffer.AsMemory()[..HEADER_SIZE];
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -173,7 +173,7 @@ namespace Sphynx.Packet
         /// <return>This packet header serialized as a byte array.</return>
         public byte[] Serialize()
         {
-            var packetBytes = new byte[HEADER_SIZE];
+            byte[] packetBytes = new byte[HEADER_SIZE];
             TrySerialize(packetBytes);
             return packetBytes;
         }

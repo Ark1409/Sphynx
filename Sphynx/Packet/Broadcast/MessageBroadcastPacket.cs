@@ -181,7 +181,7 @@ namespace Sphynx.Packet.Broadcast
                 int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int) + messageSize;
 
                 int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
-                var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
                 var buffer = rawBuffer.AsMemory()[..bufferSize];
 
                 try
@@ -305,7 +305,7 @@ namespace Sphynx.Packet.Broadcast
                 int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + GUID_SIZE + sizeof(int) + messageSize;
 
                 int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
-                var rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+                byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
                 var buffer = rawBuffer.AsMemory()[..bufferSize];
 
                 try

@@ -284,7 +284,7 @@ namespace Sphynx.Packet
                 return null;
             }
 
-            var rawBuffer = ArrayPool<byte>.Shared.Rent(header.ContentSize);
+            byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(header.ContentSize);
             var buffer = rawBuffer.AsMemory()[..header.ContentSize];
             
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

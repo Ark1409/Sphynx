@@ -34,5 +34,10 @@
         /// When the user attempts to complete an action but does not have sufficient permissions.
         /// </summary>
         INSUFFICIENT_PERMS,
+        
+        /// <summary>
+        /// Rate limited.
+        /// </summary>
+        ENHANCE_YOUR_CALM
     }
 }

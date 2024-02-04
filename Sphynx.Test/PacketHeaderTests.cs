@@ -19,7 +19,7 @@ namespace Sphynx.Test
         public void PacketHeader_ShouldSerializeWithCorrectFormat(SphynxPacketType packetType, int contentSize)
         {
             var sampleHeader = new SphynxPacketHeader(packetType, contentSize);
-            var serializedHeader = sampleHeader.Serialize();
+            byte[] serializedHeader = sampleHeader.Serialize();
 
             Assert.Multiple(() =>
             {
