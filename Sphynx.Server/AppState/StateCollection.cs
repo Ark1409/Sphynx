@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Sphynx.Server.State
+namespace Sphynx.Server.AppState
 {
     /// <summary>
     /// Represents a customizable state collection for the application.
