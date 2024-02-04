@@ -8,20 +8,46 @@ using Sphynx.Client.Utils;
 
 namespace Sphynx.Client.UI
 {
+    /// <summary>
+    /// Represents a buffer to which text can be arbitrarily inserted.
+    /// </summary>
     internal class GapBuffer
     {
+        /// <summary>
+        /// Default size of the gap buffer
+        /// </summary>
         public const int DEFAULT_GAP_SIZE = 16;
 
+        /// <summary>
+        /// Provides access to the raw buffer used internally by this gap buffer.
+        /// </summary>
         public ReadOnlyCollection<char> Buffer => _buffer.AsReadOnly();
 
+        /// <summary>
+        /// Gets the number of characters in the full gap buffer.
+        /// This is <i>NOT</i> the same as the number of characters in the text represented by this buffer.
+        /// <seealso cref="Text"/>
+        /// </summary>
         public int Count => _buffer.Count;
 
+        /// <summary>
+        /// Gets the beginning index of the gap buffer.
+        /// </summary>
         public int GapBegin { get; private set; }
 
+        /// <summary>
+        /// Gets the end index of the gap buffer.
+        /// </summary>
         public int GapEnd { get; private set; }
 
+        /// <summary>
+        /// Gets the size of the gap within the gap buffer.
+        /// </summary>
         public int GapSize => GapEnd - GapBegin + 1;
 
+        /// <summary>
+        /// Converts the gap buffer into its textual representation, with the gap omitted.
+        /// </summary>
         public string Text
         {
             get
@@ -43,6 +69,10 @@ namespace Sphynx.Client.UI
 
         private readonly List<char> _buffer;
 
+        /// <summary>
+        /// Constructs a gap buffer with the specified initial gap size.
+        /// </summary>
+        /// <param name="initialCapacity">The initial size of the gap buffer. Defaults to <see cref="DEFAULT_GAP_SIZE"/>.</param>
         public GapBuffer(int initialCapacity = DEFAULT_GAP_SIZE)
         {
             initialCapacity = Math.Max(1, initialCapacity);
@@ -52,13 +82,31 @@ namespace Sphynx.Client.UI
             GapEnd = initialCapacity - 1;
         }
 
-        public GapBuffer(string initialText, int initialCapacity) : this(Math.Max(initialText.Length, initialCapacity)) { InsertText(initialText); }
+        /// <summary>
+        /// Constructs a gap buffer which initially holds the specified text.
+        /// </summary>
+        /// <param name="initialText">The text the gap buffer should initially hold.</param>
+        /// <param name="initialCapacity">The initial size of the gap buffer. Must be at least <paramref name="initialText.Length"/>.</param>
+        public GapBuffer(string initialText, int initialCapacity) : this(Math.Max(initialText.Length, initialCapacity)) { Insert(initialText); }
 
-        public GapBuffer(string initialText) : this(initialText, initialText.Length * 2) { }
+        /// <summary>
+        /// Constructs a gap buffer which initially holds the specified text.
+        /// Capacity defaults to
+        /// <code>initialText.Length * 2 + DEFAULT_GAP_SIZE * 2</code>
+        /// </summary>
+        /// <param name="initialText">The text the gap buffer should initially hold.</param>
+        public GapBuffer(string initialText) : this(initialText, initialText.Length * 2 + DEFAULT_GAP_SIZE * 2) { }
 
-        public GapBuffer InsertText(string str)
+        /// <summary>
+        /// Inserts text at the gap buffer's current position (i.e. <see cref="GapBegin"/>, relative to <see cref="Buffer"/>).
+        /// The gap buffer is resized before the operation if the string to be inserted is larger than the current <see cref="GapSize"/>.
+        /// </summary>
+        /// <param name="str">The text to add to the buffer</param>
+        /// <returns><c>this</c>.</returns>
+        public GapBuffer Insert(string str)
         {
-            if (str.Length > GapSize) ResizeGap(str.Length + GapSize * 2);
+            // Maybe come up with a better resizing function
+            if (str.Length > GapSize) GrowGap(str.Length + DEFAULT_GAP_SIZE * 2);
 
             unsafe
             {
@@ -73,6 +121,13 @@ namespace Sphynx.Client.UI
             return this;
         }
 
+        /// <summary>
+        /// Moves the gap buffer <paramref name="count"/> character(s) left or right.
+        /// </summary>
+        /// <param name="count">The amount by which the gap should be moved.
+        /// This value is automatically clamped onto [-<see cref="GapBegin"/>, <see cref="Count"/>-<see cref="GapEnd"/>).
+        /// Negative values move left, positive values move right.</param>
+        /// <returns><c>this</c>.</returns>
         public unsafe GapBuffer Move(int count)
         {
             count = Math.Clamp(count, -GapBegin, _buffer.Count - GapEnd - 1);
@@ -88,8 +143,19 @@ namespace Sphynx.Client.UI
             return this;
         }
 
-        public GapBuffer MoveAbs(int index) => Move(-(GapBegin - index));
+        /// <summary>
+        /// Moves the gap buffer to the position specified by <paramref name="index"/>.
+        /// </summary>
+        /// <param name="index">The position to which the gap buffer should be moved.
+        /// This value is automatically clamped onto [0, <see cref="Count"/>-<see cref="GapEnd"/>).</param>
+        /// <returns><c>this</c>.</returns>
+        public GapBuffer MoveAbs(int index) => Move(-(GapBegin - Math.Clamp(index, 0, Math.Max(0, _buffer.Count - GapEnd - 1))));
 
+        /// <summary>
+        /// Resizes the gap to the specified number of characters
+        /// </summary>
+        /// <param name="gapSize">The new gap size</param>
+        /// <exception cref="ArgumentOutOfRangeException">If <paramref name="gapSize"/> &lt; 0.</exception>
         public unsafe void ResizeGap(int gapSize)
         {
             if (gapSize < 0) throw new ArgumentOutOfRangeException(nameof(gapSize), "Gap size must be greater than 0");
@@ -125,15 +191,33 @@ namespace Sphynx.Client.UI
             GapEnd = GapBegin + gapSize - 1;
         }
 
+        /// <summary>
+        /// Grows the gap <paramref name="count"/> amount of characters
+        /// </summary>
+        /// <param name="count">The number of characters to grow by.</param>
+        public void GrowGap(int count) => ResizeGap(GapSize + Math.Max(-GapSize, count));
+
+        /// <summary>
+        /// Shrinks the gap <paramref name="count"/> amount of characters
+        /// </summary>
+        /// <param name="count">The number of characters to shrink by.</param>
+        public void ShrinkGap(int count) => ResizeGap(GapSize - Math.Min(GapSize, count));
+
         /// <inheritdoc/>
         public override string ToString() => Text;
 
-        public static GapBuffer operator +(GapBuffer b, string str) => b.InsertText(str);
+        ///  <inheritdoc cref="Insert"/>
+        public static GapBuffer operator +(GapBuffer b, string str) => b.Insert(str);
 
+        ///  <inheritdoc cref="Move"/>
         public static GapBuffer operator +(GapBuffer b, int count) => b.Move(count);
 
+        ///  <inheritdoc cref="Move"/>
         public static GapBuffer operator -(GapBuffer b, int count) => b + (-count);
 
+        /// <inheritdoc cref="Text"/>
+        /// <param name="b"><see cref="GapBuffer"/> instance</param>
+        /// <returns><see cref="string"/> representation of gap buffer contents.</returns>
         public static explicit operator string(GapBuffer b) => b.Text;
     }
 }
