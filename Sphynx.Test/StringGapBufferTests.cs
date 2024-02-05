@@ -3,14 +3,14 @@
 namespace Sphynx.Test
 {
     [TestFixture]
-    public class GapBufferTests
+    public class StringGapBufferTests
     {
         [Test]
         public void GapBuffer_ResizeTest()
         {
-            const int initialCapacity = GapBuffer.DEFAULT_GAP_SIZE;
+            const int initialCapacity = StringGapBuffer.DEFAULT_GAP_SIZE;
 
-            var g = new GapBuffer(initialCapacity);
+            var g = new StringGapBuffer(initialCapacity);
 
             Assert.That(g.GapBegin, Is.EqualTo(0));
             Assert.That(g.GapEnd, Is.EqualTo(initialCapacity - 1));
@@ -29,7 +29,7 @@ namespace Sphynx.Test
             DoResizeAssert(g, -5);
         }
 
-        private void DoResizeAssert(GapBuffer g, int incrementSize)
+        private void DoResizeAssert(StringGapBuffer g, int incrementSize)
         {
             int oldSize = g.GapSize;
             int oldGapBegin = g.GapBegin;
@@ -48,7 +48,7 @@ namespace Sphynx.Test
         public void GapBuffer_MoveTest()
         {
             const string initialText = "Test Text";
-            var g = new GapBuffer(initialText);
+            var g = new StringGapBuffer(initialText);
             Assert.That(g.GapBegin, Is.EqualTo(initialText.Length));
             Assert.That(g.GapEnd, Is.EqualTo(g.GapBegin + g.GapSize - 1));
 
@@ -56,7 +56,7 @@ namespace Sphynx.Test
             DoMoveAssert(g, 3, initialText);
         }
 
-        private void DoMoveAssert(GapBuffer g, int moveDelta, string initialText)
+        private void DoMoveAssert(StringGapBuffer g, int moveDelta, string initialText)
         {
             moveDelta = Math.Clamp(moveDelta, -g.GapBegin, g.Count - moveDelta - 1);
 
@@ -78,7 +78,7 @@ namespace Sphynx.Test
             const string textAdd = " N ";
             const string finalText = $"Test{textAdd} Text";
 
-            var g = new GapBuffer(initialText);
+            var g = new StringGapBuffer(initialText);
 
             Assert.That((string)g, Is.EqualTo(initialText));
 

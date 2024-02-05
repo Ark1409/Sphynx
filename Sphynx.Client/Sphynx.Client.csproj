@@ -6,10 +6,20 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>default</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.48.0" />
+    <PackageReference Include="Spectre.Console.Cli" Version="0.48.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Sphynx\Sphynx.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sphynx.Test" />
   </ItemGroup>
 
 </Project>
