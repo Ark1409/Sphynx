@@ -80,7 +80,7 @@ namespace Sphynx.Server
             OnStart = null!;
             _serverThread = new Thread(Run);
             _connectedClients = new ConcurrentDictionary<Socket, SphynxClient>();
-            Name = _serverThread.ManagedThreadId.ToString();
+            Name = $"{nameof(SphynxServer)}@{_serverThread.ManagedThreadId.ToString()}";
         }
 
         /// <summary>

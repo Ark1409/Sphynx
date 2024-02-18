@@ -10,6 +10,12 @@ namespace Sphynx.Server.Utils
     /// <typeparam name="TData">The data that this info type holds.</typeparam>
     public record struct SphynxErrorInfo<TData>(SphynxErrorCode ErrorCode, TData? Data) : IEquatable<TData?>
     {
-        public bool Equals(TData? other) => Data is null && other is null || Data!.Equals(other);
+        public bool Equals(TData? other)
+        {
+            if (Data is null && other is null) return true;
+            if (Data is null || other is null) return false;
+
+            return Data!.Equals(other);
+        }
     }
 }

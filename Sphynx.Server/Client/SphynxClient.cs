@@ -52,7 +52,7 @@ namespace Sphynx.Server.Client
         public event ClientDisconnect Disconnected;
 
         private int _disposed;
-        private readonly ClientPacketHandler _packetHandler;
+        private readonly IPacketHandler _packetHandler;
 
         /// <summary>
         /// Creates a new <see cref="SphynxClient"/> representing a single socket connection to a <see cref="SphynxServer"/>.

@@ -9,7 +9,7 @@ namespace Sphynx.Server.Client
     /// <summary>
     /// Handles incoming client packets and performs appropriate actions depending on the packet that is being handled.
     /// </summary>
-    public sealed class ClientPacketHandler
+    public sealed class ClientPacketHandler : IPacketHandler
     {
         private readonly SphynxClient _client;
 
