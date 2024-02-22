@@ -14,5 +14,11 @@
     <EmbeddedResource Remove="docs\**" />
     <None Remove="docs\**" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(SolutionName).Client"/>
+    <InternalsVisibleTo Include="$(SolutionName).Server"/>
+    <InternalsVisibleTo Include="$(SolutionName).Test"/>
+  </ItemGroup>
 
 </Project>

@@ -6,7 +6,7 @@ namespace Sphynx.Server.User
     public static class SphynxUserManager
     {
         private static readonly ConcurrentDictionary<Guid, SphynxUserInfo> _userInfoCache;
-        private static int _cacheRetrivals;
+        private static readonly ConcurrentDictionary<Guid, int> _cacheRetrievals;
         private const int CACHE_UPDATE_THRESHOLD = 8;
 
         public static event Action<SphynxUserInfo>? UserCreated;
@@ -15,6 +15,7 @@ namespace Sphynx.Server.User
         static SphynxUserManager()
         {
             _userInfoCache = new ConcurrentDictionary<Guid, SphynxUserInfo>();
+            _cacheRetrievals = new ConcurrentDictionary<Guid, int>();
         }
         
         public static async Task<SphynxErrorInfo<SphynxUserInfo>> CreateUserAsync(SphynxUserCredentials credentials)
@@ -25,8 +26,9 @@ namespace Sphynx.Server.User
         
         public static async Task<SphynxUserInfo?> GetUserInfoAsync(Guid userId)
         {
-            if (++_cacheRetrivals > CACHE_UPDATE_THRESHOLD)
+            if (++_cacheRetrievals[userId] > CACHE_UPDATE_THRESHOLD)
             {
+                _cacheRetrievals[userId] = 0;
                 // TODO: Query database
                 throw new NotImplementedException();
             }

@@ -1,5 +1,6 @@
 ﻿using System.Net.Sockets;
 using Sphynx.Packet;
+using Sphynx.Packet.Request;
 using Sphynx.Server.Utils;
 
 // ReSharper disable ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
@@ -66,7 +67,7 @@ namespace Sphynx.Server.Client
         /// <summary>
         /// Creates a new <see cref="SphynxClient"/> representing a single socket connection to a <see cref="SphynxServer"/>.
         /// </summary>
-        /// <param name="server">The server that this socket is connceted to.</param>
+        /// <param name="server">The server that this socket is connected to.</param>
         /// <param name="clientSocket">The client socket.</param>
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         public SphynxClient(SphynxServer server, Socket clientSocket)
@@ -109,10 +110,18 @@ namespace Sphynx.Server.Client
                 {
                     var packet = await ReceivePacketAsync().ConfigureAwait(false);
                     if (packet is null) continue;
-
-                    // Do we require that packets sent by the same user are processed and "executed" in order? If so then 
-                    // we should await this task as the current setup causes them to run in parallel
-                    _packetHandler.HandlePacketAsync(packet).SafeExecute();
+                    
+                    // We want authentication to be the only packet evaluated "synchronously"?
+                    if (packet.PacketType == SphynxPacketType.LOGIN_REQ && SphynxClientManager.IsAnonymous(this))
+                    {
+                        await _packetHandler.HandlePacketAsync(packet).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // Do we require that packets sent by the same user are processed and "executed" in order? If so then 
+                        // we should await this task as the current setup causes them to run in parallel
+                        _packetHandler.HandlePacketAsync(packet).SafeExecute();
+                    }
                 }
             }
             catch (Exception ex) when (ex is IOException or SocketException)
@@ -132,7 +141,7 @@ namespace Sphynx.Server.Client
             if (header is null)
                 return null;
 
-            return await SphynxPacket.CreateAsync(header, SocketStream).ConfigureAwait(false);
+            return await SphynxPacket.CreateAsync(header.Value, SocketStream).ConfigureAwait(false);
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
-﻿using Sphynx.Packet;
+﻿using System.Diagnostics;
+using Sphynx.Packet;
 using Sphynx.Packet.Request;
 using Sphynx.Packet.Response;
 using Sphynx.Server.User;
@@ -24,24 +25,24 @@ namespace Sphynx.Server.Client
         /// </summary>
         /// <param name="packet">The packet to handle.</param>
         /// <returns>The started handling task, returning a bool representing whether the packet could be sent.</returns>
-        public async Task<bool> HandlePacketAsync(SphynxPacket packet)
+        public Task<bool> HandlePacketAsync(SphynxPacket packet)
         {
             switch (packet.PacketType)
             {
                 case SphynxPacketType.LOGIN_REQ:
-                    return await HandleLoginRequestAsync((LoginRequestPacket)packet).ConfigureAwait(false);
-                
+                    return HandleLoginRequestAsync((LoginRequestPacket)packet);
+
                 case SphynxPacketType.LOGOUT_REQ:
-                    return await HandleLogoutRequestAsync((LogoutRequestPacket)packet).ConfigureAwait(false);
+                    return HandleLogoutRequestAsync((LogoutRequestPacket)packet);
 
                 case SphynxPacketType.MSG_REQ:
-                    return await HandleMessageRequestAsync((MessageRequestPacket)packet).ConfigureAwait(false);
+                    return HandleMessageRequestAsync((MessageRequestPacket)packet);
 
                 case SphynxPacketType.NOP:
-                    return true;
+                    return Task.FromResult(false);
 
                 default:
-                    return false;
+                    return Task.FromResult(false);
             }
         }
 
@@ -50,23 +51,28 @@ namespace Sphynx.Server.Client
             var loginInfo = await SphynxClientManager.AuthenticateClient(_client, new SphynxUserCredentials(request.UserName, request.Password));
             var loginResponse = new LoginResponsePacket(loginInfo.ErrorCode);
 
-            return await _client.SendPacketAsync(loginResponse).ConfigureAwait(false);
+            return await _client.SendPacketAsync(loginResponse);
         }
-        
-        private async Task<bool> HandleLogoutRequestAsync(LogoutRequestPacket packet)
-        {
-            if (SphynxClientManager.UnauthenticateClient(_client))
-            {
-                var logoutResponse = new LogoutResponsePacket();
-                return await _client.SendPacketAsync(logoutResponse).ConfigureAwait(false);
-            }
 
-            return false;
+        private Task<bool> HandleLogoutRequestAsync(LogoutRequestPacket packet)
+        {
+            if (!VerifySession(packet.SessionId))
+            {
+                return _client.SendPacketAsync(new LogoutResponsePacket(SphynxErrorCode.INVALID_SESSION));
+            }
+            
+            Debug.Assert(SphynxClientManager.UnauthenticateClient(_client));
+            return _client.SendPacketAsync(new LogoutResponsePacket());
         }
 
         private async Task<bool> HandleMessageRequestAsync(MessageRequestPacket request)
         {
             throw new NotImplementedException();
+        }
+
+        private bool VerifySession(Guid sessionId)
+        {
+            return SphynxClientManager.TryGetSessionId(_client, out var actualSession) && sessionId == actualSession;
         }
     }
 }

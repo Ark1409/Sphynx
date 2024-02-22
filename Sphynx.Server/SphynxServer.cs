@@ -18,8 +18,7 @@ namespace Sphynx.Server
         /// Returns the default IP endpoint for the server.
         /// </summary>
         // TODO: New one each time?
-        public static IPEndPoint DefaultEndPoint =>
-            new IPEndPoint(Dns.GetHostEntry(Dns.GetHostName()).AddressList[1], DefaultPort);
+        public static IPEndPoint DefaultEndPoint => new IPEndPoint(Dns.GetHostEntry(Dns.GetHostName()).AddressList[1], DefaultPort);
 
         /// <summary>
         /// Retrieves the default port for socket information exchange between clients and servers.
@@ -86,13 +85,21 @@ namespace Sphynx.Server
         /// <summary>
         /// Starts the server on a new thread.
         /// </summary>
-        public void Start()
+        /// <returns>true if the server was started as a result of this operation; false if the server had
+        /// already been started.</returns>
+        public bool Start()
         {
+            if (Running) return false;
+            
             lock (_mutationLock)
             {
+                if (Running) return false;
+                
                 Running = true;
                 _serverThread.Start();
             }
+
+            return true;
         }
 
         private void Run()

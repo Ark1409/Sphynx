@@ -10,7 +10,7 @@ namespace Sphynx.Server.Client
     public static class SphynxClientManager
     {
         private static readonly ConcurrentDictionary<Guid, ConcurrentDictionary<Socket, SphynxClient>> _authenticatedClients;
-        private static readonly ConcurrentDictionary<Socket, Guid> _clientIds;
+        private static readonly ConcurrentDictionary<Socket, Guid> _userIds;
         private static readonly ConcurrentDictionary<Socket, Guid> _sessionIds;
         private static readonly ConcurrentDictionary<Socket, SphynxClient> _anonymousClients;
 
@@ -24,7 +24,7 @@ namespace Sphynx.Server.Client
             _authenticatedClients = new ConcurrentDictionary<Guid, ConcurrentDictionary<Socket, SphynxClient>>();
             _anonymousClients = new ConcurrentDictionary<Socket, SphynxClient>();
             _sessionIds = new ConcurrentDictionary<Socket, Guid>();
-            _clientIds = new ConcurrentDictionary<Socket, Guid>();
+            _userIds = new ConcurrentDictionary<Socket, Guid>();
         }
         
         /// <summary>
@@ -32,7 +32,7 @@ namespace Sphynx.Server.Client
         /// </summary>
         /// <param name="client">The <see cref="SphynxClient"/> to check.</param>
         /// <returns>true if the <paramref name="client"/> is unauthenticated; false otherwise.</returns>
-        public static bool IsAnonymous(SphynxClient client) => !TryGetUserId(client, out _);
+        public static bool IsAnonymous(SphynxClient client) => !_anonymousClients.ContainsKey(client.Socket);
 
         /// <summary>
         /// Attempts to add an anonymous (i.e. unauthenticated) client to this manager, but returns an existing client instance if it has already
@@ -128,7 +128,7 @@ namespace Sphynx.Server.Client
         /// <returns>true if the client could be successfully unauthenticated; false otherwise.</returns>
         public static bool UnauthenticateClient(SphynxClient client)
         {
-            if (_clientIds.Remove(client.Socket, out var clientId))
+            if (_userIds.Remove(client.Socket, out var clientId))
             {
                 Debug.Assert(_sessionIds.Remove(client.Socket, out _));
                 Debug.Assert(_authenticatedClients.TryGetValue(clientId, out var clients));
@@ -151,7 +151,7 @@ namespace Sphynx.Server.Client
         /// <returns>true if the <paramref name="client"/> has been authenticated; false otherwise.</returns>
         public static bool TryGetUserId(SphynxClient client, [NotNullWhen(true)] out Guid? userId)
         {
-            if (_clientIds.TryGetValue(client.Socket, out var id))
+            if (_userIds.TryGetValue(client.Socket, out var id))
             {
                 userId = id;
                 return true;
@@ -193,7 +193,7 @@ namespace Sphynx.Server.Client
                 return true;
             }
 
-            if (_clientIds.TryGetValue(clientSocket, out var clientId) && _authenticatedClients.TryGetValue(clientId, out var clients))
+            if (_userIds.TryGetValue(clientSocket, out var clientId) && _authenticatedClients.TryGetValue(clientId, out var clients))
             {
                 return clients.TryGetValue(clientSocket, out client);
             }

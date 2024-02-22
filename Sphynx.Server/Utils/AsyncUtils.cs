@@ -8,7 +8,7 @@
         /// <param name="task">The task to execute.</param>
         /// <param name="continueOnCapturedContext">Whether to continue on the same sync. context. Not applicable to .NET
         /// Core but is still good practice to support.</param>
-        internal static async void SafeExecute(this Task task, bool continueOnCapturedContext = true)
+        internal static async void SafeExecute(this Task task, bool continueOnCapturedContext = false)
         {
             try
             {
@@ -27,7 +27,7 @@
         /// <param name="task">The task to execute.</param>
         /// <param name="continueOnCapturedContext">Whether to continue on the same sync. context. Not applicable to .NET
         /// Core but is still good practice to support.</param>
-        internal static async void SafeExecute(this ValueTask task, bool continueOnCapturedContext = true)
+        internal static async void SafeExecute(this ValueTask task, bool continueOnCapturedContext = false)
         {
             try
             {

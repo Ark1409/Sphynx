@@ -8,10 +8,10 @@ namespace Sphynx.Packet
     /// <summary>
     /// Represents the header of a <see cref="SphynxPacket"/>.
     /// </summary>
-    public sealed class SphynxPacketHeader : IEquatable<SphynxPacketHeader>
+    public struct SphynxPacketHeader : IEquatable<SphynxPacketHeader?>, IEquatable<SphynxPacketHeader>
     {
         /// <summary>
-        /// The packet signature to safe-guards against corrupted packets.
+        /// The packet signature to safe-guard against corrupted packets.
         /// </summary>
         public const ushort SIGNATURE = 0x5350;
 
@@ -194,6 +194,9 @@ namespace Sphynx.Packet
             ContentSize.WriteBytes(buffer, CONTENT_SIZE_OFFSET);
             return true;
         }
+        
+        /// <inheritdoc/>
+        public bool Equals(SphynxPacketHeader other) => PacketType == other.PacketType && ContentSize == other.ContentSize;
 
         /// <inheritdoc/>
         public bool Equals(SphynxPacketHeader? other) => PacketType == other?.PacketType && ContentSize == other?.ContentSize;
