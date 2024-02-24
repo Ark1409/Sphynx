@@ -1,2 +1,2 @@
-# sphynx
+# Sphynx
 A simple shell-based chat client made in .NET.
