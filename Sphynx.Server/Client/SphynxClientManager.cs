@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using Sphynx.Server.User;
-using Sphynx.Server.Utils;
+using Sphynx.Utils;
 
 namespace Sphynx.Server.Client
 {

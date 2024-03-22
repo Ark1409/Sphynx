@@ -111,7 +111,7 @@ namespace Sphynx.Server.Client
                     var packet = await ReceivePacketAsync().ConfigureAwait(false);
                     if (packet is null) continue;
                     
-                    // We want authentication to be the only packet evaluated "synchronously"?
+                    // We want authentication to be the only packet evaluated "synchronously"
                     if (packet.PacketType == SphynxPacketType.LOGIN_REQ && SphynxClientManager.IsAnonymous(this))
                     {
                         await _packetHandler.HandlePacketAsync(packet).ConfigureAwait(false);
