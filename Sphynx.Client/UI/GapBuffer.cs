@@ -34,14 +34,14 @@ namespace Sphynx.Client.UI
         public int GapBegin { get; protected set; }
 
         /// <summary>
-        /// Gets the end index of the gap buffer.
+        /// Gets the index of the element one past the end of the gap buffer.
         /// </summary>
         public int GapEnd { get; protected set; }
 
         /// <summary>
         /// Gets the size of the gap within the gap buffer.
         /// </summary>
-        public int GapSize => GapEnd - GapBegin + 1;
+        public int GapSize => GapEnd - GapBegin;
 
         /// <summary>
         /// Gets the number of characters in the buffer's textual representation (with the gap omitted).
@@ -64,7 +64,7 @@ namespace Sphynx.Client.UI
                 var bufferSpan = CollectionsMarshal.AsSpan(_buffer);
 
                 bufferSpan[..GapBegin].CopyTo(textSpan);
-                bufferSpan[(GapEnd + 1)..].CopyTo(textSpan[GapBegin..]);
+                bufferSpan[GapEnd..].CopyTo(textSpan[GapBegin..]);
 
                 return textArray;
             }
@@ -78,11 +78,11 @@ namespace Sphynx.Client.UI
         /// <param name="initialCapacity">The initial size of the gap buffer. Defaults to <see cref="DEFAULT_GAP_SIZE"/>.</param>
         public GapBuffer(int initialCapacity = DEFAULT_GAP_SIZE)
         {
-            initialCapacity = Math.Max(1, initialCapacity);
+            initialCapacity = Math.Max(0, initialCapacity);
             _buffer = new List<TChar>(initialCapacity);
             _buffer.Resize(initialCapacity);
             GapBegin = 0;
-            GapEnd = initialCapacity - 1;
+            GapEnd = initialCapacity;
         }
 
         /// <summary>
@@ -106,7 +106,7 @@ namespace Sphynx.Client.UI
         /// </summary>
         /// <param name="text">The text to add to the buffer</param>
         /// <returns><c>this</c>.</returns>
-        public GapBuffer<TChar> Insert(IEnumerable<TChar> text)
+        public virtual GapBuffer<TChar> Insert(IEnumerable<TChar> text)
         {
             var enumerable = text.ToArray();
 
@@ -119,6 +119,34 @@ namespace Sphynx.Client.UI
             return this;
         }
 
+        /// <inheritdoc cref="GapBuffer{TChar}.Insert(IEnumerable{TChar})"/>
+        public GapBuffer<TChar> Insert(TChar text) => Insert(new[] { text });
+
+        /// <summary>
+        /// Removes characters preceding the gap buffer
+        /// </summary>
+        /// <param name="count">The number of characters to remove.</param>
+        /// <returns><c>this</c>.</returns>
+        public GapBuffer<TChar> Erase(int count)
+        {
+            GapBegin = Math.Clamp(GapBegin - count, 0, GapEnd);
+            return this;
+        }
+
+        /// <inheritdoc cref="Erase"/>
+        public GapBuffer<TChar> Backspace(int count = 1) => Erase(count);
+
+        /// <summary>
+        /// Removes characters following the gap buffer.
+        /// </summary>
+        /// <param name="count">The number of characters to remove.</param>
+        /// <returns><c>this</c>.</returns>
+        public GapBuffer<TChar> Delete(int count)
+        {
+            GapEnd = Math.Clamp(GapEnd + count, GapBegin, _buffer.Count);
+            return this;
+        }
+
         /// <summary>
         /// Moves the gap buffer <paramref name="count"/> character(s) left or right.
         /// </summary>
@@ -128,17 +156,17 @@ namespace Sphynx.Client.UI
         /// <returns><c>this</c>.</returns>
         public GapBuffer<TChar> Move(int count)
         {
-            count = Math.Clamp(count, -GapBegin, _buffer.Count - GapEnd - 1);
+            count = Math.Clamp(count, -GapBegin, _buffer.Count - GapEnd);
 
             var bufferSpan = CollectionsMarshal.AsSpan(_buffer);
 
             if (count >= 0)
             {
-                bufferSpan.Slice(GapEnd + 1, count).CopyTo(bufferSpan.Slice(GapBegin, count));
+                bufferSpan.Slice(GapEnd, count).CopyTo(bufferSpan.Slice(GapBegin, count));
             }
             else
             {
-                bufferSpan.Slice(GapBegin + count, -count).CopyTo(bufferSpan.Slice(GapEnd + 1 + count, -count));
+                bufferSpan.Slice(GapBegin + count, -count).CopyTo(bufferSpan.Slice(GapEnd + count, -count));
             }
 
             GapBegin += count;
@@ -161,20 +189,19 @@ namespace Sphynx.Client.UI
         /// <exception cref="ArgumentOutOfRangeException">If <paramref name="gapSize"/> &lt; 0.</exception>
         public void ResizeGap(int gapSize)
         {
-            if (gapSize < 0) throw new ArgumentOutOfRangeException(nameof(gapSize), "Gap size must be greater than 0");
-            if (gapSize == 0) return;
+            if (gapSize < 0) throw new ArgumentOutOfRangeException(nameof(gapSize), "Gap size cannot be negative");
 
-            int copyCount = _buffer.Count - GapEnd - 1;
+            int copyCount = _buffer.Count - GapEnd;
             int gapDelta = gapSize - GapSize;
 
             if (gapDelta > 0) { _buffer.Grow(gapDelta); }
 
             var bufferSpan = CollectionsMarshal.AsSpan(_buffer);
-            bufferSpan.Slice(GapEnd + 1, copyCount).CopyTo(bufferSpan[(GapEnd + 1 + gapDelta)..]);
+            bufferSpan.Slice(GapEnd, copyCount).CopyTo(bufferSpan[(GapEnd + gapDelta)..]);
 
             if (gapDelta < 0) { _buffer.Shrink(-gapDelta); }
 
-            GapEnd = GapBegin + gapSize - 1;
+            GapEnd = GapBegin + gapSize;
         }
 
         /// <summary>
@@ -189,8 +216,11 @@ namespace Sphynx.Client.UI
         /// <param name="count">The number of characters to shrink by.</param>
         public void ShrinkGap(int count) => ResizeGap(GapSize - Math.Min(GapSize, count));
 
-        ///  <inheritdoc cref="Insert"/>
+        ///  <inheritdoc cref="Insert(IEnumerable{TChar})"/>
         public static GapBuffer<TChar> operator +(GapBuffer<TChar> b, IEnumerable<TChar> text) => b.Insert(text);
+
+        ///  <inheritdoc cref="Insert(TChar)"/>
+        public static GapBuffer<TChar> operator +(GapBuffer<TChar> b, TChar text) => b.Insert(text);
 
         ///  <inheritdoc cref="Move"/>
         public static GapBuffer<TChar> operator >> (GapBuffer<TChar> b, int count) => b.Move(count);
