@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using MongoDB.Driver;
 using Sphynx.Packet;
-using Sphynx.Server.Utils;
+using Sphynx.Utils;
 
 namespace Sphynx.Server.Storage
 {
@@ -11,7 +11,7 @@ namespace Sphynx.Server.Storage
     /// Represents a store which is backed by a single MongoDB collection.
     /// </summary>
     /// <typeparam name="TDocument">The type of document stored within the MongoDB collection.</typeparam>
-    public sealed class MongoStore<TDocument> : DatabaseStore<Guid, TDocument>
+    public sealed class MongoStore<TDocument> : DatabaseStore<Guid, TDocument> where TDocument : class, IIdentifiable<Guid>
     {
         /// <summary>
         /// Returns settings for the database associated with the collection for this store.
@@ -30,7 +30,7 @@ namespace Sphynx.Server.Storage
         /// Creates a new MongoDB collection store associated with the given <paramref name="collectionName"/>.
         /// </summary>
         /// <param name="collectionName">The name of the collection with which this store is registered.</param>
-        public MongoStore(string collectionName) : this(null!, collectionName)
+        public MongoStore(string collectionName) : this(null, collectionName)
         {
         }
 
@@ -39,27 +39,26 @@ namespace Sphynx.Server.Storage
         /// </summary>
         /// <param name="databaseName">Name of the database for the underlying collection.</param>
         /// <param name="collectionName">The name of the collection with which this store is registered.</param>
-        public MongoStore(string databaseName, string collectionName)
+        public MongoStore(string? databaseName, string collectionName)
         {
             _databaseName = databaseName;
             _collectionName = collectionName;
         }
 
         /// <inheritdoc/>
-        public override async Task<SphynxErrorInfo<TDocument?>> GetValueAsync(Guid id)
+        public override async Task<SphynxErrorInfo<TDocument?>> GetAsync(Guid id)
         {
             var client = RentClient(out var collection);
 
             try
             {
-                // TODO: Create interface for ID property
-                var filter = Builders<TDocument>.Filter.Eq<Guid>(t => default, id);
-
-                using (var cursor = await collection.FindAsync(filter))
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
+                
+                using (var cursor = await collection.FindAsync(docFilter))
                 {
                     return await cursor.MoveNextAsync()
                         ? new SphynxErrorInfo<TDocument?>(cursor.Current.FirstOrDefault())
-                        : new SphynxErrorInfo<TDocument?>(SphynxErrorCode.INVALID_QUERY);
+                        : new SphynxErrorInfo<TDocument?>(SphynxErrorCode.DB_READ_ERROR);
                 }
             }
             finally
@@ -68,15 +67,15 @@ namespace Sphynx.Server.Storage
             }
         }
 
-        public Task<IEnumerable<TDocument>> GetDocumentsAsync() => GetDocumentsWithAsync(_ => true);
-        
-        public async Task<IEnumerable<TDocument>> GetDocumentsWithAsync(Func<TDocument, bool> filter)
+        public Task<IEnumerable<TDocument>> GetDocumentsAsync() => GetDocumentsAsync(_ => true);
+
+        public async Task<IEnumerable<TDocument>> GetDocumentsAsync(Func<TDocument, bool> filter)
         {
             var client = RentClient(out var collection);
 
             try
             {
-                return await collection.Find(t => filter(t)).ToListAsync();
+                return await collection.Find(doc => filter(doc)).ToListAsync();
             }
             finally
             {
@@ -85,24 +84,26 @@ namespace Sphynx.Server.Storage
         }
 
         /// <inheritdoc/>
+#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         public override async Task<bool> PutAsync(Guid id, TDocument document)
+#pragma warning restore CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
         {
             var client = RentClient(out var collection);
 
             try
             {
-                // TODO: Create interface for ID property
-                var filter = Builders<TDocument>.Filter.Eq<Guid>(t => default, id);
-                var replaceResult = await collection.ReplaceOneAsync(filter, document, new ReplaceOptions { IsUpsert = true });
+                // TODO: Use string/memberinfo when possible to avoid looping
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
+                var replaceResult = await collection.ReplaceOneAsync(docFilter, document, new ReplaceOptions { IsUpsert = true });
 
-                return replaceResult.IsAcknowledged && (!replaceResult.IsModifiedCountAvailable || replaceResult.ModifiedCount >= 1);
+                return replaceResult.IsAcknowledged || (replaceResult.IsModifiedCountAvailable && replaceResult.ModifiedCount >= 1);
             }
             finally
             {
                 MongoClientPool.ReturnClient(client);
             }
         }
-        
+
         public Task InsertDocumentAsync(TDocument document)
         {
             var client = RentClient(out var collection);
@@ -137,10 +138,54 @@ namespace Sphynx.Server.Storage
 
             try
             {
-                // TODO: Create interface for ID property
-                var filter = Builders<TDocument>.Filter.Eq<Guid>(t => default, id);
+                // TODO: Use string/memberinfo when possible to avoid looping
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
                 var update = Builders<TDocument>.Update.Push(arrayName, element);
-                return collection.UpdateOneAsync(filter, update);
+                return collection.UpdateOneAsync(docFilter, update);
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<bool> PutFieldAsync<TValue>(Guid id, string fieldName, TValue? value) where TValue : default
+        {
+            var client = RentClient(out var collection);
+            try
+            {
+                // TODO: Use string/memberinfo when possible to avoid looping
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
+                var update = Builders<TDocument>.Update.Set(fieldName, value);
+
+                var updateTask = collection.UpdateOneAsync(docFilter, update, new UpdateOptions() { IsUpsert = true });
+                await updateTask;
+
+                return updateTask.IsCompletedSuccessfully;
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<SphynxErrorInfo<TValue?>> GetFieldAsync<TValue>(Guid id, string fieldName) where TValue : default
+        {
+            var client = RentClient(out var collection);
+            
+            try
+            {
+                // TODO: Perhaps use string/memberinfo when possible to avoid looping
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
+
+                using (var field = await collection.DistinctAsync<TValue?>(fieldName, docFilter))
+                {
+                    return await field.MoveNextAsync()
+                        ? new SphynxErrorInfo<TValue?>(field.Current.First())
+                        : new SphynxErrorInfo<TValue?>(SphynxErrorCode.DB_READ_ERROR);
+                }
             }
             finally
             {
@@ -148,16 +193,15 @@ namespace Sphynx.Server.Storage
             }
         }
         
-        public Task UpdateFieldAsync(Guid id, string field, string value)
+        /// <inheritdoc/>
+        public override async Task<bool> ContainsFieldAsync(string fieldName)
         {
             var client = RentClient(out var collection);
 
             try
             {
-                // TODO: Create interface for ID property
-                var filter = Builders<TDocument>.Filter.Eq<Guid>(t => default, id);
-                var update = Builders<TDocument>.Update.Set(field, value);
-                return collection.UpdateOneAsync(filter, update);
+                var existsFilter = Builders<TDocument>.Filter.Exists(fieldName);
+                return await collection.Find(existsFilter).Limit(1).CountDocumentsAsync() >= 1;
             }
             finally
             {
@@ -172,9 +216,9 @@ namespace Sphynx.Server.Storage
 
             try
             {
-                // TODO: Create interface for ID property
-                var filter = Builders<TDocument>.Filter.Eq<Guid>(t => default, id);
-                var deleteResult = await collection.DeleteOneAsync(filter);
+                // TODO: Perhaps use string/memberinfo when possible to avoid looping
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
+                var deleteResult = await collection.DeleteOneAsync(docFilter);
 
                 return deleteResult.DeletedCount >= 1 && deleteResult.IsAcknowledged;
             }
@@ -206,11 +250,6 @@ namespace Sphynx.Server.Storage
     /// </summary>
     internal static class MongoClientPool
     {
-        /// <summary>
-        /// File which stores database information.
-        /// </summary>
-        public const string DB_INFO_FILE = "db.info";
-
         private static readonly ConcurrentQueue<TrackingMongoClient> _clients = new ConcurrentQueue<TrackingMongoClient>();
 
         // Lazy init - no thread-safe wrapper needed; _clients already safely handles init
@@ -218,37 +257,39 @@ namespace Sphynx.Server.Storage
 
         public static TrackingMongoClient RentClient()
         {
-            TrackingMongoClient trackingClient;
-
-            if (_clients.TryPeek(out trackingClient!))
+            while (true)
             {
-                // It would be safe to assume that we will almost never have more than 100 or so connections (MongoDB default) simultaneously
-                // requesting database information; however, we still prepare in the case that we do. Perhaps also look into setting a more
-                // appropriate pool size before relying on multiple client instances, since there is currently no way of disposing a
-                // MongoClient instance.
-                if (trackingClient.NumConnections >= trackingClient.MongoClient.Settings.MaxConnectionPoolSize)
+                if (_clients.TryPeek(out var trackingClient))
                 {
-                    if (_clients.TryDequeue(out var fullClient))
+                    // It would be safe to assume that we will almost never have more than 100 or so connections (MongoDB default) simultaneously
+                    // requesting database information; however, we still prepare in the case that we do. Perhaps also look into setting a more
+                    // appropriate pool size before relying on multiple client instances, since there is currently no way of disposing a
+                    // MongoClient instance.
+                    if (trackingClient.NumConnections >= trackingClient.MongoClient.Settings.MaxConnectionPoolSize)
                     {
-                        trackingClient = EnqueueMongoClient();
-                        _dequeuedClients ??= new ConcurrentDictionary<IMongoClient, TrackingMongoClient>();
-                        Debug.Assert(_dequeuedClients.TryAdd(fullClient.MongoClient, fullClient));
-                    }
-                    // Someone beat us to this
-                    else
-                    {
-                        // A new MongoClient should be enqueued shortly after
-                        Thread.SpinWait(1);
+                        if (_clients.TryDequeue(out var fullClient))
+                        {
+                            trackingClient = EnqueueMongoClient();
+                            _dequeuedClients ??= new ConcurrentDictionary<IMongoClient, TrackingMongoClient>();
+                            Debug.Assert(_dequeuedClients.TryAdd(fullClient.MongoClient, fullClient));
+                        }
+                        // Someone beat us to this
+                        else
+                        {
+                            // A new MongoClient should be enqueued shortly after
+                            Thread.SpinWait(Environment.ProcessorCount);
+                            continue;
+                        }
                     }
                 }
-            }
-            else
-            {
-                trackingClient = EnqueueMongoClient();
-            }
+                else
+                {
+                    trackingClient = EnqueueMongoClient();
+                }
 
-            trackingClient.Rent();
-            return trackingClient;
+                trackingClient.Rent();
+                return trackingClient;
+            }
         }
 
         private static TrackingMongoClient EnqueueMongoClient(string customConnectStr = null!)
@@ -263,7 +304,7 @@ namespace Sphynx.Server.Storage
                     return new MongoClient(customConnectStr);
                 }
 
-                using (var reader = new StreamReader(File.OpenRead(DB_INFO_FILE)))
+                using (var reader = new StreamReader(File.OpenRead(DatabaseStoreFile.NAME)))
                 {
                     string connectionString = reader.ReadLine()!;
                     return new MongoClient(connectionString);
@@ -344,6 +385,8 @@ namespace Sphynx.Server.Storage
             private int _numConnections;
 
             private readonly Lazy<Dictionary<string, IMongoDatabase>> _databases;
+
+            // `object` should be fine since collections should be reference types anyway
             private readonly Lazy<Dictionary<string, object>> _collections;
             private readonly Lazy<IMongoDatabase> _defaultDb;
 
@@ -353,7 +396,7 @@ namespace Sphynx.Server.Storage
 
                 IMongoDatabase InitializeDefaultDb()
                 {
-                    using (var reader = new StreamReader(File.OpenRead(DB_INFO_FILE)))
+                    using (var reader = new StreamReader(File.OpenRead(DatabaseStoreFile.NAME)))
                     {
                         reader.ReadLine();
                         string dbName = reader.ReadLine()!;
@@ -381,11 +424,11 @@ namespace Sphynx.Server.Storage
 
                 return db;
             }
-            
+
             public IMongoCollection<T>? GetCollection<T>(string? dbName, string collectionName)
             {
                 var db = GetDatabase(dbName);
-                
+
                 if (!_collections.Value.TryGetValue(collectionName, out var rawCollection) &&
                     !_collections.Value.TryAdd(collectionName, rawCollection = db.GetCollection<T>(collectionName)))
                 {
