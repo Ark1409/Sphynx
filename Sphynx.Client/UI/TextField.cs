@@ -7,7 +7,7 @@ namespace Sphynx.Client.UI
         public override int? Height
         {
             get => 1;
-            set => throw new NotImplementedException();
+            set => throw new InvalidOperationException();
         }
 
         public TextField() { }
