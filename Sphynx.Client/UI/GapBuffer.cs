@@ -8,7 +8,7 @@ namespace Sphynx.Client.UI
     /// <summary>
     /// Represents a buffer to which text can be arbitrarily inserted.
     /// </summary>
-    internal class GapBuffer<TChar> : IEnumerable<TChar>, IEquatable<IEnumerable<TChar>>, IEquatable<GapBuffer<TChar>?> where TChar : new()
+    public class GapBuffer<TChar> : IEnumerable<TChar>, IEquatable<IEnumerable<TChar>>, IEquatable<GapBuffer<TChar>?> where TChar : new()
     {
         /// <summary>
         /// Default size of the gap buffer
@@ -151,7 +151,7 @@ namespace Sphynx.Client.UI
         /// Moves the gap buffer <paramref name="count"/> character(s) left or right.
         /// </summary>
         /// <param name="count">The amount by which the gap should be moved.
-        /// This value is automatically clamped onto [-<see cref="GapBegin"/>, <see cref="BufferCount"/>-<see cref="GapEnd"/>).
+        /// This value is automatically clamped onto [-<see cref="GapBegin"/>, <see cref="BufferCount"/>-<see cref="GapEnd"/>].
         /// Negative values move left, positive values move right.</param>
         /// <returns><c>this</c>.</returns>
         public GapBuffer<TChar> Move(int count)
@@ -178,7 +178,7 @@ namespace Sphynx.Client.UI
         /// Moves the gap buffer to the position specified by <paramref name="index"/>.
         /// </summary>
         /// <param name="index">The position to which the gap buffer should be moved.
-        /// This value is automatically clamped onto [0, <see cref="BufferCount"/>-<see cref="GapEnd"/>).</param>
+        /// This value is automatically clamped onto [0, <see cref="BufferCount"/>-<see cref="GapSize"/>].</param>
         /// <returns><c>this</c>.</returns>
         public GapBuffer<TChar> MoveAbs(int index) => Move(Math.Clamp(index, 0, Math.Max(0, _buffer.Count - GapSize)) - GapBegin);
 

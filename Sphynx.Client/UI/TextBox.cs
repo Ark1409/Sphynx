@@ -1,4 +1,5 @@
-﻿using Spectre.Console;
+﻿using System.Text;
+using Spectre.Console;
 using Spectre.Console.Rendering;
 using Sphynx.Client.Utils;
 
@@ -29,7 +30,7 @@ namespace Sphynx.Client.UI
         /// <summary>
         /// Gets or sets the height of the text box.
         /// </summary>
-        public int? Height { get; set; }
+        public virtual int? Height { get; set; }
 
         /// <summary>
         /// Gets the number of lines in the text box
@@ -70,12 +71,12 @@ namespace Sphynx.Client.UI
         public ValueTuple<char, Style> this[int pos] =>
             pos >= _buffer.Length || pos < 0
                 ? throw new ArgumentOutOfRangeException(nameof(pos))
-                : (pos < _buffer.GapBegin ? _buffer.Buffer[pos] : _buffer.Buffer[_buffer.GapEnd + 1 + pos - _buffer.GapBegin]);
+                : _buffer.Buffer[pos < _buffer.GapBegin ? pos : pos + _buffer.GapSize];
 
         /// <summary>
         /// Obtains the <see cref="StylizedGapBuffer"/> used for storing the styled text.
         /// </summary>
-        internal StylizedGapBuffer Buffer => _buffer;
+        public StylizedGapBuffer Buffer => _buffer;
 
         /// <summary>
         /// Gets the on-screen cursor position as a (row, column) pair, relative to the top-left of the text box,
@@ -143,9 +144,23 @@ namespace Sphynx.Client.UI
             }
         }
 
-        private readonly StylizedGapBuffer _buffer;
-        private int _width = 0;
-        private int _xPos = 0, _yPos = 0;
+        /// <summary>
+        /// Gets or sets whether the text in the text box should be hidden or displayed.
+        /// </summary>
+        /// <seealso cref="HiddenCharacter"/>
+        public bool Hidden { get; set; } = false;
+
+        /// <summary>
+        /// Represents the character used for hiding the text box's text content
+        /// </summary>
+        /// <seealso cref="Hidden"/>
+        public ValueTuple<char, Style> HiddenCharacter { get; set; } = ('*', Style.Plain);
+
+        public Style? TextColor { get; set; } = Style.Plain;
+
+        protected readonly StylizedGapBuffer _buffer;
+        protected int _width = 0;
+        protected int _xPos = 0, _yPos = 0;
 
         public TextBox()
         {
@@ -191,9 +206,9 @@ namespace Sphynx.Client.UI
 
         public TextBox Insert(in ValueTuple<string, Style> text) => Insert(text.Item1, text.Item2);
 
-        public TextBox Insert(in ValueTuple<char, Style> text) => Insert(new string(text.Item1, 1), text.Item2);
+        public TextBox Insert(in ValueTuple<char, Style> text) => Insert(text.Item1.ToString(), text.Item2);
 
-        public TextBox Insert(char str, Style? style = null) => Insert(new string(str, 1), style);
+        public TextBox Insert(char ch, Style? style = null) => Insert(ch.ToString(), style);
 
         public TextBox InsertLine() => Insert('\n');
 
@@ -265,7 +280,7 @@ namespace Sphynx.Client.UI
                 int cursorIndex = Math.Max(0, Cursor - 1);
                 for (; cursorIndex > 0 && buffer[cursorIndex].Item1 == ' '; cursorIndex--) { }
                 for (; cursorIndex > 0 && buffer[cursorIndex].Item1 != ' '; cursorIndex--) { }
-                _buffer.Erase(Cursor - cursorIndex);     
+                _buffer.Erase(Cursor - cursorIndex);
             }
             return this;
         }
@@ -430,15 +445,56 @@ namespace Sphynx.Client.UI
             }
         }
 
+        protected override Measurement Measure(RenderOptions options, int maxWidth)
+        {
+            return new Measurement(Math.Min(maxWidth, Width ?? maxWidth), Math.Min(maxWidth, Width ?? maxWidth));
+        }
+
         internal IEnumerable<Segment> DoRender(RenderOptions options, int maxWidth)
         {
             var para = new CharacterWrapParagraph();
-
-            foreach (var (str, style) in _buffer.TextBlocks)
+            if (Hidden)
             {
-                para.Append(str, style);
+                var (hiddenChar, hiddenStyle) = HiddenCharacter;
+                var buf = _buffer.Buffer;
+                var sb = new StringBuilder();
+
+                for (int i = 0; i < _buffer.BufferCount; i++)
+                {
+                    if (i == _buffer.GapBegin)
+                    {
+                        i += _buffer.GapSize;
+                        if (i >= _buffer.BufferCount) break;
+                    }
+
+                    var (ch, style) = buf[i];
+                    switch (ch)
+                    {
+                        case '\r' or '\n':
+                            para.Append(sb.ToString(), hiddenStyle);
+                            para.Append(ch.ToString(), style);
+                            sb.Clear();
+                            break;
+                        default:
+                            sb.Append(hiddenChar);
+                            break;
+                    }
+                }
+                if (sb.Length > 0) { para.Append(sb.ToString(), hiddenStyle); }
+            }
+            else
+            {
+                foreach (var (str, style) in _buffer.TextBlocks)
+                {
+                    para.Append(str, style);
+                }
             }
 
+            return DoRender(options, maxWidth, para);
+        }
+
+        protected IEnumerable<Segment> DoRender(RenderOptions options, int maxWidth, CharacterWrapParagraph para)
+        {
             para.Expand = Expand;
             para.Width = Width;
             para.Height = Height;
@@ -702,21 +758,21 @@ namespace Sphynx.Client.UI
         /// <returns><c>this</c>.</returns>
         public TextBox ScrollLeft(int count = 1) => ScrollRight(-count);
 
-        public bool HandleKey(in ConsoleKeyInfo key)
+        public virtual bool HandleKey(in ConsoleKeyInfo key)
         {
             char keyChar = key.KeyChar;
             switch (keyChar)
             {
-                case '\r':
-                    InsertLine();
+                case '\r' or '\n':
+                    Insert('\n', TextColor);
                     return true;
                 case '\t':
-                    Insert("    ");
+                    Insert("    ", TextColor);
                     return true;
                 default:
                     if (keyChar.IsLatin1Printable())
                     {
-                        Insert(keyChar);
+                        Insert(keyChar, TextColor);
                         return true;
                     }
                     break;
@@ -725,13 +781,13 @@ namespace Sphynx.Client.UI
             switch (key.Key)
             {
                 case ConsoleKey.LeftArrow:
-                    if (key.Modifiers.HasFlag(ConsoleModifiers.Control))
+                    if (((key.Modifiers & ConsoleModifiers.Control) == ConsoleModifiers.Control) || ((key.Modifiers & ConsoleModifiers.Alt) == ConsoleModifiers.Alt))
                         MoveWord(-1);
                     else
                         Cursor--;
                     return true;
                 case ConsoleKey.RightArrow:
-                    if (key.Modifiers.HasFlag(ConsoleModifiers.Control))
+                    if ((key.Modifiers & ConsoleModifiers.Control) == ConsoleModifiers.Control)
                         MoveWord(1);
                     else
                         Cursor++;
@@ -743,13 +799,13 @@ namespace Sphynx.Client.UI
                     NextLine();
                     return true;
                 case ConsoleKey.Backspace:
-                    if (key.Modifiers.HasFlag(ConsoleModifiers.Control))
+                    if ((key.Modifiers & ConsoleModifiers.Control) == ConsoleModifiers.Control)
                         EraseWord();
                     else
                         Backspace();
                     return true;
                 case ConsoleKey.Delete:
-                    if (key.Modifiers.HasFlag(ConsoleModifiers.Control))
+                    if ((key.Modifiers & ConsoleModifiers.Control) == ConsoleModifiers.Control)
                         DeleteWord();
                     else
                         Delete();

@@ -5,7 +5,7 @@ using Spectre.Console;
 
 namespace Sphynx.Client.UI
 {
-    internal class StylizedGapBuffer : GapBuffer<ValueTuple<char, Style>>
+    public class StylizedGapBuffer : GapBuffer<ValueTuple<char, Style>>
     {
         public override ValueTuple<char, Style>[] Text
         {
@@ -121,7 +121,7 @@ namespace Sphynx.Client.UI
         }
 
         /// <inheritdoc cref="GapBuffer{TChar}.Insert(TChar)"/>
-        public StylizedGapBuffer Insert(char text, Style? style = null) => Insert(new string(text, 1), style);
+        public StylizedGapBuffer Insert(char text, Style? style = null) => Insert(text.ToString(), style);
 
         /// <inheritdoc cref="GapBuffer{TChar}.Erase"/>
         public new StylizedGapBuffer Erase(int count) => (StylizedGapBuffer)base.Erase(count);
@@ -171,5 +171,9 @@ namespace Sphynx.Client.UI
         }
 
         public static ValueTuple<char, Style>[] AsStyledString(this string str, Style? style) => ToStyledString(str, style);
+
+        public static ValueTuple<char, Style> ToStyledCharacter(this char ch, Style? style) => new(ch, style ?? Style.Plain);
+
+        public static ValueTuple<char, Style> AsStyledCharacter(this char ch, Style? style) => ToStyledCharacter(ch, style);
     }
 }

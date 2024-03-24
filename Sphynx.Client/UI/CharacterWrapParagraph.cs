@@ -4,7 +4,7 @@ using Sphynx.Client.Utils;
 
 namespace Sphynx.Client.UI
 {
-    internal class CharacterWrapParagraph : Renderable, IExpandable, IOverflowable
+    public class CharacterWrapParagraph : Renderable, IExpandable, IOverflowable
     {
         /// <inheritdoc/>
         public bool Expand { get; set; } = true;
@@ -212,6 +212,11 @@ namespace Sphynx.Client.UI
         /// <returns><c>this</c></returns>
         public CharacterWrapParagraph ScrollLeft(int count = 1) => ScrollRight(-count);
 
+        protected override Measurement Measure(RenderOptions options, int maxWidth)
+        {
+            return new Measurement(Math.Min(maxWidth, Width ?? maxWidth), Math.Min(maxWidth, Width ?? maxWidth));
+        }
+
         internal IEnumerable<Segment> DoRender(RenderOptions options, int maxWidth)
         {
             int trueWidth = Expand ? maxWidth : Math.Min(Width ?? maxWidth, maxWidth);
@@ -403,10 +408,10 @@ namespace Sphynx.Client.UI
                     default: break;
                 }
             }
-
             if (-_yOffset + _lines.Count < trueHeight)
             {
-                para.Append("\x0\n".Repeat(trueHeight - (-_yOffset + _lines.Count)), Color.White);
+                var str = _lines.Count > 0 ? "\x0\n" : "\n";
+                para.Append(str.Repeat(trueHeight - (-_yOffset + _lines.Count)), Color.White);
             }
 
             return para.Crop().LeftJustified().GetSegments(AnsiConsole.Console);

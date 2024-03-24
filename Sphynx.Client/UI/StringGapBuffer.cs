@@ -2,7 +2,7 @@
 
 namespace Sphynx.Client.UI
 {
-    internal class StringGapBuffer : GapBuffer<char>
+    public class StringGapBuffer : GapBuffer<char>
     {
         /// <inheritdoc/>
         public override string Text => string.Create<object?>(Length,

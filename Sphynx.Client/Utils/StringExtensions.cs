@@ -7,7 +7,8 @@ namespace Sphynx.Client.Utils
     {
         public static string Repeat(this string str, int count)
         {
-            if (count <= 0) return string.Empty;
+            if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
+            if (count == 0) return string.Empty;
             if (count == 1) return str;
             if (str.Length == 1) return Repeat(str[0], count);
 
@@ -21,12 +22,20 @@ namespace Sphynx.Client.Utils
                 });
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static int NumberOf(this string str, char ch)
+        {
+            int count = 0;
+            for (int i = 0; (i = str.IndexOf(ch, i)) != -1; count++, i++) { }
+            return count;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string Repeat(this char ch, int count) => new(ch, count);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string RemoveTabs(this string str, int tabCount = 4) => str.Replace("\t", ' '.Repeat(tabCount));
-        
+
         [Pure]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsLatin1Printable(this char ch) => ch is >= '\x20' and <= '\x7E' or >= '\xA0' and <= '\xFF';

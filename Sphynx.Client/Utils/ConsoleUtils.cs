@@ -150,9 +150,7 @@ namespace Sphynx.Client.Utils
         /// <summary>
         /// Some virtual terminal emulators support a palette of colors greater than the 16 colors provided by the Windows Console. 
         /// For these extended colors, the Windows Console will choose the nearest appropriate color from the existing 16 color table for display. 
-        /// Unlike typical SGR values above, the extended values will consume additional parameters after the initial indicator according to the table below.
         /// </summary>
-        /// <param name="color">The RGB color to use.</param>
         public static void SetBackgroundColor(byte r, byte g, byte b) => Console.Write($"\x1b[48;2;{r};{g};{b}m");
 
         public static void ResetColors() => Console.Write("\x1b[0m");

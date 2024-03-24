@@ -31,8 +31,10 @@ namespace Sphynx.Client.UI
             }
         }
 
+        public int Count => Objects.Count;
+
         public static readonly Predicate<ConsoleKeyInfo> DefaultSwapPredicate
-            = (info => info.Key == ConsoleKey.Tab && info.Modifiers.HasFlag(ConsoleModifiers.Control));
+            = (info => info.Key == ConsoleKey.Tab);
 
         public Predicate<ConsoleKeyInfo>? SwapPredicate { get; set; } = DefaultSwapPredicate;
 
@@ -68,6 +70,7 @@ namespace Sphynx.Client.UI
         public FocusGroup<T> AddObject(T obj)
         {
             Objects.Add(obj);
+            _index = Math.Max(0, _index);
             return this;
         }
 
