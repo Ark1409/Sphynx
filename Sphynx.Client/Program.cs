@@ -1,12 +1,7 @@
-﻿using Sphynx.Client.Core;
-
-namespace Sphynx.Client
+﻿namespace Sphynx.Client
 {
-    internal class Program
+    internal static class Program
     {
-        static void Main(string[] args)
-        {
-            new SphynxClient(args).Start();
-        }
+        static int Main(string[] args) => SphynxClient.Run(args);
     }
 }
