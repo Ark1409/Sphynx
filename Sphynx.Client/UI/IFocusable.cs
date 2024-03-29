@@ -11,5 +11,8 @@
         /// <param name="key">The key input to handle.</param>
         /// <returns><c>true</c> if the key was successfully handled. <c>false</c> otherwise.</returns>
         public bool HandleKey(in ConsoleKeyInfo key);
+
+        public void OnFocus();
+        public void OnLeave();
     }
 }
