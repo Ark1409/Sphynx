@@ -10,7 +10,7 @@ namespace Sphynx.Client
     /// <summary>
     /// Represents the primary client interface for the application
     /// </summary>
-    public sealed class SphynxClient : IDisposable
+    public sealed class SphynxApp : IDisposable
     {
         /// <summary>
         /// The version of the client
@@ -68,10 +68,10 @@ namespace Sphynx.Client
         internal static readonly HashSet<string> PASSWORD_ARGS = new(new[] { "-p", "--password" });
 
         /// <summary>
-        /// Constructs a <see cref="SphynxClient"/> instance
+        /// Constructs a <see cref="SphynxApp"/> instance
         /// </summary>
         /// <param name="args">The command-line arguments for the client. Defaults to none (null).</param>
-        public SphynxClient(string[]? args = null) { _args = args; }
+        public SphynxApp(string[]? args = null) { _args = args; }
 
         /// <summary>
         /// Starts the client
@@ -334,10 +334,10 @@ namespace Sphynx.Client
 
         public static int Run(string[]? args)
         {
-            SphynxClient? client = null;
+            SphynxApp? client = null;
             try
             {
-                client = new SphynxClient(args);
+                client = new SphynxApp(args);
                 client.Start();
                 return 0;
             }

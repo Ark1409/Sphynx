@@ -14,9 +14,9 @@ namespace Sphynx.Client.State
         public SphynxSessionUser? User { get; private set; }
 
         /// <summary>
-        /// Holds the <see cref="SphynxClient"/> instance
+        /// Holds the <see cref="SphynxApp"/> instance
         /// </summary>
-        private readonly SphynxClient _client;
+        private readonly SphynxApp _app;
 
         private bool _running = true;
 
@@ -61,9 +61,9 @@ namespace Sphynx.Client.State
         /// </summary>
         private int _centerBoxWidth;
 
-        public SphynxLoginState(SphynxClient client)
+        public SphynxLoginState(SphynxApp app)
         {
-            _client = client;
+            _app = app;
         }
 
         public void OnEnter()

@@ -2,6 +2,6 @@
 {
     internal static class Program
     {
-        static int Main(string[] args) => SphynxClient.Run(args);
+        static int Main(string[] args) => SphynxApp.Run(args);
     }
 }

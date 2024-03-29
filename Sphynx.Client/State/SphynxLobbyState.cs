@@ -5,18 +5,18 @@ namespace Sphynx.Client.State
     internal class SphynxLobbyState : ISphynxState
     {
         private SphynxSessionUser _user;
-        private SphynxClient _client;
+        private SphynxApp _app;
 
-        public SphynxLobbyState(SphynxClient client, SphynxSessionUser user)
+        public SphynxLobbyState(SphynxApp app, SphynxSessionUser user)
         {
-            _client = client;
+            _app = app;
             _user = user;
         }
 
         public ISphynxState? Run()
         {
             ClearConsole();
-            Console.WriteLine($"Lobby state for {_client.Server!.GetUsername(_user)}");
+            Console.WriteLine($"Lobby state for {_app.Server!.GetUsername(_user)}");
             Thread.Sleep(5000);
             return null;
         }
@@ -28,7 +28,7 @@ namespace Sphynx.Client.State
             Console.ForegroundColor = ConsoleColor.Green;
             Console.ForegroundColor = Console.ForegroundColor == Console.BackgroundColor ? (ConsoleColor)((int)Console.ForegroundColor + 1) : Console.ForegroundColor;
 
-            Console.WriteLine(SphynxClient.GetHeader());
+            Console.WriteLine(SphynxApp.GetHeader());
         }
 
         public void Dispose()
