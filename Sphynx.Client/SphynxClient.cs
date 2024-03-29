@@ -1,14 +1,12 @@
-﻿using System.Net;
+﻿using System.Diagnostics;
+using System.Net;
 using System.Text;
-using Spectre.Console;
 using Sphynx.Client.Core;
 using Sphynx.Client.State;
-using Sphynx.Client.UI;
 using Sphynx.Client.Utils;
 
 namespace Sphynx.Client
 {
-
     /// <summary>
     /// Represents the primary client interface for the application
     /// </summary>
@@ -112,7 +110,10 @@ namespace Sphynx.Client
         {
             while (State is not null)
             {
-                State = State.Run();
+                State.OnEnter();
+                var newState = State.Run();
+                State.OnExit();
+                State = newState;
             }
         }
 
@@ -143,6 +144,9 @@ namespace Sphynx.Client
             // Change default cursor type
             ConsoleUtils.SetCursorType(ConsoleUtils.CursorType.BLINKING_BAR);
 
+            // Change console title to project title
+            ConsoleUtils.SetTitle("Sphynx");
+
             // Connect to server
             // TODO Maybe have a list of servers to which we can connect, and attempt to connect to the first working match
             // In order for this to work, a sort of "ping" packet type may have to be implemented to test server connectivity
@@ -167,7 +171,7 @@ namespace Sphynx.Client
                 {
                     string arg = _args[i].ToLower().Trim();
                     string? value = null;
-                    
+
                     int equalsIndex = arg.IndexOf('=');
                     if (equalsIndex != -1)
                     {
@@ -179,7 +183,7 @@ namespace Sphynx.Client
                         if (i < _args.Length - 1)
                             value = _args[++i].Trim();
                     }
-                    
+
                     if (arg == HOST_ARG)
                     {
                         if (value is not null)
@@ -340,6 +344,7 @@ namespace Sphynx.Client
             catch (Exception e)
             {
                 Console.Error.WriteLine(e);
+                Debug.Fail(e.ToString());
                 Thread.Sleep(500);
                 client?.Dispose();
                 return 1;

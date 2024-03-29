@@ -65,6 +65,7 @@ namespace Sphynx.Client.Utils
 
         /// <summary>
         /// Disables parsing of virtual terminal sequences on stdout (console).
+        /// This does not actually disable the ability in the console but reset it to its original capabilities.
         /// See <see cref="EnableVirtualTerminal"/> for more information.
         /// </summary>
         public static void DisableVirtualTerminal()
@@ -82,7 +83,11 @@ namespace Sphynx.Client.Utils
             _hStdOut = INVALID_HANDLE_VALUE;
             _oldConsoleMode = null;
         }
-
+        
+        /// <summary>
+        /// Checks if virtual terminal capabilities has been previously enabled by <see cref="EnableVirtualTerminal"/>.
+        /// </summary>
+        /// <returns><c>true</c> if virtual terminal capability was previously enabled, <c>false</c> otherwise.</returns>
         public static bool IsVirtualTerminalEnabled()
         {
             // Virtual terminal sequences should be (?) enabled by default on most *nix operating systems
@@ -90,22 +95,10 @@ namespace Sphynx.Client.Utils
             if (OperatingSystem.IsLinux()) return true;
 
             // Grab handle to stdout if it hasn't been cached
-            if (_hStdOut == INVALID_HANDLE_VALUE)
-            {
-                if ((_hStdOut = GetStdHandle(STD_OUTPUT_HANDLE)) == INVALID_HANDLE_VALUE)
-                {
-                    return false;
-                }
-            }
-
-            if (GetConsoleMode(_hStdOut, out var consoleMode) == 0)
-            {
-                _hStdOut = INVALID_HANDLE_VALUE;
-                return false;
-            }
+            if (_hStdOut == INVALID_HANDLE_VALUE || !_oldConsoleMode.HasValue) return false;
 
             const Int32 ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
-            return (consoleMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            return (_oldConsoleMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) == ENABLE_VIRTUAL_TERMINAL_PROCESSING;
         }
 
         /// <summary>
@@ -144,7 +137,6 @@ namespace Sphynx.Client.Utils
         /// For these extended colors, the Windows Console will choose the nearest appropriate color from the existing 16 color table for display. 
         /// Unlike typical SGR values above, the extended values will consume additional parameters after the initial indicator according to the table below.
         /// </summary>
-        /// <param name="color">The RGB color to use.</param>
         public static void SetForegroundColor(byte r, byte g, byte b) => Console.Write($"\x1b[38;2;{r};{g};{b}m");
 
         /// <summary>

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using Sphynx.Client.Core;
+﻿using Sphynx.Core;
 
 namespace Sphynx.Client.State
 {
@@ -35,6 +29,11 @@ namespace Sphynx.Client.State
             Console.ForegroundColor = Console.ForegroundColor == Console.BackgroundColor ? (ConsoleColor)((int)Console.ForegroundColor + 1) : Console.ForegroundColor;
 
             Console.WriteLine(SphynxClient.GetHeader());
+        }
+
+        public void Dispose()
+        {
+            
         }
     }
 }

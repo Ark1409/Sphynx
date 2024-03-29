@@ -1,199 +1,316 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using Sphynx.Client.Core;
+﻿using Spectre.Console;
+using Spectre.Console.Rendering;
+using Sphynx.Client.UI;
+using Sphynx.Client.Utils;
 using Sphynx.Core;
 
 namespace Sphynx.Client.State
 {
     internal class SphynxLoginState : ISphynxState
     {
+        /// <summary>
+        /// Holds the potentially logged-in user
+        /// </summary>
         public SphynxSessionUser? User { get; private set; }
 
+        /// <summary>
+        /// Holds the <see cref="SphynxClient"/> instance
+        /// </summary>
         private readonly SphynxClient _client;
+
+        private bool _running = true;
+
+        private Task? _inputTask;
+        private bool _inputTaskRunning = true;
+
+        /// <summary>
+        /// Main layout for the whole login screen interface
+        /// </summary>
+        private IRenderable _rootLayout;
+        private Panel _titlePanel, _mainPanel;
+        private const int _mainPanelRatio = 4;
+
+        private FigletFont _titleFont;
+        private FigletText _titleFiglet;
+
+        /// <summary>
+        /// Holds the list of items which can be focused upon,
+        /// those being the items in the login form.
+        /// </summary>
+        private FocusGroup<IFocusable> _items;
+        
+        /// <summary>
+        /// <see cref="TextField"/> representing the username text box
+        /// </summary>
+        private TextField _usernameTextBox;
+        
+        /// <summary>
+        /// <see cref="TextField"/> representing the password text box
+        /// </summary>
+        private TextField _passwordTextBox;
+        
+        /// <summary>
+        /// <see cref="Button"/> representing the login button
+        /// </summary>
+        private Button _loginButton;
+        
+        private Aligner _loginButtonAligner;
+        
+        /// <summary>
+        /// Holds the width of the center box
+        /// </summary>
+        private int _centerBoxWidth;
 
         public SphynxLoginState(SphynxClient client)
         {
             _client = client;
         }
 
+        public void OnEnter()
+        {
+            InitUI();
+        }
+
+        public void OnExit()
+        {
+            DestroyUI();
+        }
+
+        public void Dispose()
+        {
+            DestroyUI();
+        }
+
         public ISphynxState? Run()
         {
-            while (true)
+            while (_running)
             {
-            Username:
-                ClearConsole();
+                AnsiConsole.Cursor.Hide();
+                AnsiConsole.Reset();
+                ConsoleUtils.ResetColors();
+                AnsiConsole.Cursor.SetPosition(1, 1);
+                AnsiConsole.Cursor.Show();
+                Repaint();
 
-                Console.ForegroundColor = ConsoleColor.Green;
-
-                string username;
-                do
                 {
-                    Console.Write("Enter your username: ");
-                } while (string.IsNullOrEmpty(username = Console.ReadLine()!));
-
-                // Constant for holding max attempts until user must wait waitTime seconds
-                const int MAX_ATTEMPTS = 5;
-
-                // Holds the time the user will have to wait for if they fail MAX_ATTEMPTS times in a row
-                int waitTime = 5;
-
-                // Double the wait time each time they fail MAX_ATTEMPTS times in a row
-                for (ClearConsole(); ; ClearConsole(), waitTime *= 2)
-                {
-                    for (int @try = 0; @try < MAX_ATTEMPTS; @try++)
+                    int windowWidth = Console.WindowWidth, windowHeight = Console.WindowHeight;
+                    while (windowWidth == Console.WindowWidth && windowHeight == Console.WindowHeight)
                     {
-                        Console.WriteLine($"User: {username}\n");
-                        Console.Write("Enter your password: ");
-                        string? password = ReadPassword();
-
-                        if (string.IsNullOrEmpty(password))
-                        {
-                            goto Username;
-                        }
-
-                        User = _client.Server!.ConnectAs(username, password, out var err);
-
-                        switch (err)
-                        {
-                            case SphynxServer.ErrorCode.OK:
-                                goto End;
-                            case SphynxServer.ErrorCode.ALREADY_ONLINE:
-                                {
-                                    ClearConsole();
-                                    {
-                                        var currentForeground = Console.ForegroundColor;
-                                        Console.ForegroundColor = ConsoleColor.Red;
-                                        Console.WriteLine($"User '{username}' is already logged in on a different machine!\n");
-                                        Console.ForegroundColor = currentForeground;
-                                    }
-                                    Console.WriteLine("Retrying in...");
-                                    const int redoLoginWaitTime = 5;
-                                    int redoBarWidth = (Console.BufferWidth - "[] 100s".Length) / 3;
-                                    for (DateTime beginWait = DateTime.Now, currenTime = DateTime.Now; currenTime.Subtract(beginWait).TotalSeconds < redoLoginWaitTime; currenTime = DateTime.Now)
-                                    {
-                                        double diff = currenTime.Subtract(beginWait).TotalSeconds;
-                                        WriteLoadingBar(redoBarWidth, diff / redoLoginWaitTime);
-                                        Console.Write((int)(redoLoginWaitTime - diff + 1) + "s");
-                                        Thread.Sleep(32);
-                                    }
-
-                                    goto Username;
-                                }
-                            case SphynxServer.ErrorCode.INCORRECT_PASSWORD:
-                                {
-                                    if (@try < MAX_ATTEMPTS - 1)
-                                    {
-                                        ClearConsole();
-                                        Console.WriteLine("Incorrect password. Please try again...\n");
-                                    }
-                                    break;
-                                }
-                            default:
-                                {
-                                    {
-                                        ClearConsole();
-                                        var currentForeground = Console.ForegroundColor;
-                                        Console.ForegroundColor = ConsoleColor.Red;
-                                        Console.WriteLine("An error occured when trying to connect to the server...\n");
-                                        Console.ForegroundColor = currentForeground;
-                                    }
-
-                                    Console.WriteLine("Retrying in...");
-                                    const int redoLoginWaitTime = 2;
-                                    int redoBarWidth = (Console.BufferWidth - "[] 100s".Length) / 3;
-                                    for (DateTime beginWait = DateTime.Now, currenTime = DateTime.Now; currenTime.Subtract(beginWait).TotalSeconds < redoLoginWaitTime; currenTime = DateTime.Now)
-                                    {
-                                        double diff = currenTime.Subtract(beginWait).TotalSeconds;
-                                        WriteLoadingBar(redoBarWidth, diff / redoLoginWaitTime);
-                                        Console.Write((int)(redoLoginWaitTime - diff + 1) + "s");
-                                        Thread.Sleep(32);
-                                    }
-                                    goto Username;
-                                }
-                                
-                        }
+                        Thread.Yield();
+                        Thread.Sleep(1000 / 120);
                     }
-                    ClearConsole();
-                    Console.WriteLine($"Too many failed attempts. Please wait {waitTime} second{(waitTime == 1 ? string.Empty : "s")} before trying again...");
-
-                    int barWidth = Math.Min(waitTime * 3, Console.BufferWidth - "[] 100s".Length);
-                    for (DateTime beginWait = DateTime.Now, currenTime = DateTime.Now; currenTime.Subtract(beginWait).TotalSeconds < waitTime; currenTime = DateTime.Now)
-                    {
-                        double diff = currenTime.Subtract(beginWait).TotalSeconds;
-                        WriteLoadingBar(barWidth, diff / waitTime);
-                        Console.Write((int)diff + "s");
-                        Thread.Sleep(32);
-                    }
+                    windowWidth = Console.WindowWidth;
+                    windowHeight = Console.WindowHeight;
                 }
+
+                // TODO Do better than just clear the whole console
+                // AnsiConsole.Clear();
             }
-        End:
-            return new SphynxLobbyState(_client, User!);
-        }
-        private void ClearConsole()
-        {
-            Console.Clear();
 
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.ForegroundColor = Console.ForegroundColor == Console.BackgroundColor ? (ConsoleColor)((int)Console.ForegroundColor + 1) : Console.ForegroundColor;
-
-            Console.WriteLine(SphynxClient.GetHeader());
+            return null;
         }
 
-        private string? ReadPassword()
+        private void Repaint()
         {
-            var sb = new StringBuilder();
+            AnsiConsole.Cursor.Hide();
 
-            for (char c = Console.ReadKey(true).KeyChar; c != '\r' && c != '\n'; c = Console.ReadKey(true).KeyChar)
+            AnsiConsole.Write(_rootLayout);
+
+            _inputTask ??= Task.Run(HandleInput);
+
+            AnsiConsole.Cursor.SetPosition(1, 1);
+        }
+
+        private void HandleInput()
+        {
+            _inputTaskRunning = true;
+            while (_inputTaskRunning)
             {
-                if (c == '\b')
+                while (!Console.KeyAvailable)
                 {
-                    if (sb.Length > 0)
-                    {
-                        sb.Remove(sb.Length - 1, 1);
-                        Console.Write("\b \b");
-                    }
+                    if (!_inputTaskRunning) break;
+                    Thread.Sleep(1000 / 30);
                 }
-                else if (!IsLatin1Printable(c))
-                {
-                    var currentForeground = Console.ForegroundColor;
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(" <Aborted>");
-                    Console.ForegroundColor = currentForeground;
+                
+                if (!_inputTaskRunning) break;
+                var keyInfo = Console.ReadKey(true);
 
-                    Thread.Sleep(200);
-                    return null;
+                if (_items.HandleKey(keyInfo))
+                {
+                    Repaint();
                 }
                 else
                 {
-                    sb.Append(c);
-                    Console.Write('*');
+                    switch (keyInfo.KeyChar)
+                    {
+                        case '\r' or '\n':
+                            {
+                                var originalTarget = _items.Target;
+
+                                for (_items.ShiftFocus(); _items.Target != originalTarget; _items.ShiftFocus())
+                                {
+                                    if (_items.Target is TextField field)
+                                    {
+                                        if (string.IsNullOrEmpty(field.Buffer.PlainText))
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (_items.Target == originalTarget)
+                                {
+                                    _items.ShiftFocus();
+                                    // or submit form (log into server)
+                                }
+                                Repaint();
+                            }
+                            break;
+                        default: break;
+                    }
+                    switch (keyInfo.Key)
+                    {
+                        case ConsoleKey.UpArrow:
+                            _items.ShiftFocus(-1);
+                            Repaint();
+                            break;
+                        case ConsoleKey.DownArrow:
+                            _items.ShiftFocus();
+                            Repaint();
+                            break;
+                        default: break;
+                    }
+                }
+                if (_items.Target is TextField f)
+                {
+                    // TODO Calculate cursor position
+                    AnsiConsole.Cursor.Show();
+                }
+                else
+                {
+                    // Must be submit button, hide cursor
+                    AnsiConsole.Cursor.Hide();
                 }
             }
-            Console.WriteLine();
-            return sb.ToString();
         }
 
-        private bool IsLatin1Printable(char ch) => ch >= '\x20' && ch <= '\x7E' || ch >= '\xA0' && ch <= '\xFF';
-
-        /// <summary>
-        /// Writes a loading bar on the current line with the specified width
-        /// </summary>
-        /// <param name="width">The width of the loading bar, representing how many hash tags the bar will contain (overall width is always at least two characters)</param>
-        /// <param name="t">A value between [0, 1] representing the progress of the loading bar</param>
-        private void WriteLoadingBar(int width, double t)
+        private async void OnSubmit()
         {
-            Console.Write("\r[");
-            var sb = new StringBuilder();
-            for (int i = 0; i < width; i++)
+            Console.WriteLine("Hit Submit!");
+            Thread.Sleep(1000);
+
+            SphynxSessionUser? user = await ConnectToServer();
+
+            if (user is not null)
             {
-                sb.Append(i * 100 / width < 100 * t ? '#' : ' ');
+                _inputTaskRunning = false;
+                _running = false;
+                _inputTask = null;
             }
-            Console.Write(sb.ToString());
-            Console.Write("] ");
+            else
+            {
+                _inputTaskRunning = true;
+                _inputTask = null;
+            }
+        }
+
+        private async Task<SphynxSessionUser?> ConnectToServer()
+        {
+            // TODO Connect to server with proper credentials
+            if (false) { }
+
+            return null;
+        }
+
+        private void InitUI()
+        {
+            const int textFieldWidth = 40;
+
+            _usernameTextBox = new TextField();
+            _usernameTextBox.Ellipsis();
+            _usernameTextBox.TextColor = ColorExtensions.FromHex("7796CB");
+            _usernameTextBox.Width = textFieldWidth;
+
+            _passwordTextBox = new TextField();
+            _passwordTextBox.Ellipsis();
+            _passwordTextBox.Width = textFieldWidth;
+            _passwordTextBox.TextColor = ColorExtensions.FromHex("7796CB");
+            _passwordTextBox.HiddenCharacter.Item2 = _passwordTextBox.TextColor;
+            _passwordTextBox.Hidden = true;
+
+            _loginButton = new Button("Submit");
+            _loginButton.SelectedBorderStyle = ColorExtensions.FromHex("35A7FF");
+            _loginButton.SelectedTextStyle = _loginButton.SelectedBorderStyle;
+            _loginButton.RoundedBorder().SafeBorder();
+            _loginButton.OnClick += OnSubmit;
+
+            var usernameColumns = new Columns(new Markup("[#35A7FF]Login:   [/]"), _usernameTextBox);
+            var passwordColumns = new Columns(new Markup("[#35A7FF]Password:[/]"), _passwordTextBox);
+
+            Columns submitColumn;
+            {
+                _centerBoxWidth = textFieldWidth + "Password:".Length + 1;
+                _loginButtonAligner = Aligner.Center(_loginButton, VerticalAlignment.Middle);
+                _loginButtonAligner.Width = _centerBoxWidth;
+                submitColumn = new Columns(_loginButtonAligner);
+            }
+
+            submitColumn.Collapse();
+            submitColumn.Padding = new Padding(0, 0, 0, 0);
+
+            var centerPanel = new Panel(new Rows(
+                                      usernameColumns,
+                                      passwordColumns,
+                                      submitColumn
+                                      )
+                                  )
+                              .Collapse()
+                              .HeavyBorder()
+                              .BorderColor(ColorExtensions.FromHex("ffffff"))
+                              .SafeBorder()
+                              .Padding(2, 1);
+
+            _mainPanel = new Panel(Align.Center(centerPanel, VerticalAlignment.Middle))
+                         .Expand()
+                         .RoundedBorder()
+                         .BorderColor(ColorExtensions.FromHex("ffffff"))
+                         .SafeBorder();
+
+            _titleFont = FigletFont.Default;
+            _titleFiglet = new FigletText(_titleFont, "/SPHYNX/").Color(ColorExtensions.FromHex("FF5964"));
+            _titlePanel = new Panel(Align.Center(_titleFiglet, VerticalAlignment.Middle))
+                          .Expand()
+                          .RoundedBorder()
+                          .BorderColor(ColorExtensions.FromHex("ffffff"))
+                          .SafeBorder();
+
+            // _rootLayout = new Rows(
+            //     _titlePanel,
+            //     _mainPanel);
+
+            _rootLayout = new Layout("root")
+                .SplitRows(
+                    new Layout("top", _titlePanel).MinimumSize(_titleFont.Height + 1 * 2), // one space on top/bottom (Minimum height of 2 for border)
+                    new Layout("main", _mainPanel).Ratio(_mainPanelRatio).MinimumSize(2) // Minimum height of 2 for border
+                    );
+
+            _items = new();
+            _items.AddObject(_usernameTextBox);
+            _items.AddObject(_passwordTextBox);
+            _items.AddObject(_loginButton);
+        }
+
+        private void DestroyUI()
+        {
+            _rootLayout = null!;
+            _loginButton = null!;
+            _mainPanel = null!;
+            _titlePanel = null!;
+            _loginButtonAligner = null!;
+            _usernameTextBox = null!;
+            _passwordTextBox = null!;
+            _items = null!;
+            GC.Collect();
         }
     }
 }
