@@ -211,11 +211,13 @@ namespace Sphynx.Client.UI
         /// <param name="count">The number of columns by which the text box should shift right/left.</param>
         /// <returns><c>this</c></returns>
         public CharacterWrapParagraph ScrollLeft(int count = 1) => ScrollRight(-count);
-
-        protected override Measurement Measure(RenderOptions options, int maxWidth)
+        
+        internal Measurement DoMeasure(RenderOptions options, int maxWidth)
         {
             return new Measurement(Math.Min(maxWidth, Width ?? maxWidth), Math.Min(maxWidth, Width ?? maxWidth));
         }
+
+        protected override Measurement Measure(RenderOptions options, int maxWidth) => DoMeasure(options, maxWidth);
 
         internal IEnumerable<Segment> DoRender(RenderOptions options, int maxWidth)
         {

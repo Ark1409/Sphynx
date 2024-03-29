@@ -154,13 +154,14 @@ namespace Sphynx.Client.UI
         /// Represents the character used for hiding the text box's text content
         /// </summary>
         /// <seealso cref="Hidden"/>
-        public ValueTuple<char, Style> HiddenCharacter { get; set; } = ('*', Style.Plain);
+        public ref ValueTuple<char, Style> HiddenCharacter => ref _hiddenChar;
 
         public Style? TextColor { get; set; } = Style.Plain;
 
         protected readonly StylizedGapBuffer _buffer;
         protected int _width = 0;
         protected int _xPos = 0, _yPos = 0;
+        private ValueTuple<char, Style> _hiddenChar = ('*', Style.Plain);
 
         public TextBox()
         {
@@ -445,10 +446,12 @@ namespace Sphynx.Client.UI
             }
         }
 
-        protected override Measurement Measure(RenderOptions options, int maxWidth)
+        internal Measurement DoMeasure(RenderOptions options, int maxWidth)
         {
             return new Measurement(Math.Min(maxWidth, Width ?? maxWidth), Math.Min(maxWidth, Width ?? maxWidth));
         }
+
+        protected override Measurement Measure(RenderOptions options, int maxWidth) => DoMeasure(options, maxWidth);
 
         internal IEnumerable<Segment> DoRender(RenderOptions options, int maxWidth)
         {
@@ -500,7 +503,7 @@ namespace Sphynx.Client.UI
             para.Height = Height;
             para.Overflow = Overflow ??= Spectre.Console.Overflow.Ellipsis;
 
-            int trueWidth = Expand ? maxWidth : Math.Min(Width ?? maxWidth, maxWidth);
+            int trueWidth = Math.Max(0, Expand ? maxWidth : Math.Min(Width ?? maxWidth, maxWidth));
 
             int lineCount = Lines;
             // TODO para.Lines as trueHeight might not work for folding
@@ -563,7 +566,7 @@ namespace Sphynx.Client.UI
                     switch (Overflow)
                     {
                         case Spectre.Console.Overflow.Ellipsis:
-                            otherPageDiv = Math.Max(0, (linePos - trueWidth - 1) / (trueWidth - 1));
+                            otherPageDiv = trueWidth == 1 ? 0 : Math.Max(0, (linePos - trueWidth - 1) / (trueWidth - 1));
                             _xPos = Math.Max(0, firstPageDiv * trueWidth + otherPageDiv * (trueWidth - 1));
                             break;
                         default:
@@ -819,6 +822,16 @@ namespace Sphynx.Client.UI
             }
 
             return false;
+        }
+
+        public void OnFocus()
+        {
+            
+        }
+
+        public void OnLeave()
+        {
+            
         }
 
         public static TextBox operator +(TextBox textBox, in ValueTuple<char, Style> text) => textBox.Insert(text);
