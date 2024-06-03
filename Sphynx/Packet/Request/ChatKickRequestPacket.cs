@@ -7,7 +7,7 @@ namespace Sphynx.Packet.Request
     public sealed class ChatKickRequestPacket : SphynxRequestPacket, IEquatable<ChatKickRequestPacket>
     {
         /// <summary>
-        /// Room ID of the room to kick the user from.
+        /// RoomInfo ID of the room to kick the user from.
         /// </summary>
         public Guid RoomId { get; set; }
 
@@ -25,7 +25,7 @@ namespace Sphynx.Packet.Request
         /// <summary>
         /// Creates a new <see cref="ChatKickRequestPacket"/>.
         /// </summary>
-        /// <param name="roomId">Room ID of the room to kick the user from.</param>
+        /// <param name="roomId">RoomInfo ID of the room to kick the user from.</param>
         /// <param name="kickId">User ID of the user to kick from the room.</param>
         public ChatKickRequestPacket(Guid roomId, Guid kickId) : this(Guid.Empty, Guid.Empty, roomId, kickId)
         {
@@ -36,7 +36,7 @@ namespace Sphynx.Packet.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="roomId">Room ID of the room to leave.</param>
+        /// <param name="roomId">RoomInfo ID of the room to leave.</param>
         /// <param name="kickId">User ID of the user to kick from the room.</param>
         public ChatKickRequestPacket(Guid userId, Guid sessionId, Guid roomId, Guid kickId) : base(userId, sessionId)
         {

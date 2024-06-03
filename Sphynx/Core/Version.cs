@@ -49,7 +49,7 @@
         /// <summary>
         /// Checks if two versions are equal.
         /// </summary>
-        /// <param name="other">The other version to which this should be comapred.</param>
+        /// <param name="other">The other version to which this should be compared.</param>
         /// <returns>True if this version is the same as the given one, false otherwise.</returns>
         public readonly bool Equals(Version? other) => other.HasValue && CompareTo(other.Value) == 0;
 

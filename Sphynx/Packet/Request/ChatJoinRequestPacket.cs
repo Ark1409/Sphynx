@@ -10,7 +10,7 @@ namespace Sphynx.Packet.Request
     public sealed class ChatJoinRequestPacket : SphynxRequestPacket, IEquatable<ChatJoinRequestPacket>
     {
         /// <summary>
-        /// Room ID of the room to join.
+        /// RoomInfo ID of the room to join.
         /// </summary>
         public Guid RoomId { get; set; }
 
@@ -29,7 +29,7 @@ namespace Sphynx.Packet.Request
         /// <summary>
         /// Creates a new <see cref="ChatCreateResponsePacket"/>.
         /// </summary>
-        /// <param name="roomId">Room ID of the room to join.</param>
+        /// <param name="roomId">RoomInfo ID of the room to join.</param>
         /// <param name="password">Password for the room, if the room is guarded with a password.</param>
         public ChatJoinRequestPacket(Guid roomId, string? password = null) : this(Guid.Empty, Guid.Empty, roomId, password)
         {
@@ -40,7 +40,7 @@ namespace Sphynx.Packet.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="roomId">Room ID of the room to join.</param>
+        /// <param name="roomId">RoomInfo ID of the room to join.</param>
         /// <param name="password">Password for the room, if the room is guarded with a password.</param>
         public ChatJoinRequestPacket(Guid userId, Guid sessionId, Guid roomId, string? password = null) : base(userId, sessionId)
         {

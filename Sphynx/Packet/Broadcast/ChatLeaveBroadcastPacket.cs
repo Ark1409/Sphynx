@@ -7,7 +7,7 @@ namespace Sphynx.Packet.Broadcast
     public sealed class ChatLeaveBroadcastPacket : SphynxPacket, IEquatable<ChatLeaveBroadcastPacket>
     {
         /// <summary>
-        /// Room ID of the room the user has left.
+        /// RoomInfo ID of the room the user has left.
         /// </summary>
         public Guid RoomId { get; set; }
 
@@ -25,7 +25,7 @@ namespace Sphynx.Packet.Broadcast
         /// <summary>
         /// Creates a new <see cref="ChatLeaveBroadcastPacket"/>.
         /// </summary>
-        /// <param name="roomId">Room ID of the room the user has left.</param>
+        /// <param name="roomId">RoomInfo ID of the room the user has left.</param>
         /// <param name="leaverId">The user ID of the user who left the room.</param>
         public ChatLeaveBroadcastPacket(Guid roomId, Guid leaverId)
         {

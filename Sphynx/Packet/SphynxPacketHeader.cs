@@ -11,7 +11,7 @@ namespace Sphynx.Packet
     public struct SphynxPacketHeader : IEquatable<SphynxPacketHeader?>, IEquatable<SphynxPacketHeader>
     {
         /// <summary>
-        /// The packet signature to safe-guard against corrupted packets.
+        /// The packet signature to safeguard against corrupted packets.
         /// </summary>
         public const ushort SIGNATURE = 0x5350;
 
@@ -179,7 +179,7 @@ namespace Sphynx.Packet
         }
 
         /// <summary>
-        /// Attempts to serializes this header into a buffer of bytes.
+        /// Attempts to serialize this header into a buffer of bytes.
         /// </summary>
         /// <param name="buffer">The buffer to serialize this header into.</param>
         public bool TrySerialize(Span<byte> buffer)

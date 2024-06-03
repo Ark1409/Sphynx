@@ -18,9 +18,8 @@ namespace Sphynx.Packet.Request
         /// <summary>
         /// Password entered by user for login.
         /// </summary>
-        // TODO: !!! Temporary !!!
+        /// <remarks>We rely on SSL connection.</remarks>
         public string Password { get; set; }
-        // TODO: !!! Temporary !!!
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_REQ;

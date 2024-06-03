@@ -1,7 +1,9 @@
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
+using Sphynx.Packet;
 using Sphynx.Server.User;
 using Sphynx.Utils;
 
@@ -26,7 +28,7 @@ namespace Sphynx.Server.Client
             _sessionIds = new ConcurrentDictionary<Socket, Guid>();
             _userIds = new ConcurrentDictionary<Socket, Guid>();
         }
-        
+
         /// <summary>
         /// Checks whether the <paramref name="client"/> is an anonymous (i.e. unauthenticated) <see cref="SphynxClient"/>.
         /// </summary>
@@ -65,7 +67,7 @@ namespace Sphynx.Server.Client
             {
                 return existingClient;
             }
-            
+
             ClientAdded?.Invoke(client);
             return client;
         }
@@ -83,7 +85,7 @@ namespace Sphynx.Server.Client
                 // Remove first to prevent packet-sending errors
                 Debug.Assert(_anonymousClients.Remove(client.Socket, out _));
                 if (dispose) client.Dispose();
-                
+
                 ClientRemoved?.Invoke(client);
                 return true;
             }
@@ -91,35 +93,68 @@ namespace Sphynx.Server.Client
             if (TryGetUserId(client, out var userId))
             {
                 Debug.Assert(_authenticatedClients.TryGetValue(userId.Value, out var clients));
-                
+
                 // Remove first to prevent packet-sending errors
                 Debug.Assert(clients.Remove(client.Socket, out _));
                 Debug.Assert(_sessionIds.Remove(client.Socket, out _));
                 if (dispose) client.Dispose();
-                
+
                 ClientRemoved?.Invoke(client);
                 return true;
             }
 
             return false;
         }
-        
+
         /// <summary>
-        /// Attempts to authenticates the <paramref name="client"/> with the given <paramref name="credentials"/>, if they are valid;
+        /// Attempts to authenticate the <paramref name="client"/> with the given <paramref name="credentials"/>, if they are valid;
         /// else will return error information.
         /// </summary>
         /// <param name="client">The client to authenticate.</param>
         /// <param name="credentials">The user credentials with which to authenticate the <paramref name="client"/>.</param>
         /// <returns>Error information describing whether the client could be successfully authenticated.</returns>
-        public static async Task<SphynxErrorInfo<Guid>> AuthenticateClient(SphynxClient client, SphynxUserCredentials credentials)
+        public static async Task<SphynxErrorInfo<SphynxUserInfo?>> AuthenticateClient(SphynxClient client, SphynxUserCredentials credentials)
         {
-            // TODO: Query database
-            // TODO: Assign session ID
+            if (!IsAnonymous(client))
+                return new SphynxErrorInfo<SphynxUserInfo?>(SphynxErrorCode.ALREADY_LOGGED_IN);
+
+            var dbUser = await SphynxUserManager.GetUserAsync(credentials.UserName);
+
+            if (dbUser.ErrorCode != SphynxErrorCode.SUCCESS)
+                return new SphynxErrorInfo<SphynxUserInfo?>(SphynxErrorCode.INVALID_USER);
+
+            var rawUser = (SphynxDbUserInfo)dbUser.Data!;
+
+            byte[] dbPwdSalt = Convert.FromBase64String(rawUser.PasswordSalt!);
+            byte[] dbPwd = Convert.FromBase64String(rawUser.Password!);
+            byte[] enteredPwd = SphynxUserManager.HashPassword(credentials.Password, dbPwdSalt);
+
+            if (!SphynxUserManager.PasswordsEqual(dbPwd, enteredPwd))
+                return new SphynxErrorInfo<SphynxUserInfo?>(SphynxErrorCode.INVALID_PASSWORD);
             
+            // Immediately null-out password
+            rawUser.Password = null;
+            rawUser.PasswordSalt = null;
+            
+            // Remove from anonymous client
+            Debug.Assert(_anonymousClients.Remove(client.Socket, out _));
+            
+            // Add client to authenticated list
+            if (!_authenticatedClients.TryGetValue(dbUser.Data!.Id, out var clients))
+                clients = new ConcurrentDictionary<Socket, SphynxClient>();
+
+            Debug.Assert(clients.TryAdd(client.Socket, client));
+            
+            // Assign client session id
+            var sessionId = Guid.NewGuid();
+            Debug.Assert(_sessionIds.TryAdd(client.Socket, sessionId));
+            
+            // Notify subscribers
             ClientAuthenticated?.Invoke(client);
-            return default;
+            
+            return dbUser;
         }
-        
+
         /// <summary>
         /// Disassociates the previously authenticated <paramref name="client"/> from the user with which it was authenticated, effectively
         /// transforming it into an anonymous user.
@@ -134,7 +169,7 @@ namespace Sphynx.Server.Client
                 Debug.Assert(_authenticatedClients.TryGetValue(clientId, out var clients));
                 Debug.Assert(clients.Remove(client.Socket, out _));
                 Debug.Assert(_anonymousClients.TryAdd(client.Socket, client));
-                
+
                 ClientUnauthenticated?.Invoke(client);
                 return true;
             }
@@ -160,7 +195,7 @@ namespace Sphynx.Server.Client
             userId = null;
             return false;
         }
-        
+
         /// <summary>
         /// Attempts to retrieve the session ID for the authenticated <paramref name="client"/>.
         /// </summary>

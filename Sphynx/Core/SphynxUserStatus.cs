@@ -1,19 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Sphynx.Core
+﻿namespace Sphynx.Core
 {
     /// <summary>
-    /// Possible statuses for a <see cref="SphynxSessionUser"/>.
+    /// Possible statuses for a Sphynx user.
     /// </summary>
     public enum SphynxUserStatus : byte
     {
+        /// <summary>
+        /// The user is offline.
+        /// </summary>
         OFFLINE = 0,
+        
+        /// <summary>
+        /// The user is online.
+        /// </summary>
         ONLINE,
+        
+        /// <summary>
+        /// The user is away (idle).
+        /// </summary>
         AWAY,
-        DND
+        
+        /// <summary>
+        /// The user is set to Do Not Disturb.
+        /// </summary>
+        DO_NOT_DISTURB
     }
 }

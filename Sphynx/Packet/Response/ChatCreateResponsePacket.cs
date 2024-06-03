@@ -7,7 +7,7 @@ namespace Sphynx.Packet.Response
     public sealed class ChatCreateResponsePacket : SphynxResponsePacket, IEquatable<ChatCreateResponsePacket>
     {
         /// <summary>
-        /// Room ID assigned to the newly created room.
+        /// RoomInfo ID assigned to the newly created room.
         /// </summary>
         public Guid? RoomId { get; set; }
 
@@ -32,7 +32,7 @@ namespace Sphynx.Packet.Response
         /// <summary>
         /// Creates a new <see cref="ChatCreateResponsePacket"/>.
         /// </summary>
-        /// <param name="roomId">Room ID assigned to the newly created room.</param>
+        /// <param name="roomId">RoomInfo ID assigned to the newly created room.</param>
         public ChatCreateResponsePacket(Guid roomId) : base(SphynxErrorCode.SUCCESS)
         {
             RoomId = roomId;

@@ -1,4 +1,4 @@
 namespace Sphynx.Server.User
 {
-    public record struct SphynxUserCredentials(string Name, string Password);
+    public record struct SphynxUserCredentials(string UserName, string Password);
 }

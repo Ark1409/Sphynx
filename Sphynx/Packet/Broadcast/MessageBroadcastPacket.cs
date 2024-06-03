@@ -224,7 +224,7 @@ namespace Sphynx.Packet.Broadcast
         public sealed class Group : MessageBroadcastPacket, IEquatable<Group>
         {
             /// <summary>
-            /// Room ID to send the message to.
+            /// RoomInfo ID to send the message to.
             /// </summary>
             public Guid RoomId { get; set; }
 
@@ -239,7 +239,7 @@ namespace Sphynx.Packet.Broadcast
             /// <summary>
             /// Creates a new <see cref="MessageRequestPacket"/>, assuming the message is for a user.
             /// </summary>
-            /// <param name="roomId">Room ID to send the message to.</param>
+            /// <param name="roomId">RoomInfo ID to send the message to.</param>
             /// <param name="senderId">User ID of the sender.</param>
             /// <param name="message">The contents of the chat message.</param>
             public Group(Guid roomId, Guid senderId, string message) : base(senderId, message)

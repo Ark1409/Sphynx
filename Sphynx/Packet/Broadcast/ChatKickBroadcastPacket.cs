@@ -7,7 +7,7 @@ namespace Sphynx.Packet.Broadcast
     public sealed class ChatKickBroadcastPacket : SphynxPacket, IEquatable<ChatKickBroadcastPacket>
     {
         /// <summary>
-        /// Room ID of the room to kick the user from.
+        /// RoomInfo ID of the room to kick the user from.
         /// </summary>
         public Guid RoomId { get; set; }
 
@@ -25,7 +25,7 @@ namespace Sphynx.Packet.Broadcast
         /// <summary>
         /// Creates a new <see cref="ChatKickBroadcastPacket"/>.
         /// </summary>
-        /// <param name="roomId">Room ID of the room to kick the user from.</param>
+        /// <param name="roomId">RoomInfo ID of the room to kick the user from.</param>
         /// <param name="kickedId">User ID of the user that was kicked.</param>
         public ChatKickBroadcastPacket(Guid roomId, Guid kickedId)
         {

@@ -7,7 +7,7 @@ namespace Sphynx.Packet.Broadcast
     public sealed class ChatDeleteBroadcastPacket : SphynxPacket, IEquatable<ChatDeleteBroadcastPacket>
     {
         /// <summary>
-        /// Room ID of the deleted room.
+        /// RoomInfo ID of the deleted room.
         /// </summary>
         public Guid RoomId { get; set; }
 
@@ -19,7 +19,7 @@ namespace Sphynx.Packet.Broadcast
         /// <summary>
         /// Creates a new <see cref="ChatDeleteBroadcastPacket"/>.
         /// </summary>
-        /// <param name="roomId">Room ID of the deleted room.</param>
+        /// <param name="roomId">RoomInfo ID of the deleted room.</param>
         public ChatDeleteBroadcastPacket(Guid roomId)
         {
             RoomId = roomId;

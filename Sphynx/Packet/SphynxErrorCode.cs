@@ -1,7 +1,7 @@
 ﻿namespace Sphynx.Packet
 {
     /// <summary>
-    /// Error code for packet responses.
+    /// Error codes used within the <see cref="Sphynx"/> application.
     /// </summary>
     public enum SphynxErrorCode : byte
     {
@@ -11,7 +11,7 @@
         SUCCESS = 0,
 
         /// <summary>
-        /// Invalid (unknown) username address at login.
+        /// Invalid (unknown/already exists) username.
         /// </summary>
         INVALID_USERNAME,
 
@@ -38,6 +38,27 @@
         /// <summary>
         /// Rate limited.
         /// </summary>
-        ENHANCE_YOUR_CALM
+        ENHANCE_YOUR_CALM,
+        
+        /// <summary>
+        /// An error occured while attempting to read from the database. Could also happen due to an
+        /// invalid query.
+        /// </summary>
+        DB_READ_ERROR,
+        
+        /// <summary>
+        /// An error occured while attempting to write to the database.
+        /// </summary>
+        DB_WRITE_ERROR,
+        
+        /// <summary>
+        /// Invalid (unknown/already exists) room ID.
+        /// </summary>
+        INVALID_ROOM,
+        
+        /// <summary>
+        /// Attempt to authenticate when already logged in.
+        /// </summary>
+        ALREADY_LOGGED_IN
     }
 }

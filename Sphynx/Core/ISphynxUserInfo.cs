@@ -1,7 +1,7 @@
 ﻿namespace Sphynx.Core
 {
     /// <summary>
-    /// A type that holds information about a specific Sphynx user.
+    /// A type which holds information about a specific Sphynx user.
     /// </summary>
     public interface ISphynxUserInfo : IEquatable<ISphynxUserInfo>
     {

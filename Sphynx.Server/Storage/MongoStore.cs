@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using MongoDB.Driver;
+using MongoDB.Bson.Serialization.Attributes;
 using Sphynx.Packet;
 using Sphynx.Utils;
 
@@ -13,6 +14,11 @@ namespace Sphynx.Server.Storage
     /// <typeparam name="TDocument">The type of document stored within the MongoDB collection.</typeparam>
     public sealed class MongoStore<TDocument> : DatabaseStore<Guid, TDocument> where TDocument : class, IIdentifiable<Guid>
     {
+        /// <summary>
+        /// Name of <see cref="BsonIdAttribute"/> field for a MongoDB document.
+        /// </summary>
+        public const string MONGO_ID_FIELD = "_id";
+
         /// <summary>
         /// Returns settings for the database associated with the collection for this store.
         /// </summary>
@@ -46,6 +52,49 @@ namespace Sphynx.Server.Storage
         }
 
         /// <inheritdoc/>
+        public override async Task<bool> PutAsync(Guid id, TDocument document)
+        {
+            return await ContainsAsync(id) ? await UpdateAsync(document) : await InsertAsync(document);
+        }
+
+        /// <inheritdoc/>
+        public override async Task<bool> InsertAsync(TDocument document)
+        {
+            var client = RentClient(out var collection);
+
+            try
+            {
+                var insertTask = collection.InsertOneAsync(document);
+                await insertTask;
+                return insertTask.IsCompletedSuccessfully;
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        public override async Task<bool> UpdateAsync(TDocument document)
+        {
+            var client = RentClient(out var collection);
+
+            try
+            {
+                // TODO: Use string/memberinfo when possible to avoid looping
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, document.Id);
+                var replaceTask = collection.ReplaceOneAsync(docFilter, document, new ReplaceOptions { IsUpsert = true });
+                var replaceResult = await replaceTask;
+
+                return replaceTask.IsCompletedSuccessfully &&
+                       (replaceResult.IsAcknowledged || !replaceResult.IsModifiedCountAvailable || replaceResult.ModifiedCount >= 1);
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <inheritdoc/>
         public override async Task<SphynxErrorInfo<TDocument?>> GetAsync(Guid id)
         {
             var client = RentClient(out var collection);
@@ -53,6 +102,57 @@ namespace Sphynx.Server.Storage
             try
             {
                 var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
+
+                using (var cursor = await collection.FindAsync(docFilter))
+                {
+                    return await cursor.MoveNextAsync()
+                        ? new SphynxErrorInfo<TDocument?>(cursor.Current.FirstOrDefault())
+                        : new SphynxErrorInfo<TDocument?>(SphynxErrorCode.DB_READ_ERROR);
+                }
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<SphynxErrorInfo<TDocument?>> GetAsync(Guid id, params string[] excludedFields)
+        {
+            if (excludedFields?.Length <= 0)
+                return await GetAsync(id);
+
+            var client = RentClient(out var collection);
+
+            try
+            {
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
+                var excludeProjection = Builders<TDocument>.Projection.Exclude(excludedFields![0]);
+
+                for (int i = 1; i < excludedFields.Length; i++) excludeProjection.Exclude(excludedFields[i]);
+
+                var findFluent = collection.Find(docFilter).Project<TDocument>(excludeProjection).Limit(1);
+                using (var cursor = await findFluent.ToCursorAsync())
+                {
+                    return await cursor.MoveNextAsync()
+                        ? new SphynxErrorInfo<TDocument?>(cursor.Current.FirstOrDefault())
+                        : new SphynxErrorInfo<TDocument?>(SphynxErrorCode.DB_READ_ERROR);
+                }
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <interitdoc/>
+        public override async Task<SphynxErrorInfo<TDocument?>> GetWhereAsync<TField>(string fieldName, TField value)
+        {
+            var client = RentClient(out var collection);
+
+            try
+            {
+                var docFilter = Builders<TDocument>.Filter.Eq(fieldName, value);
                 
                 using (var cursor = await collection.FindAsync(docFilter))
                 {
@@ -60,6 +160,88 @@ namespace Sphynx.Server.Storage
                         ? new SphynxErrorInfo<TDocument?>(cursor.Current.FirstOrDefault())
                         : new SphynxErrorInfo<TDocument?>(SphynxErrorCode.DB_READ_ERROR);
                 }
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<SphynxErrorInfo<TDocument?>> GetWhereAsync<TField>(string fieldName, TField value, params string[] excludedFields)
+        {
+            if (excludedFields.Length <= 0)
+                return await GetWhereAsync(fieldName, value);
+            
+            var client = RentClient(out var collection);
+
+            try
+            {
+                var docFilter = Builders<TDocument>.Filter.Eq(fieldName, value);
+                var excludeProjection = Builders<TDocument>.Projection.Exclude(excludedFields![0]);
+
+                for (int i = 1; i < excludedFields.Length; i++) excludeProjection.Exclude(excludedFields[i]);
+
+                var findFluent = collection.Find(docFilter).Project<TDocument>(excludeProjection).Limit(1);
+                using (var cursor = await findFluent.ToCursorAsync())
+                {
+                    return await cursor.MoveNextAsync()
+                        ? new SphynxErrorInfo<TDocument?>(cursor.Current.FirstOrDefault())
+                        : new SphynxErrorInfo<TDocument?>(SphynxErrorCode.DB_READ_ERROR);
+                }
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<bool> ContainsAsync(Guid id)
+        {
+            var client = RentClient(out var collection);
+
+            try
+            {
+                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
+                return await collection.Find(docFilter).Limit(1).CountDocumentsAsync() >= 1;
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<long> DeleteWhereAsync<TField>(string fieldName, TField value)
+        {
+            var client = RentClient(out var collection);
+
+            try
+            {
+                var docFilter = Builders<TDocument>.Filter.Eq(fieldName, value);
+                var deleteTask = collection.DeleteManyAsync(docFilter);
+                var deleteResult = await deleteTask;
+
+                return deleteTask.IsCompletedSuccessfully && deleteResult.IsAcknowledged ? deleteResult.DeletedCount : 0;
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        public async Task<long> DeleteWhereAsync(Func<TDocument, bool> filter)
+        {
+            var client = RentClient(out var collection);
+
+            try
+            {
+                var docFilter = Builders<TDocument>.Filter.Where(doc => filter(doc));
+                var deleteTask = collection.DeleteManyAsync(docFilter);
+                var deleteResult = await deleteTask;
+
+                return deleteTask.IsCompletedSuccessfully && deleteResult.IsAcknowledged ? deleteResult.DeletedCount : 0;
             }
             finally
             {
@@ -76,41 +258,6 @@ namespace Sphynx.Server.Storage
             try
             {
                 return await collection.Find(doc => filter(doc)).ToListAsync();
-            }
-            finally
-            {
-                MongoClientPool.ReturnClient(client);
-            }
-        }
-
-        /// <inheritdoc/>
-#pragma warning disable CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
-        public override async Task<bool> PutAsync(Guid id, TDocument document)
-#pragma warning restore CS8765 // Nullability of type of parameter doesn't match overridden member (possibly because of nullability attributes).
-        {
-            var client = RentClient(out var collection);
-
-            try
-            {
-                // TODO: Use string/memberinfo when possible to avoid looping
-                var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
-                var replaceResult = await collection.ReplaceOneAsync(docFilter, document, new ReplaceOptions { IsUpsert = true });
-
-                return replaceResult.IsAcknowledged || (replaceResult.IsModifiedCountAvailable && replaceResult.ModifiedCount >= 1);
-            }
-            finally
-            {
-                MongoClientPool.ReturnClient(client);
-            }
-        }
-
-        public Task InsertDocumentAsync(TDocument document)
-        {
-            var client = RentClient(out var collection);
-
-            try
-            {
-                return collection.InsertOneAsync(document);
             }
             finally
             {
@@ -157,12 +304,12 @@ namespace Sphynx.Server.Storage
             {
                 // TODO: Use string/memberinfo when possible to avoid looping
                 var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
-                var update = Builders<TDocument>.Update.Set(fieldName, value);
+                var updateDefinition = Builders<TDocument>.Update.Set(fieldName, value);
 
-                var updateTask = collection.UpdateOneAsync(docFilter, update, new UpdateOptions() { IsUpsert = true });
-                await updateTask;
+                var updateTask = collection.UpdateOneAsync(docFilter, updateDefinition, new UpdateOptions() { IsUpsert = true });
+                var updateResult = await updateTask;
 
-                return updateTask.IsCompletedSuccessfully;
+                return updateTask.IsCompletedSuccessfully && updateResult.IsAcknowledged;
             }
             finally
             {
@@ -174,7 +321,7 @@ namespace Sphynx.Server.Storage
         public override async Task<SphynxErrorInfo<TValue?>> GetFieldAsync<TValue>(Guid id, string fieldName) where TValue : default
         {
             var client = RentClient(out var collection);
-            
+
             try
             {
                 // TODO: Perhaps use string/memberinfo when possible to avoid looping
@@ -192,7 +339,7 @@ namespace Sphynx.Server.Storage
                 MongoClientPool.ReturnClient(client);
             }
         }
-        
+
         /// <inheritdoc/>
         public override async Task<bool> ContainsFieldAsync(string fieldName)
         {
@@ -218,9 +365,10 @@ namespace Sphynx.Server.Storage
             {
                 // TODO: Perhaps use string/memberinfo when possible to avoid looping
                 var docFilter = Builders<TDocument>.Filter.Eq(doc => doc.Id, id);
-                var deleteResult = await collection.DeleteOneAsync(docFilter);
+                var deleteTask = collection.DeleteOneAsync(docFilter);
+                var deleteResult = await deleteTask;
 
-                return deleteResult.DeletedCount >= 1 && deleteResult.IsAcknowledged;
+                return deleteTask.IsCompletedSuccessfully && deleteResult.DeletedCount >= 1 && deleteResult.IsAcknowledged;
             }
             finally
             {
@@ -304,7 +452,7 @@ namespace Sphynx.Server.Storage
                     return new MongoClient(customConnectStr);
                 }
 
-                using (var reader = new StreamReader(File.OpenRead(DatabaseStoreFile.NAME)))
+                using (var reader = new StreamReader(File.OpenRead(DatabaseInfoFile.NAME)))
                 {
                     string connectionString = reader.ReadLine()!;
                     return new MongoClient(connectionString);
@@ -396,7 +544,7 @@ namespace Sphynx.Server.Storage
 
                 IMongoDatabase InitializeDefaultDb()
                 {
-                    using (var reader = new StreamReader(File.OpenRead(DatabaseStoreFile.NAME)))
+                    using (var reader = new StreamReader(File.OpenRead(DatabaseInfoFile.NAME)))
                     {
                         reader.ReadLine();
                         string dbName = reader.ReadLine()!;
