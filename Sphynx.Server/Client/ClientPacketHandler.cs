@@ -50,7 +50,8 @@ namespace Sphynx.Server.Client
         {
             var loginInfo = await SphynxClientManager.AuthenticateClient(_client, new SphynxUserCredentials(request.UserName, request.Password));
             var loginResponse = new LoginResponsePacket(loginInfo.ErrorCode);
-
+            
+            // TODO: Send user data along with response (we need to send session id)
             return await _client.SendPacketAsync(loginResponse);
         }
 

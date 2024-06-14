@@ -153,7 +153,7 @@ namespace Sphynx.Server.Storage
             try
             {
                 var docFilter = Builders<TDocument>.Filter.Eq(fieldName, value);
-                
+
                 using (var cursor = await collection.FindAsync(docFilter))
                 {
                     return await cursor.MoveNextAsync()
@@ -172,7 +172,7 @@ namespace Sphynx.Server.Storage
         {
             if (excludedFields.Length <= 0)
                 return await GetWhereAsync(fieldName, value);
-            
+
             var client = RentClient(out var collection);
 
             try
@@ -348,6 +348,22 @@ namespace Sphynx.Server.Storage
             try
             {
                 var existsFilter = Builders<TDocument>.Filter.Exists(fieldName);
+                return await collection.Find(existsFilter).Limit(1).CountDocumentsAsync() >= 1;
+            }
+            finally
+            {
+                MongoClientPool.ReturnClient(client);
+            }
+        }
+
+        /// <inheritdoc/>
+        public override async Task<bool> ContainsFieldAsync<TField>(string fieldName, TField value)
+        {
+            var client = RentClient(out var collection);
+
+            try
+            {
+                var existsFilter = Builders<TDocument>.Filter.Eq(fieldName, value);
                 return await collection.Find(existsFilter).Limit(1).CountDocumentsAsync() >= 1;
             }
             finally

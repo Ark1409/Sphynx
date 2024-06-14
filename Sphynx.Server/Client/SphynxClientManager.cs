@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
 using Sphynx.Packet;
 using Sphynx.Server.User;
+using Sphynx.Server.Utils;
 using Sphynx.Utils;
 
 namespace Sphynx.Server.Client
@@ -113,45 +114,42 @@ namespace Sphynx.Server.Client
         /// <param name="client">The client to authenticate.</param>
         /// <param name="credentials">The user credentials with which to authenticate the <paramref name="client"/>.</param>
         /// <returns>Error information describing whether the client could be successfully authenticated.</returns>
-        public static async Task<SphynxErrorInfo<SphynxUserInfo?>> AuthenticateClient(SphynxClient client, SphynxUserCredentials credentials)
+        public static async Task<SphynxErrorInfo<SphynxUserDbInfo?>> AuthenticateClient(SphynxClient client, SphynxUserCredentials credentials)
         {
             if (!IsAnonymous(client))
-                return new SphynxErrorInfo<SphynxUserInfo?>(SphynxErrorCode.ALREADY_LOGGED_IN);
+                return new SphynxErrorInfo<SphynxUserDbInfo?>(SphynxErrorCode.ALREADY_LOGGED_IN);
 
-            var dbUser = await SphynxUserManager.GetUserAsync(credentials.UserName);
+            var dbUser = await SphynxUserManager.GetUserAsync(credentials.UserName, true);
 
             if (dbUser.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new SphynxErrorInfo<SphynxUserInfo?>(SphynxErrorCode.INVALID_USER);
+                return new SphynxErrorInfo<SphynxUserDbInfo?>(SphynxErrorCode.INVALID_USER);
 
-            var rawUser = (SphynxDbUserInfo)dbUser.Data!;
+            // Verify password
+            var passwordCheck = PasswordManager.VerifyPassword(dbUser.Data!.Password!, dbUser.Data!.PasswordSalt!,
+                credentials.Password);
+            if (passwordCheck != SphynxErrorCode.SUCCESS) return new SphynxErrorInfo<SphynxUserDbInfo?>(passwordCheck);
 
-            byte[] dbPwdSalt = Convert.FromBase64String(rawUser.PasswordSalt!);
-            byte[] dbPwd = Convert.FromBase64String(rawUser.Password!);
-            byte[] enteredPwd = SphynxUserManager.HashPassword(credentials.Password, dbPwdSalt);
-
-            if (!SphynxUserManager.PasswordsEqual(dbPwd, enteredPwd))
-                return new SphynxErrorInfo<SphynxUserInfo?>(SphynxErrorCode.INVALID_PASSWORD);
-            
             // Immediately null-out password
-            rawUser.Password = null;
-            rawUser.PasswordSalt = null;
-            
+            dbUser.Data!.Password = null;
+            dbUser.Data!.PasswordSalt = null;
+
             // Remove from anonymous client
             Debug.Assert(_anonymousClients.Remove(client.Socket, out _));
-            
+
             // Add client to authenticated list
             if (!_authenticatedClients.TryGetValue(dbUser.Data!.Id, out var clients))
                 clients = new ConcurrentDictionary<Socket, SphynxClient>();
 
             Debug.Assert(clients.TryAdd(client.Socket, client));
-            
+
             // Assign client session id
             var sessionId = Guid.NewGuid();
             Debug.Assert(_sessionIds.TryAdd(client.Socket, sessionId));
-            
+
             // Notify subscribers
             ClientAuthenticated?.Invoke(client);
-            
+
+            // TODO: Return tuple (for session id)?
             return dbUser;
         }
 

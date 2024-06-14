@@ -97,6 +97,16 @@ namespace Sphynx.Server.Storage
         /// <returns>true if there is <see cref="TContent"/> which contains a field with the specified
         /// name; false otherwise.</returns>
         public abstract Task<bool> ContainsFieldAsync(string fieldName);
+        
+        /// <summary>
+        /// Checks whether this store has <see cref="TContent"/> which contains a field with the
+        /// specified <see cref="fieldName"/>.
+        /// </summary>
+        /// <param name="fieldName">The name of the field to check.</param>
+        /// <param name="value">The value to check for.</param>
+        /// <returns>true if there is <see cref="TContent"/> which contains a field with the specified
+        /// name which has the specified <paramref name="value"/>; false otherwise.</returns>
+        public abstract Task<bool> ContainsFieldAsync<TField>(string fieldName, TField? value);
 
         /// <inheritdoc/>
         public abstract Task<bool> DeleteAsync(TKey key);
