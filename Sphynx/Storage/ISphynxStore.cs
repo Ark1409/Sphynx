@@ -1,6 +1,4 @@
-using Sphynx.Server.Utils;
-
-namespace Sphynx.Server.Storage
+namespace Sphynx.Storage
 {
     /// <summary>
     /// Represents a generic data store in which items can be looked up/inserted by key and data.  
@@ -12,17 +10,17 @@ namespace Sphynx.Server.Storage
         /// <summary>
         /// Places an item into this store, overriding a previous entry if necessary.
         /// </summary>
-        /// <param name="key">The lookup key for the item.</param>
-        /// <param name="data">The data associated with the lookup <paramref name="key"/>.</param>
+        /// <param name="index">The lookup key for the item.</param>
+        /// <param name="data">The data associated with the lookup <paramref name="index"/>.</param>
         /// <returns>true if the item was successfully placed within this store; false otherwise.</returns>
-        public bool Put(TLookup key, TData data);
+        public bool Put(TLookup index, TData data);
 
         /// <summary>
         /// Deletes an item from this store.
         /// </summary>
-        /// <param name="key">The lookup key associated with the item to delete.</param>
+        /// <param name="index">The lookup key associated with the item to delete.</param>
         /// <returns>true if the item was successfully found and deleted; false otherwise.</returns>
-        public bool Delete(TLookup key);
+        public bool Delete(TLookup index);
     }
 
     /// <summary>
@@ -54,14 +52,14 @@ namespace Sphynx.Server.Storage
     /// </summary>
     /// <typeparam name="TLookup">The lookup (key) type.</typeparam>
     /// <typeparam name="TData">The type of data which this <see cref="ISphynxStore{TLookup,TValue}"/> stores.</typeparam>
-    public interface IReadOnlySphynxStore<in TLookup, TData> where TLookup : notnull
+    public interface IReadOnlySphynxStore<in TLookup, out TData> where TLookup : notnull
     {
         /// <summary>
-        /// Retrieves the data from this store associated with the specified <paramref name="key"/>.
+        /// Retrieves data from this store associated with the specified <paramref name="index"/>.
         /// </summary>
-        /// <param name="key">The lookup key for the item to retrieve.</param>
-        /// <returns>The data which is associated with the specified <paramref name="key"/>.</returns>
-        public SphynxErrorInfo<TData?> GetValue(TLookup key);
+        /// <param name="index">The lookup key for the item to retrieve.</param>
+        /// <returns>The data which is associated with the specified <paramref name="index"/>.</returns>
+        public TData? Get(TLookup index);
     }
 
     /// <summary>
@@ -72,18 +70,10 @@ namespace Sphynx.Server.Storage
     public interface IAsyncReadOnlySphynxStore<in TLookup, TData> : IReadOnlySphynxStore<TLookup, TData> where TLookup : notnull
     {
         /// <summary>
-        /// Retrieves the data from this store associated with the specified <paramref name="key"/>.
+        /// Retrieves data from this store associated with the specified <paramref name="key"/>.
         /// </summary>
         /// <param name="key">The lookup key for the item to retrieve.</param>
-        /// <returns>The data which is associated with the specified <paramref name="key"/></returns>
-        public Task<SphynxErrorInfo<TData?>> GetValueAsync(TLookup key);
+        /// <returns>The data which is associated with the specified <paramref name="key"/>.</returns>
+        public Task<TData?> GetAsync(TLookup key);
     }
-
-    // UserCollection - TryGetValue(UserId)
-    // UserCollection - Put(UserId, UserInfo)
-    //
-    // RoomCollection - TryGetValue(RoomId)
-    // RoomCollection - Put(RoomId, RoomInfo)
-    //
-    // 
 }

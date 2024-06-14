@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 
 namespace Sphynx.Packet.Response
 {
@@ -8,6 +9,16 @@ namespace Sphynx.Packet.Response
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_RES;
+        
+        /// <summary>
+        /// Information of the user which was logged in.
+        /// </summary>
+        public SphynxUserInfo? UserInfo { get; set; }
+        
+        /// <summary>
+        /// The session ID for this client.
+        /// </summary>
+        public Guid? SessionId { get; set; }
 
         /// <summary>
         /// Creates a new <see cref="LoginResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.

@@ -57,6 +57,11 @@
         INVALID_ROOM,
         
         /// <summary>
+        /// Invalid (unknown/already exists) message ID.
+        /// </summary>
+        INVALID_MSG,
+        
+        /// <summary>
         /// Attempt to authenticate when already logged in.
         /// </summary>
         ALREADY_LOGGED_IN

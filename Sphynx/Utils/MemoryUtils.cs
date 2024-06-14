@@ -1,4 +1,5 @@
 ﻿using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 
 namespace Sphynx.Utils
 {
@@ -7,7 +8,7 @@ namespace Sphynx.Utils
         internal static void WriteBytes(this int src, Span<byte> buffer, int offset = 0)
         {
             BinaryPrimitives.WriteInt32LittleEndian(buffer[offset..], src);
-            
+
             // buffer[offset] = (byte)(src & 0xFF);
             // buffer[offset + 1] = (byte)((src >> 8) & 0xFF);
             // buffer[offset + 2] = (byte)((src >> 16) & 0xFF);
@@ -62,5 +63,8 @@ namespace Sphynx.Utils
             // number |= buffer[offset];
             // return number;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static bool SequenceEqual(this byte[] first, ReadOnlySpan<byte> second) => new ReadOnlySpan<byte>(first).SequenceEqual(second);
     }
 }

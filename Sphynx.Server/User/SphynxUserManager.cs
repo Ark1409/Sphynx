@@ -5,24 +5,18 @@ using MongoDB.Bson.Serialization;
 using Sphynx.Core;
 using Sphynx.Packet;
 using Sphynx.Server.Storage;
+using Sphynx.Server.Utils;
 using Sphynx.Utils;
 
 namespace Sphynx.Server.User
 {
     public static class SphynxUserManager
     {
-        // UserCollection - TryGetValue(UserId)
-        // UserCollection - Put(UserId, UserInfo)
-        //
-        // RoomCollection - TryGetValue(RoomId)
-        // RoomCollection - Put(RoomId, RoomInfo)
-        //
+        private static readonly DatabaseStore<Guid, SphynxUserDbInfo> _userInfoStore;
+        private static readonly string[] _ignoredUserFields = { SphynxUserDbInfo.PASSWORD_FIELD, SphynxUserDbInfo.PASSWORD_SALT_FIELD };
 
-        private static readonly DatabaseStore<Guid, SphynxDbUserInfo> _userInfoStore;
-        private static readonly string[] _ignoredUserFields = new string[] { SphynxDbUserInfo.PASSWORD_FIELD, SphynxDbUserInfo.PASSWORD_SALT_FIELD };
-
-        public static event Action<SphynxUserInfo>? UserCreated;
-        public static event Action<SphynxUserInfo>? UserDeleted;
+        public static event Action<SphynxUserDbInfo>? UserCreated;
+        public static event Action<SphynxUserDbInfo>? UserDeleted;
 
         static SphynxUserManager()
         {
@@ -32,7 +26,7 @@ namespace Sphynx.Server.User
                 reader.ReadLine();
                 string userCollectionName = reader.ReadLine()!;
                 userCollectionName = "users";
-                _userInfoStore = new MongoStore<SphynxDbUserInfo>(userCollectionName);
+                _userInfoStore = new MongoStore<SphynxUserDbInfo>(userCollectionName);
             }
 
             // BsonClassMap.RegisterClassMap<SphynxUserInfo>(cm =>
@@ -42,77 +36,67 @@ namespace Sphynx.Server.User
             // });
         }
 
-        public static async Task<SphynxErrorInfo<SphynxUserInfo?>> CreateUserAsync(SphynxUserCredentials credentials)
+        public static async Task<SphynxErrorInfo<SphynxUserDbInfo?>> CreateUserAsync(SphynxUserCredentials credentials)
         {
             // TODO: Make sure to index username
             if (await _userInfoStore.ContainsFieldAsync(credentials.UserName))
             {
-                return new SphynxErrorInfo<SphynxUserInfo?>(SphynxErrorCode.INVALID_USERNAME);
+                return new SphynxErrorInfo<SphynxUserDbInfo?>(SphynxErrorCode.INVALID_USERNAME);
             }
 
             // Hash password
-            byte[] hashedPwd = HashPassword(credentials.Password, out byte[] pwdSalt);
+            byte[] hashedPwd = PasswordManager.HashPassword(credentials.Password, out byte[] pwdSalt);
 
-            try
+            // Create user
+            var createdUser = new SphynxUserDbInfo(credentials.UserName, hashedPwd, pwdSalt, SphynxUserStatus.ONLINE);
+
+            // Insert record for new user
+            if (await _userInfoStore.InsertAsync(createdUser))
             {
-                // Create user
-                var createdUser = new SphynxDbUserInfo(credentials.UserName, hashedPwd, pwdSalt, SphynxUserStatus.ONLINE);
+                // Immediately null-out password
+                createdUser.Password = null;
+                createdUser.PasswordSalt = null;
 
-                if (await _userInfoStore.InsertAsync(createdUser))
-                {
-                    UserCreated?.Invoke(createdUser);
-                    // TODO: Perhaps null the password before returning
-                    return new SphynxErrorInfo<SphynxUserInfo?>(createdUser);
-                }
-
-                return new SphynxErrorInfo<SphynxUserInfo?>(SphynxErrorCode.DB_WRITE_ERROR);
+                UserCreated?.Invoke(createdUser);
+                return new SphynxErrorInfo<SphynxUserDbInfo?>(createdUser);
             }
-            finally
+
+            return new SphynxErrorInfo<SphynxUserDbInfo?>(SphynxErrorCode.DB_WRITE_ERROR);
+        }
+
+        public static async Task<SphynxErrorCode> DeleteUserAsync(Guid userId, string userPassword)
+        {
+            var dbUser = await _userInfoStore.GetAsync(userId);
+
+            if (dbUser.ErrorCode != SphynxErrorCode.SUCCESS) return SphynxErrorCode.INVALID_USER;
+
+            var passwordCheck = PasswordManager.VerifyPassword(dbUser.Data!.Password!, dbUser.Data.PasswordSalt!,
+                userPassword);
+            if (passwordCheck != SphynxErrorCode.SUCCESS) return passwordCheck;
+
+            if (await _userInfoStore.DeleteAsync(userId))
             {
-                ArrayPool<byte>.Shared.Return(pwdSalt);
+                UserDeleted?.Invoke(dbUser.Data!);
+                return SphynxErrorCode.SUCCESS;
             }
+
+            return SphynxErrorCode.DB_WRITE_ERROR;
         }
 
-        internal static byte[] HashPassword(string password, out byte[] rentedSalt)
-        {
-            // Since we are using SHA-256
-            const int PWD_OUT_LEN = 256;
-            RandomNumberGenerator.Fill(rentedSalt = ArrayPool<byte>.Shared.Rent(PWD_OUT_LEN));
-            
-            return HashPassword(password, rentedSalt);
-        }
-
-        internal static byte[] HashPassword(string password, byte[] rentedSalt)
-        {
-            // Standard amount
-            const int PWD_ITERATIONS = 10_000;
-            
-            return Rfc2898DeriveBytes.Pbkdf2(password, rentedSalt, PWD_ITERATIONS, HashAlgorithmName.SHA256, rentedSalt.Length);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static bool PasswordsEqual(byte[] password, byte[] otherPassword)
-        {
-            return new ReadOnlySpan<byte>(password).SequenceEqual(otherPassword);
-        }
-
-        internal static Task<bool> UpdateUserAsync(SphynxDbUserInfo userInfo)
+        public static Task<bool> UpdateUserAsync(SphynxUserDbInfo userInfo)
         {
             return _userInfoStore.UpdateAsync(userInfo);
         }
 
-        public static async Task<SphynxErrorInfo<SphynxUserInfo?>> GetUserAsync(Guid userId)
+        public static Task<SphynxErrorInfo<SphynxUserDbInfo?>> GetUserAsync(Guid userId, bool includePassword = false)
         {
-            var dbUser = await _userInfoStore.GetAsync(userId, _ignoredUserFields);
-            var shallowUser = new SphynxErrorInfo<SphynxUserInfo?>(dbUser.ErrorCode, dbUser.Data);
-            return shallowUser;
+            return _userInfoStore.GetAsync(userId, includePassword ? _ignoredUserFields : Array.Empty<string>());
         }
-        
-        public static async Task<SphynxErrorInfo<SphynxUserInfo?>> GetUserAsync(string userName)
+
+        public static Task<SphynxErrorInfo<SphynxUserDbInfo?>> GetUserAsync(string userName, bool includePassword = false)
         {
-            var dbUser = await _userInfoStore.GetWhereAsync(SphynxUserInfo.NAME_FIELD, userName);
-            var shallowUser = new SphynxErrorInfo<SphynxUserInfo?>(dbUser.ErrorCode, dbUser.Data);
-            return shallowUser;
+            return _userInfoStore.GetWhereAsync(SphynxUserDbInfo.NAME_FIELD, userName,
+                includePassword ? _ignoredUserFields : Array.Empty<string>());
         }
 
         public static Task<SphynxErrorInfo<TField?>> GetUserFieldAsync<TField>(Guid userId, string fieldName)
@@ -123,27 +107,6 @@ namespace Sphynx.Server.User
         public static Task<bool> UpdateUserFieldAsync<TField>(Guid userId, string fieldName, TField? value)
         {
             return _userInfoStore.PutFieldAsync(userId, fieldName, value);
-        }
-
-        public static async Task<SphynxErrorCode> DeleteUserAsync(Guid userId, string password)
-        {
-            var dbUser = await _userInfoStore.GetAsync(userId);
-
-            if (dbUser.ErrorCode != SphynxErrorCode.SUCCESS) return SphynxErrorCode.INVALID_USER;
-
-            byte[] dbPwdSalt = Convert.FromBase64String(dbUser.Data!.PasswordSalt!);
-            byte[] dbPwd = Convert.FromBase64String(dbUser.Data!.Password!);
-            byte[] enteredPwd = HashPassword(password, dbPwdSalt);
-
-            if (!PasswordsEqual(dbPwd, enteredPwd)) return SphynxErrorCode.INVALID_PASSWORD;
-
-            if (await _userInfoStore.DeleteAsync(userId))
-            {
-                UserDeleted?.Invoke(dbUser.Data!);
-                return SphynxErrorCode.SUCCESS;
-            }
-
-            return SphynxErrorCode.DB_WRITE_ERROR;
         }
     }
 }
