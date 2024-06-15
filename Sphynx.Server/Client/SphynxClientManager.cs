@@ -113,21 +113,23 @@ namespace Sphynx.Server.Client
         /// </summary>
         /// <param name="client">The client to authenticate.</param>
         /// <param name="credentials">The user credentials with which to authenticate the <paramref name="client"/>.</param>
-        /// <returns>Error information describing whether the client could be successfully authenticated.</returns>
-        public static async Task<SphynxErrorInfo<SphynxUserDbInfo?>> AuthenticateClient(SphynxClient client, SphynxUserCredentials credentials)
+        /// <returns>Error information describing whether the client could be successfully authenticated, as well as the
+        /// client and its session ID.</returns>
+        public static async Task<SphynxErrorInfo<(SphynxUserDbInfo?, Guid)>> AuthenticateClient(SphynxClient client,
+            SphynxUserCredentials credentials)
         {
             if (!IsAnonymous(client))
-                return new SphynxErrorInfo<SphynxUserDbInfo?>(SphynxErrorCode.ALREADY_LOGGED_IN);
+                return new SphynxErrorInfo<(SphynxUserDbInfo?, Guid)>(SphynxErrorCode.ALREADY_LOGGED_IN);
 
             var dbUser = await SphynxUserManager.GetUserAsync(credentials.UserName, true);
 
             if (dbUser.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new SphynxErrorInfo<SphynxUserDbInfo?>(SphynxErrorCode.INVALID_USER);
+                return new SphynxErrorInfo<(SphynxUserDbInfo?, Guid)>(SphynxErrorCode.INVALID_USER);
 
             // Verify password
             var passwordCheck = PasswordManager.VerifyPassword(dbUser.Data!.Password!, dbUser.Data!.PasswordSalt!,
                 credentials.Password);
-            if (passwordCheck != SphynxErrorCode.SUCCESS) return new SphynxErrorInfo<SphynxUserDbInfo?>(passwordCheck);
+            if (passwordCheck != SphynxErrorCode.SUCCESS) return new SphynxErrorInfo<(SphynxUserDbInfo?, Guid)>(passwordCheck);
 
             // Immediately null-out password
             dbUser.Data!.Password = null;
@@ -150,7 +152,7 @@ namespace Sphynx.Server.Client
             ClientAuthenticated?.Invoke(client);
 
             // TODO: Return tuple (for session id)?
-            return dbUser;
+            return new SphynxErrorInfo<(SphynxUserDbInfo?, Guid)>((dbUser.Data, sessionId));
         }
 
         /// <summary>

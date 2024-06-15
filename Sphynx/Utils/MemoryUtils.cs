@@ -57,7 +57,7 @@ namespace Sphynx.Utils
 
         internal static ushort ReadUInt16(this ReadOnlySpan<byte> buffer, int offset = 0)
         {
-            return BinaryPrimitives.ReadUInt16BigEndian(buffer.Slice(offset, sizeof(ushort)));
+            return BinaryPrimitives.ReadUInt16LittleEndian(buffer.Slice(offset, sizeof(ushort)));
 
             // ushort number = (ushort)(buffer[offset + 1] << 8);
             // number |= buffer[offset];

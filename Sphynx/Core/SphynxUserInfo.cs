@@ -51,6 +51,23 @@ namespace Sphynx.Core
         /// <summary>
         /// Creates a new <see cref="SphynxUserInfo"/>.
         /// </summary>
+        /// <param name="userName">The username of the Sphynx user.</param>
+        /// <param name="status">The activity status of the Sphynx user.</param>
+        /// <param name="friends">User IDs of friends for this user.</param>
+        public SphynxUserInfo(string userName, SphynxUserStatus status, params Guid[] friends)
+            : this(userName, status, (IEnumerable<Guid>)friends)
+        {
+        }
+
+        /// <inheritdoc/>
+        public SphynxUserInfo(Guid userId, string userName, SphynxUserStatus status, params Guid[] friends)
+            : this(userId, userName, status, (IEnumerable<Guid>)friends)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxUserInfo"/>.
+        /// </summary>
         /// <param name="userId">The user ID of the Sphynx user.</param>
         /// <param name="userName">The username of the Sphynx user.</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
@@ -70,7 +87,7 @@ namespace Sphynx.Core
                 }
             }
         }
-        
+
         /// <summary>
         /// Creates a new <see cref="SphynxUserInfo"/>.
         /// </summary>

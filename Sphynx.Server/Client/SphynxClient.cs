@@ -106,6 +106,8 @@ namespace Sphynx.Server.Client
             try
             {
                 Started = true;
+                
+                // TODO: Make second loop for login req and just GOTO it on logout
                 while (true)
                 {
                     var packet = await ReceivePacketAsync().ConfigureAwait(false);

@@ -10,8 +10,8 @@ namespace Sphynx.Server.ChatRoom
 
     public static class SphynxRoomManager
     {
-        private static readonly DatabaseStore<Guid, DirectChatRoomDbInfo> _directRoomStore;
-        private static readonly DatabaseStore<Guid, GroupChatRoomDbInfo> _groupRoomStore;
+        private static readonly DatabaseStore<Guid, ChatRoomDbInfo.Direct> _directRoomStore;
+        private static readonly DatabaseStore<Guid, ChatRoomDbInfo.Group> _groupRoomStore;
         private static readonly DatabaseStore<Guid, ChatRoomMessageDbInfo> _directMessageStore;
         private static readonly DatabaseStore<Guid, ChatRoomMessageDbInfo> _groupMessageStore;
 
@@ -32,48 +32,48 @@ namespace Sphynx.Server.ChatRoom
                 string directCollectionName = reader.ReadLine()!;
                 string groupCollectionName = reader.ReadLine()!;
 
-                _directRoomStore = new MongoStore<DirectChatRoomDbInfo>(roomCollectionName);
-                _groupRoomStore = new MongoStore<GroupChatRoomDbInfo>(roomCollectionName);
+                _directRoomStore = new MongoStore<ChatRoomDbInfo.Direct>(roomCollectionName);
+                _groupRoomStore = new MongoStore<ChatRoomDbInfo.Group>(roomCollectionName);
                 _directMessageStore = new MongoStore<ChatRoomMessageDbInfo>(directCollectionName);
                 _groupMessageStore = new MongoStore<ChatRoomMessageDbInfo>(groupCollectionName);
             }
         }
 
-        public static async Task<SphynxErrorInfo<DirectChatRoomDbInfo?>> CreateDirectRoomAsync(Guid userOne, Guid userTwo)
+        public static async Task<SphynxErrorInfo<ChatRoomDbInfo.Direct?>> CreateDirectRoomAsync(Guid userOne, Guid userTwo)
         {
             // Ensure DM has not already been created with these users
             // TODO: somehow embed DM users in roomID perhaps? (preferably, we would like them indexed...)
-            if (await _directRoomStore.ContainsFieldAsync(DirectChatRoomDbInfo.USERS_FIELD, new[] { userOne, userTwo })
-                || await _directRoomStore.ContainsFieldAsync(DirectChatRoomDbInfo.USERS_FIELD, new[] { userTwo, userOne }))
+            if (await _directRoomStore.ContainsFieldAsync(ChatRoomDbInfo.USERS_FIELD, new[] { userOne, userTwo })
+                || await _directRoomStore.ContainsFieldAsync(ChatRoomDbInfo.USERS_FIELD, new[] { userTwo, userOne }))
             {
-                return new SphynxErrorInfo<DirectChatRoomDbInfo?>(SphynxErrorCode.INVALID_ROOM);
+                return new SphynxErrorInfo<ChatRoomDbInfo.Direct?>(SphynxErrorCode.INVALID_ROOM);
             }
 
             // TODO: Decide on convention for DM room name
             string roomName = string.Join(userOne.ToString(), userTwo.ToString());
-            var newRoom = new DirectChatRoomDbInfo(roomName, userOne, userTwo);
+            var newRoom = new ChatRoomDbInfo.Direct(roomName, userOne, userTwo);
 
             if (await _directRoomStore.InsertAsync(newRoom))
             {
                 ChatRoomCreated?.Invoke(newRoom);
-                return new SphynxErrorInfo<DirectChatRoomDbInfo?>(newRoom);
+                return new SphynxErrorInfo<ChatRoomDbInfo.Direct?>(newRoom);
             }
 
-            return new SphynxErrorInfo<DirectChatRoomDbInfo?>(SphynxErrorCode.DB_WRITE_ERROR);
+            return new SphynxErrorInfo<ChatRoomDbInfo.Direct?>(SphynxErrorCode.DB_WRITE_ERROR);
         }
 
-        public static async Task<SphynxErrorInfo<GroupChatRoomDbInfo?>> CreateGroupRoomAsync(string name, bool @public = true,
+        public static async Task<SphynxErrorInfo<ChatRoomDbInfo.Group?>> CreateGroupRoomAsync(string name, bool @public = true,
             string? password = null)
         {
-            GroupChatRoomDbInfo newRoom;
+            ChatRoomDbInfo.Group newRoom;
             if (string.IsNullOrEmpty(password))
             {
-                newRoom = new GroupChatRoomDbInfo(name, @public);
+                newRoom = new ChatRoomDbInfo.Group(name, @public);
             }
             else
             {
                 byte[] pwd = PasswordManager.HashPassword(password, out byte[] pwdSalt);
-                newRoom = new GroupChatRoomDbInfo(name, pwd, pwdSalt, @public);
+                newRoom = new ChatRoomDbInfo.Group(name, pwd, pwdSalt, @public);
             }
 
             if (await _groupRoomStore.InsertAsync(newRoom))
@@ -83,10 +83,10 @@ namespace Sphynx.Server.ChatRoom
                 newRoom.PasswordSalt = null;
 
                 ChatRoomCreated?.Invoke(newRoom);
-                return new SphynxErrorInfo<GroupChatRoomDbInfo?>(SphynxErrorCode.SUCCESS);
+                return new SphynxErrorInfo<ChatRoomDbInfo.Group?>(SphynxErrorCode.SUCCESS);
             }
 
-            return new SphynxErrorInfo<GroupChatRoomDbInfo?>(SphynxErrorCode.DB_WRITE_ERROR);
+            return new SphynxErrorInfo<ChatRoomDbInfo.Group?>(SphynxErrorCode.DB_WRITE_ERROR);
         }
 
         public static Task<SphynxErrorInfo<ChatRoomMessageDbInfo>> AddMessageAsync(Guid roomId, Guid senderId, string content)
@@ -97,7 +97,7 @@ namespace Sphynx.Server.ChatRoom
         public static async Task<SphynxErrorInfo<ChatRoomMessageDbInfo>> AddMessageAsync(Guid roomId, Guid senderId, DateTimeOffset timestamp,
             string content)
         {
-            var roomType = await GetRoomFieldAsync<ChatRoomType>(roomId, DirectChatRoomDbInfo.ROOM_TYPE_FIELD);
+            var roomType = await GetRoomFieldAsync<ChatRoomType>(roomId, ChatRoomDbInfo.ROOM_TYPE_FIELD);
             if (roomType.ErrorCode != SphynxErrorCode.SUCCESS) return new SphynxErrorInfo<ChatRoomMessageDbInfo>(SphynxErrorCode.INVALID_ROOM);
 
             var newMsg = new ChatRoomMessageDbInfo(roomId, senderId, timestamp, content ??= string.Empty);
@@ -151,7 +151,7 @@ namespace Sphynx.Server.ChatRoom
             var oldContent = await GetMessageFieldAsync<string>(msgId, ChatRoomMessageDbInfo.CONTENT_FIELD);
             if (oldContent.ErrorCode != SphynxErrorCode.SUCCESS) oldContent.Data = null!;
 
-            var roomType = await GetRoomFieldAsync<ChatRoomType>(roomId.Data, DirectChatRoomDbInfo.ROOM_TYPE_FIELD);
+            var roomType = await GetRoomFieldAsync<ChatRoomType>(roomId.Data, ChatRoomDbInfo.ROOM_TYPE_FIELD);
 
             newContent ??= string.Empty;
 
@@ -185,7 +185,7 @@ namespace Sphynx.Server.ChatRoom
             var msgInfo = await GetMessageAsync(msgId);
             if (msgInfo.ErrorCode != SphynxErrorCode.SUCCESS) return new SphynxErrorInfo<ChatRoomMessageDbInfo?>(msgInfo.ErrorCode);
 
-            var roomType = await GetRoomFieldAsync<ChatRoomType>(msgInfo.Data!.RoomId, DirectChatRoomDbInfo.ROOM_TYPE_FIELD);
+            var roomType = await GetRoomFieldAsync<ChatRoomType>(msgInfo.Data!.RoomId, ChatRoomDbInfo.ROOM_TYPE_FIELD);
 
             switch (roomType.Data!)
             {
@@ -219,7 +219,7 @@ namespace Sphynx.Server.ChatRoom
                 return directMsg;
 
             var groupMsg =
-                await _groupMessageStore.GetAsync(msgId, GroupChatRoomDbInfo.PASSWORD_FIELD, GroupChatRoomDbInfo.PASSWORD_SALT_FIELD);
+                await _groupMessageStore.GetAsync(msgId, ChatRoomDbInfo.Group.PASSWORD_FIELD, ChatRoomDbInfo.Group.PASSWORD_SALT_FIELD);
 
             return groupMsg.ErrorCode == SphynxErrorCode.SUCCESS
                 ? groupMsg
@@ -239,16 +239,16 @@ namespace Sphynx.Server.ChatRoom
             var roomInfo = await _directRoomStore.GetAsync(roomId);
             return roomInfo.ErrorCode == SphynxErrorCode.SUCCESS
                 ? new SphynxErrorInfo<ChatRoomInfo?>(roomInfo.Data)
-                : new SphynxErrorInfo<ChatRoomInfo?>((await _groupRoomStore.GetAsync(roomId, GroupChatRoomDbInfo.PASSWORD_FIELD,
-                    GroupChatRoomDbInfo.PASSWORD_SALT_FIELD)).Data);
+                : new SphynxErrorInfo<ChatRoomInfo?>((await _groupRoomStore.GetAsync(roomId, ChatRoomDbInfo.Group.PASSWORD_FIELD,
+                    ChatRoomDbInfo.Group.PASSWORD_SALT_FIELD)).Data);
         }
 
-        public static async Task<SphynxErrorInfo<GroupChatRoomDbInfo?>> GetGroupRoomAsync(Guid roomId, bool includePassword = false)
+        public static async Task<SphynxErrorInfo<ChatRoomDbInfo.Group?>> GetGroupRoomAsync(Guid roomId, bool includePassword = false)
         {
             return includePassword
-                ? new SphynxErrorInfo<GroupChatRoomDbInfo?>((await _groupRoomStore.GetAsync(roomId)).Data)
-                : new SphynxErrorInfo<GroupChatRoomDbInfo?>((await _groupRoomStore.GetAsync(roomId, GroupChatRoomDbInfo.PASSWORD_FIELD,
-                    GroupChatRoomDbInfo.PASSWORD_SALT_FIELD)).Data);
+                ? new SphynxErrorInfo<ChatRoomDbInfo.Group?>((await _groupRoomStore.GetAsync(roomId)).Data)
+                : new SphynxErrorInfo<ChatRoomDbInfo.Group?>((await _groupRoomStore.GetAsync(roomId, ChatRoomDbInfo.Group.PASSWORD_FIELD,
+                    ChatRoomDbInfo.Group.PASSWORD_SALT_FIELD)).Data);
         }
 
         public static async Task<SphynxErrorInfo<T?>> GetRoomFieldAsync<T>(Guid roomId, string fieldName)
