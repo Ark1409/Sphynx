@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-using Sphynx.Server.State;
+using Sphynx.Server.AppState;
 
 namespace Sphynx.Server
 {
@@ -14,9 +13,9 @@ namespace Sphynx.Server
     public static class SphynxApp
     {
         /// <summary>
-        /// The underlying server through which users connect.
+        /// Gets the first registered <see cref="SphynxServer"/>.
         /// </summary>
-        public static SphynxServer? Server { get; set; }
+        public static SphynxServer? Server { private set; get; }
 
         /// <summary>
         /// The program arguments.
@@ -36,7 +35,8 @@ namespace Sphynx.Server
         /// <summary>
         /// Whether this application instance is currently running. The application instance is independent from the server.
         /// </summary>
-        public static bool Running { get; private set; }
+        public static bool Running => Volatile.Read(ref _running) == 1;
+        private static int _running;
 
         /// <summary>
         /// Runs the app instance along with the server.
@@ -44,21 +44,23 @@ namespace Sphynx.Server
         /// <param name="args">The program arguments.</param>
         public static void Run(string[] args)
         {
-            if (Running)
+            if (Interlocked.Exchange(ref _running, 1) != 0)
                 return;
-
+            
             StateCollection = new StateCollection();
             CurrentState = StateCollection.GetState<MenuState>();
             Arguments = args;
 
             Server = new SphynxServer();
             Server.Start();
-            Running = true;
 
             while (CurrentState != null)
             {
                 CurrentState = CurrentState.Run();
             }
+
+            AppDomain.CurrentDomain.ProcessExit += (_, e) => Server.Dispose();
+            AppDomain.CurrentDomain.UnhandledException += (_, e) => Server.Dispose();
 
             Server.Dispose();
         }
