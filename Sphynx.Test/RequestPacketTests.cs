@@ -38,13 +38,28 @@ namespace Sphynx.Test
             });
         }
 
+        [Test]
+        public void MessageInfoRequestPacket_ShouldSerializeWithCorrectFormat()
+        {
+            var samplePacket = new MessageInfoRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
+
+            Assert.Multiple(() =>
+            {
+                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
+                Assert.That(MessageInfoRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                    out var deserializedPacket));
+                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
+            });
+        }
+
         [TestCase(ChatRoomType.DIRECT_MSG, "This is a test message")]
         [TestCase(ChatRoomType.GROUP, "A normal group chat message")]
         [TestCase(ChatRoomType.DIRECT_MSG, "ب بـ ـبـ ـبSphynx is a shell-based chat client.")]
         [TestCase(ChatRoomType.GROUP, "音?!@#$%^&*()读写汉字")]
         public void MessageRequestPacket_ShouldSerializeWithCorrectFormat(ChatRoomType recipientType, string message)
         {
-            var samplePacket = new MessageRequestPacket(Guid.NewGuid(), Guid.NewGuid(), recipientType, Guid.NewGuid(), message);
+            var samplePacket = new MessageRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), message);
             samplePacket.TrySerialize(out byte[]? samplePacketBytes);
 
             Assert.Multiple(() =>
@@ -57,15 +72,15 @@ namespace Sphynx.Test
         }
 
         [Test]
-        public void ChatCreateRequestPacket_Direct_ShouldSerializeWithCorrectFormat()
+        public void RoomCreateRequestPacket_Direct_ShouldSerializeWithCorrectFormat()
         {
-            var samplePacket = new ChatCreateRequestPacket.Direct(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+            var samplePacket = new RoomCreateRequestPacket.Direct(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
             samplePacket.TrySerialize(out byte[]? samplePacketBytes);
 
             Assert.Multiple(() =>
             {
                 var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
-                Assert.That(ChatCreateRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                Assert.That(RoomCreateRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
                     out var deserializedPacket));
                 Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
             });
@@ -74,15 +89,15 @@ namespace Sphynx.Test
         [TestCase("BestRoom", null)]
         [TestCase("NewRoom", "pass123")]
         [TestCase("Group chat room", "nopass12345$")]
-        public void ChatCreateRequestPacket_Group_ShouldSerializeWithCorrectFormat(string name, string? password)
+        public void RoomCreateRequestPacket_Group_ShouldSerializeWithCorrectFormat(string name, string? password)
         {
-            var samplePacket = new ChatCreateRequestPacket.Group(Guid.NewGuid(), Guid.NewGuid(), name, password);
+            var samplePacket = new RoomCreateRequestPacket.Group(Guid.NewGuid(), Guid.NewGuid(), name, password);
             Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
 
             Assert.Multiple(() =>
             {
                 var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
-                Assert.That(ChatCreateRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                Assert.That(RoomCreateRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
                     out var deserializedPacket));
                 Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
             });
@@ -91,78 +106,15 @@ namespace Sphynx.Test
         [TestCase(null)]
         [TestCase("pass123")]
         [TestCase("rooompass987$")]
-        public void ChatDeleteRequestPacket_ShouldSerializeWithCorrectFormat(string? password)
+        public void RoomDeleteRequestPacket_ShouldSerializeWithCorrectFormat(string? password)
         {
-            var samplePacket = new ChatDeleteRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), password);
+            var samplePacket = new RoomDeleteRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), password);
             Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
 
             Assert.Multiple(() =>
             {
                 var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
-                Assert.That(ChatDeleteRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
-                    out var deserializedPacket));
-                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
-            });
-        }
-
-        [TestCase(null)]
-        [TestCase("jelly22fish")]
-        [TestCase("d3ltagamm@$")]
-        public void ChatJoinRequestPacket_ShouldSerializeWithCorrectFormat(string? password)
-        {
-            var samplePacket = new ChatJoinRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), password);
-            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
-
-            Assert.Multiple(() =>
-            {
-                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
-                Assert.That(ChatJoinRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
-                    out var deserializedPacket));
-                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
-            });
-        }
-
-        [Test]
-        public void ChatKickRequestPacket_ShouldSerializeWithCorrectFormat()
-        {
-            var samplePacket = new ChatKickRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
-            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
-
-            Assert.Multiple(() =>
-            {
-                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
-                Assert.That(ChatKickRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
-                    out var deserializedPacket));
-                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
-            });
-        }
-
-        [Test]
-        public void ChatLeaveRequestPacket_ShouldSerializeWithCorrectFormat()
-        {
-            var samplePacket = new ChatLeaveRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
-            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
-
-            Assert.Multiple(() =>
-            {
-                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
-                Assert.That(ChatLeaveRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
-                    out var deserializedPacket));
-                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
-            });
-        }
-
-        [TestCase(ChatRoomType.DIRECT_MSG)]
-        [TestCase(ChatRoomType.GROUP)]
-        public void ChatSelectRequestPacket_ShouldSerializeWithCorrectFormat(ChatRoomType chatType)
-        {
-            var samplePacket = new ChatSelectRequestPacket(Guid.NewGuid(), Guid.NewGuid(), chatType, Guid.NewGuid());
-            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
-
-            Assert.Multiple(() =>
-            {
-                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
-                Assert.That(ChatSelectRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                Assert.That(RoomDeleteRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
                     out var deserializedPacket));
                 Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
             });
@@ -178,6 +130,84 @@ namespace Sphynx.Test
             {
                 var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
                 Assert.That(RoomInfoRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                    out var deserializedPacket));
+                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
+            });
+        }
+
+        [TestCase(null)]
+        [TestCase("jelly22fish")]
+        [TestCase("d3ltagamm@$")]
+        public void RoomJoinRequestPacket_ShouldSerializeWithCorrectFormat(string? password)
+        {
+            var samplePacket = new RoomJoinRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), password);
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
+
+            Assert.Multiple(() =>
+            {
+                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
+                Assert.That(RoomJoinRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                    out var deserializedPacket));
+                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
+            });
+        }
+
+        [Test]
+        public void RoomKickRequestPacket_ShouldSerializeWithCorrectFormat()
+        {
+            var samplePacket = new RoomKickRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
+
+            Assert.Multiple(() =>
+            {
+                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
+                Assert.That(RoomKickRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                    out var deserializedPacket));
+                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
+            });
+        }
+
+        [Test]
+        public void RoomLeaveRequestPacket_ShouldSerializeWithCorrectFormat()
+        {
+            var samplePacket = new RoomLeaveRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
+
+            Assert.Multiple(() =>
+            {
+                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
+                Assert.That(RoomLeaveRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                    out var deserializedPacket));
+                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
+            });
+        }
+
+        [TestCase(ChatRoomType.DIRECT_MSG)]
+        [TestCase(ChatRoomType.GROUP)]
+        public void RoomSelectRequestPacket_ShouldSerializeWithCorrectFormat(ChatRoomType chatType)
+        {
+            var samplePacket = new RoomSelectRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
+
+            Assert.Multiple(() =>
+            {
+                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
+                Assert.That(RoomSelectRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
+                    out var deserializedPacket));
+                Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
+            });
+        }
+
+        [Test]
+        public void UserInfoRequestPacket_ShouldSerializeWithCorrectFormat()
+        {
+            var samplePacket = new UserInfoRequestPacket(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+            Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));
+
+            Assert.Multiple(() =>
+            {
+                var samplePacketSpan = new ReadOnlySpan<byte>(samplePacketBytes);
+                Assert.That(UserInfoRequestPacket.TryDeserialize(samplePacketSpan[SphynxPacketHeader.HEADER_SIZE..],
                     out var deserializedPacket));
                 Assert.That(deserializedPacket!, Is.EqualTo(samplePacket));
             });

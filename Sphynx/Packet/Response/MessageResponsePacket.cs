@@ -61,7 +61,7 @@ namespace Sphynx.Packet.Response
         {
             if (!stream.CanWrite) return false;
 
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
+            int contentSize = DEFAULT_CONTENT_SIZE;
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);

@@ -7,7 +7,7 @@ namespace Sphynx.Packet.Broadcast
     public sealed class ChatJoinBroadcastPacket : SphynxPacket, IEquatable<ChatJoinBroadcastPacket>
     {
         /// <summary>
-        /// RoomInfo ID of the room the user has joined.
+        /// Room ID of the room the user has joined.
         /// </summary>
         public Guid RoomId { get; set; }
 
@@ -25,7 +25,7 @@ namespace Sphynx.Packet.Broadcast
         /// <summary>
         /// Creates a new <see cref="ChatJoinBroadcastPacket"/>.
         /// </summary>
-        /// <param name="roomId">RoomInfo ID of the room the user has joined.</param>
+        /// <param name="roomId">Room ID of the room the user has joined.</param>
         /// <param name="joinerId">The user ID of the user who joined the room.</param>
         public ChatJoinBroadcastPacket(Guid roomId, Guid joinerId)
         {

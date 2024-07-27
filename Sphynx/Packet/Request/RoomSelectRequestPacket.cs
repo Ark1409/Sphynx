@@ -1,64 +1,74 @@
-﻿using System.Buffers;
+﻿using Sphynx.ChatRoom;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_LEAVE_REQ"/>
-    public sealed class ChatLeaveRequestPacket : SphynxRequestPacket, IEquatable<ChatLeaveRequestPacket>
+    /// <inheritdoc cref="SphynxPacketType.ROOM_SELECT_REQ"/>
+    public sealed class RoomSelectRequestPacket : SphynxRequestPacket, IEquatable<RoomSelectRequestPacket>
     {
         /// <summary>
-        /// RoomInfo ID of the room to leave.
+        /// ID of the chat room that was selected.
         /// </summary>
         public Guid RoomId { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_LEAVE_REQ;
+        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_SELECT_REQ;
 
         private static readonly int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveRequestPacket"/>.
+        /// Creates a new <see cref="MessageRequestPacket"/>.
         /// </summary>
-        /// <param name="roomId">RoomInfo ID of the room to leave.</param>
-        public ChatLeaveRequestPacket(Guid roomId) : this(Guid.Empty, Guid.Empty, roomId)
+        /// <param name="roomId">ID of the chat room that was selected.</param>
+        public RoomSelectRequestPacket(Guid roomId) : this(Guid.Empty, Guid.Empty, roomId)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveRequestPacket"/>.
+        /// Creates a new <see cref="RoomSelectRequestPacket"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="roomId">RoomInfo ID of the room to leave.</param>
-        public ChatLeaveRequestPacket(Guid userId, Guid sessionId, Guid roomId) : base(userId, sessionId)
+        /// <param name="roomId">ID of the chat room that was selected.</param>
+        public RoomSelectRequestPacket(Guid userId, Guid sessionId, Guid roomId) : base(userId, sessionId)
         {
             RoomId = roomId;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatLeaveRequestPacket"/>.
+        /// Attempts to deserialize a <see cref="RoomSelectRequestPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatLeaveRequestPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomSelectRequestPacket? packet)
         {
             int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
 
-            if (contents.Length < contentSize || !TryDeserializeDefaults(contents, out var userId, out var sessionId))
+            if (contents.Length < contentSize || !TryDeserializeDefaults(contents[..DEFAULT_CONTENT_SIZE], out var userId, out var sessionId))
             {
                 packet = null;
                 return false;
             }
 
-            var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-            packet = new ChatLeaveRequestPacket(userId.Value, sessionId.Value, roomId);
-            return true;
+            try
+            {
+                var chatId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
+
+                packet = new RoomSelectRequestPacket(userId.Value, sessionId.Value, chatId);
+                return true;
+            }
+            catch
+            {
+                packet = null;
+                return false;
+            }
         }
 
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
+            int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + GUID_SIZE;
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
@@ -75,7 +85,7 @@ namespace Sphynx.Packet.Request
         {
             if (!stream.CanWrite) return false;
 
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
+            int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + GUID_SIZE;
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -109,6 +119,6 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatLeaveRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId;
+        public bool Equals(RoomSelectRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId;
     }
 }

@@ -11,9 +11,9 @@ namespace Sphynx.Test
         [TestCase(SphynxPacketType.MSG_RES, 24)]
         [TestCase(SphynxPacketType.LOGIN_RES, 1024)]
         [TestCase(SphynxPacketType.CHAT_JOIN_BCAST, 25565)]
-        [TestCase(SphynxPacketType.CHAT_KICK_REQ, 1234)]
-        [TestCase(SphynxPacketType.CHAT_CREATE_REQ, 32)]
-        [TestCase(SphynxPacketType.CHAT_SELECT_REQ, 8421)]
+        [TestCase(SphynxPacketType.ROOM_KICK_REQ, 1234)]
+        [TestCase(SphynxPacketType.ROOM_CREATE_REQ, 32)]
+        [TestCase(SphynxPacketType.ROOM_SELECT_REQ, 8421)]
         [TestCase(SphynxPacketType.MSG_REQ, 1024)]
         [TestCase(SphynxPacketType.LOGIN_RES, 512)]
         public void PacketHeader_ShouldSerializeWithCorrectFormat(SphynxPacketType packetType, int contentSize)
