@@ -25,17 +25,17 @@ namespace Sphynx.Core
         /// <summary>
         /// User IDs of friends for this user.
         /// </summary>
-        public virtual HashSet<Guid> Friends { get; set; }
+        public virtual HashSet<Guid>? Friends { get; set; }
+
+        /// <summary>
+        /// Room IDs of chat rooms which this user is in (including DMs).
+        /// </summary>
+        public virtual HashSet<Guid>? Rooms { get; set; }
 
         /// <summary>
         /// The password for this Sphynx user.
         /// </summary>
         internal virtual string? Password { get; set; }
-
-        /// <summary>
-        /// The salt for the password of this Sphynx user.
-        /// </summary>
-        internal virtual string? PasswordSalt { get; set; }
 
         /// <summary>
         /// Creates a new <see cref="SphynxUserInfo"/>.
@@ -44,7 +44,7 @@ namespace Sphynx.Core
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
         public SphynxUserInfo(string userName, SphynxUserStatus status, IEnumerable<Guid>? friends = null)
-            : this(default, userName, status, friends)
+            : this(default(Guid), userName, status, friends)
         {
         }
 
@@ -72,18 +72,44 @@ namespace Sphynx.Core
         /// <param name="userName">The username of the Sphynx user.</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
-        public SphynxUserInfo(Guid userId, string userName, SphynxUserStatus status, IEnumerable<Guid>? friends = null)
+        /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
+        public SphynxUserInfo(Guid userId, string userName, SphynxUserStatus status, IEnumerable<Guid>? friends = null, params Guid[] rooms)
+            : this(userId, userName, status, friends, (IEnumerable<Guid>)rooms)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxUserInfo"/>.
+        /// </summary>
+        /// <param name="userId">The user ID of the Sphynx user.</param>
+        /// <param name="userName">The username of the Sphynx user.</param>
+        /// <param name="status">The activity status of the Sphynx user.</param>
+        /// <param name="friends">User IDs of friends for this user.</param>
+        /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
+        public SphynxUserInfo(Guid userId, string userName, SphynxUserStatus status, IEnumerable<Guid>? friends = null,
+            IEnumerable<Guid>? rooms = null)
         {
             UserId = userId;
             UserName = userName;
             UserStatus = status;
-            Friends = new HashSet<Guid>();
 
             if (friends is not null)
             {
+                Friends = new HashSet<Guid>();
+                
                 foreach (var friend in friends)
                 {
                     Debug.Assert(Friends.Add(friend));
+                }
+            }
+
+            if (rooms is not null)
+            {
+                Rooms = new HashSet<Guid>();
+                
+                foreach (var room in rooms)
+                {
+                    Debug.Assert(Rooms.Add(room));
                 }
             }
         }
@@ -94,11 +120,57 @@ namespace Sphynx.Core
         /// <param name="userId">The user ID of the Sphynx user.</param>
         /// <param name="userName">The username of the Sphynx user.</param>
         /// <param name="pwd">The password for this Sphynx user.</param>
-        /// <param name="pwdSalt">The salt for the password of this Sphynx user.</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
-        public SphynxUserInfo(Guid userId, string userName, byte[] pwd, byte[] pwdSalt, SphynxUserStatus status, IEnumerable<Guid>? friends = null)
-            : this(userId, userName, Convert.ToBase64String(pwd), Convert.ToBase64String(pwdSalt), status, friends)
+        /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
+        public SphynxUserInfo(Guid userId, string userName, string pwd, SphynxUserStatus status, HashSet<Guid> friends,
+            HashSet<Guid> rooms)
+        {
+            UserId = userId;
+            UserName = userName;
+            UserStatus = status;
+            Password = pwd;
+            Friends = friends;
+            Rooms = rooms;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxUserInfo"/>.
+        /// </summary>
+        /// <param name="userId">The user ID of the Sphynx user.</param>
+        /// <param name="userName">The username of the Sphynx user.</param>
+        /// <param name="status">The activity status of the Sphynx user.</param>
+        /// <param name="friends">User IDs of friends for this user.</param>
+        /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
+        public SphynxUserInfo(Guid userId, string userName, SphynxUserStatus status, HashSet<Guid> friends,
+            HashSet<Guid> rooms)
+            : this(userId, userName, null!, status, friends, rooms)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxUserInfo"/>.
+        /// </summary>
+        /// <param name="userName">The username of the Sphynx user.</param>
+        /// <param name="status">The activity status of the Sphynx user.</param>
+        /// <param name="friends">User IDs of friends for this user.</param>
+        /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
+        public SphynxUserInfo(string userName, SphynxUserStatus status, HashSet<Guid> friends,
+            HashSet<Guid> rooms)
+            : this(userName, null!, status, friends, rooms)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxUserInfo"/>.
+        /// </summary>
+        /// <param name="userName">The username of the Sphynx user.</param>
+        /// <param name="pwd">The password for this Sphynx user.</param>
+        /// <param name="status">The activity status of the Sphynx user.</param>
+        /// <param name="friends">User IDs of friends for this user.</param>
+        /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
+        public SphynxUserInfo(string userName, string pwd, SphynxUserStatus status, HashSet<Guid> friends, HashSet<Guid> rooms)
+            : this(default, userName, pwd, status, friends, rooms)
         {
         }
 
@@ -108,14 +180,28 @@ namespace Sphynx.Core
         /// <param name="userId">The user ID of the Sphynx user.</param>
         /// <param name="userName">The username of the Sphynx user.</param>
         /// <param name="pwd">The password for this Sphynx user.</param>
-        /// <param name="pwdSalt">The salt for the password of this Sphynx user.</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
-        public SphynxUserInfo(Guid userId, string userName, string pwd, string pwdSalt, SphynxUserStatus status, IEnumerable<Guid>? friends = null)
-            : this(userId, userName, status, friends)
+        /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
+        public SphynxUserInfo(Guid userId, string userName, string pwd, SphynxUserStatus status, IEnumerable<Guid>? friends = null,
+            IEnumerable<Guid>? rooms = null)
+            : this(userId, userName, status, friends, rooms)
         {
             Password = pwd;
-            PasswordSalt = pwdSalt;
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxUserInfo"/>.
+        /// </summary>
+        /// <param name="userName">The username of the Sphynx user.</param>
+        /// <param name="pwd">The password for this Sphynx user.</param>
+        /// <param name="status">The activity status of the Sphynx user.</param>
+        /// <param name="friends">User IDs of friends for this user.</param>
+        /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
+        public SphynxUserInfo(string userName, string pwd, SphynxUserStatus status, IEnumerable<Guid>? friends = null,
+            IEnumerable<Guid>? rooms = null)
+            : this(default, userName, pwd, status, friends, rooms)
+        {
         }
 
         /// <inheritdoc />
@@ -131,7 +217,7 @@ namespace Sphynx.Core
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            return obj.GetType() == this.GetType() && Equals((SphynxUserInfo)obj);
+            return obj.GetType() == GetType() && Equals((SphynxUserInfo)obj);
         }
 
         /// <inheritdoc />

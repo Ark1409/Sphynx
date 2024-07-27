@@ -3,7 +3,7 @@
     /// <summary>
     /// Represents a single message within a chat room.
     /// </summary>
-    public class ChatRoomMessageInfo
+    public class ChatRoomMessageInfo : IEquatable<ChatRoomMessageInfo>
     {
         /// <summary>
         /// The timestamp for this message.
@@ -16,7 +16,7 @@
         public virtual DateTimeOffset EditTimestamp { get; set; }
 
         /// <summary>
-        /// THe chat room to which this message was sent.
+        /// The chat room to which this message was sent.
         /// </summary>
         public virtual Guid RoomId { get; set; }
 
@@ -89,5 +89,24 @@
             SenderId = senderId;
             Content = content ?? string.Empty;
         }
+
+        /// <inheritdoc />
+        public bool Equals(ChatRoomMessageInfo? other)
+        {
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return MessageId.Equals(other.MessageId);
+        }
+
+        /// <inheritdoc />
+        public override bool Equals(object? obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType() && Equals((ChatRoomMessageInfo)obj);
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode() => MessageId.GetHashCode();
     }
 }

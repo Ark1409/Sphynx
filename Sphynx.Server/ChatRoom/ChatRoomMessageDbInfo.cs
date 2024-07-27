@@ -1,4 +1,6 @@
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.IdGenerators;
 using Sphynx.ChatRoom;
 using Sphynx.Server.Storage;
 
@@ -13,7 +15,6 @@ namespace Sphynx.Server.ChatRoom
         public const string TIMESTAMP_FIELD = "time";
         public const string EDITED_TIMESTAMP_FIELD = "edit_time";
         public const string ROOM_ID_FIELD = "room_id";
-        public const string MSG_ID_FIELD = "msg_id";
         public const string SENDER_ID_FIELD = "sender_id";
         public const string CONTENT_FIELD = "content";
 
@@ -34,16 +35,21 @@ namespace Sphynx.Server.ChatRoom
         public override Guid SenderId { get; set; }
 
         /// <inheritdoc/>
-        [BsonElement(MSG_ID_FIELD)]
-        public override Guid MessageId { get; set; }
+        [BsonIgnore]
+        public override Guid MessageId
+        {
+            get => Id;
+            set => Id = value;
+        }
 
         /// <inheritdoc/>
         [BsonElement(CONTENT_FIELD)]
         public override string Content { get; set; }
 
         /// <inheritdoc/>
-        [BsonIgnore]
-        public Guid Id => MessageId;
+        [BsonId(IdGenerator = typeof(CombGuidGenerator))]
+        [BsonGuidRepresentation(GuidRepresentation.Standard)]
+        public Guid Id { get; internal set; }
 
         /// <inheritdoc/>
         public ChatRoomMessageDbInfo(Guid roomId, Guid senderId, string content)
