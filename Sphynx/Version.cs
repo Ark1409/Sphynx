@@ -1,4 +1,4 @@
-﻿namespace Sphynx.Core
+﻿namespace Sphynx
 {
     /// <summary>
     /// Represents a version of this application.

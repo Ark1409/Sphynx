@@ -111,12 +111,34 @@ namespace Sphynx.Utils
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int ReadGuidSet(this ReadOnlySpan<byte> guidCountAndBytes, out ISet<Guid> output)
+        public static int ReadGuidSet(this ReadOnlySpan<byte> guidCountAndBytes, out ISet<Guid>? output)
         {
             int guidCount = guidCountAndBytes.ReadInt32();
-            const int GUID_OFFSET = sizeof(int);
+            int bytesRead = sizeof(int);
 
-            int bytesRead = sizeof(int) + ReadGuidCollection(guidCountAndBytes[GUID_OFFSET..], guidCount, output = new HashSet<Guid>(guidCount));
+            if (guidCount <= 0)
+            {
+                output = null;
+                return sizeof(int);
+            }
+
+            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount, output = new HashSet<Guid>(guidCount));
+            return bytesRead;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int ReadGuidList(this ReadOnlySpan<byte> guidCountAndBytes, out IList<Guid>? output)
+        {
+            int guidCount = guidCountAndBytes.ReadInt32();
+            int bytesRead = sizeof(int);
+
+            if (guidCount <= 0)
+            {
+                output = null;
+                return sizeof(int);
+            }
+
+            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount, output = new List<Guid>(guidCount));
             return bytesRead;
         }
 
@@ -125,9 +147,9 @@ namespace Sphynx.Utils
             where TCollection : ICollection<Guid>
         {
             int guidCount = guidCountAndBytes.ReadInt32();
-            const int GUID_OFFSET = sizeof(int);
+            int bytesRead = sizeof(int);
 
-            int bytesRead = sizeof(int) + ReadGuidCollection(guidCountAndBytes[GUID_OFFSET..], guidCount, output);
+            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount, output);
             return bytesRead;
         }
 

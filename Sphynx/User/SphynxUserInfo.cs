@@ -394,7 +394,7 @@ namespace Sphynx.Core
         public PendingRoomMessageInfo(Guid roomId, IEnumerable<Guid> pendingMessages)
         {
             RoomId = roomId;
-            PendingMessages = new List<Guid>(pendingMessages);
+            PendingMessages = pendingMessages as List<Guid> ?? new List<Guid>(pendingMessages);
         }
 
         /// <summary>
@@ -441,15 +441,10 @@ namespace Sphynx.Core
             {
                 var roomId = new Guid(bytes.Slice(ROOM_ID_OFFSET, GUID_SIZE));
                 bytesRead = GUID_SIZE;
+                bytesRead += bytes[PENDING_MSGS_OFFSET..].ReadGuidList(out var pendingMsgs);
 
-                int pendingMsgsCount = bytes[PENDING_MSGS_COUNT_OFFSET..].ReadInt32();
-                bytesRead += sizeof(int);
-
-                // pendingMsgsCount should always be greater than 0 since this class is only instantiated when there are pending messages
-                var pendingMsgs = new List<Guid>(pendingMsgsCount);
-                bytesRead += bytes[PENDING_MSGS_OFFSET..].ReadGuidCollection(pendingMsgsCount, pendingMsgs);
-
-                pendingRoomMsgInfo = new PendingRoomMessageInfo(roomId, pendingMsgs);
+                // pendingMsgs.Count should always be greater than 0 since this class is only instantiated when there are pending messages
+                pendingRoomMsgInfo = new PendingRoomMessageInfo(roomId, pendingMsgs!);
                 return true;
             }
             catch
