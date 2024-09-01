@@ -65,7 +65,7 @@ namespace Sphynx.Packet.Request
             try
             {
                 var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                int messageSize = contents.ReadInt32(MESSAGE_SIZE_OFFSET);
+                int messageSize = contents[MESSAGE_SIZE_OFFSET..].ReadInt32();
                 string message = TEXT_ENCODING.GetString(contents.Slice(MESSAGE_OFFSET, messageSize));
 
                 packet = new MessageRequestPacket(userId.Value, sessionId.Value, roomId, message);
@@ -114,6 +114,10 @@ namespace Sphynx.Packet.Request
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -127,7 +131,7 @@ namespace Sphynx.Packet.Request
             if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
             {
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                messageSize.WriteBytes(buffer, MESSAGE_SIZE_OFFSET);
+                messageSize.WriteBytes(buffer[MESSAGE_SIZE_OFFSET..]);
                 TEXT_ENCODING.GetBytes(Message, buffer.Slice(MESSAGE_OFFSET, messageSize));
                 return true;
             }

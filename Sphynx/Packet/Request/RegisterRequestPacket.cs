@@ -5,10 +5,10 @@ using Sphynx.Utils;
 
 namespace Sphynx.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.LOGIN_REQ"/>
+    /// <inheritdoc cref="SphynxPacketType.REGISTER_REQ"/>
     /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
     /// are not serialized for this packet.</remarks>
-    public sealed class LoginRequestPacket : SphynxRequestPacket, IEquatable<LoginRequestPacket>
+    public sealed class RegisterRequestPacket : SphynxRequestPacket, IEquatable<RegisterRequestPacket>
     {
         /// <summary>
         /// User name entered by user for login.
@@ -28,27 +28,27 @@ namespace Sphynx.Packet.Request
         private const int USERNAME_OFFSET = USERNAME_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
-        /// Creates a <see cref="LoginRequestPacket"/>.
+        /// Creates a <see cref="RegisterRequestPacket"/>.
         /// </summary>
-        /// <param name="userName">User name entered by user for login.</param>
-        /// <param name="password">Password entered by user for login.</param>
+        /// <param name="userName">User name entered by user for register.</param>
+        /// <param name="password">Password entered by user for register.</param>
         /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
         /// are not serialized for this packet.</remarks>
-        public LoginRequestPacket(string userName, string password) : base(Guid.Empty, Guid.Empty)
+        public RegisterRequestPacket(string userName, string password) : base(Guid.Empty, Guid.Empty)
         {
             UserName = userName;
             Password = password;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="LoginRequestPacket"/>.
+        /// Attempts to deserialize a <see cref="RegisterRequestPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
         /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
         /// are not expected to be within the contents of the packet.</remarks>
         public static bool TryDeserialize(ReadOnlySpan<byte> contents,
-            [NotNullWhen(true)] out LoginRequestPacket? packet)
+            [NotNullWhen(true)] out RegisterRequestPacket? packet)
         {
             int minContentSize = sizeof(int) + sizeof(int); // UsernameSize, PasswordSize
 
@@ -62,13 +62,13 @@ namespace Sphynx.Packet.Request
             {
                 int usernameSize = contents[USERNAME_SIZE_OFFSET..].ReadInt32();
                 string userName = TEXT_ENCODING.GetString(contents.Slice(USERNAME_OFFSET, usernameSize));
-
+                
                 int PASSWORD_SIZE_OFFSET = USERNAME_OFFSET + usernameSize;
                 int passwordSize = contents[PASSWORD_SIZE_OFFSET..].ReadInt32();
                 int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                 string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
-                packet = new LoginRequestPacket(userName, password);
+                packet = new RegisterRequestPacket(userName, password);
                 return true;
             }
             catch
@@ -154,7 +154,6 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(LoginRequestPacket? other) =>
-            PacketType == other?.PacketType && UserName == other?.UserName && Password == other?.Password;
+        public bool Equals(RegisterRequestPacket? other) => PacketType == other?.PacketType && UserName == other?.UserName && Password == other?.Password;
     }
 }

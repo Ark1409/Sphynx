@@ -99,6 +99,10 @@ namespace Sphynx.Packet.Request
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);

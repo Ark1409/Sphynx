@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-
 using Sphynx.Packet.Response;
 using Sphynx.Utils;
 
@@ -67,7 +66,7 @@ namespace Sphynx.Packet.Request
             {
                 var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
 
-                int passwordSize = contents.ReadInt32(PASSWORD_SIZE_OFFSET);
+                int passwordSize = contents[PASSWORD_SIZE_OFFSET..].ReadInt32();
                 string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
                 packet = new RoomJoinRequestPacket(userId.Value, sessionId.Value, roomId, passwordSize > 0 ? password : null);
@@ -117,6 +116,10 @@ namespace Sphynx.Packet.Request
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -131,7 +134,7 @@ namespace Sphynx.Packet.Request
             {
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
 
-                passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
+                passwordSize.WriteBytes(buffer[PASSWORD_SIZE_OFFSET..]);
                 TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));
                 return true;
             }

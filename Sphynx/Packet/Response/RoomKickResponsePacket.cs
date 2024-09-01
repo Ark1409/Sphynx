@@ -47,7 +47,8 @@ namespace Sphynx.Packet.Response
             int contentSize = DEFAULT_CONTENT_SIZE;
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
-            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) || !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
+            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) ||
+                !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
             {
                 packetBytes = null;
                 return false;
@@ -74,6 +75,10 @@ namespace Sphynx.Packet.Response
                     await stream.WriteAsync(buffer);
                     return true;
                 }
+            }
+            catch
+            {
+                return false;
             }
             finally
             {

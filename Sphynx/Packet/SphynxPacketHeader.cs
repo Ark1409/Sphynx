@@ -66,8 +66,8 @@ namespace Sphynx.Packet
         {
             if (CheckSignature(packetHeader) && packetHeader.Length >= HEADER_SIZE)
             {
-                var packetType = (SphynxPacketType)packetHeader.ReadUInt32(PACKET_TYPE_OFFSET);
-                int contentSize = packetHeader.ReadInt32(CONTENT_SIZE_OFFSET);
+                var packetType = (SphynxPacketType)packetHeader[PACKET_TYPE_OFFSET..].ReadUInt32();
+                int contentSize = packetHeader[CONTENT_SIZE_OFFSET..].ReadInt32();
 
                 header = new SphynxPacketHeader(packetType, contentSize);
                 return true;
@@ -189,9 +189,9 @@ namespace Sphynx.Packet
                 return false;
             }
 
-            SIGNATURE.WriteBytes(buffer, SIGNATURE_OFFSET);
-            ((uint)PacketType).WriteBytes(buffer, PACKET_TYPE_OFFSET);
-            ContentSize.WriteBytes(buffer, CONTENT_SIZE_OFFSET);
+            SIGNATURE.WriteBytes(buffer[SIGNATURE_OFFSET..]);
+            ((uint)PacketType).WriteBytes(buffer[PACKET_TYPE_OFFSET..]);
+            ContentSize.WriteBytes(buffer[CONTENT_SIZE_OFFSET..]);
             return true;
         }
         

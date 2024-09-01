@@ -66,7 +66,7 @@ namespace Sphynx.Packet.Request
 
             try
             {
-                int userCount = contents.ReadInt32(USER_COUNT_OFFSET);
+                int userCount = contents[USER_COUNT_OFFSET..].ReadInt32();
                 var userIds = new Guid[userCount];
 
                 for (int i = 0; i < userCount; i++)
@@ -118,6 +118,10 @@ namespace Sphynx.Packet.Request
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -133,7 +137,7 @@ namespace Sphynx.Packet.Request
                 return false;
             }
 
-            UserIds.Length.WriteBytes(buffer, USER_COUNT_OFFSET);
+            UserIds.Length.WriteBytes(buffer[USER_COUNT_OFFSET..]);
             for (int i = 0; i < UserIds.Length; i++)
             {
                 Debug.Assert(UserIds[i].TryWriteBytes(buffer.Slice(USER_IDS_OFFSET + i * GUID_SIZE, GUID_SIZE)));

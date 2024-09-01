@@ -62,7 +62,7 @@ namespace Sphynx.Packet.Response
 
             try
             {
-                int msgCount = contents.ReadInt32(MSG_COUNT_OFFSET);
+                int msgCount = contents[MSG_COUNT_OFFSET..].ReadInt32();
                 var msgs = new ChatRoomMessageInfo[msgCount];
 
                 for (int i = 0, cursorOffset = MSGS_OFFSET; i < msgCount; i++)
@@ -73,22 +73,22 @@ namespace Sphynx.Packet.Response
                     var senderId = new Guid(contents.Slice(cursorOffset, GUID_SIZE));
                     cursorOffset += GUID_SIZE;
 
-                    long timestampTicks = contents.ReadInt64(cursorOffset);
+                    long timestampTicks = contents[cursorOffset..].ReadInt64();
                     cursorOffset += sizeof(long);
-                    var timestampOffset = new TimeSpan(contents.ReadInt64(cursorOffset));
+                    var timestampOffset = new TimeSpan(contents[cursorOffset..].ReadInt64());
                     cursorOffset += sizeof(long);
                     var timestamp = new DateTimeOffset(timestampTicks, timestampOffset);
 
-                    long editTimestampTicks = contents.ReadInt64(cursorOffset);
+                    long editTimestampTicks = contents[cursorOffset..].ReadInt64();
                     cursorOffset += sizeof(long);
-                    var editTimestampOffset = new TimeSpan(contents.ReadInt64(cursorOffset));
+                    var editTimestampOffset = new TimeSpan(contents[cursorOffset..].ReadInt64());
                     cursorOffset += sizeof(long);
                     var editTimestamp = new DateTimeOffset(editTimestampTicks, editTimestampOffset);
 
                     var roomId = new Guid(contents.Slice(cursorOffset, GUID_SIZE));
                     cursorOffset += GUID_SIZE;
 
-                    int contentSize = contents.ReadInt32(cursorOffset);
+                    int contentSize = contents[cursorOffset..].ReadInt32();
                     cursorOffset += sizeof(int);
 
                     string content = TEXT_ENCODING.GetString(contents.Slice(cursorOffset, contentSize));
@@ -123,6 +123,11 @@ namespace Sphynx.Packet.Response
                     return false;
                 }
             }
+            catch
+            {
+                packetBytes = null;
+                return false;
+            }
             finally
             {
                 ArrayPool<int>.Shared.Return(msgContentSizes);
@@ -150,6 +155,10 @@ namespace Sphynx.Packet.Response
                     await stream.WriteAsync(buffer);
                     return true;
                 }
+            }
+            catch
+            {
+                return false;
             }
             finally
             {
@@ -194,7 +203,7 @@ namespace Sphynx.Packet.Response
             // We only serialize recent msgs on success
             if (ErrorCode != SphynxErrorCode.SUCCESS) return true;
 
-            (Messages?.Length ?? 0).WriteBytes(buffer, MSG_COUNT_OFFSET);
+            (Messages?.Length ?? 0).WriteBytes(buffer[MSG_COUNT_OFFSET..]);
 
             for (int i = 0, cursorOffset = MSGS_OFFSET; i < (Messages?.Length ?? 0); i++)
             {
@@ -205,20 +214,20 @@ namespace Sphynx.Packet.Response
                 msg.SenderId.TryWriteBytes(buffer.Slice(cursorOffset, GUID_SIZE));
                 cursorOffset += GUID_SIZE;
 
-                msg.Timestamp.Ticks.WriteBytes(buffer, cursorOffset);
+                msg.Timestamp.Ticks.WriteBytes(buffer[cursorOffset..]);
                 cursorOffset += sizeof(long);
-                msg.Timestamp.Offset.Ticks.WriteBytes(buffer, cursorOffset);
+                msg.Timestamp.Offset.Ticks.WriteBytes(buffer[cursorOffset..]);
                 cursorOffset += sizeof(long);
 
-                msg.EditTimestamp.Ticks.WriteBytes(buffer, cursorOffset);
+                msg.EditTimestamp.Ticks.WriteBytes(buffer[cursorOffset..]);
                 cursorOffset += sizeof(long);
-                msg.EditTimestamp.Offset.Ticks.WriteBytes(buffer, cursorOffset);
+                msg.EditTimestamp.Offset.Ticks.WriteBytes(buffer[cursorOffset..]);
                 cursorOffset += sizeof(long);
 
                 msg.RoomId.TryWriteBytes(buffer.Slice(cursorOffset, GUID_SIZE));
                 cursorOffset += GUID_SIZE;
 
-                msgContentSizes[i].WriteBytes(buffer, cursorOffset);
+                msgContentSizes[i].WriteBytes(buffer[cursorOffset..]);
                 cursorOffset += sizeof(int);
 
                 TEXT_ENCODING.GetBytes(msg.Content, buffer.Slice(cursorOffset, msgContentSizes[i]));

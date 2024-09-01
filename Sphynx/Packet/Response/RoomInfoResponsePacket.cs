@@ -102,7 +102,7 @@ namespace Sphynx.Packet.Response
             var userOneId = new Guid(contents.Slice(USER_ID_ONE_OFFSET, GUID_SIZE));
             var userTwoId = new Guid(contents.Slice(USER_ID_TWO_OFFSET, GUID_SIZE));
 
-            int roomNameSize = contents.ReadInt32(ROOM_NAME_SIZE_OFFSET);
+            int roomNameSize = contents[ROOM_NAME_SIZE_OFFSET..].ReadInt32();
             string roomName = TEXT_ENCODING.GetString(contents.Slice(ROOM_NAME_OFFSET, roomNameSize));
 
             var roomInfo = new ChatRoomInfo.Direct(roomId, roomName, userOneId, userTwoId);
@@ -116,13 +116,13 @@ namespace Sphynx.Packet.Response
 
             var ownerId = new Guid(contents.Slice(OWNER_ID_OFFSET, GUID_SIZE));
             bool isPublic = contents[VISIBILITY_OFFSET] != 0;
-            int userCount = contents.ReadInt32(USER_COUNT_OFFSET);
+            int userCount = contents[USER_COUNT_OFFSET..].ReadInt32();
 
-            int passwordSize = contents.ReadInt32(PWD_SIZE_OFFSET);
+            int passwordSize = contents[PWD_SIZE_OFFSET..].ReadInt32();
             string password = TEXT_ENCODING.GetString(contents.Slice(PWD_OFFSET, passwordSize));
 
             int ROOM_NAME_SIZE_OFFSET = PWD_OFFSET + passwordSize;
-            int roomNameSize = contents.ReadInt32(ROOM_NAME_SIZE_OFFSET);
+            int roomNameSize = contents[ROOM_NAME_SIZE_OFFSET..].ReadInt32();
 
             int ROOM_NAME_OFFSET = ROOM_NAME_SIZE_OFFSET + sizeof(int);
             string roomName = TEXT_ENCODING.GetString(contents.Slice(ROOM_NAME_OFFSET, roomNameSize));
@@ -153,7 +153,15 @@ namespace Sphynx.Packet.Response
                     GetDirectPacketInfo(out int roomNameSize, out int contentSize);
                     int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
-                    if (!TrySerializeDirect(packetBytes = new byte[bufferSize], roomNameSize))
+                    try
+                    {
+                        if (!TrySerializeDirect(packetBytes = new byte[bufferSize], roomNameSize))
+                        {
+                            packetBytes = null;
+                            return false;
+                        }
+                    }
+                    catch
                     {
                         packetBytes = null;
                         return false;
@@ -167,7 +175,15 @@ namespace Sphynx.Packet.Response
                     GetGroupPacketInfo(out int pwdSize, out int roomNameSize, out int contentSize);
                     int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
-                    if (!TrySerializeGroup(packetBytes = new byte[bufferSize], pwdSize, roomNameSize))
+                    try
+                    {
+                        if (!TrySerializeGroup(packetBytes = new byte[bufferSize], pwdSize, roomNameSize))
+                        {
+                            packetBytes = null;
+                            return false;
+                        }
+                    }
+                    catch
                     {
                         packetBytes = null;
                         return false;
@@ -211,12 +227,16 @@ namespace Sphynx.Packet.Response
                             return true;
                         }
                     }
+                    catch
+                    {
+                        return false;
+                    }
                     finally
                     {
                         ArrayPool<byte>.Shared.Return(rawBuffer);
                     }
 
-                    return true;
+                    return false;
                 }
 
                 case ChatRoomType.GROUP:
@@ -235,12 +255,16 @@ namespace Sphynx.Packet.Response
                             return true;
                         }
                     }
+                    catch
+                    {
+                        return false;
+                    }
                     finally
                     {
                         ArrayPool<byte>.Shared.Return(rawBuffer);
                     }
 
-                    return true;
+                    return false;
                 }
             }
 
@@ -255,12 +279,17 @@ namespace Sphynx.Packet.Response
                 }
 
                 await stream.WriteAsync(nullBuffer);
-                return ErrorCode != SphynxErrorCode.SUCCESS; // RoomInfo should only be null when it isn't a success
+            }
+            catch
+            {
+                return false;
             }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawNullBuffer);
             }
+
+            return ErrorCode != SphynxErrorCode.SUCCESS; // RoomInfo should only be null when it isn't a success
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -322,7 +351,7 @@ namespace Sphynx.Packet.Response
             roomInfo.UserOne!.Value.TryWriteBytes(buffer.Slice(USER_ID_ONE_OFFSET, GUID_SIZE));
             roomInfo.UserTwo!.Value.TryWriteBytes(buffer.Slice(USER_ID_TWO_OFFSET, GUID_SIZE));
 
-            roomNameSize.WriteBytes(buffer, ROOM_NAME_SIZE_OFFSET);
+            roomNameSize.WriteBytes(buffer[ROOM_NAME_SIZE_OFFSET..]);
             TEXT_ENCODING.GetBytes(roomInfo.Name, buffer.Slice(ROOM_NAME_OFFSET, roomNameSize));
             return true;
         }
@@ -343,13 +372,13 @@ namespace Sphynx.Packet.Response
 
             roomInfo.OwnerId.TryWriteBytes(buffer.Slice(OWNER_ID_OFFSET, GUID_SIZE));
             buffer[VISIBILITY_OFFSET] = (byte)(roomInfo.Public ? 1 : 0);
-            roomInfo.Users.Count.WriteBytes(buffer, USER_COUNT_OFFSET);
+            roomInfo.Users.Count.WriteBytes(buffer[USER_COUNT_OFFSET..]);
 
-            pwdSize.WriteBytes(buffer, PWD_SIZE_OFFSET);
+            pwdSize.WriteBytes(buffer[PWD_SIZE_OFFSET..]);
             TEXT_ENCODING.GetBytes(roomInfo.Password!, buffer.Slice(PWD_OFFSET, pwdSize));
 
             int ROOM_NAME_SIZE_OFFSET = PWD_OFFSET + pwdSize;
-            roomNameSize.WriteBytes(buffer, ROOM_NAME_SIZE_OFFSET);
+            roomNameSize.WriteBytes(buffer[ROOM_NAME_SIZE_OFFSET..]);
 
             int ROOM_NAME_OFFSET = ROOM_NAME_SIZE_OFFSET + sizeof(int);
             TEXT_ENCODING.GetBytes(roomInfo.Name, buffer.Slice(ROOM_NAME_OFFSET, roomNameSize));

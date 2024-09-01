@@ -69,9 +69,14 @@
         /// A packet that is sent from a client to resolve message information.
         /// </summary>
         MSG_INFO_REQ = 0x0000000Cu,
+        
+        /// <summary>
+        /// A registration request packet sent from client to server with necessary authentication information.
+        /// </summary>
+        REGISTER_REQ = 0x0000000Du,
 
         /// <summary>
-        /// A response sent from server to client to a <see cref="LOGIN_REQ"/> packet indicating whether the login
+        /// A response sent from server to client for a <see cref="LOGIN_REQ"/> packet indicating whether the login
         /// was successful.
         /// </summary>
         LOGIN_RES = 0x01000001u,
@@ -87,12 +92,12 @@
         ROOM_CREATE_RES = 0x01000003u,
 
         /// <summary>
-        /// A packet sent from server to requesting client indicating whether or not the joining was successful.
+        /// A packet sent from server to requesting client indicating whether the joining was successful.
         /// </summary>
         ROOM_JOIN_RES = 0x01000004u,
 
         /// <summary>
-        /// A packet sent from server to requesting client indicating whether or not the leaving was successful.
+        /// A packet sent from server to requesting client indicating whether the leaving was successful.
         /// </summary>
         ROOM_LEAVE_RES = 0x01000005u,
 
@@ -129,7 +134,13 @@
         /// <summary>
         /// A packet that is sent from server to the client containing resolved message information.
         /// </summary>
-        MSG_INFO_RES = 0x0100000Bu,
+        MSG_INFO_RES = 0x0100000Cu,
+        
+        /// <summary>
+        /// A response sent from server to client for a <see cref="REGISTER_REQ"/> packet indicating whether the registration
+        /// was successful.
+        /// </summary>
+        REGISTER_RES = 0x0100000Cu,
         
         /// <summary>
         /// A broadcast packet sent from server to all other friends of a user when said user goes online.

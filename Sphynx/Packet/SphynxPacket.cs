@@ -114,7 +114,7 @@ namespace Sphynx.Packet
 
                 case SphynxPacketType.CHAT_JOIN_BCAST:
                 {
-                    if (!ChatJoinBroadcastPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomJoinBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -138,7 +138,7 @@ namespace Sphynx.Packet
 
                 case SphynxPacketType.CHAT_LEAVE_BCAST:
                 {
-                    if (!ChatLeaveBroadcastPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomLeaveBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -162,7 +162,7 @@ namespace Sphynx.Packet
 
                 case SphynxPacketType.CHAT_KICK_BCAST:
                 {
-                    if (!ChatKickBroadcastPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomKickBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -186,7 +186,7 @@ namespace Sphynx.Packet
 
                 case SphynxPacketType.CHAT_DEL_BCAST:
                 {
-                    if (!ChatDeleteBroadcastPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomDeleteBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -340,7 +340,7 @@ namespace Sphynx.Packet
         /// span which is expected to contain only the contents of this packet along with its header.
         /// </summary>
         /// <param name="packetBuffer">The buffer to serialize the header into.</param>
-        protected virtual bool TrySerializeHeader(Span<byte> packetBuffer)
+        protected bool TrySerializeHeader(Span<byte> packetBuffer)
         {
             var header = new SphynxPacketHeader(PacketType, packetBuffer.Length - SphynxPacketHeader.HEADER_SIZE);
             return header.TrySerialize(packetBuffer[..SphynxPacketHeader.HEADER_SIZE]);

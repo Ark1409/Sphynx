@@ -61,7 +61,7 @@ namespace Sphynx.Packet.Response
 
             try
             {
-                int userCount = contents.ReadInt32(USER_COUNT_OFFSET);
+                int userCount = contents[USER_COUNT_OFFSET..].ReadInt32();
                 var users = new SphynxUserInfo[userCount];
 
                 for (int i = 0, cursorOffset = USERS_OFFSET; i < userCount; i++)
@@ -72,7 +72,7 @@ namespace Sphynx.Packet.Response
                     var userId = new Guid(contents.Slice(cursorOffset, GUID_SIZE));
                     cursorOffset += GUID_SIZE;
 
-                    int usernameSize = contents.ReadInt32(cursorOffset);
+                    int usernameSize = contents[cursorOffset..].ReadInt32();
                     cursorOffset += sizeof(int);
 
                     string userName = TEXT_ENCODING.GetString(contents.Slice(cursorOffset, usernameSize));
@@ -106,6 +106,11 @@ namespace Sphynx.Packet.Response
                     return false;
                 }
             }
+            catch
+            {
+                packetBytes = null;
+                return false;
+            }
             finally
             {
                 ArrayPool<int>.Shared.Return(usernameSizes);
@@ -133,6 +138,10 @@ namespace Sphynx.Packet.Response
                     await stream.WriteAsync(buffer);
                     return true;
                 }
+            }
+            catch
+            {
+                return false;
             }
             finally
             {
@@ -177,7 +186,7 @@ namespace Sphynx.Packet.Response
             // We only serialize users on success
             if (ErrorCode != SphynxErrorCode.SUCCESS) return true;
 
-            (Users?.Length ?? 0).WriteBytes(buffer, USER_COUNT_OFFSET);
+            (Users?.Length ?? 0).WriteBytes(buffer[USER_COUNT_OFFSET..]);
 
             for (int i = 0, cursorOffset = USERS_OFFSET; i < (Users?.Length ?? 0); i++)
             {
@@ -189,7 +198,7 @@ namespace Sphynx.Packet.Response
                 user.UserId.TryWriteBytes(buffer.Slice(cursorOffset, GUID_SIZE));
                 cursorOffset += GUID_SIZE;
 
-                usernameSizes[i].WriteBytes(buffer, cursorOffset);
+                usernameSizes[i].WriteBytes(buffer[cursorOffset..]);
                 cursorOffset += sizeof(int);
 
                 TEXT_ENCODING.GetBytes(user.UserName, buffer.Slice(cursorOffset, usernameSizes[i]));

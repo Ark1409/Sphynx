@@ -3,44 +3,36 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_BCAST"/>
-    public sealed class ChatLeaveBroadcastPacket : SphynxPacket, IEquatable<ChatLeaveBroadcastPacket>
+    /// <inheritdoc cref="SphynxPacketType.CHAT_DEL_BCAST"/>
+    public sealed class RoomDeleteBroadcastPacket : SphynxPacket, IEquatable<RoomDeleteBroadcastPacket>
     {
         /// <summary>
-        /// Room ID of the room the user has left.
+        /// Room ID of the deleted room.
         /// </summary>
         public Guid RoomId { get; set; }
 
-        /// <summary>
-        /// The user ID of the user who left the room.
-        /// </summary>
-        public Guid LeaverId { get; set; }
-
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
+        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_DEL_BCAST;
 
         private const int ROOM_ID_OFFSET = 0;
-        private static readonly int LEAVER_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveBroadcastPacket"/>.
+        /// Creates a new <see cref="RoomDeleteBroadcastPacket"/>.
         /// </summary>
-        /// <param name="roomId">Room ID of the room the user has left.</param>
-        /// <param name="leaverId">The user ID of the user who left the room.</param>
-        public ChatLeaveBroadcastPacket(Guid roomId, Guid leaverId)
+        /// <param name="roomId">Room ID of the deleted room.</param>
+        public RoomDeleteBroadcastPacket(Guid roomId)
         {
             RoomId = roomId;
-            LeaverId = leaverId;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatLeaveBroadcastPacket"/>.
+        /// Attempts to deserialize a <see cref="RoomDeleteBroadcastPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatLeaveBroadcastPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomDeleteBroadcastPacket? packet)
         {
-            int contentSize = LEAVER_ID_OFFSET + GUID_SIZE;
+            int contentSize = GUID_SIZE;
 
             if (contents.Length < contentSize)
             {
@@ -49,15 +41,14 @@ namespace Sphynx.Packet.Broadcast
             }
 
             var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-            var leaverId = new Guid(contents.Slice(LEAVER_ID_OFFSET, GUID_SIZE));
-            packet = new ChatLeaveBroadcastPacket(roomId, leaverId);
+            packet = new RoomDeleteBroadcastPacket(roomId);
             return true;
         }
 
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE;
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
@@ -74,7 +65,7 @@ namespace Sphynx.Packet.Broadcast
         {
             if (!stream.CanWrite) return false;
 
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE;
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -102,7 +93,6 @@ namespace Sphynx.Packet.Broadcast
             {
                 buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                LeaverId.TryWriteBytes(buffer.Slice(LEAVER_ID_OFFSET, GUID_SIZE));
                 return true;
             }
 
@@ -110,6 +100,6 @@ namespace Sphynx.Packet.Broadcast
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatLeaveBroadcastPacket? other) => base.Equals(other) && RoomId == other?.RoomId && LeaverId == other?.LeaverId;
+        public bool Equals(RoomDeleteBroadcastPacket? other) => base.Equals(other) && RoomId == other?.RoomId;
     }
 }

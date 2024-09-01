@@ -3,44 +3,44 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_BCAST"/>
-    public sealed class ChatJoinBroadcastPacket : SphynxPacket, IEquatable<ChatJoinBroadcastPacket>
+    /// <inheritdoc cref="SphynxPacketType.CHAT_KICK_BCAST"/>
+    public sealed class RoomKickBroadcastPacket : SphynxPacket, IEquatable<RoomKickBroadcastPacket>
     {
         /// <summary>
-        /// Room ID of the room the user has joined.
+        /// Room ID of the room to kick the user from.
         /// </summary>
         public Guid RoomId { get; set; }
 
         /// <summary>
-        /// The user ID of the user who joined the room.
+        /// User ID of the user that was kicked.
         /// </summary>
-        public Guid JoinerId { get; set; }
+        public Guid KickedId { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
+        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_KICK_BCAST;
 
         private const int ROOM_ID_OFFSET = 0;
-        private static readonly int JOINER_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
+        private static readonly int KICKED_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="ChatJoinBroadcastPacket"/>.
+        /// Creates a new <see cref="RoomKickBroadcastPacket"/>.
         /// </summary>
-        /// <param name="roomId">Room ID of the room the user has joined.</param>
-        /// <param name="joinerId">The user ID of the user who joined the room.</param>
-        public ChatJoinBroadcastPacket(Guid roomId, Guid joinerId)
+        /// <param name="roomId">Room ID of the room to kick the user from.</param>
+        /// <param name="kickedId">User ID of the user that was kicked.</param>
+        public RoomKickBroadcastPacket(Guid roomId, Guid kickedId)
         {
             RoomId = roomId;
-            JoinerId = joinerId;
+            KickedId = kickedId;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatJoinBroadcastPacket"/>.
+        /// Attempts to deserialize a <see cref="RoomKickBroadcastPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatJoinBroadcastPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomKickBroadcastPacket? packet)
         {
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = KICKED_ID_OFFSET + GUID_SIZE;
 
             if (contents.Length < contentSize)
             {
@@ -49,8 +49,8 @@ namespace Sphynx.Packet.Broadcast
             }
 
             var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-            var joinerId = new Guid(contents.Slice(JOINER_ID_OFFSET, GUID_SIZE));
-            packet = new ChatJoinBroadcastPacket(roomId, joinerId);
+            var kickId = new Guid(contents.Slice(KICKED_ID_OFFSET, GUID_SIZE));
+            packet = new RoomKickBroadcastPacket(roomId, kickId);
             return true;
         }
 
@@ -74,7 +74,7 @@ namespace Sphynx.Packet.Broadcast
         {
             if (!stream.CanWrite) return false;
 
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE;
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -102,7 +102,7 @@ namespace Sphynx.Packet.Broadcast
             {
                 buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                JoinerId.TryWriteBytes(buffer.Slice(JOINER_ID_OFFSET, GUID_SIZE));
+                KickedId.TryWriteBytes(buffer.Slice(KICKED_ID_OFFSET, GUID_SIZE));
                 return true;
             }
 
@@ -110,6 +110,6 @@ namespace Sphynx.Packet.Broadcast
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatJoinBroadcastPacket? other) => base.Equals(other) && RoomId == other?.RoomId && JoinerId == other?.JoinerId;
+        public bool Equals(RoomKickBroadcastPacket? other) => base.Equals(other) && RoomId == other?.RoomId && KickedId == other?.KickedId;
     }
 }

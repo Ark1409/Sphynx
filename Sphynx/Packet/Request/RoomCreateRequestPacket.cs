@@ -269,11 +269,11 @@ namespace Sphynx.Packet.Request
 
                 try
                 {
-                    int nameSize = contents.ReadInt32(NAME_SIZE_OFFSET);
+                    int nameSize = contents[NAME_SIZE_OFFSET..].ReadInt32();
                     string name = TEXT_ENCODING.GetString(contents.Slice(NAME_OFFSET, nameSize));
 
                     int PASSWORD_SIZE_OFFSET = NAME_OFFSET + nameSize;
-                    int passwordSize = contents.ReadInt32(PASSWORD_SIZE_OFFSET);
+                    int passwordSize = contents[PASSWORD_SIZE_OFFSET..].ReadInt32();
 
                     int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                     string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
@@ -323,6 +323,10 @@ namespace Sphynx.Packet.Request
                         return true;
                     }
                 }
+                catch
+                {
+                    return false;
+                }
                 finally
                 {
                     ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -343,11 +347,11 @@ namespace Sphynx.Packet.Request
             {
                 if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
                 {
-                    nameSize.WriteBytes(buffer, NAME_SIZE_OFFSET);
+                    nameSize.WriteBytes(buffer[NAME_SIZE_OFFSET..]);
                     TEXT_ENCODING.GetBytes(Name, buffer.Slice(NAME_OFFSET, nameSize));
 
                     int PASSWORD_SIZE_OFFSET = NAME_OFFSET + nameSize;
-                    passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
+                    passwordSize.WriteBytes(buffer[PASSWORD_SIZE_OFFSET..]);
 
                     int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                     TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));

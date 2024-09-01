@@ -15,7 +15,6 @@ namespace Sphynx.Packet.Response
         /// </summary>
         public RoomDeleteResponsePacket() : this(SphynxErrorCode.SUCCESS)
         {
-
         }
 
         /// <summary>
@@ -24,7 +23,6 @@ namespace Sphynx.Packet.Response
         /// <param name="errorCode">Error code for delete attempt.</param>
         public RoomDeleteResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
-
         }
 
         /// <summary>
@@ -50,7 +48,8 @@ namespace Sphynx.Packet.Response
             int contentSize = DEFAULT_CONTENT_SIZE;
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
-            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) || !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
+            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) ||
+                !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
             {
                 packetBytes = null;
                 return false;
@@ -77,6 +76,10 @@ namespace Sphynx.Packet.Response
                     await stream.WriteAsync(buffer);
                     return true;
                 }
+            }
+            catch
+            {
+                return false;
             }
             finally
             {

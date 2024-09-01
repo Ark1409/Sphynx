@@ -22,7 +22,6 @@ namespace Sphynx.Packet.Request
         /// <param name="roomId">The ID of the room to get the information of.</param>
         public RoomInfoRequestPacket(Guid roomId) : this(Guid.Empty, Guid.Empty, roomId)
         {
-
         }
 
         /// <summary>
@@ -89,6 +88,10 @@ namespace Sphynx.Packet.Request
                     await stream.WriteAsync(buffer);
                     return true;
                 }
+            }
+            catch
+            {
+                return false;
             }
             finally
             {
