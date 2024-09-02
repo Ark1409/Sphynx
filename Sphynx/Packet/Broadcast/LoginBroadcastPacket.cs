@@ -1,6 +1,6 @@
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-using Sphynx.Core;
+using Sphynx.User;
 
 namespace Sphynx.Packet.Broadcast
 {

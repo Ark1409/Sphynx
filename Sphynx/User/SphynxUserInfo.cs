@@ -6,7 +6,7 @@ using Sphynx.Packet;
 using Sphynx.Packet.Response;
 using Sphynx.Utils;
 
-namespace Sphynx.Core
+namespace Sphynx.User
 {
     /// <summary>
     /// A type which holds information about a specific Sphynx user.
@@ -111,7 +111,7 @@ namespace Sphynx.Core
             return TryDeserialize(userBytes, false, out userInfo);
         }
 
-        /// <inheritdoc cref="TryDeserialize(System.ReadOnlySpan{byte},out Sphynx.Core.SphynxUserInfo?)"/>
+        /// <inheritdoc cref="TryDeserialize(System.ReadOnlySpan{byte},out SphynxUserInfo?)"/>
         /// <param name="compactUser">Whether this user should be serialized as a compact user (i.e. a user other than
         /// the currently logged-in user).</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> userBytes, bool compactUser, [NotNullWhen(true)] out SphynxUserInfo? userInfo)
@@ -119,7 +119,7 @@ namespace Sphynx.Core
             return TryDeserialize(userBytes, compactUser, out userInfo, out _);
         }
 
-        /// <inheritdoc cref="TryDeserialize(System.ReadOnlySpan{byte},bool,out Sphynx.Core.SphynxUserInfo?)"/>
+        /// <inheritdoc cref="TryDeserialize(System.ReadOnlySpan{byte},bool,out SphynxUserInfo?)"/>
         /// <param name="bytesRead">The number of bytes read from <paramref name="userBytes"/>.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> userBytes, bool compactUser, [NotNullWhen(true)] out SphynxUserInfo? userInfo,
             out int bytesRead)

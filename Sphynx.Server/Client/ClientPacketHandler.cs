@@ -188,9 +188,9 @@ namespace Sphynx.Server.Client
             // Password check
             var dbPassword = await SphynxRoomManager.GetRoomFieldAsync<string>(request.RoomId, ChatRoomDbInfo.Group.PASSWORD_FIELD);
             var dbSalt = await SphynxRoomManager.GetRoomFieldAsync<string>(request.RoomId, ChatRoomDbInfo.Group.PASSWORD_SALT_FIELD);
-            var pwdError = PasswordManager.VerifyPassword(dbPassword.Data!, dbSalt.Data!, request.Password ?? string.Empty);
+            var passwordCheck = PasswordManager.VerifyPassword(dbPassword.Data!, dbSalt.Data!, request.Password ?? string.Empty);
 
-            if (pwdError != SphynxErrorCode.SUCCESS) return await _client.SendPacketAsync(new RoomDeleteResponsePacket(pwdError));
+            if (passwordCheck != SphynxErrorCode.SUCCESS) return await _client.SendPacketAsync(new RoomDeleteResponsePacket(passwordCheck));
 
             // Delete room
             var roomInfo = await SphynxRoomManager.DeleteRoomAsync(request.RoomId);

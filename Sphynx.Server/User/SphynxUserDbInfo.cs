@@ -1,7 +1,7 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.IdGenerators;
-using Sphynx.Core;
+using Sphynx.User;
 using Sphynx.Server.Storage;
 
 namespace Sphynx.Server.User

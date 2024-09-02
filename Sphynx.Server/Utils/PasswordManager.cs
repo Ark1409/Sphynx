@@ -11,7 +11,7 @@ namespace Sphynx.Server.Utils
         internal const int PWD_HASH_LEN = 256;
         internal const int PWD_SALT_LEN = PWD_HASH_LEN;
 
-        // NUmber of iterations of hashing
+        // Number of iterations of hashing
         internal const int PWD_HASH_ITERATIONS = 10_000;
 
         internal static byte[] HashPassword(ReadOnlySpan<char> password, out byte[] generatedSalt)

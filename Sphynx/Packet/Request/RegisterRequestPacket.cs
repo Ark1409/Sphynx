@@ -10,6 +10,9 @@ namespace Sphynx.Packet.Request
     /// are not serialized for this packet.</remarks>
     public sealed class RegisterRequestPacket : SphynxRequestPacket, IEquatable<RegisterRequestPacket>
     {
+        // TODO: CREATE REGISTER PACKET (JUST USERNAME AND PWD SHOULD BE FINE, CHECK THEY DONT ALREADY EXIST IN SERVER)
+        // TOOD: ON SUCCESSFUL REGISTER, JUST SEND THE USER INFO
+        
         /// <summary>
         /// User name entered by user for login.
         /// </summary>

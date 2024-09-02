@@ -2,7 +2,7 @@ using System.Buffers;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using MongoDB.Bson.Serialization;
-using Sphynx.Core;
+using Sphynx.User;
 using Sphynx.Packet;
 using Sphynx.Server.Storage;
 using Sphynx.Server.Utils;

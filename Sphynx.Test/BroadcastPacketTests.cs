@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Sphynx.ChatRoom;
-using Sphynx.Core;
+using Sphynx.User;
 using Sphynx.Packet.Broadcast;
 
 namespace Sphynx.Test
