@@ -19,6 +19,31 @@ namespace Sphynx.Packet.Response
         private const int USER_COUNT_OFFSET = DEFAULT_CONTENT_SIZE;
         private const int USERS_OFFSET = USER_COUNT_OFFSET + sizeof(int);
 
+        private int ContentSize
+        {
+            get
+            {
+                int contentSize = DEFAULT_CONTENT_SIZE;
+
+                // We must switch to an error state since nothing will be serialized
+                if (Users is null || ErrorCode != SphynxErrorCode.SUCCESS)
+                {
+                    if (ErrorCode == SphynxErrorCode.SUCCESS) ErrorCode = SphynxErrorCode.INVALID_USER;
+                    return contentSize;
+                }
+
+                contentSize += sizeof(int); // userCount
+
+                for (int i = 0; i < Users.Length; i++)
+                {
+                    Users[i].GetPacketInfo(true, out _, out int userInfoSize);
+                    contentSize += userInfoSize;
+                }
+
+                return contentSize;
+            }
+        }
+
         /// <summary>
         /// Creates a new <see cref="UserInfoResponsePacket"/>.
         /// </summary>
@@ -66,19 +91,14 @@ namespace Sphynx.Packet.Response
 
                 for (int i = 0, cursorOffset = USERS_OFFSET; i < userCount; i++)
                 {
-                    var userStatus = (SphynxUserStatus)contents[cursorOffset];
-                    cursorOffset += sizeof(SphynxUserStatus);
+                    if (!SphynxUserInfo.TryDeserialize(contents[cursorOffset..], true, out var userInfo, out int bytesRead))
+                    {
+                        packet = null;
+                        return false;
+                    }
 
-                    var userId = new Guid(contents.Slice(cursorOffset, GUID_SIZE));
-                    cursorOffset += GUID_SIZE;
-
-                    int usernameSize = contents[cursorOffset..].ReadInt32();
-                    cursorOffset += sizeof(int);
-
-                    string userName = TEXT_ENCODING.GetString(contents.Slice(cursorOffset, usernameSize));
-                    cursorOffset += usernameSize;
-
-                    users[i] = new SphynxUserInfo(userId, userName, userStatus);
+                    users[i] = userInfo;
+                    cursorOffset += bytesRead;
                 }
 
                 packet = new UserInfoResponsePacket(users);
@@ -94,13 +114,11 @@ namespace Sphynx.Packet.Response
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int[] usernameSizes = ArrayPool<int>.Shared.Rent(Users?.Length ?? 0);
-            GetPacketInfo(usernameSizes, out int contentSize);
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.HEADER_SIZE + ContentSize;
 
             try
             {
-                if (!TrySerialize(packetBytes = new byte[bufferSize], usernameSizes))
+                if (!TrySerialize(packetBytes = new byte[bufferSize]))
                 {
                     packetBytes = null;
                     return false;
@@ -111,10 +129,6 @@ namespace Sphynx.Packet.Response
                 packetBytes = null;
                 return false;
             }
-            finally
-            {
-                ArrayPool<int>.Shared.Return(usernameSizes);
-            }
 
             return true;
         }
@@ -124,16 +138,13 @@ namespace Sphynx.Packet.Response
         {
             if (!stream.CanWrite) return false;
 
-            int[] usernameSizes = ArrayPool<int>.Shared.Rent(Users?.Length ?? 0);
-            GetPacketInfo(usernameSizes, out int contentSize);
-
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.HEADER_SIZE + ContentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
             try
             {
-                if (TrySerialize(buffer.Span, usernameSizes))
+                if (TrySerialize(buffer.Span))
                 {
                     await stream.WriteAsync(buffer);
                     return true;
@@ -145,38 +156,13 @@ namespace Sphynx.Packet.Response
             }
             finally
             {
-                ArrayPool<int>.Shared.Return(usernameSizes);
                 ArrayPool<byte>.Shared.Return(rawBuffer);
             }
 
             return false;
         }
 
-        private void GetPacketInfo(int[] usernameSizes, out int contentSize)
-        {
-            contentSize = DEFAULT_CONTENT_SIZE;
-
-            // We must switch to an error state since nothing will be serialized
-            if (Users is null || ErrorCode != SphynxErrorCode.SUCCESS)
-            {
-                if (ErrorCode == SphynxErrorCode.SUCCESS)
-                    ErrorCode = SphynxErrorCode.INVALID_USER;
-                return;
-            }
-
-            int partialMsgLength = sizeof(SphynxUserStatus) + GUID_SIZE + 2 * sizeof(long) + 2 * sizeof(long) +
-                                   sizeof(int); // userStatus, userId, usernameSize
-
-            contentSize += Users.Length * partialMsgLength;
-
-            for (int i = 0; i < Users.Length; i++)
-            {
-                string userName = Users[i].UserName;
-                contentSize += (usernameSizes[i] = string.IsNullOrEmpty(userName) ? 0 : TEXT_ENCODING.GetByteCount(userName));
-            }
-        }
-
-        private bool TrySerialize(Span<byte> buffer, int[] usernameSizes)
+        private bool TrySerialize(Span<byte> buffer)
         {
             if (!TrySerializeHeader(buffer) || !TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
             {
@@ -186,23 +172,17 @@ namespace Sphynx.Packet.Response
             // We only serialize users on success
             if (ErrorCode != SphynxErrorCode.SUCCESS) return true;
 
-            (Users?.Length ?? 0).WriteBytes(buffer[USER_COUNT_OFFSET..]);
+            int userCount = Users?.Length ?? 0;
+            userCount.WriteBytes(buffer[USER_COUNT_OFFSET..]);
 
-            for (int i = 0, cursorOffset = USERS_OFFSET; i < (Users?.Length ?? 0); i++)
+            for (int i = 0, cursorOffset = USERS_OFFSET; i < userCount; i++)
             {
-                var user = Users![i];
+                if (!Users![i].TrySerialize(buffer, true, out int bytesWritten))
+                {
+                    return false;
+                }
 
-                buffer[cursorOffset] = (byte)user.UserStatus;
-                cursorOffset += sizeof(SphynxUserStatus);
-
-                user.UserId.TryWriteBytes(buffer.Slice(cursorOffset, GUID_SIZE));
-                cursorOffset += GUID_SIZE;
-
-                usernameSizes[i].WriteBytes(buffer[cursorOffset..]);
-                cursorOffset += sizeof(int);
-
-                TEXT_ENCODING.GetBytes(user.UserName, buffer.Slice(cursorOffset, usernameSizes[i]));
-                cursorOffset += usernameSizes[i];
+                cursorOffset += bytesWritten;
             }
 
             return true;

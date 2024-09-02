@@ -20,7 +20,7 @@ namespace Sphynx.ChatRoom
         /// <summary>
         /// A collection of the user IDs of the users within this chat room.
         /// </summary>
-        public virtual HashSet<Guid> Users { get; set; }
+        public virtual ISet<Guid> Users { get; set; }
 
         /// <summary>
         /// Returns the type of this <see cref="ChatRoomInfo"/>.
@@ -52,22 +52,7 @@ namespace Sphynx.ChatRoom
             RoomType = roomType;
             Name = name;
 
-            Users ??= new HashSet<Guid>();
-
-            if (userIds is not null)
-            {
-                foreach (var userId in userIds)
-                    Debug.Assert(Users.Add(userId));
-            }
-        }
-
-        internal ChatRoomInfo(Guid roomId, ChatRoomType roomType, string name, HashSet<Guid> userIds)
-        {
-            RoomId = roomId;
-            RoomType = roomType;
-            Name = name;
-
-            Users = userIds;
+            Users = userIds as ISet<Guid> ?? userIds?.ToHashSet() ?? new HashSet<Guid>();
         }
 
         /// <inheritdoc/>

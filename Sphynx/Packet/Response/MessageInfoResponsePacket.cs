@@ -20,6 +20,31 @@ namespace Sphynx.Packet.Response
         private const int MSG_COUNT_OFFSET = DEFAULT_CONTENT_SIZE;
         private const int MSGS_OFFSET = MSG_COUNT_OFFSET + sizeof(int);
 
+        private int ContentSize
+        {
+            get
+            {
+                int contentSize = DEFAULT_CONTENT_SIZE;
+
+                // We must switch to an error state since nothing will be serialized
+                if (Messages is null || ErrorCode != SphynxErrorCode.SUCCESS)
+                {
+                    if (ErrorCode == SphynxErrorCode.SUCCESS) ErrorCode = SphynxErrorCode.INVALID_ROOM;
+                    return contentSize;
+                }
+
+                contentSize += sizeof(int); // msgCount
+
+                for (int i = 0; i < Messages.Length; i++)
+                {
+                    Messages[i].GetPacketInfo(out _, out int msgInfoSize);
+                    contentSize += msgInfoSize;
+                }
+
+                return contentSize;
+            }
+        }
+
         /// <summary>
         /// Creates a new <see cref="MessageInfoResponsePacket"/>.
         /// </summary>
@@ -67,35 +92,14 @@ namespace Sphynx.Packet.Response
 
                 for (int i = 0, cursorOffset = MSGS_OFFSET; i < msgCount; i++)
                 {
-                    var msgId = new Guid(contents.Slice(cursorOffset, GUID_SIZE));
-                    cursorOffset += GUID_SIZE;
+                    if (!ChatRoomMessageInfo.TryDeserialize(contents[cursorOffset..], out var msgInfo, out int bytesRead))
+                    {
+                        packet = null;
+                        return false;
+                    }
 
-                    var senderId = new Guid(contents.Slice(cursorOffset, GUID_SIZE));
-                    cursorOffset += GUID_SIZE;
-
-                    long timestampTicks = contents[cursorOffset..].ReadInt64();
-                    cursorOffset += sizeof(long);
-                    var timestampOffset = new TimeSpan(contents[cursorOffset..].ReadInt64());
-                    cursorOffset += sizeof(long);
-                    var timestamp = new DateTimeOffset(timestampTicks, timestampOffset);
-
-                    long editTimestampTicks = contents[cursorOffset..].ReadInt64();
-                    cursorOffset += sizeof(long);
-                    var editTimestampOffset = new TimeSpan(contents[cursorOffset..].ReadInt64());
-                    cursorOffset += sizeof(long);
-                    var editTimestamp = new DateTimeOffset(editTimestampTicks, editTimestampOffset);
-
-                    var roomId = new Guid(contents.Slice(cursorOffset, GUID_SIZE));
-                    cursorOffset += GUID_SIZE;
-
-                    int contentSize = contents[cursorOffset..].ReadInt32();
-                    cursorOffset += sizeof(int);
-
-                    string content = TEXT_ENCODING.GetString(contents.Slice(cursorOffset, contentSize));
-                    cursorOffset += contentSize;
-
-                    // Room ID was provided in request; sending it during deserialization is not necessary
-                    msgs[i] = new ChatRoomMessageInfo(roomId, msgId, senderId, timestamp, editTimestamp, content);
+                    msgs[i] = msgInfo;
+                    cursorOffset += bytesRead;
                 }
 
                 packet = new MessageInfoResponsePacket(msgs);
@@ -111,13 +115,11 @@ namespace Sphynx.Packet.Response
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int[] msgContentSizes = ArrayPool<int>.Shared.Rent(Messages?.Length ?? 0);
-            GetPacketInfo(msgContentSizes, out int contentSize);
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.HEADER_SIZE + ContentSize;
 
             try
             {
-                if (!TrySerialize(packetBytes = new byte[bufferSize], msgContentSizes))
+                if (!TrySerialize(packetBytes = new byte[bufferSize]))
                 {
                     packetBytes = null;
                     return false;
@@ -128,10 +130,6 @@ namespace Sphynx.Packet.Response
                 packetBytes = null;
                 return false;
             }
-            finally
-            {
-                ArrayPool<int>.Shared.Return(msgContentSizes);
-            }
 
             return true;
         }
@@ -141,16 +139,13 @@ namespace Sphynx.Packet.Response
         {
             if (!stream.CanWrite) return false;
 
-            int[] msgContentSizes = ArrayPool<int>.Shared.Rent(Messages?.Length ?? 0);
-            GetPacketInfo(msgContentSizes, out int contentSize);
-
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.HEADER_SIZE + ContentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
             try
             {
-                if (TrySerialize(buffer.Span, msgContentSizes))
+                if (TrySerialize(buffer.Span))
                 {
                     await stream.WriteAsync(buffer);
                     return true;
@@ -162,38 +157,13 @@ namespace Sphynx.Packet.Response
             }
             finally
             {
-                ArrayPool<int>.Shared.Return(msgContentSizes);
                 ArrayPool<byte>.Shared.Return(rawBuffer);
             }
 
             return false;
         }
 
-        private void GetPacketInfo(int[] msgContentSizes, out int contentSize)
-        {
-            contentSize = DEFAULT_CONTENT_SIZE;
-
-            // We must switch to an error state since nothing will be serialized
-            if (Messages is null || ErrorCode != SphynxErrorCode.SUCCESS)
-            {
-                if (ErrorCode == SphynxErrorCode.SUCCESS)
-                    ErrorCode = SphynxErrorCode.INVALID_ROOM;
-                return;
-            }
-
-            int partialMsgLength = GUID_SIZE + GUID_SIZE + 2 * sizeof(long) + 2 * sizeof(long) + GUID_SIZE +
-                                   sizeof(int); // msgId, senderId, timestamp, editTimestamp, roomId, contentSize
-
-            contentSize += sizeof(int) + Messages.Length * partialMsgLength; // msgCount
-
-            for (int i = 0; i < Messages.Length; i++)
-            {
-                string content = Messages[i].Content;
-                contentSize += (msgContentSizes[i] = string.IsNullOrEmpty(content) ? 0 : TEXT_ENCODING.GetByteCount(content));
-            }
-        }
-
-        private bool TrySerialize(Span<byte> buffer, int[] msgContentSizes)
+        private bool TrySerialize(Span<byte> buffer)
         {
             if (!TrySerializeHeader(buffer) || !TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
             {
@@ -203,35 +173,17 @@ namespace Sphynx.Packet.Response
             // We only serialize recent msgs on success
             if (ErrorCode != SphynxErrorCode.SUCCESS) return true;
 
-            (Messages?.Length ?? 0).WriteBytes(buffer[MSG_COUNT_OFFSET..]);
+            int msgCount = Messages?.Length ?? 0;
+            msgCount.WriteBytes(buffer[MSG_COUNT_OFFSET..]);
 
-            for (int i = 0, cursorOffset = MSGS_OFFSET; i < (Messages?.Length ?? 0); i++)
+            for (int i = 0, cursorOffset = MSGS_OFFSET; i < msgCount; i++)
             {
-                var msg = Messages![i];
+                if (!Messages![i].TrySerialize(buffer, out int bytesWritten))
+                {
+                    return false;
+                }
 
-                msg.MessageId.TryWriteBytes(buffer.Slice(cursorOffset, GUID_SIZE));
-                cursorOffset += GUID_SIZE;
-                msg.SenderId.TryWriteBytes(buffer.Slice(cursorOffset, GUID_SIZE));
-                cursorOffset += GUID_SIZE;
-
-                msg.Timestamp.Ticks.WriteBytes(buffer[cursorOffset..]);
-                cursorOffset += sizeof(long);
-                msg.Timestamp.Offset.Ticks.WriteBytes(buffer[cursorOffset..]);
-                cursorOffset += sizeof(long);
-
-                msg.EditTimestamp.Ticks.WriteBytes(buffer[cursorOffset..]);
-                cursorOffset += sizeof(long);
-                msg.EditTimestamp.Offset.Ticks.WriteBytes(buffer[cursorOffset..]);
-                cursorOffset += sizeof(long);
-
-                msg.RoomId.TryWriteBytes(buffer.Slice(cursorOffset, GUID_SIZE));
-                cursorOffset += GUID_SIZE;
-
-                msgContentSizes[i].WriteBytes(buffer[cursorOffset..]);
-                cursorOffset += sizeof(int);
-
-                TEXT_ENCODING.GetBytes(msg.Content, buffer.Slice(cursorOffset, msgContentSizes[i]));
-                cursorOffset += msgContentSizes[i];
+                cursorOffset += bytesWritten;
             }
 
             return true;
