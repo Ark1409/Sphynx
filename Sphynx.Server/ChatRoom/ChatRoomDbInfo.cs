@@ -14,7 +14,7 @@ namespace Sphynx.Server.ChatRoom
         public const string NAME_FIELD = "name";
         public const string USERS_FIELD = "users";
         public const string ROOM_TYPE_FIELD = "room_type";
-        
+
         // Should only be creating instances of inner-classes
         private ChatRoomDbInfo()
         {
@@ -41,7 +41,7 @@ namespace Sphynx.Server.ChatRoom
 
             /// <inheritdoc/>
             [BsonElement(USERS_FIELD)]
-            public override HashSet<Guid> Users { get; set; }
+            public override ISet<Guid> Users { get; set; }
 
             /// <inheritdoc/>
             [BsonElement(ROOM_TYPE_FIELD)]
@@ -90,7 +90,7 @@ namespace Sphynx.Server.ChatRoom
 
             /// <inheritdoc/>
             [BsonElement(USERS_FIELD)]
-            public override HashSet<Guid> Users { get; set; }
+            public override ISet<Guid> Users { get; set; }
 
             /// <inheritdoc/>
             [BsonElement(ROOM_TYPE_FIELD)]

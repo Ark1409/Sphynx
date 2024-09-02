@@ -223,10 +223,16 @@ namespace Sphynx.Packet.Request
             /// </summary>
             public string? Password { get; set; }
 
+            /// <summary>
+            /// Whether this room is public.
+            /// </summary>
+            public bool Public { get; set; }
+
             /// <inheritdoc/>
             public override ChatRoomType RoomType => ChatRoomType.GROUP;
 
-            private static readonly int NAME_SIZE_OFFSET = DEFAULTS_SIZE;
+            private static readonly int VISIBILITY_OFFSET = DEFAULTS_SIZE;
+            private static readonly int NAME_SIZE_OFFSET = VISIBILITY_OFFSET + sizeof(bool);
             private static readonly int NAME_OFFSET = NAME_SIZE_OFFSET + sizeof(int);
 
             /// <summary>
@@ -234,7 +240,8 @@ namespace Sphynx.Packet.Request
             /// </summary>
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
-            public Group(string name, string? password = null) : this(Guid.Empty, Guid.Empty, name, password)
+            /// <param name="public">Whether this room is public.</param>
+            public Group(string name, string? password = null, bool @public = true) : this(Guid.Empty, Guid.Empty, name, password, @public)
             {
             }
 
@@ -245,10 +252,12 @@ namespace Sphynx.Packet.Request
             /// <param name="sessionId">The session ID for the requesting user.</param>
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
-            public Group(Guid userId, Guid sessionId, string name, string? password = null) : base(userId, sessionId)
+            /// <param name="public">Whether this room is public.</param>
+            public Group(Guid userId, Guid sessionId, string name, string? password = null, bool @public = true) : base(userId, sessionId)
             {
                 Name = name;
                 Password = password;
+                Public = @public;
             }
 
             /// <summary>
@@ -269,6 +278,7 @@ namespace Sphynx.Packet.Request
 
                 try
                 {
+                    bool isPublic = contents[VISIBILITY_OFFSET] != 0;
                     int nameSize = contents[NAME_SIZE_OFFSET..].ReadInt32();
                     string name = TEXT_ENCODING.GetString(contents.Slice(NAME_OFFSET, nameSize));
 
@@ -278,7 +288,7 @@ namespace Sphynx.Packet.Request
                     int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                     string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
-                    packet = new Group(userId.Value, sessionId.Value, name, passwordSize > 0 ? password : null);
+                    packet = new Group(userId.Value, sessionId.Value, name, passwordSize > 0 ? password : null, isPublic);
                     return true;
                 }
                 catch
@@ -347,6 +357,8 @@ namespace Sphynx.Packet.Request
             {
                 if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
                 {
+                    buffer[VISIBILITY_OFFSET] = (byte)(Public ? 0 : 1);
+
                     nameSize.WriteBytes(buffer[NAME_SIZE_OFFSET..]);
                     TEXT_ENCODING.GetBytes(Name, buffer.Slice(NAME_OFFSET, nameSize));
 

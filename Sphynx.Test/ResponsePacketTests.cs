@@ -11,7 +11,7 @@ namespace Sphynx.Test
         public void LoginResponsePacket_ShouldSerializeWithCorrectFormat()
         {
             var sampleUser = new SphynxUserInfo(Guid.NewGuid(), "foobar", SphynxUserStatus.ONLINE,
-                new[] { Guid.NewGuid(), Guid.NewGuid() }, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+                new[] { Guid.NewGuid(), Guid.NewGuid() }.AsEnumerable(), new[] { Guid.NewGuid() }.AsEnumerable());
             var sampleSessionId = Guid.NewGuid();
             var samplePacket = new LoginResponsePacket(sampleUser, sampleSessionId);
             Assert.That(samplePacket.TrySerialize(out byte[]? samplePacketBytes));

@@ -46,14 +46,14 @@ namespace Sphynx.Server.User
 
         /// <inheritdoc/>
         [BsonElement(FRIENDS_FIELD)]
-        public override HashSet<Guid>? Friends { get; set; }
+        public override ISet<Guid>? Friends { get; set; }
 
         /// <inheritdoc/>
         [BsonElement(ROOMS_FIELD)]
-        public override HashSet<Guid>? Rooms { get; set; }
+        public override ISet<Guid>? Rooms { get; set; }
 
         /// <summary>
-        /// The password for this Sphynx user.
+        /// The hashed password for this Sphynx user, as a base-64 string.
         /// </summary>
         [BsonElement(PASSWORD_FIELD)]
         internal string? Password { get; set; }
@@ -65,15 +65,25 @@ namespace Sphynx.Server.User
         internal string? PasswordSalt { get; set; }
 
         /// <inheritdoc/>
-        public SphynxUserDbInfo(Guid userId, string userName, SphynxUserStatus status, IEnumerable<Guid>? friends = null,
+        public SphynxUserDbInfo(Guid userId, string userName, SphynxUserStatus status,
+            IEnumerable<Guid>? friends = null,
             IEnumerable<Guid>? rooms = null)
             : base(userId, userName, status, friends, rooms)
         {
         }
 
-        /// <inheritdoc/>
-        public SphynxUserDbInfo(string userName, SphynxUserStatus status, IEnumerable<Guid>? friends = null)
-            : base(default(Guid), userName, status, friends)
+        /// <summary>
+        /// Creates a new <see cref="SphynxUserDbInfo"/>.
+        /// </summary>
+        /// <param name="userName">The username of the Sphynx user.</param>
+        /// <param name="encodedPwd">The password for this Sphynx user.</param>
+        /// <param name="encodedSalt">The salt for the password of this Sphynx user.</param>
+        /// <param name="status">The activity status of the Sphynx user.</param>
+        /// <param name="friends">User IDs of friends for this user.</param>
+        internal SphynxUserDbInfo(string userName, byte[] encodedPwd, byte[] encodedSalt, SphynxUserStatus status,
+            IEnumerable<Guid>? friends = null,
+            IEnumerable<Guid>? rooms = null)
+            : this(default, userName, encodedPwd, encodedSalt, status, friends, rooms)
         {
         }
 
@@ -81,27 +91,14 @@ namespace Sphynx.Server.User
         /// Creates a new <see cref="SphynxUserDbInfo"/>.
         /// </summary>
         /// <param name="userName">The username of the Sphynx user.</param>
-        /// <param name="pwd">The password for this Sphynx user.</param>
-        /// <param name="pwdSalt">The salt for the password of this Sphynx user.</param>
+        /// <param name="encodedPwd">The password for this Sphynx user.</param>
+        /// <param name="encodedSalt">The salt for the password of this Sphynx user.</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
-        internal SphynxUserDbInfo(string userName, byte[] pwd, byte[] pwdSalt, SphynxUserStatus status, IEnumerable<Guid>? friends = null,
+        internal SphynxUserDbInfo(string userName, string encodedPwd, string encodedSalt, SphynxUserStatus status,
+            IEnumerable<Guid>? friends = null,
             IEnumerable<Guid>? rooms = null)
-            : this(default, userName, pwd, pwdSalt, status, friends, rooms)
-        {
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="SphynxUserDbInfo"/>.
-        /// </summary>
-        /// <param name="userName">The username of the Sphynx user.</param>
-        /// <param name="pwd">The password for this Sphynx user.</param>
-        /// <param name="pwdSalt">The salt for the password of this Sphynx user.</param>
-        /// <param name="status">The activity status of the Sphynx user.</param>
-        /// <param name="friends">User IDs of friends for this user.</param>
-        internal SphynxUserDbInfo(string userName, string pwd, string pwdSalt, SphynxUserStatus status, IEnumerable<Guid>? friends = null,
-            IEnumerable<Guid>? rooms = null)
-            : this(default, userName, pwd, pwdSalt, status, friends, rooms)
+            : this(default, userName, encodedPwd, encodedSalt, status, friends, rooms)
         {
         }
 
@@ -110,14 +107,16 @@ namespace Sphynx.Server.User
         /// </summary>
         /// <param name="userId">The user ID of the Sphynx user.</param>
         /// <param name="userName">The username of the Sphynx user.</param>
-        /// <param name="pwd">The password for this Sphynx user.</param>
-        /// <param name="pwdSalt">The salt for the password of this Sphynx user.</param>
+        /// <param name="encodedPwd">The password for this Sphynx user, as a base-64 string</param>
+        /// <param name="encodedSalt">The salt for the password of this Sphynx user, as a base-64 string</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
         /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
-        public SphynxUserDbInfo(Guid userId, string userName, byte[] pwd, byte[] pwdSalt, SphynxUserStatus status, IEnumerable<Guid>? friends = null,
+        public SphynxUserDbInfo(Guid userId, string userName, byte[] encodedPwd, byte[] encodedSalt, SphynxUserStatus status,
+            IEnumerable<Guid>? friends = null,
             IEnumerable<Guid>? rooms = null)
-            : this(userId, userName, Convert.ToBase64String(pwd), Convert.ToBase64String(pwdSalt), status, friends, rooms)
+            : this(userId, userName, Convert.ToBase64String(encodedPwd), Convert.ToBase64String(encodedSalt), status,
+                friends, rooms)
         {
         }
 
@@ -126,17 +125,18 @@ namespace Sphynx.Server.User
         /// </summary>
         /// <param name="userId">The user ID of the Sphynx user.</param>
         /// <param name="userName">The username of the Sphynx user.</param>
-        /// <param name="pwd">The password for this Sphynx user.</param>
-        /// <param name="pwdSalt">The salt for the password of this Sphynx user.</param>
+        /// <param name="encodedPwd">The password for this Sphynx user, as a base-64 string.</param>
+        /// <param name="encodedSalt">The salt for the password of this Sphynx user, as a base-64 string</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
         /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
-        public SphynxUserDbInfo(Guid userId, string userName, string pwd, string pwdSalt, SphynxUserStatus status, IEnumerable<Guid>? friends = null,
+        public SphynxUserDbInfo(Guid userId, string userName, string encodedPwd, string encodedSalt, SphynxUserStatus status,
+            IEnumerable<Guid>? friends = null,
             IEnumerable<Guid>? rooms = null)
             : this(userId, userName, status, friends, rooms)
         {
-            Password = pwd;
-            PasswordSalt = pwdSalt;
+            Password = encodedPwd;
+            PasswordSalt = encodedSalt;
         }
 
         /// <inheritdoc/>

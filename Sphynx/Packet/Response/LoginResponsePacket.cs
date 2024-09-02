@@ -79,8 +79,7 @@ namespace Sphynx.Packet.Response
         /// <param name="packet">The deserialized packet.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out LoginResponsePacket? packet)
         {
-            int minContentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + GUID_SIZE + sizeof(SphynxUserStatus) + sizeof(int) + sizeof(int) +
-                                 sizeof(int); // SessionId, UserId, UserStatus, UsernameSize, FriendCount, RoomCount
+            int minContentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + SphynxUserInfo.GetMinimumSize(); // SessionId, UserInfo
 
             if (!TryDeserializeDefaults(contents, out SphynxErrorCode? errorCode) ||
                 (errorCode.Value == SphynxErrorCode.SUCCESS && contents.Length < minContentSize))

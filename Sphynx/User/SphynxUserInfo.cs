@@ -134,12 +134,18 @@ namespace Sphynx.Core
                     return true;
                 }
 
-                bytesRead += ReadFullInfo(userBytes[bytesRead..],
-                    out var friends,
-                    out var rooms,
-                    out var pendingRoomMsgs,
-                    out var outgoingFriendReqs,
-                    out var incomingFriendReqs);
+                if (!TryReadFullInfo(userBytes[bytesRead..],
+                        out var friends,
+                        out var rooms,
+                        out var pendingRoomMsgs,
+                        out var outgoingFriendReqs,
+                        out var incomingFriendReqs,
+                        out int fullInfoSize))
+                {
+                    bytesRead += fullInfoSize;
+                    userInfo = null;
+                    return false;
+                }
 
                 userInfo = new SphynxUserInfo(userId, userName, userStatus, friends, rooms)
                 {
@@ -168,27 +174,35 @@ namespace Sphynx.Core
             return bytesRead;
         }
 
-        private static int ReadFullInfo(ReadOnlySpan<byte> restBytes,
+        private static bool TryReadFullInfo(ReadOnlySpan<byte> restBytes,
             out ISet<Guid>? friends,
             out ISet<Guid>? rooms,
             out IList<PendingRoomMessageInfo>? pendingRoomMsgs,
             out ISet<Guid>? outgoingFriendReqs,
-            out ISet<Guid>? incomingFriendReqs)
+            out ISet<Guid>? incomingFriendReqs,
+            out int bytesRead)
         {
             // Deserialize friend IDs
-            int bytesRead = restBytes.ReadGuidSet(out friends);
+            bytesRead = restBytes.ReadGuidSet(out friends);
 
             // Deserialize joined rooms IDs
             bytesRead += restBytes[bytesRead..].ReadGuidSet(out rooms);
 
-            // Deserialize pending msg info
-            bytesRead += PendingRoomMessageInfo.ReadRoomMessageInfoList(restBytes[bytesRead..], out pendingRoomMsgs);
+            // Deserialize pending msg info and error check
+            if (!PendingRoomMessageInfo.TryReadRoomMessageInfoList(restBytes[bytesRead..], out pendingRoomMsgs, out int roomMsgInfoSize))
+            {
+                outgoingFriendReqs = null;
+                incomingFriendReqs = null;
+                return false;
+            }
+
+            bytesRead += roomMsgInfoSize;
 
             // Deserialize incoming and outgoing friend requests
             bytesRead += restBytes[bytesRead..].ReadGuidSet(out outgoingFriendReqs);
             bytesRead += restBytes[bytesRead..].ReadGuidSet(out incomingFriendReqs);
 
-            return bytesRead;
+            return true;
         }
 
         /// <summary>
@@ -199,15 +213,16 @@ namespace Sphynx.Core
         public bool TrySerialize(Span<byte> buffer) => TrySerialize(buffer, out _);
 
         /// <inheritdoc cref="TrySerialize(System.Span{byte})"/>
-        /// <param name="bytesWritten">The number of bytes that were written to the buffer tp</param>
+        /// <param name="bytesWritten">The number of bytes that were written to the buffer to.</param>
         public bool TrySerialize(Span<byte> buffer, out int bytesWritten) => TrySerialize(buffer, false, out bytesWritten);
 
         /// <inheritdoc cref="TrySerialize(System.Span{byte},out int)"/>
         /// <param name="compactUser">Whether this user should be serialized as a compact user (i.e. a user other than
         /// the currently logged-in user).</param>
-        public bool TrySerialize(Span<byte> buffer, bool compactUser, out int bytesWritten)
+        public virtual bool TrySerialize(Span<byte> buffer, bool compactUser, out int bytesWritten)
         {
             GetPacketInfo(compactUser, out int usernameSize, out int contentSize);
+
             if (buffer.Length < contentSize)
             {
                 bytesWritten = 0;
@@ -233,7 +248,7 @@ namespace Sphynx.Core
         /// the currently logged-in user).</param>
         /// <returns>A tuple, the first value indicating whether serialization was successful, and
         /// the second denoting the number of bytes that were written to the stream.</returns>
-        public async Task<(bool, int)> TrySerializeAsync(Stream stream, bool compactUser = false)
+        public virtual async Task<(bool, int)> TrySerializeAsync(Stream stream, bool compactUser = false)
         {
             if (!stream.CanWrite) return (false, 0);
 
@@ -330,7 +345,21 @@ namespace Sphynx.Core
         //   UserId            UserStatus                  UserName
         // GUID_SIZE + sizeof(SphynxUserStatus) + sizeof(int) + usernameSize; 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int GetCompactSize(int usernameSize) => GUID_SIZE + sizeof(SphynxUserStatus) + sizeof(int) + usernameSize;
+        internal static int GetCompactSize(int usernameSize) => GUID_SIZE + sizeof(SphynxUserStatus) + sizeof(int) + usernameSize;
+
+        internal static int GetMinimumSize(bool compactUser = false)
+        {
+            int minContentSize = GetCompactSize(0); // Compact user
+            if (compactUser)
+            {
+                return minContentSize;
+            }
+
+            minContentSize += sizeof(int) + sizeof(int) + sizeof(int) + // Friends, Rooms, PendingRoomMessages
+                              2 * sizeof(int); // OutgoingFriendRequests, IncomingFriendRequests
+
+            return minContentSize;
+        }
 
         #endregion
 
@@ -455,10 +484,13 @@ namespace Sphynx.Core
             }
         }
 
-        internal static int ReadRoomMessageInfoList(ReadOnlySpan<byte> countAndBytes, out IList<PendingRoomMessageInfo>? pendingRoomMsgs)
+        internal static bool TryReadRoomMessageInfoList(
+            ReadOnlySpan<byte> countAndBytes,
+            out IList<PendingRoomMessageInfo>? pendingRoomMsgs,
+            out int bytesRead)
         {
             int pendingRoomMsgInfoCount = countAndBytes.ReadInt32();
-            int bytesRead = sizeof(int);
+            bytesRead = sizeof(int);
 
             if (pendingRoomMsgInfoCount > 0)
             {
@@ -468,7 +500,8 @@ namespace Sphynx.Core
                 {
                     if (!TryDeserialize(countAndBytes[bytesRead..], out var roomMsgs, out int roomBytesRead))
                     {
-                        continue; // TODO: Report deserialization error somehow
+                        pendingRoomMsgs = null;
+                        return false;
                     }
 
                     pendingRoomMsgs.Add(roomMsgs);
@@ -480,7 +513,7 @@ namespace Sphynx.Core
                 pendingRoomMsgs = null;
             }
 
-            return bytesRead;
+            return true;
         }
 
         /// <summary>

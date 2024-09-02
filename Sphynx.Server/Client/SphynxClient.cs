@@ -122,7 +122,7 @@ namespace Sphynx.Server.Client
                     {
                         // Do we require that packets sent by the same user are processed and "executed" in order? If so then 
                         // we should await this task as the current setup causes them to run in parallel
-                        _packetHandler.HandlePacketAsync(packet).SafeExecute();
+                        _packetHandler.HandlePacketAsync(packet).SafeBackgroundExecute();
                     }
                 }
             }
@@ -155,6 +155,7 @@ namespace Sphynx.Server.Client
         /// the only valid packet that can be sent is one of type <see cref="SphynxPacketType.LOGIN_RES"/>.</remarks>
         public async Task<bool> SendPacketAsync(SphynxPacket packet)
         {
+            // TODO: implement retry functionality when packet cannot be sent (up to 3 times ig)
             if (SphynxClientManager.IsAnonymous(this) && packet.PacketType != SphynxPacketType.LOGIN_RES)
             {
                 // Packets may only be sent to respond to a LoginRequest (i.e. LoginResponsePackets must be sent) if

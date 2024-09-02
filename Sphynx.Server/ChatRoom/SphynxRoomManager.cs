@@ -63,7 +63,8 @@ namespace Sphynx.Server.ChatRoom
             return new SphynxErrorInfo<ChatRoomDbInfo.Direct?>(SphynxErrorCode.DB_WRITE_ERROR);
         }
 
-        public static async Task<SphynxErrorInfo<ChatRoomDbInfo.Group?>> CreateGroupRoomAsync(Guid ownerId, string name, bool @public = true,
+        public static async Task<SphynxErrorInfo<ChatRoomDbInfo.Group?>> 
+            CreateGroupRoomAsync(Guid ownerId, string name, bool @public = true,
             string? password = null)
         {
             ChatRoomDbInfo.Group newRoom;
