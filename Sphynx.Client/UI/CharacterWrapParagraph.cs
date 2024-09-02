@@ -410,13 +410,14 @@ namespace Sphynx.Client.UI
                     default: break;
                 }
             }
-            if (-_yOffset + _lines.Count < trueHeight)
+            if (-_yOffset + _lines.Count < Math.Max(0, trueHeight - 1))
             {
                 var str = _lines.Count > 0 ? "\x0\n" : "\n";
                 para.Append(str.Repeat(trueHeight - (-_yOffset + _lines.Count)), Color.White);
             }
-
-            return para.Crop().LeftJustified().GetSegments(AnsiConsole.Console);
+            
+            para.Crop().LeftJustified();
+            return ((IRenderable)para).Render(options, maxWidth);
         }
 
         protected override IEnumerable<Segment> Render(RenderOptions options, int maxWidth) => DoRender(options, maxWidth);

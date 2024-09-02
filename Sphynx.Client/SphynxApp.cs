@@ -40,7 +40,7 @@ namespace Sphynx.Client
         /// <summary>
         /// Command-line arguments hash map
         /// </summary>
-        public Dictionary<string, object> Arguments { get; private set; }
+        public Dictionary<string, object> Arguments { get; private set; } = new();
 
         /// <summary>
         /// Prefix for host argument
@@ -76,13 +76,26 @@ namespace Sphynx.Client
         /// <summary>
         /// Starts the client
         /// </summary>
-        public void Start()
+        public int Start()
         {
-            if (Init())
+            int retCode = 0;
+            
+            int initRet = Init();
+            
+            switch (initRet)
             {
-                Run();
+                case 0:
+                    Run();
+                    break;
+                case -1:
+                    break;
+                default:
+                    retCode = initRet;
+                    break;
             }
             Dispose();
+            
+            return retCode;
         }
 
         /// <summary>
@@ -121,7 +134,7 @@ namespace Sphynx.Client
         /// Initializes the client before startup
         /// </summary>
         /// <returns><c>True</c> if execution of the rest of the application should continue after calling this function. <c>False</c> otherwise.</returns>
-        private bool Init()
+        private int Init()
         {
             // Ensure proper input/output encoding capability
             Console.OutputEncoding = Encoding.UTF8;
@@ -129,13 +142,14 @@ namespace Sphynx.Client
 
             // Parse command-line arguments
             ParseArgs();
-            if (!HandleArgs()) return false;
+            int handleArgsRet = HandleArgs();
+            if (handleArgsRet != 0) return handleArgsRet;
 
             // Enable virtual terminal sequences
             if (!ConsoleUtils.EnableVirtualTerminal())
             {
                 Console.Error.WriteLine("Sphynx.Client.exe: error: client can only be run within a VT100-compatible TTY");
-                return false;
+                return 1;
             }
 
             // Switch to alternate screen buffer only when command-line arguments do not cause a quick exit
@@ -156,7 +170,7 @@ namespace Sphynx.Client
             State = new SphynxLoginState(this);
 
             // Indicate the app should continue to run as intended
-            return true;
+            return 0;
         }
 
         /// <summary>
@@ -164,7 +178,7 @@ namespace Sphynx.Client
         /// </summary>
         private void ParseArgs()
         {
-            Arguments = new Dictionary<string, object>();
+            Arguments.Clear();
             if (_args != null)
             {
                 for (int i = 0; i < _args.Length; i++)
@@ -220,7 +234,7 @@ namespace Sphynx.Client
         /// Handles command-line arguments by executes their appropriate tasks.
         /// </summary>
         /// <returns><c>True</c> if execution of the rest of the application should continue after calling this function. <c>False</c> otherwise.</returns>
-        private bool HandleArgs()
+        private int HandleArgs()
         {
             if (Arguments.TryGetValue(HELP_ARGS.First(), out var printHelp) && (bool)printHelp)
             {
@@ -238,7 +252,7 @@ namespace Sphynx.Client
                 Console.WriteLine(helpMessage);
 
                 // Mark that the app should not be run, exit immediately instead.
-                return false;
+                return -1;
             }
 
             if (Arguments.TryGetValue(VERSION_ARGS.First(), out var printVersion) && (bool)printVersion)
@@ -255,7 +269,7 @@ namespace Sphynx.Client
                 Console.WriteLine(versionMessage);
 
                 // Mark that the app should not be run, exit immediately instead.
-                return false;
+                return -1;
             }
 
             if (Arguments.TryGetValue(HOST_ARG, out var host))
@@ -264,12 +278,12 @@ namespace Sphynx.Client
                 {
                     // Indicate an error in parsing the host string if the provided host was not in a valid format
                     Console.Error.WriteLine($"Sphynx.Client.exe: error: invalid host '{host}'");
-                    return false;
+                    return 1;
                 }
             }
 
             // The app should continue to run normally otherwise
-            return true;
+            return 0;
         }
 
         /// <summary>
@@ -338,8 +352,7 @@ namespace Sphynx.Client
             try
             {
                 client = new SphynxApp(args);
-                client.Start();
-                return 0;
+                return client.Start();
             }
             catch (Exception e)
             {

@@ -11,14 +11,14 @@
 
         public Point2i Add(int otherX, int otherY) => Add(new Point2i(otherX, otherY));
 
-        public Point2i Subtract(Point2i other)
+        public Point2i Subtract(Point2i other) => Subtract(other.X, other.Y);
+
+        public Point2i Subtract(int otherX, int otherY)
         {
-            X -= other.X;
-            Y -= other.Y;
+            X -= otherX;
+            Y -= otherY;
             return this;
         }
-
-        public Point2i Subtract(int otherX, int otherY) => Subtract(new Point2i(otherX, otherY));
 
         public static Point2i operator +(Point2i left, Point2i right) => left.Add(right);
         public static Point2i operator -(Point2i left, Point2i right) => left.Subtract(right);

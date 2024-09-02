@@ -76,7 +76,7 @@ namespace Sphynx.Client.UI
             trueHeight = Math.Min(trueHeight, lineCount);
 
             var para = new CharacterWrapParagraph(outputText, (Selected ? SelectedTextStyle : TextStyle) ?? Style.Plain);
-            para.Width = Math.Max(0, trueWidth - 2);
+            para.Width = Math.Max(0, trueWidth - (Border == BoxBorder.None ? 0 : 2));
             para.Ellipsis();
             var p = new Panel(para)
             {
@@ -87,7 +87,7 @@ namespace Sphynx.Client.UI
             };
             p.Width = Math.Max(2, trueWidth);
             p.Collapse();
-            return p.GetSegments(AnsiConsole.Console);
+            return ((IRenderable)p).Render(options, maxWidth);
         }
 
         protected override IEnumerable<Segment> Render(RenderOptions options, int maxWidth) => DoRender(options, maxWidth);

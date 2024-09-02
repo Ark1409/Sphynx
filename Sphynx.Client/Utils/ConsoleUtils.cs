@@ -285,14 +285,14 @@ namespace Sphynx.Client.Utils
         public static void SetTitle(string title) => Console.Write($"\x1b]0;{title}\x1b\x5c");
 
         /// <summary>
-        /// Cursor moves to <x>; <y> coordinate within the viewport, where <x> is the column of the <y> line
+        /// Cursor moves to &lt;x&gt;; &lt;y&gt; coordinate within the viewport, where &lt;x&gt; is the column of the &lt;y&gt; line
         /// </summary>
         /// <param name="x">The column number</param>
         /// <param name="y">The row number</param>
         public static void MoveTo(int x, int y) => MoveTo(new Point(x, y));
 
         /// <summary>
-        /// Cursor moves to <x>; <y> coordinate within the viewport, where <x> is the column of the <y> line
+        /// Cursor moves to &lt;x&gt;; &lt;y&gt; coordinate within the viewport, where &lt;x&gt; is the column of the &lt;y&gt; line
         /// </summary>
         /// <param name="pos">The position to which the cursor should move</param>
         public static void MoveTo(Point pos) => Console.Write($"\x1b[{Math.Clamp(pos.Y, 1, Console.BufferHeight)};{Math.Clamp(pos.X, 1, Console.BufferWidth)}H");

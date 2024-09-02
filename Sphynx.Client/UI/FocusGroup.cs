@@ -11,7 +11,7 @@ namespace Sphynx.Client.UI
             get => _index;
             set
             {
-                if (value >= Objects.Count || value < 0) throw new ArgumentOutOfRangeException(nameof(value));
+                if (value >= Objects.Count || (value < 0 && Objects.Count > 0)) throw new ArgumentOutOfRangeException(nameof(value));
                 _index = value;
             }
         }
@@ -33,10 +33,10 @@ namespace Sphynx.Client.UI
 
         public int Count => Objects.Count;
 
-        public static readonly Predicate<ConsoleKeyInfo> DefaultSwapPredicate
-            = (info => info.KeyChar == '\t');
+        public static readonly Func<ConsoleKeyInfo, int?> DefaultSwapPredicate
+            = (info => info.KeyChar == '\t' ? ((info.Modifiers & ConsoleModifiers.Shift) == ConsoleModifiers.Shift ? -1 : 1) : null);
 
-        public Predicate<ConsoleKeyInfo>? SwapPredicate { get; set; } = DefaultSwapPredicate;
+        public Func<ConsoleKeyInfo, int?>? SwapPredicate { get; set; } = DefaultSwapPredicate;
 
         private int _index = -1;
 
@@ -65,7 +65,7 @@ namespace Sphynx.Client.UI
                 case 1:
                     return this;
                 default:
-                    if (Math.Abs(count) <= 0) return this;
+                    if (count == 0) return this;
                     if (TargetIndex != -1 && Target is IFocusable f) { f.OnLeave(); }
                     int val = (_index + count) % Objects.Count;
                     _index = val + -Math.Clamp(val, -1, 0) * Objects.Count;
@@ -87,7 +87,7 @@ namespace Sphynx.Client.UI
             return this;
         }
 
-        public T GetObject(int index) => index >= Objects.Count ? throw new ArgumentOutOfRangeException(nameof(_index)) : Objects[index];
+        public T GetObject(int index) => index >= Objects.Count ? throw new ArgumentOutOfRangeException(nameof(index)) : Objects[index];
 
         public IEnumerator<T> GetEnumerator() => Objects.GetEnumerator();
 
@@ -96,16 +96,11 @@ namespace Sphynx.Client.UI
         /// <inheritdoc />
         public bool HandleKey(in ConsoleKeyInfo key)
         {
-            if (SwapPredicate?.Invoke(key) ?? false)
+            int? swapCount = SwapPredicate?.Invoke(key);
+
+            if (swapCount is not null)
             {
-                if ((key.Modifiers & ConsoleModifiers.Shift) == ConsoleModifiers.Shift)
-                {
-                    ShiftFocus(-1);
-                }
-                else
-                {
-                    ShiftFocus();
-                }
+                ShiftFocus(swapCount.Value);
                 return true;
             }
 
@@ -116,8 +111,20 @@ namespace Sphynx.Client.UI
             return false;
         }
 
-        public void OnFocus() { }
+        public void OnFocus()
+        {
+            if (_index >= 0 && Target is IFocusable f)
+            {
+                f.OnFocus();
+            }
+        }
 
-        public void OnLeave() { }
+        public void OnLeave()
+        {
+            if (_index >= 0 && Target is IFocusable f)
+            {
+                f.OnLeave();
+            }
+        }
     }
 }

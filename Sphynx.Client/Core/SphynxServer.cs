@@ -1,23 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Threading.Tasks;
-using Sphynx;
 using Sphynx.Core;
 
 using UserId = System.Guid;
 
 namespace Sphynx.Client.Core
 {
+    /// <summary>
+    /// Represents a connection to a <c>Sphynx</c> server.
+    /// </summary>
     public class SphynxServer
     {
+        /// <summary>
+        /// Default port for <c>Sphynx</c> servers.
+        /// </summary>
         public const short PORT = 2000;
 
+        /// <summary>
+        /// <see cref="IPAddress"/> of the specific <c>Sphynx</c> server used to issue connections.
+        /// </summary>
         public IPAddress ServerAddress { get; set; }
 
+        /// <summary>
+        /// Constructs a new <see cref="SphynxServer"/>
+        /// </summary>
+        /// <param name="address">The address of the server to utilize for subsequent connections.</param>
         public SphynxServer(IPAddress address)
         {
             ServerAddress = address;
@@ -35,22 +42,17 @@ namespace Sphynx.Client.Core
             UNABLE_CONNECT
         }
 
-        public SphynxSessionUser? ConnectAs(string? username, string? password, out ErrorCode error)
+        /// <summary>
+        /// Issues a connection to a <c>Sphynx</c> server located at address <see cref="ServerAddress"/>
+        /// </summary>
+        /// <param name="username">The username to use when connecting</param>
+        /// <param name="password">The password of the user</param>
+        /// <param name="error">The error code of the operation. <see cref="ErrorCode.OK"/> if the connection was successful.</param>
+        /// <returns>A <see cref="SphynxSessionUser"/> representing a the connection session to the server.</returns>
+        public SphynxSessionUser? ConnectAs(string username, string password, out ErrorCode error)
         {
-            if (string.IsNullOrEmpty(username = username?.Trim()))
-            {
-                error = ErrorCode.INVALID_USER;
-                return null;
-            }
-
-            if (string.IsNullOrEmpty(password = password?.Trim()))
-            {
-                error = ErrorCode.INVALID_PASSWORD;
-                return null;
-            }
-
             // Connect
-            Socket userSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            var userSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
 
             try
             {
