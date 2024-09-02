@@ -80,33 +80,33 @@ namespace Sphynx.Packet
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_CREATE_REQ:
+                case SphynxPacketType.ROOM_CREATE_REQ:
                 {
-                    if (!ChatCreateRequestPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomCreateRequestPacket.TryDeserialize(contents, out var p)) break;
                     
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_CREATE_RES:
+                case SphynxPacketType.ROOM_CREATE_RES:
                 {
-                    if (!ChatCreateResponsePacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomCreateResponsePacket.TryDeserialize(contents, out var p)) break;
                     
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_JOIN_REQ:
+                case SphynxPacketType.ROOM_JOIN_REQ:
                 {
-                    if (!ChatJoinRequestPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomJoinRequestPacket.TryDeserialize(contents, out var p)) break;
                     
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_JOIN_RES:
+                case SphynxPacketType.ROOM_JOIN_RES:
                 {
-                    if (!ChatJoinResponsePacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomJoinResponsePacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -114,23 +114,23 @@ namespace Sphynx.Packet
 
                 case SphynxPacketType.CHAT_JOIN_BCAST:
                 {
-                    if (!ChatJoinBroadcastPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomJoinBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_LEAVE_REQ:
+                case SphynxPacketType.ROOM_LEAVE_REQ:
                 {
-                    if (!ChatLeaveRequestPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomLeaveRequestPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_LEAVE_RES:
+                case SphynxPacketType.ROOM_LEAVE_RES:
                 {
-                    if (!ChatLeaveResponsePacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomLeaveResponsePacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -138,23 +138,23 @@ namespace Sphynx.Packet
 
                 case SphynxPacketType.CHAT_LEAVE_BCAST:
                 {
-                    if (!ChatLeaveBroadcastPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomLeaveBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_KICK_REQ:
+                case SphynxPacketType.ROOM_KICK_REQ:
                 {
-                    if (!ChatKickRequestPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomKickRequestPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_KICK_RES:
+                case SphynxPacketType.ROOM_KICK_RES:
                 {
-                    if (!ChatKickResponsePacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomKickResponsePacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -162,23 +162,23 @@ namespace Sphynx.Packet
 
                 case SphynxPacketType.CHAT_KICK_BCAST:
                 {
-                    if (!ChatKickBroadcastPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomKickBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_DEL_REQ:
+                case SphynxPacketType.ROOM_DEL_REQ:
                 {
-                    if (!ChatDeleteRequestPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomDeleteRequestPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_DEL_RES:
+                case SphynxPacketType.ROOM_DEL_RES:
                 {
-                    if (!ChatDeleteResponsePacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomDeleteResponsePacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -186,23 +186,23 @@ namespace Sphynx.Packet
 
                 case SphynxPacketType.CHAT_DEL_BCAST:
                 {
-                    if (!ChatDeleteBroadcastPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomDeleteBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_SELECT_REQ:
+                case SphynxPacketType.ROOM_SELECT_REQ:
                 {
-                    if (!ChatSelectRequestPacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomSelectRequestPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
                 }
 
-                case SphynxPacketType.CHAT_SELECT_RES:
+                case SphynxPacketType.ROOM_SELECT_RES:
                 {
-                    if (!ChatSelectResponsePacket.TryDeserialize(contents, out var p)) break;
+                    if (!RoomSelectResponsePacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -235,6 +235,14 @@ namespace Sphynx.Packet
                 case SphynxPacketType.ROOM_INFO_RES:
                 {
                     if (!RoomInfoResponsePacket.TryDeserialize(contents, out var p)) break;
+
+                    packet = p;
+                    return true;
+                }
+                
+                case SphynxPacketType.LOGIN_BCAST:
+                {
+                    if (!LoginBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
@@ -332,7 +340,7 @@ namespace Sphynx.Packet
         /// span which is expected to contain only the contents of this packet along with its header.
         /// </summary>
         /// <param name="packetBuffer">The buffer to serialize the header into.</param>
-        protected virtual bool TrySerializeHeader(Span<byte> packetBuffer)
+        protected bool TrySerializeHeader(Span<byte> packetBuffer)
         {
             var header = new SphynxPacketHeader(PacketType, packetBuffer.Length - SphynxPacketHeader.HEADER_SIZE);
             return header.TrySerialize(packetBuffer[..SphynxPacketHeader.HEADER_SIZE]);

@@ -1,46 +1,47 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.User;
 
 namespace Sphynx.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_BCAST"/>
-    public sealed class ChatJoinBroadcastPacket : SphynxPacket, IEquatable<ChatJoinBroadcastPacket>
+    /// <inheritdoc cref="SphynxPacketType.LOGIN_BCAST"/>
+    public sealed class LoginBroadcastPacket : SphynxPacket, IEquatable<LoginBroadcastPacket>
     {
         /// <summary>
-        /// RoomInfo ID of the room the user has joined.
+        /// User ID of the user who went online.
         /// </summary>
-        public Guid RoomId { get; set; }
+        public Guid UserId { get; set; }
 
         /// <summary>
-        /// The user ID of the user who joined the room.
+        /// The status of the user who went online.
         /// </summary>
-        public Guid JoinerId { get; set; }
+        public SphynxUserStatus UserStatus { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
+        public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_BCAST;
 
-        private const int ROOM_ID_OFFSET = 0;
-        private static readonly int JOINER_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
+        private const int USER_ID_OFFSET = 0;
+        private static readonly int USER_STATUS_OFFSET = USER_ID_OFFSET + GUID_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="ChatJoinBroadcastPacket"/>.
+        /// Creates a new <see cref="LoginBroadcastPacket"/>.
         /// </summary>
-        /// <param name="roomId">RoomInfo ID of the room the user has joined.</param>
-        /// <param name="joinerId">The user ID of the user who joined the room.</param>
-        public ChatJoinBroadcastPacket(Guid roomId, Guid joinerId)
+        /// <param name="userId">User ID of the user who went online.</param>
+        /// <param name="userStatus">The status of the user who went online.</param>
+        public LoginBroadcastPacket(Guid userId, SphynxUserStatus userStatus)
         {
-            RoomId = roomId;
-            JoinerId = joinerId;
+            UserId = userId;
+            UserStatus = userStatus;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatJoinBroadcastPacket"/>.
+        /// Attempts to deserialize a <see cref="LoginBroadcastPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatJoinBroadcastPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out LoginBroadcastPacket? packet)
         {
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE + sizeof(SphynxUserStatus); // UserId, UserStatus
 
             if (contents.Length < contentSize)
             {
@@ -48,16 +49,16 @@ namespace Sphynx.Packet.Broadcast
                 return false;
             }
 
-            var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-            var joinerId = new Guid(contents.Slice(JOINER_ID_OFFSET, GUID_SIZE));
-            packet = new ChatJoinBroadcastPacket(roomId, joinerId);
+            var userId = new Guid(contents.Slice(USER_ID_OFFSET, GUID_SIZE));
+            var userStatus = (SphynxUserStatus)contents[USER_STATUS_OFFSET];
+            packet = new LoginBroadcastPacket(userId, userStatus);
             return true;
         }
 
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE + sizeof(SphynxUserStatus); // UserId, UserStatus
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
@@ -74,7 +75,7 @@ namespace Sphynx.Packet.Broadcast
         {
             if (!stream.CanWrite) return false;
 
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE + sizeof(SphynxUserStatus); // UserId, UserStatus
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -101,8 +102,8 @@ namespace Sphynx.Packet.Broadcast
             if (TrySerializeHeader(buffer))
             {
                 buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
-                RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                JoinerId.TryWriteBytes(buffer.Slice(JOINER_ID_OFFSET, GUID_SIZE));
+                UserId.TryWriteBytes(buffer.Slice(USER_ID_OFFSET, GUID_SIZE));
+                buffer[USER_STATUS_OFFSET] = (byte)UserStatus;
                 return true;
             }
 
@@ -110,6 +111,6 @@ namespace Sphynx.Packet.Broadcast
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatJoinBroadcastPacket? other) => base.Equals(other) && RoomId == other?.RoomId && JoinerId == other?.JoinerId;
+        public bool Equals(LoginBroadcastPacket? other) => base.Equals(other) && UserId == other?.UserId && UserStatus == other?.UserStatus;
     }
 }

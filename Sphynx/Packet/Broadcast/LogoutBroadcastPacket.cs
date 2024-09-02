@@ -1,46 +1,39 @@
-﻿using System.Buffers;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.User;
 
 namespace Sphynx.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_BCAST"/>
-    public sealed class ChatLeaveBroadcastPacket : SphynxPacket, IEquatable<ChatLeaveBroadcastPacket>
+    /// <inheritdoc cref="SphynxPacketType.LOGOUT_BCAST"/>
+    public sealed class LogoutBroadcastPacket : SphynxPacket, IEquatable<LogoutBroadcastPacket>
     {
         /// <summary>
-        /// RoomInfo ID of the room the user has left.
+        /// User ID of the user who went offline.
         /// </summary>
-        public Guid RoomId { get; set; }
-
-        /// <summary>
-        /// The user ID of the user who left the room.
-        /// </summary>
-        public Guid LeaverId { get; set; }
+        public Guid UserId { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
+        public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_BCAST;
 
-        private const int ROOM_ID_OFFSET = 0;
-        private static readonly int LEAVER_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
+        private const int USER_ID_OFFSET = 0;
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveBroadcastPacket"/>.
+        /// Creates a new <see cref="LogoutBroadcastPacket"/>.
         /// </summary>
-        /// <param name="roomId">RoomInfo ID of the room the user has left.</param>
-        /// <param name="leaverId">The user ID of the user who left the room.</param>
-        public ChatLeaveBroadcastPacket(Guid roomId, Guid leaverId)
+        /// <param name="userId">User ID of the user who went offline.</param>
+        public LogoutBroadcastPacket(Guid userId)
         {
-            RoomId = roomId;
-            LeaverId = leaverId;
+            UserId = userId;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatLeaveBroadcastPacket"/>.
+        /// Attempts to deserialize a <see cref="LogoutBroadcastPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatLeaveBroadcastPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out LogoutBroadcastPacket? packet)
         {
-            int contentSize = LEAVER_ID_OFFSET + GUID_SIZE;
+            int contentSize = GUID_SIZE; // UserId
 
             if (contents.Length < contentSize)
             {
@@ -48,16 +41,15 @@ namespace Sphynx.Packet.Broadcast
                 return false;
             }
 
-            var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-            var leaverId = new Guid(contents.Slice(LEAVER_ID_OFFSET, GUID_SIZE));
-            packet = new ChatLeaveBroadcastPacket(roomId, leaverId);
+            var userId = new Guid(contents.Slice(USER_ID_OFFSET, GUID_SIZE));
+            packet = new LogoutBroadcastPacket(userId);
             return true;
         }
 
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE; // UserId
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
@@ -74,7 +66,7 @@ namespace Sphynx.Packet.Broadcast
         {
             if (!stream.CanWrite) return false;
 
-            int contentSize = GUID_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE; // UserId
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -101,8 +93,7 @@ namespace Sphynx.Packet.Broadcast
             if (TrySerializeHeader(buffer))
             {
                 buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
-                RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                LeaverId.TryWriteBytes(buffer.Slice(LEAVER_ID_OFFSET, GUID_SIZE));
+                UserId.TryWriteBytes(buffer.Slice(USER_ID_OFFSET, GUID_SIZE));
                 return true;
             }
 
@@ -110,6 +101,6 @@ namespace Sphynx.Packet.Broadcast
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatLeaveBroadcastPacket? other) => base.Equals(other) && RoomId == other?.RoomId && LeaverId == other?.LeaverId;
+        public bool Equals(LogoutBroadcastPacket? other) => base.Equals(other) && UserId == other?.UserId;
     }
 }

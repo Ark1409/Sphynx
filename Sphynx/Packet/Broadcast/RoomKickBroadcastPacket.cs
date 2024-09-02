@@ -1,64 +1,63 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Sphynx.Packet.Request
+namespace Sphynx.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.ROOM_INFO_REQ"/>
-    public sealed class RoomInfoRequestPacket : SphynxRequestPacket, IEquatable<RoomInfoRequestPacket>
+    /// <inheritdoc cref="SphynxPacketType.CHAT_KICK_BCAST"/>
+    public sealed class RoomKickBroadcastPacket : SphynxPacket, IEquatable<RoomKickBroadcastPacket>
     {
         /// <summary>
-        /// The ID of the room to get the information of.
+        /// Room ID of the room to kick the user from.
         /// </summary>
         public Guid RoomId { get; set; }
 
+        /// <summary>
+        /// User ID of the user that was kicked.
+        /// </summary>
+        public Guid KickedId { get; set; }
+
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_INFO_REQ;
+        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_KICK_BCAST;
 
-        private static readonly int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
-
-        /// <summary>
-        /// Creates a new <see cref="RoomInfoRequestPacket"/>.
-        /// </summary>
-        /// <param name="roomId">The ID of the room to get the information of.</param>
-        public RoomInfoRequestPacket(Guid roomId) : this(Guid.Empty, Guid.Empty, roomId)
-        {
-        }
+        private const int ROOM_ID_OFFSET = 0;
+        private static readonly int KICKED_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="RoomInfoRequestPacket"/>.
+        /// Creates a new <see cref="RoomKickBroadcastPacket"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="roomId">The ID of the room to get the information of.</param>
-        public RoomInfoRequestPacket(Guid userId, Guid sessionId, Guid roomId) : base(userId, sessionId)
+        /// <param name="roomId">Room ID of the room to kick the user from.</param>
+        /// <param name="kickedId">User ID of the user that was kicked.</param>
+        public RoomKickBroadcastPacket(Guid roomId, Guid kickedId)
         {
             RoomId = roomId;
+            KickedId = kickedId;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="RoomInfoRequestPacket"/>.
+        /// Attempts to deserialize a <see cref="RoomKickBroadcastPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomInfoRequestPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomKickBroadcastPacket? packet)
         {
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
+            int contentSize = KICKED_ID_OFFSET + GUID_SIZE;
 
-            if (contents.Length < contentSize || !TryDeserializeDefaults(contents[..DEFAULT_CONTENT_SIZE], out var userId, out var sessionId))
+            if (contents.Length < contentSize)
             {
                 packet = null;
                 return false;
             }
 
             var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-            packet = new RoomInfoRequestPacket(userId.Value, sessionId.Value, roomId);
+            var kickId = new Guid(contents.Slice(KICKED_ID_OFFSET, GUID_SIZE));
+            packet = new RoomKickBroadcastPacket(roomId, kickId);
             return true;
         }
 
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE + GUID_SIZE;
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
@@ -75,7 +74,7 @@ namespace Sphynx.Packet.Request
         {
             if (!stream.CanWrite) return false;
 
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
+            int contentSize = GUID_SIZE;
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -89,10 +88,6 @@ namespace Sphynx.Packet.Request
                     return true;
                 }
             }
-            catch
-            {
-                return false;
-            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -103,9 +98,11 @@ namespace Sphynx.Packet.Request
 
         private bool TrySerialize(Span<byte> buffer)
         {
-            if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+            if (TrySerializeHeader(buffer))
             {
+                buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
+                KickedId.TryWriteBytes(buffer.Slice(KICKED_ID_OFFSET, GUID_SIZE));
                 return true;
             }
 
@@ -113,6 +110,6 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(RoomInfoRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId;
+        public bool Equals(RoomKickBroadcastPacket? other) => base.Equals(other) && RoomId == other?.RoomId && KickedId == other?.KickedId;
     }
 }

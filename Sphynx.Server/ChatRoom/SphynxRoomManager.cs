@@ -12,6 +12,7 @@ namespace Sphynx.Server.ChatRoom
     {
         private static readonly DatabaseStore<Guid, ChatRoomDbInfo.Direct> _directRoomStore;
         private static readonly DatabaseStore<Guid, ChatRoomDbInfo.Group> _groupRoomStore;
+        // TODO: Why not merge these into one?
         private static readonly DatabaseStore<Guid, ChatRoomMessageDbInfo> _directMessageStore;
         private static readonly DatabaseStore<Guid, ChatRoomMessageDbInfo> _groupMessageStore;
 
@@ -62,18 +63,19 @@ namespace Sphynx.Server.ChatRoom
             return new SphynxErrorInfo<ChatRoomDbInfo.Direct?>(SphynxErrorCode.DB_WRITE_ERROR);
         }
 
-        public static async Task<SphynxErrorInfo<ChatRoomDbInfo.Group?>> CreateGroupRoomAsync(string name, bool @public = true,
+        public static async Task<SphynxErrorInfo<ChatRoomDbInfo.Group?>> 
+            CreateGroupRoomAsync(Guid ownerId, string name, bool @public = true,
             string? password = null)
         {
             ChatRoomDbInfo.Group newRoom;
             if (string.IsNullOrEmpty(password))
             {
-                newRoom = new ChatRoomDbInfo.Group(name, @public);
+                newRoom = new ChatRoomDbInfo.Group(ownerId, name, @public);
             }
             else
             {
                 byte[] pwd = PasswordManager.HashPassword(password, out byte[] pwdSalt);
-                newRoom = new ChatRoomDbInfo.Group(name, pwd, pwdSalt, @public);
+                newRoom = new ChatRoomDbInfo.Group(ownerId, name, pwd, pwdSalt, @public);
             }
 
             if (await _groupRoomStore.InsertAsync(newRoom))

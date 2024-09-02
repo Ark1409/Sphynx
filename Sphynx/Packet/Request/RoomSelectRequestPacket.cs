@@ -1,74 +1,74 @@
-﻿using System.Buffers;
+﻿using Sphynx.ChatRoom;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_KICK_REQ"/>
-    public sealed class ChatKickRequestPacket : SphynxRequestPacket, IEquatable<ChatKickRequestPacket>
+    /// <inheritdoc cref="SphynxPacketType.ROOM_SELECT_REQ"/>
+    public sealed class RoomSelectRequestPacket : SphynxRequestPacket, IEquatable<RoomSelectRequestPacket>
     {
         /// <summary>
-        /// RoomInfo ID of the room to kick the user from.
+        /// ID of the chat room that was selected.
         /// </summary>
         public Guid RoomId { get; set; }
 
-        /// <summary>
-        /// User ID of the user to kick from the room.
-        /// </summary>
-        public Guid KickId { get; set; }
-
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_KICK_REQ;
+        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_SELECT_REQ;
 
         private static readonly int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
-        private static readonly int KICK_ID_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="ChatKickRequestPacket"/>.
+        /// Creates a new <see cref="MessageRequestPacket"/>.
         /// </summary>
-        /// <param name="roomId">RoomInfo ID of the room to kick the user from.</param>
-        /// <param name="kickId">User ID of the user to kick from the room.</param>
-        public ChatKickRequestPacket(Guid roomId, Guid kickId) : this(Guid.Empty, Guid.Empty, roomId, kickId)
+        /// <param name="roomId">ID of the chat room that was selected.</param>
+        public RoomSelectRequestPacket(Guid roomId) : this(Guid.Empty, Guid.Empty, roomId)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveRequestPacket"/>.
+        /// Creates a new <see cref="RoomSelectRequestPacket"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="roomId">RoomInfo ID of the room to leave.</param>
-        /// <param name="kickId">User ID of the user to kick from the room.</param>
-        public ChatKickRequestPacket(Guid userId, Guid sessionId, Guid roomId, Guid kickId) : base(userId, sessionId)
+        /// <param name="roomId">ID of the chat room that was selected.</param>
+        public RoomSelectRequestPacket(Guid userId, Guid sessionId, Guid roomId) : base(userId, sessionId)
         {
             RoomId = roomId;
-            KickId = kickId;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatKickRequestPacket"/>.
+        /// Attempts to deserialize a <see cref="RoomSelectRequestPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatKickRequestPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomSelectRequestPacket? packet)
         {
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + GUID_SIZE;
+            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
 
-            if (contents.Length < contentSize || !TryDeserializeDefaults(contents, out var userId, out var sessionId))
+            if (contents.Length < contentSize || !TryDeserializeDefaults(contents[..DEFAULT_CONTENT_SIZE], out var userId, out var sessionId))
             {
                 packet = null;
                 return false;
             }
 
-            var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-            var kickId = new Guid(contents.Slice(KICK_ID_OFFSET, GUID_SIZE));
-            packet = new ChatKickRequestPacket(userId.Value, sessionId.Value, roomId, kickId);
-            return true;
+            try
+            {
+                var chatId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
+
+                packet = new RoomSelectRequestPacket(userId.Value, sessionId.Value, chatId);
+                return true;
+            }
+            catch
+            {
+                packet = null;
+                return false;
+            }
         }
 
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + GUID_SIZE;
+            int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + GUID_SIZE;
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
@@ -85,7 +85,7 @@ namespace Sphynx.Packet.Request
         {
             if (!stream.CanWrite) return false;
 
-            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + GUID_SIZE;
+            int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + GUID_SIZE;
 
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
@@ -98,6 +98,10 @@ namespace Sphynx.Packet.Request
                     await stream.WriteAsync(buffer);
                     return true;
                 }
+            }
+            catch
+            {
+                return false;
             }
             finally
             {
@@ -112,7 +116,6 @@ namespace Sphynx.Packet.Request
             if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
             {
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                KickId.TryWriteBytes(buffer.Slice(KICK_ID_OFFSET, GUID_SIZE));
                 return true;
             }
 
@@ -120,6 +123,6 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatKickRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId && KickId == other?.KickId;
+        public bool Equals(RoomSelectRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId;
     }
 }

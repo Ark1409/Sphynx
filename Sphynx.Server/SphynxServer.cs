@@ -116,7 +116,7 @@ namespace Sphynx.Server
                 try
                 {
                     var userSocket = _serverSocket.Accept();
-                    AcceptClientAsync(userSocket).SafeExecute();
+                    AcceptClientAsync(userSocket).SafeBackgroundExecute();
                 }
                 catch (SocketException)
                 {
@@ -134,7 +134,7 @@ namespace Sphynx.Server
             // <see cref="SphynxClient(SphynxServer, Socket)"/>
             if (client.Connected && !client.Started)
             {
-                client.StartAsync().SafeExecute();
+                client.StartAsync().SafeBackgroundExecute();
                 Debug.Assert(_connectedClients.TryAdd(client.SocketStream.Socket, client));
             }
         });

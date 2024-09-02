@@ -3,24 +3,24 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_CREATE_RES"/>
-    public sealed class ChatCreateResponsePacket : SphynxResponsePacket, IEquatable<ChatCreateResponsePacket>
+    /// <inheritdoc cref="SphynxPacketType.ROOM_CREATE_RES"/>
+    public sealed class RoomCreateResponsePacket : SphynxResponsePacket, IEquatable<RoomCreateResponsePacket>
     {
         /// <summary>
-        /// RoomInfo ID assigned to the newly created room.
+        /// Room ID assigned to the newly created room.
         /// </summary>
         public Guid? RoomId { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_CREATE_RES;
+        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_RES;
 
         private const int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="ChatCreateResponsePacket"/>.
+        /// Creates a new <see cref="RoomCreateResponsePacket"/>.
         /// </summary>
         /// <param name="errorCode">Error code for room creation attempt.</param>
-        public ChatCreateResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
+        public RoomCreateResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
             // Assume the room is to be created
             if (errorCode == SphynxErrorCode.SUCCESS)
@@ -30,20 +30,20 @@ namespace Sphynx.Packet.Response
         }
 
         /// <summary>
-        /// Creates a new <see cref="ChatCreateResponsePacket"/>.
+        /// Creates a new <see cref="RoomCreateResponsePacket"/>.
         /// </summary>
-        /// <param name="roomId">RoomInfo ID assigned to the newly created room.</param>
-        public ChatCreateResponsePacket(Guid roomId) : base(SphynxErrorCode.SUCCESS)
+        /// <param name="roomId">Room ID assigned to the newly created room.</param>
+        public RoomCreateResponsePacket(Guid roomId) : base(SphynxErrorCode.SUCCESS)
         {
             RoomId = roomId;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatCreateResponsePacket"/>.
+        /// Attempts to deserialize a <see cref="RoomCreateResponsePacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatCreateResponsePacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomCreateResponsePacket? packet)
         {
             if (!TryDeserializeDefaults(contents, out SphynxErrorCode? errorCode) ||
                 (errorCode.Value == SphynxErrorCode.SUCCESS && contents.Length < DEFAULT_CONTENT_SIZE + GUID_SIZE))
@@ -55,11 +55,11 @@ namespace Sphynx.Packet.Response
             if (errorCode.Value == SphynxErrorCode.SUCCESS)
             {
                 var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-                packet = new ChatCreateResponsePacket(roomId);
+                packet = new RoomCreateResponsePacket(roomId);
             }
             else
             {
-                packet = new ChatCreateResponsePacket(errorCode.Value);
+                packet = new RoomCreateResponsePacket(errorCode.Value);
             }
 
             return true;
@@ -99,6 +99,10 @@ namespace Sphynx.Packet.Response
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -119,6 +123,6 @@ namespace Sphynx.Packet.Response
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatCreateResponsePacket? other) => base.Equals(other) && RoomId == other?.RoomId;
+        public bool Equals(RoomCreateResponsePacket? other) => base.Equals(other) && RoomId == other?.RoomId;
     }
 }

@@ -1,59 +1,60 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-
-using Sphynx.Packet.Response;
 using Sphynx.Utils;
 
 namespace Sphynx.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_REQ"/>
-    public sealed class ChatJoinRequestPacket : SphynxRequestPacket, IEquatable<ChatJoinRequestPacket>
+    /// <inheritdoc cref="SphynxPacketType.ROOM_DEL_REQ"/>
+    /// <remarks>Only rooms of type <see cref="ChatRoom.ChatRoomType.GROUP"/> can be deleted.</remarks>
+    public sealed class RoomDeleteRequestPacket : SphynxRequestPacket, IEquatable<RoomDeleteRequestPacket>
     {
         /// <summary>
-        /// RoomInfo ID of the room to join.
+        /// The ID of the room to delete.
         /// </summary>
+        /// <remarks>Must be a room ID for a group chat room.</remarks>
         public Guid RoomId { get; set; }
 
         /// <summary>
-        /// Password for the room, if the room is guarded with a password.
+        /// The password for the room to delete, if the room was guarded with a password. 
+        /// This is a sort of confirmation to ensure the user understands the action they are about to perform.
         /// </summary>
         public string? Password { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_REQ;
+        public override SphynxPacketType PacketType { get; }
 
         private static readonly int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
         private static readonly int PASSWORD_SIZE_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
         private static readonly int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
-        /// Creates a new <see cref="ChatCreateResponsePacket"/>.
+        /// Creates new <see cref="RoomDeleteRequestPacket"/>.
         /// </summary>
-        /// <param name="roomId">RoomInfo ID of the room to join.</param>
-        /// <param name="password">Password for the room, if the room is guarded with a password.</param>
-        public ChatJoinRequestPacket(Guid roomId, string? password = null) : this(Guid.Empty, Guid.Empty, roomId, password)
+        /// <param name="roomId">The ID of the room to delete.</param>
+        /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
+        public RoomDeleteRequestPacket(Guid roomId, string? password) : this(Guid.Empty, Guid.Empty, roomId, password)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="ChatCreateResponsePacket"/>.
+        /// Creates new <see cref="RoomDeleteRequestPacket"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="roomId">RoomInfo ID of the room to join.</param>
-        /// <param name="password">Password for the room, if the room is guarded with a password.</param>
-        public ChatJoinRequestPacket(Guid userId, Guid sessionId, Guid roomId, string? password = null) : base(userId, sessionId)
+        /// <param name="roomId">The ID of the room to delete. Only rooms of type <see cref="ChatRoom.ChatRoomType.GROUP"/> can be deleted.</param>
+        /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
+        public RoomDeleteRequestPacket(Guid userId, Guid sessionId, Guid roomId, string? password) : base(userId, sessionId)
         {
             RoomId = roomId;
             Password = password;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatJoinRequestPacket"/>.
+        /// Attempts to deserialize a <see cref="RoomDeleteRequestPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatJoinRequestPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomDeleteRequestPacket? packet)
         {
             int minContentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int);
 
@@ -67,11 +68,10 @@ namespace Sphynx.Packet.Request
             {
                 var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
 
-                // TODO: Read hashed password bytes
-                int passwordSize = contents.ReadInt32(PASSWORD_SIZE_OFFSET);
+                int passwordSize = contents[PASSWORD_SIZE_OFFSET..].ReadInt32();
                 string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
-                packet = new ChatJoinRequestPacket(userId.Value, sessionId.Value, roomId, passwordSize > 0 ? password : null);
+                packet = new RoomDeleteRequestPacket(userId.Value, sessionId.Value, roomId, passwordSize > 0 ? password : null);
                 return true;
             }
             catch
@@ -118,6 +118,10 @@ namespace Sphynx.Packet.Request
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -132,8 +136,7 @@ namespace Sphynx.Packet.Request
             {
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
 
-                // TODO: Serialize hashed password
-                passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
+                passwordSize.WriteBytes(buffer[PASSWORD_SIZE_OFFSET..]);
                 TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));
                 return true;
             }
@@ -142,6 +145,6 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatJoinRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
+        public bool Equals(RoomDeleteRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
     }
 }

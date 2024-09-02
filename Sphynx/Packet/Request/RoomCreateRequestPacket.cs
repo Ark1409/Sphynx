@@ -1,17 +1,16 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-
 using Sphynx.ChatRoom;
 using Sphynx.Utils;
 
 namespace Sphynx.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_CREATE_REQ"/>
-    public abstract class ChatCreateRequestPacket : SphynxRequestPacket, IEquatable<ChatCreateRequestPacket>
+    /// <inheritdoc cref="SphynxPacketType.ROOM_CREATE_REQ"/>
+    public abstract class RoomCreateRequestPacket : SphynxRequestPacket, IEquatable<RoomCreateRequestPacket>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_CREATE_REQ;
+        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_REQ;
 
         /// <summary>
         /// <inheritdoc cref="ChatRoomType"/>
@@ -22,21 +21,20 @@ namespace Sphynx.Packet.Request
         protected static readonly int DEFAULTS_SIZE = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType);
 
         /// <summary>
-        /// Creates a new <see cref="ChatCreateRequestPacket"/>.
+        /// Creates a new <see cref="RoomCreateRequestPacket"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public ChatCreateRequestPacket(Guid userId, Guid sessionId) : base(userId, sessionId)
+        public RoomCreateRequestPacket(Guid userId, Guid sessionId) : base(userId, sessionId)
         {
-
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatCreateRequestPacket"/>.
+        /// Attempts to deserialize a <see cref="RoomCreateRequestPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatCreateRequestPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomCreateRequestPacket? packet)
         {
             if (contents.Length > DEFAULTS_SIZE)
             {
@@ -48,6 +46,7 @@ namespace Sphynx.Packet.Request
                             packet = dPacket;
                             return true;
                         }
+
                         break;
 
                     case ChatRoomType.GROUP:
@@ -56,6 +55,7 @@ namespace Sphynx.Packet.Request
                             packet = gPacket;
                             return true;
                         }
+
                         break;
                 }
             }
@@ -93,12 +93,12 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatCreateRequestPacket? other) => base.Equals(other) && RoomType == other?.RoomType;
+        public bool Equals(RoomCreateRequestPacket? other) => base.Equals(other) && RoomType == other?.RoomType;
 
         /// <summary>
         /// <see cref="ChatRoomType.DIRECT_MSG"/> room creation request.
         /// </summary>
-        public sealed class Direct : ChatCreateRequestPacket, IEquatable<Direct>
+        public sealed class Direct : RoomCreateRequestPacket, IEquatable<Direct>
         {
             /// <inheritdoc/>
             public override ChatRoomType RoomType => ChatRoomType.DIRECT_MSG;
@@ -111,7 +111,7 @@ namespace Sphynx.Packet.Request
             private static readonly int OTHER_ID_OFFSET = DEFAULTS_SIZE;
 
             /// <summary>
-            /// Creates a new <see cref="ChatCreateRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequestPacket"/>.
             /// </summary>
             /// <param name="otherId">The user ID of the other user to create the DM with.</param>
             public Direct(Guid otherId) : this(Guid.Empty, Guid.Empty, otherId)
@@ -119,7 +119,7 @@ namespace Sphynx.Packet.Request
             }
 
             /// <summary>
-            /// Creates a new <see cref="ChatCreateRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequestPacket"/>.
             /// </summary>
             /// <param name="userId">The user ID of the requesting user.</param>
             /// <param name="sessionId">The session ID for the requesting user.</param>
@@ -130,7 +130,7 @@ namespace Sphynx.Packet.Request
             }
 
             /// <summary>
-            /// Attempts to deserialize a <see cref="ChatCreateRequestPacket.Direct"/>.
+            /// Attempts to deserialize a <see cref="RoomCreateRequestPacket.Direct"/>.
             /// </summary>
             /// <param name="contents">Packet contents, excluding the header.</param>
             /// <param name="packet">The deserialized packet.</param>
@@ -211,7 +211,7 @@ namespace Sphynx.Packet.Request
         /// <summary>
         /// <see cref="ChatRoomType.GROUP"/> room creation request.
         /// </summary>
-        public sealed class Group : ChatCreateRequestPacket, IEquatable<Group>
+        public sealed class Group : RoomCreateRequestPacket, IEquatable<Group>
         {
             /// <summary>
             /// The name of the chat room.
@@ -223,36 +223,45 @@ namespace Sphynx.Packet.Request
             /// </summary>
             public string? Password { get; set; }
 
+            /// <summary>
+            /// Whether this room is public.
+            /// </summary>
+            public bool Public { get; set; }
+
             /// <inheritdoc/>
             public override ChatRoomType RoomType => ChatRoomType.GROUP;
 
-            private static readonly int NAME_SIZE_OFFSET = DEFAULTS_SIZE;
+            private static readonly int VISIBILITY_OFFSET = DEFAULTS_SIZE;
+            private static readonly int NAME_SIZE_OFFSET = VISIBILITY_OFFSET + sizeof(bool);
             private static readonly int NAME_OFFSET = NAME_SIZE_OFFSET + sizeof(int);
 
             /// <summary>
-            /// Creates a new <see cref="ChatCreateRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequestPacket"/>.
             /// </summary>
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
-            public Group(string name, string? password = null) : this(Guid.Empty, Guid.Empty, name, password)
+            /// <param name="public">Whether this room is public.</param>
+            public Group(string name, string? password = null, bool @public = true) : this(Guid.Empty, Guid.Empty, name, password, @public)
             {
             }
 
             /// <summary>
-            /// Creates a new <see cref="ChatCreateRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequestPacket"/>.
             /// </summary>
             /// <param name="userId">The user ID of the requesting user.</param>
             /// <param name="sessionId">The session ID for the requesting user.</param>
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
-            public Group(Guid userId, Guid sessionId, string name, string? password = null) : base(userId, sessionId)
+            /// <param name="public">Whether this room is public.</param>
+            public Group(Guid userId, Guid sessionId, string name, string? password = null, bool @public = true) : base(userId, sessionId)
             {
                 Name = name;
                 Password = password;
+                Public = @public;
             }
 
             /// <summary>
-            /// Attempts to deserialize a <see cref="ChatCreateRequestPacket.Group"/>.
+            /// Attempts to deserialize a <see cref="RoomCreateRequestPacket.Group"/>.
             /// </summary>
             /// <param name="contents">Packet contents, excluding the header.</param>
             /// <param name="packet">The deserialized packet.</param>
@@ -269,17 +278,17 @@ namespace Sphynx.Packet.Request
 
                 try
                 {
-                    int nameSize = contents.ReadInt32(NAME_SIZE_OFFSET);
+                    bool isPublic = contents[VISIBILITY_OFFSET] != 0;
+                    int nameSize = contents[NAME_SIZE_OFFSET..].ReadInt32();
                     string name = TEXT_ENCODING.GetString(contents.Slice(NAME_OFFSET, nameSize));
 
-                    // TODO: Read hashed password bytes
                     int PASSWORD_SIZE_OFFSET = NAME_OFFSET + nameSize;
-                    int passwordSize = contents.ReadInt32(PASSWORD_SIZE_OFFSET);
+                    int passwordSize = contents[PASSWORD_SIZE_OFFSET..].ReadInt32();
 
                     int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                     string password = TEXT_ENCODING.GetString(contents.Slice(PASSWORD_OFFSET, passwordSize));
 
-                    packet = new Group(userId.Value, sessionId.Value, name, passwordSize > 0 ? password : null);
+                    packet = new Group(userId.Value, sessionId.Value, name, passwordSize > 0 ? password : null, isPublic);
                     return true;
                 }
                 catch
@@ -324,6 +333,10 @@ namespace Sphynx.Packet.Request
                         return true;
                     }
                 }
+                catch
+                {
+                    return false;
+                }
                 finally
                 {
                     ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -344,12 +357,13 @@ namespace Sphynx.Packet.Request
             {
                 if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
                 {
-                    nameSize.WriteBytes(buffer, NAME_SIZE_OFFSET);
+                    buffer[VISIBILITY_OFFSET] = (byte)(Public ? 0 : 1);
+
+                    nameSize.WriteBytes(buffer[NAME_SIZE_OFFSET..]);
                     TEXT_ENCODING.GetBytes(Name, buffer.Slice(NAME_OFFSET, nameSize));
 
-                    // TODO: Serialize hashed password
                     int PASSWORD_SIZE_OFFSET = NAME_OFFSET + nameSize;
-                    passwordSize.WriteBytes(buffer, PASSWORD_SIZE_OFFSET);
+                    passwordSize.WriteBytes(buffer[PASSWORD_SIZE_OFFSET..]);
 
                     int PASSWORD_OFFSET = PASSWORD_SIZE_OFFSET + sizeof(int);
                     TEXT_ENCODING.GetBytes(Password, buffer.Slice(PASSWORD_OFFSET, passwordSize));

@@ -5,66 +5,178 @@ namespace Sphynx.Utils
 {
     internal static class MemoryUtils
     {
-        internal static void WriteBytes(this int src, Span<byte> buffer, int offset = 0)
+        #region Memory writing
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WriteBytes(this int src, Span<byte> buffer)
         {
-            BinaryPrimitives.WriteInt32LittleEndian(buffer[offset..], src);
-
-            // buffer[offset] = (byte)(src & 0xFF);
-            // buffer[offset + 1] = (byte)((src >> 8) & 0xFF);
-            // buffer[offset + 2] = (byte)((src >> 16) & 0xFF);
-            // buffer[offset + 3] = (byte)((src >> 24) & 0xFF);
-        }
-
-        internal static void WriteBytes(this uint src, Span<byte> buffer, int offset = 0)
-        {
-            BinaryPrimitives.WriteUInt32LittleEndian(buffer[offset..], src);
-
-            // buffer[offset] = (byte)(src & 0xFF);
-            // buffer[offset + 1] = (byte)((src >> 8) & 0xFF);
-            // buffer[offset + 2] = (byte)((src >> 16) & 0xFF);
-            // buffer[offset + 3] = (byte)((src >> 24) & 0xFF);
-        }
-
-        internal static void WriteBytes(this ushort src, Span<byte> buffer, int offset = 0)
-        {
-            BinaryPrimitives.WriteUInt16LittleEndian(buffer[offset..], src);
-
-            // buffer[offset] = (byte)(src & 0xFF);
-            // buffer[offset + 1] = (byte)((src >> 8) & 0xFF);
-        }
-
-        internal static int ReadInt32(this ReadOnlySpan<byte> buffer, int offset = 0)
-        {
-            return BinaryPrimitives.ReadInt32LittleEndian(buffer.Slice(offset, sizeof(int)));
-
-            // int number = buffer[offset + 3] << 24;
-            // number |= buffer[offset + 2] << 16;
-            // number |= buffer[offset + 1] << 8;
-            // number |= buffer[offset];
-            // return number;
-        }
-
-        internal static uint ReadUInt32(this ReadOnlySpan<byte> buffer, int offset = 0)
-        {
-            return BinaryPrimitives.ReadUInt32LittleEndian(buffer.Slice(offset, sizeof(uint)));
-
-            // uint number = (uint)(buffer[offset + 3] << 24);
-            // number |= (uint)(buffer[offset + 2] << 16);
-            // number |= (uint)(buffer[offset + 1] << 8);
-            // number |= buffer[offset];
-            // return number;
-        }
-
-        internal static ushort ReadUInt16(this ReadOnlySpan<byte> buffer, int offset = 0)
-        {
-            return BinaryPrimitives.ReadUInt16LittleEndian(buffer.Slice(offset, sizeof(ushort)));
-
-            // ushort number = (ushort)(buffer[offset + 1] << 8);
-            // number |= buffer[offset];
-            // return number;
+            BinaryPrimitives.WriteInt32LittleEndian(buffer, src);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static bool SequenceEqual(this byte[] first, ReadOnlySpan<byte> second) => new ReadOnlySpan<byte>(first).SequenceEqual(second);
+        public static void WriteBytes(this uint src, Span<byte> buffer)
+        {
+            BinaryPrimitives.WriteUInt32LittleEndian(buffer, src);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WriteBytes(this ushort src, Span<byte> buffer)
+        {
+            BinaryPrimitives.WriteUInt16LittleEndian(buffer, src);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WriteBytes(this long src, Span<byte> buffer)
+        {
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, src);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WriteBytes(this ulong src, Span<byte> buffer)
+        {
+            BinaryPrimitives.WriteUInt64LittleEndian(buffer, src);
+        }
+
+        public static unsafe int WriteGuidCollection<TCollection>(this TCollection? guids, Span<byte> output)
+            where TCollection : class, ICollection<Guid>?
+        {
+            int guidCount = guids?.Count ?? 0;
+
+            guidCount.WriteBytes(output);
+            int bytesWritten = sizeof(int);
+
+            if (guidCount <= 0)
+            {
+                return bytesWritten;
+            }
+
+            // Prefer normal iteration over enumerator
+            if (guids is IList<Guid> guidList)
+            {
+                for (int i = 0; i < guidCount; i++)
+                {
+                    if (guidList[i].TryWriteBytes(output.Slice(i * sizeof(Guid), sizeof(Guid))))
+                    {
+                        bytesWritten += sizeof(Guid);
+                    }
+                }
+            }
+            else
+            {
+                int index = 0;
+                foreach (var guid in guids!)
+                {
+                    if (guid.TryWriteBytes(output.Slice(index++ * sizeof(Guid), sizeof(Guid))))
+                    {
+                        bytesWritten += sizeof(Guid);
+                    }
+                }
+            }
+
+            return bytesWritten;
+        }
+
+        #endregion
+
+        #region Memory reading
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int ReadInt32(this ReadOnlySpan<byte> buffer)
+        {
+            return BinaryPrimitives.ReadInt32LittleEndian(buffer[..sizeof(int)]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint ReadUInt32(this ReadOnlySpan<byte> buffer)
+        {
+            return BinaryPrimitives.ReadUInt32LittleEndian(buffer[..sizeof(uint)]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static ushort ReadUInt16(this ReadOnlySpan<byte> buffer)
+        {
+            return BinaryPrimitives.ReadUInt16LittleEndian(buffer[..sizeof(ushort)]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static long ReadInt64(this ReadOnlySpan<byte> buffer)
+        {
+            return BinaryPrimitives.ReadInt64LittleEndian(buffer[..sizeof(long)]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong ReadUInt64(this ReadOnlySpan<byte> buffer)
+        {
+            return BinaryPrimitives.ReadUInt64LittleEndian(buffer[..sizeof(ulong)]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int ReadGuidSet(this ReadOnlySpan<byte> guidCountAndBytes, out ISet<Guid>? output)
+        {
+            int guidCount = guidCountAndBytes.ReadInt32();
+            int bytesRead = sizeof(int);
+
+            if (guidCount <= 0)
+            {
+                output = null;
+                return sizeof(int);
+            }
+
+            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount, output = new HashSet<Guid>(guidCount));
+            return bytesRead;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int ReadGuidList(this ReadOnlySpan<byte> guidCountAndBytes, out IList<Guid>? output)
+        {
+            int guidCount = guidCountAndBytes.ReadInt32();
+            int bytesRead = sizeof(int);
+
+            if (guidCount <= 0)
+            {
+                output = null;
+                return sizeof(int);
+            }
+
+            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount, output = new List<Guid>(guidCount));
+            return bytesRead;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int ReadGuidCollection<TCollection>(this ReadOnlySpan<byte> guidCountAndBytes, TCollection output)
+            where TCollection : ICollection<Guid>
+        {
+            int guidCount = guidCountAndBytes.ReadInt32();
+            int bytesRead = sizeof(int);
+
+            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount, output);
+            return bytesRead;
+        }
+
+        public static unsafe int ReadGuidCollection<TCollection>(this ReadOnlySpan<byte> guidBytes, int guidCount, TCollection output)
+            where TCollection : ICollection<Guid>
+        {
+            for (int i = 0; i < guidCount; i++)
+            {
+                output.Add(new Guid(guidBytes.Slice(sizeof(Guid) * i, sizeof(Guid))));
+            }
+
+            int bytesRead = guidCount * sizeof(Guid);
+            return bytesRead;
+        }
+
+        #endregion
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool SequenceEqual<T>(T[]? first, T[]? second)
+        {
+            if (first is null && second is null) return true;
+            if (first is null || second is null) return false;
+
+            return SequenceEqual(first!, new ReadOnlySpan<T>(second));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool SequenceEqual<T>(T[] first, ReadOnlySpan<T> second) => new ReadOnlySpan<T>(first).SequenceEqual(second);
     }
 }

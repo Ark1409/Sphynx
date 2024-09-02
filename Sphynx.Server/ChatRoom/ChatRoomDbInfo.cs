@@ -15,6 +15,11 @@ namespace Sphynx.Server.ChatRoom
         public const string USERS_FIELD = "users";
         public const string ROOM_TYPE_FIELD = "room_type";
 
+        // Should only be creating instances of inner-classes
+        private ChatRoomDbInfo()
+        {
+        }
+
         /// <summary>
         /// Holds information about a direct-message chat room.
         /// </summary>
@@ -36,7 +41,7 @@ namespace Sphynx.Server.ChatRoom
 
             /// <inheritdoc/>
             [BsonElement(USERS_FIELD)]
-            public override HashSet<Guid> Users { get; set; }
+            public override ISet<Guid> Users { get; set; }
 
             /// <inheritdoc/>
             [BsonElement(ROOM_TYPE_FIELD)]
@@ -62,6 +67,7 @@ namespace Sphynx.Server.ChatRoom
         public class Group : ChatRoomInfo.Group, IIdentifiable<Guid>
         {
             public const string VISIBILITY_FIELD = "is_public";
+            public const string OWNER_FIELD = "owner_id";
             internal const string PASSWORD_FIELD = "pwd";
             internal const string PASSWORD_SALT_FIELD = "pwd_salt";
 
@@ -71,7 +77,11 @@ namespace Sphynx.Server.ChatRoom
 
             /// <inheritdoc/>
             [BsonIgnore]
-            public override Guid RoomId => Id;
+            public override Guid RoomId
+            {
+                get => Id;
+                set => Id = value;
+            }
 
             /// <inheritdoc/>
             [BsonId(IdGenerator = typeof(CombGuidGenerator))]
@@ -80,7 +90,7 @@ namespace Sphynx.Server.ChatRoom
 
             /// <inheritdoc/>
             [BsonElement(USERS_FIELD)]
-            public override HashSet<Guid> Users { get; set; }
+            public override ISet<Guid> Users { get; set; }
 
             /// <inheritdoc/>
             [BsonElement(ROOM_TYPE_FIELD)]
@@ -89,6 +99,10 @@ namespace Sphynx.Server.ChatRoom
             /// <inheritdoc/>
             [BsonElement(VISIBILITY_FIELD)]
             public override bool Public { get; set; }
+
+            /// <inheritdoc/>
+            [BsonElement(OWNER_FIELD)]
+            public override Guid OwnerId { get; set; }
 
             /// <summary>
             /// The password for this group chat.
@@ -100,59 +114,47 @@ namespace Sphynx.Server.ChatRoom
             /// The salt for the password of this group chat.
             /// </summary>
             [BsonElement(PASSWORD_SALT_FIELD)]
-            internal override string? PasswordSalt { get; set; }
+            internal string? PasswordSalt { get; set; }
 
             /// <inheritdoc/>
-            public Group(Guid roomId, string name, bool @public, IEnumerable<Guid>? userIds = null)
-                : base(roomId, name, @public, userIds)
+            public Group(Guid roomId, Guid ownerId, string name, bool @public, IEnumerable<Guid>? userIds = null)
+                : base(roomId, ownerId, name, @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            public Group(string name, bool @public, IEnumerable<Guid>? userIds = null)
-                : base(name, @public, userIds)
+            public Group(Guid ownerId, string name, bool @public, IEnumerable<Guid>? userIds = null)
+                : base(ownerId, name, @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            public Group(string name, bool @public, params Guid[] userIds)
-                : base(name, @public, userIds)
+            public Group(Guid ownerId, string name, bool @public, params Guid[] userIds)
+                : base(ownerId, name, @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            internal Group(Guid roomId, string name, byte[] pwd, byte[] pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : base(roomId, name, pwd, pwdSalt, @public, userIds)
+            internal Group(Guid roomId, Guid ownerId, string name, byte[] pwd, byte[] pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
+                : base(roomId, ownerId, name, pwd, @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            internal Group(string name, byte[] pwd, byte[] pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : base(name, pwd, pwdSalt, @public, userIds)
+            internal Group(Guid ownerId, string name, byte[] pwd, byte[] pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
+                : base(ownerId, name, pwd, @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            internal Group(string name, byte[] pwd, byte[] pwdSalt, bool @public = true, params Guid[] userIds)
-                : base(name, pwd, pwdSalt, @public, userIds)
+            internal Group(Guid ownerId, string name, byte[] pwd, byte[] pwdSalt, bool @public = true, params Guid[] userIds)
+                : base(ownerId, name, pwd, @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            internal Group(Guid roomId, string name, string pwd, string pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : base(roomId, name, pwd, pwdSalt, @public, userIds)
-            {
-            }
-
-            /// <inheritdoc/>
-            internal Group(string name, string pwd, string pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : base(name, pwd, pwdSalt, @public, userIds)
-            {
-            }
-
-            /// <inheritdoc/>
-            internal Group(string name, string pwd, string pwdSalt, bool @public = true, params Guid[] userIds)
-                : base(name, pwd, pwdSalt, @public, userIds)
+            internal Group(Guid roomId, Guid ownerId, string name, string pwd, string pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
+                : base(ownerId, roomId, name, pwd, @public, userIds)
             {
             }
         }

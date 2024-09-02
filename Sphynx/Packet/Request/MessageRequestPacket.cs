@@ -1,6 +1,5 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-
 using Sphynx.ChatRoom;
 using Sphynx.Utils;
 
@@ -10,14 +9,9 @@ namespace Sphynx.Packet.Request
     public sealed class MessageRequestPacket : SphynxRequestPacket, IEquatable<MessageRequestPacket>
     {
         /// <summary>
-        /// The type of recipient for the message.
+        /// The ID of the room to which the message was sent.
         /// </summary>
-        public ChatRoomType RecipientType { get; set; }
-
-        /// <summary>
-        /// ID of the message recipient.
-        /// </summary>
-        public Guid RecipientId { get; set; }
+        public Guid RoomId { get; set; }
 
         /// <summary>
         /// The contents of the chat message.
@@ -27,20 +21,17 @@ namespace Sphynx.Packet.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_REQ;
 
-        private static readonly int RECIPIENT_TYPE_OFFSET = DEFAULT_CONTENT_SIZE;
-        private static readonly int RECIPIENT_ID_OFFSET = RECIPIENT_TYPE_OFFSET + sizeof(ChatRoomType);
-        private static readonly int MESSAGE_SIZE_OFFSET = RECIPIENT_ID_OFFSET + GUID_SIZE;
+        private static readonly int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
+        private static readonly int MESSAGE_SIZE_OFFSET = ROOM_ID_OFFSET + GUID_SIZE;
         private static readonly int MESSAGE_OFFSET = MESSAGE_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
         /// Creates a new <see cref="MessageRequestPacket"/>.
         /// </summary>
-        /// <param name="recipientType">The type of recipient for the message.</param>
-        /// <param name="recipientId">ID of recipient (whether it be a room or user).</param>
+        /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessageRequestPacket(ChatRoomType recipientType, Guid recipientId, string message) : this(Guid.Empty, Guid.Empty, recipientType, recipientId, message)
+        public MessageRequestPacket(Guid roomId, string message) : this(Guid.Empty, Guid.Empty, roomId, message)
         {
-
         }
 
         /// <summary>
@@ -48,13 +39,11 @@ namespace Sphynx.Packet.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="recipientType">The type of recipient for the message.</param>
-        /// <param name="recipientId">ID of recipient (whether it be a room or user).</param>
+        /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessageRequestPacket(Guid userId, Guid sessionId, ChatRoomType recipientType, Guid recipientId, string message) : base(userId, sessionId)
+        public MessageRequestPacket(Guid userId, Guid sessionId, Guid roomId, string message) : base(userId, sessionId)
         {
-            RecipientType = recipientType;
-            RecipientId = recipientId;
+            RoomId = roomId;
             Message = message ?? throw new ArgumentNullException(nameof(message)); // Exceptions OK on client
         }
 
@@ -65,7 +54,7 @@ namespace Sphynx.Packet.Request
         /// <param name="packet">The deserialized packet.</param>
         public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out MessageRequestPacket? packet)
         {
-            int minContentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + GUID_SIZE + sizeof(int);
+            int minContentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int); // RoomId, MessageSize 
 
             if (contents.Length < minContentSize || !TryDeserializeDefaults(contents[..DEFAULT_CONTENT_SIZE], out var userId, out var sessionId))
             {
@@ -75,13 +64,11 @@ namespace Sphynx.Packet.Request
 
             try
             {
-                var recipientType = (ChatRoomType)contents[RECIPIENT_TYPE_OFFSET];
-                var recipientId = new Guid(contents.Slice(RECIPIENT_ID_OFFSET, GUID_SIZE));
-
-                int messageSize = contents.ReadInt32(MESSAGE_SIZE_OFFSET);
+                var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
+                int messageSize = contents[MESSAGE_SIZE_OFFSET..].ReadInt32();
                 string message = TEXT_ENCODING.GetString(contents.Slice(MESSAGE_OFFSET, messageSize));
 
-                packet = new MessageRequestPacket(userId.Value, sessionId.Value, recipientType, recipientId, message);
+                packet = new MessageRequestPacket(userId.Value, sessionId.Value, roomId, message);
                 return true;
             }
             catch
@@ -95,7 +82,7 @@ namespace Sphynx.Packet.Request
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
             int messageSize = TEXT_ENCODING.GetByteCount(Message);
-            int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + GUID_SIZE + sizeof(int) + messageSize;
+            int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int) + messageSize;
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize], messageSize))
@@ -127,6 +114,10 @@ namespace Sphynx.Packet.Request
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -139,11 +130,8 @@ namespace Sphynx.Packet.Request
         {
             if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
             {
-                buffer[RECIPIENT_TYPE_OFFSET] = (byte)RecipientType;
-
-                RecipientId.TryWriteBytes(buffer.Slice(RECIPIENT_ID_OFFSET, GUID_SIZE));
-
-                messageSize.WriteBytes(buffer, MESSAGE_SIZE_OFFSET);
+                RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
+                messageSize.WriteBytes(buffer[MESSAGE_SIZE_OFFSET..]);
                 TEXT_ENCODING.GetBytes(Message, buffer.Slice(MESSAGE_OFFSET, messageSize));
                 return true;
             }
@@ -152,7 +140,6 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(MessageRequestPacket? other) => base.Equals(other) &&
-            RecipientType == other?.RecipientType && RecipientId == other?.RecipientId && Message == other?.Message;
+        public bool Equals(MessageRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId && Message == other?.Message;
     }
 }

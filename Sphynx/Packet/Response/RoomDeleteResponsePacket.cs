@@ -1,39 +1,40 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_LEAVE_RES"/>
-    public sealed class ChatLeaveResponsePacket : SphynxResponsePacket, IEquatable<ChatLeaveResponsePacket>
+    /// <inheritdoc cref="SphynxPacketType.ROOM_DEL_RES"/>
+    public sealed class RoomDeleteResponsePacket : SphynxResponsePacket, IEquatable<RoomDeleteResponsePacket>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_LEAVE_RES;
+        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_DEL_RES;
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// Creates a new <see cref="RoomDeleteResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
-        public ChatLeaveResponsePacket() : this(SphynxErrorCode.SUCCESS)
+        public RoomDeleteResponsePacket() : this(SphynxErrorCode.SUCCESS)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveResponsePacket"/>.
+        /// Creates a new <see cref="RoomDeleteResponsePacket"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for leave attempt.</param>
-        public ChatLeaveResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
+        /// <param name="errorCode">Error code for delete attempt.</param>
+        public RoomDeleteResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
         {
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatLeaveResponsePacket"/>.
+        /// Attempts to deserialize a <see cref="RoomDeleteResponsePacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatLeaveResponsePacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomDeleteResponsePacket? packet)
         {
             if (TryDeserializeDefaults(contents, out SphynxErrorCode? errorCode))
             {
-                packet = new ChatLeaveResponsePacket(errorCode.Value);
+                packet = new RoomDeleteResponsePacket(errorCode.Value);
                 return true;
             }
 
@@ -47,7 +48,8 @@ namespace Sphynx.Packet.Response
             int contentSize = DEFAULT_CONTENT_SIZE;
             int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
 
-            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) || !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
+            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) ||
+                !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
             {
                 packetBytes = null;
                 return false;
@@ -75,6 +77,10 @@ namespace Sphynx.Packet.Response
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -84,6 +90,6 @@ namespace Sphynx.Packet.Response
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatLeaveResponsePacket? other) => base.Equals(other);
+        public bool Equals(RoomDeleteResponsePacket? other) => base.Equals(other);
     }
 }

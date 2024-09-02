@@ -20,7 +20,7 @@ namespace Sphynx.ChatRoom
         /// <summary>
         /// A collection of the user IDs of the users within this chat room.
         /// </summary>
-        public virtual HashSet<Guid> Users { get; set; }
+        public virtual ISet<Guid> Users { get; set; }
 
         /// <summary>
         /// Returns the type of this <see cref="ChatRoomInfo"/>.
@@ -52,17 +52,17 @@ namespace Sphynx.ChatRoom
             RoomType = roomType;
             Name = name;
 
-            Users = new HashSet<Guid>();
-
-            if (userIds is not null)
-            {
-                foreach (var userId in userIds)
-                    Debug.Assert(Users.Add(userId));
-            }
+            Users = userIds as ISet<Guid> ?? userIds?.ToHashSet() ?? new HashSet<Guid>();
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatRoomInfo? other) => RoomId == other?.RoomId && RoomType == other.RoomType;
+        public bool Equals(ChatRoomInfo? other)
+        {
+            if (other is null || RoomId != other.RoomId || RoomType != other.RoomType) return false;
+            if (Users.Count != other.Users.Count) return false;
+
+            return Users.All(user => other.Users.Contains(user));
+        }
 
         /// <summary>
         /// Holds information about a direct-message chat room.
@@ -129,81 +129,91 @@ namespace Sphynx.ChatRoom
             public virtual bool Public { get; set; }
 
             /// <summary>
+            /// The user ID of the owner/creator of this group chat.
+            /// </summary>
+            public virtual Guid OwnerId { get; set; }
+
+            /// <summary>
             /// The password for this group chat.
             /// </summary>
             internal virtual string? Password { get; set; }
 
-            /// <summary>
-            /// The salt for the password of this group chat.
-            /// </summary>
-            internal virtual string? PasswordSalt { get; set; }
-
             /// <inheritdoc/>
             /// <param name="public">Whether this room is public.</param>
-            public Group(Guid roomId, string name, bool @public = true, IEnumerable<Guid>? userIds = null)
+            public Group(Guid roomId, Guid ownerId, string name, bool @public = true, IEnumerable<Guid>? userIds = null)
                 : base(roomId, ChatRoomType.GROUP, name, userIds)
             {
+                OwnerId = ownerId;
                 Public = @public;
             }
 
             /// <inheritdoc/>
-            public Group(string name, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : this(default, name, @public, userIds)
+            public Group(Guid ownerId, string name, bool @public = true, IEnumerable<Guid>? userIds = null)
+                : this(default, ownerId, name, @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            public Group(Guid roomId, string name, bool @public = true, params Guid[] userIds)
-                : this(roomId, name, @public, (IEnumerable<Guid>)userIds)
+            public Group(Guid roomId, Guid ownerId, string name, bool @public, HashSet<Guid> userIds)
+                : base(roomId, ChatRoomType.GROUP, name, userIds)
+            {
+                OwnerId = ownerId;
+                Public = @public;
+            }
+
+            /// <inheritdoc/>
+            public Group(Guid ownerId, string name, bool @public, HashSet<Guid> userIds)
+                : this(default, ownerId, name, @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            public Group(string name, bool @public = true, params Guid[] userIds)
-                : this(default, name, @public, (IEnumerable<Guid>)userIds)
+            public Group(Guid roomId, Guid ownerId, string name, bool @public = true, params Guid[] userIds)
+                : this(roomId, ownerId, name, @public, (IEnumerable<Guid>)userIds)
             {
             }
 
             /// <inheritdoc/>
-            internal Group(Guid roomId, string name, byte[] pwd, byte[] pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : this(roomId, name, Convert.ToBase64String(pwd), Convert.ToBase64String(pwdSalt), @public, userIds)
+            public Group(Guid ownerId, string name, bool @public = true, params Guid[] userIds)
+                : this(default, ownerId, name, @public, (IEnumerable<Guid>)userIds)
             {
             }
 
             /// <inheritdoc/>
-            internal Group(Guid roomId, string name, byte[] pwd, byte[] pwdSalt, bool @public = true, params Guid[] userIds)
-                : this(roomId, name, Convert.ToBase64String(pwd), Convert.ToBase64String(pwdSalt), @public, userIds)
+            public Group(Guid roomId, Guid ownerId, string name, byte[] pwd, bool @public = true, IEnumerable<Guid>? userIds = null)
+                : this(roomId, ownerId, name, Convert.ToBase64String(pwd), @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            internal Group(string name, byte[] pwd, byte[] pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : this(default, name, Convert.ToBase64String(pwd), Convert.ToBase64String(pwdSalt), @public, userIds)
+            public Group(Guid roomId, Guid ownerId, string name, byte[] pwd, bool @public = true, params Guid[] userIds)
+                : this(roomId, ownerId, name, Convert.ToBase64String(pwd), @public, userIds)
             {
             }
 
             /// <inheritdoc/>
-            internal Group(Guid roomId, string name, string pwd, string pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : this(roomId, name, @public, userIds)
+            public Group(Guid ownerId, string name, byte[] pwd, bool @public = true, IEnumerable<Guid>? userIds = null)
+                : this(default, ownerId, name, Convert.ToBase64String(pwd), @public, userIds)
+            {
+            }
+
+            /// <inheritdoc/>
+            public Group(Guid roomId, Guid ownerId, string name, string pwd, bool @public = true, IEnumerable<Guid>? userIds = null)
+                : this(roomId, ownerId, name, @public, userIds)
             {
                 Password = pwd;
-                PasswordSalt = pwdSalt;
             }
 
             /// <inheritdoc/>
-            internal Group(Guid roomId, string name, string pwd, string pwdSalt, bool @public = true, params Guid[] userIds)
-                : this(roomId, name, @public, userIds)
+            public Group(Guid roomId, Guid ownerId, string name, string pwd, bool @public = true, params Guid[] userIds)
+                : this(roomId, ownerId, name, pwd, @public, (IEnumerable<Guid>)userIds)
             {
-                Password = pwd;
-                PasswordSalt = pwdSalt;
             }
 
             /// <inheritdoc/>
-            internal Group(string name, string pwd, string pwdSalt, bool @public = true, IEnumerable<Guid>? userIds = null)
-                : this(default, name, @public, userIds)
+            public Group(Guid ownerId, string name, string pwd, bool @public = true, IEnumerable<Guid>? userIds = null)
+                : this(default, ownerId, name, pwd, @public, userIds)
             {
-                Password = pwd;
-                PasswordSalt = pwdSalt;
             }
         }
     }

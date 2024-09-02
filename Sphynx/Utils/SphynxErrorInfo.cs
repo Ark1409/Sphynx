@@ -17,6 +17,13 @@ namespace Sphynx.Utils
         public SphynxErrorInfo(TData? data) : this(SphynxErrorCode.SUCCESS, data)
         {
         }
+        
+        /// <summary>
+        /// Returns whether <see cref="ErrorCode"/> is <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// </summary>
+        /// <param name="other">The object from which to retrieve the <see cref="ErrorCode"/>.</param>
+        /// <returns>Whether <see cref="ErrorCode"/> is <see cref="SphynxErrorCode.SUCCESS"/>.</returns>
+        public static implicit operator bool(SphynxErrorInfo<TData> other) => other.ErrorCode == SphynxErrorCode.SUCCESS;
 
         /// <summary>
         /// Returns the <see cref="Data"/> for this <see cref="SphynxErrorInfo{TData}"/>.

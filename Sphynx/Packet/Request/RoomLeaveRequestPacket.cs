@@ -3,44 +3,44 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_LEAVE_REQ"/>
-    public sealed class ChatLeaveRequestPacket : SphynxRequestPacket, IEquatable<ChatLeaveRequestPacket>
+    /// <inheritdoc cref="SphynxPacketType.ROOM_LEAVE_REQ"/>
+    public sealed class RoomLeaveRequestPacket : SphynxRequestPacket, IEquatable<RoomLeaveRequestPacket>
     {
         /// <summary>
-        /// RoomInfo ID of the room to leave.
+        /// Room ID of the room to leave.
         /// </summary>
         public Guid RoomId { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_LEAVE_REQ;
+        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_LEAVE_REQ;
 
         private static readonly int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveRequestPacket"/>.
+        /// Creates a new <see cref="RoomLeaveRequestPacket"/>.
         /// </summary>
-        /// <param name="roomId">RoomInfo ID of the room to leave.</param>
-        public ChatLeaveRequestPacket(Guid roomId) : this(Guid.Empty, Guid.Empty, roomId)
+        /// <param name="roomId">Room ID of the room to leave.</param>
+        public RoomLeaveRequestPacket(Guid roomId) : this(Guid.Empty, Guid.Empty, roomId)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="ChatLeaveRequestPacket"/>.
+        /// Creates a new <see cref="RoomLeaveRequestPacket"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="roomId">RoomInfo ID of the room to leave.</param>
-        public ChatLeaveRequestPacket(Guid userId, Guid sessionId, Guid roomId) : base(userId, sessionId)
+        /// <param name="roomId">Room ID of the room to leave.</param>
+        public RoomLeaveRequestPacket(Guid userId, Guid sessionId, Guid roomId) : base(userId, sessionId)
         {
             RoomId = roomId;
         }
 
         /// <summary>
-        /// Attempts to deserialize a <see cref="ChatLeaveRequestPacket"/>.
+        /// Attempts to deserialize a <see cref="RoomLeaveRequestPacket"/>.
         /// </summary>
         /// <param name="contents">Packet contents, excluding the header.</param>
         /// <param name="packet">The deserialized packet.</param>
-        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out ChatLeaveRequestPacket? packet)
+        public static bool TryDeserialize(ReadOnlySpan<byte> contents, [NotNullWhen(true)] out RoomLeaveRequestPacket? packet)
         {
             int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
 
@@ -51,7 +51,7 @@ namespace Sphynx.Packet.Request
             }
 
             var roomId = new Guid(contents.Slice(ROOM_ID_OFFSET, GUID_SIZE));
-            packet = new ChatLeaveRequestPacket(userId.Value, sessionId.Value, roomId);
+            packet = new RoomLeaveRequestPacket(userId.Value, sessionId.Value, roomId);
             return true;
         }
 
@@ -89,6 +89,10 @@ namespace Sphynx.Packet.Request
                     return true;
                 }
             }
+            catch
+            {
+                return false;
+            }
             finally
             {
                 ArrayPool<byte>.Shared.Return(rawBuffer);
@@ -109,6 +113,6 @@ namespace Sphynx.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatLeaveRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId;
+        public bool Equals(RoomLeaveRequestPacket? other) => base.Equals(other) && RoomId == other?.RoomId;
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace Sphynx.Core
+﻿namespace Sphynx.User
 {
     /// <summary>
     /// Possible statuses for a Sphynx user.
