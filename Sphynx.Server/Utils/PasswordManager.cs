@@ -1,6 +1,6 @@
 using System.Buffers;
 using System.Security.Cryptography;
-using Sphynx.Packet;
+using Sphynx.Network.Packet;
 using Sphynx.Utils;
 
 namespace Sphynx.Server.Utils

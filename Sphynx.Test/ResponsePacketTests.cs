@@ -1,6 +1,7 @@
-﻿using Sphynx.ChatRoom;
-using Sphynx.User;
-using Sphynx.Packet.Response;
+﻿using Sphynx.Model.ChatRoom;
+using Sphynx.Model.User;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Test
 {

@@ -1,6 +1,7 @@
 using System.Reflection.PortableExecutable;
 
 using NUnit.Framework.Constraints;
+using Sphynx.Network.Packet;
 
 namespace Sphynx.Test
 {

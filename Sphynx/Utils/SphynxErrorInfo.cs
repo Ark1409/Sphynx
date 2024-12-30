@@ -1,4 +1,4 @@
-using Sphynx.Packet;
+using Sphynx.Network.Packet;
 
 namespace Sphynx.Utils
 {

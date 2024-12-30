@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Sockets;
-using Sphynx.Packet;
+using Sphynx.Network.Packet;
 using Sphynx.Server.User;
 using Sphynx.Server.Utils;
 using Sphynx.Utils;

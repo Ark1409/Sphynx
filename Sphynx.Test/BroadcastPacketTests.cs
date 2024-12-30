@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Sphynx.ChatRoom;
-using Sphynx.User;
-using Sphynx.Packet.Broadcast;
+using Sphynx.Model.User;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Broadcast;
 
 namespace Sphynx.Test
 {

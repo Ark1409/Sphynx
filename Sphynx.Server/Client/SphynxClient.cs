@@ -1,6 +1,5 @@
 ﻿using System.Net.Sockets;
-using Sphynx.Packet;
-using Sphynx.Packet.Request;
+using Sphynx.Network.Packet;
 using Sphynx.Server.Utils;
 
 // ReSharper disable ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
