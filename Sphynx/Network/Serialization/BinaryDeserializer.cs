@@ -28,7 +28,7 @@ namespace Sphynx.Network.Serialization
             get => _offset;
         }
 
-        public BinaryDeserializer(Memory<byte> memory) : this(memory.Span)
+        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this(memory.Span)
         {
         }
 
@@ -94,10 +94,67 @@ namespace Sphynx.Network.Serialization
         {
             int size = ReadInt32();
             string str = BinarySerializer.StringEncoding.GetString(_span.Slice(_offset, size));
-
             _offset += sizeof(int) + size;
 
             return str;
+        }
+
+        public bool TryReadEnum<T>(out T? value) where T : struct, Enum
+        {
+            if (!CanRead(Unsafe.SizeOf<T>()))
+            {
+                value = null;
+                return false;
+            }
+
+            value = ReadEnum<T>();
+            return true;
+        }
+
+        public T ReadEnum<T>() where T : struct, Enum
+        {
+            var underlyingType = Enum.GetUnderlyingType(typeof(T));
+            switch (Type.GetTypeCode(underlyingType))
+            {
+                case TypeCode.Byte:
+                {
+                    byte value = ReadByte();
+                    return Unsafe.As<byte, T>(ref value);
+                }
+                case TypeCode.Int16:
+                {
+                    short value = ReadInt16();
+                    return Unsafe.As<short, T>(ref value);
+                }
+                case TypeCode.UInt16:
+                {
+                    ushort value = ReadUInt16();
+                    return Unsafe.As<ushort, T>(ref value);
+                }
+                case TypeCode.Int32:
+                {
+                    int value = ReadInt32();
+                    return Unsafe.As<int, T>(ref value);
+                }
+                case TypeCode.UInt32:
+                {
+                    uint value = ReadUInt32();
+                    return Unsafe.As<uint, T>(ref value);
+                }
+                case TypeCode.Int64:
+                {
+                    long value = ReadInt64();
+                    return Unsafe.As<long, T>(ref value);
+                }
+                case TypeCode.UInt64:
+                {
+                    ulong value = ReadUInt64();
+                    return Unsafe.As<ulong, T>(ref value);
+                }
+
+                default:
+                    throw new ArgumentException($"Unsupported underlying type: {underlyingType}");
+            }
         }
 
         public bool TryReadDateTime([NotNullWhen(true)] out DateTime? dateTime)

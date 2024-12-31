@@ -2,8 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers.Binary;
+using System.Collections;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using Sphynx.Core;
 
@@ -95,6 +97,101 @@ namespace Sphynx.Network.Serialization
             return sizeof(int) + StringEncoding.GetMaxByteCount(str.Length);
         }
 
+        public void WriteCollection<T>(ICollection<T> collection) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                case TypeCode.Byte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                case TypeCode.DateTime:
+                case TypeCode.String:
+                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
+                {
+                    WriteInt32(collection.Count);
+
+                    if (collection is List<T> list)
+                    {
+                        for (int i = 0; i < list.Count; i++)
+                        {
+                            Write(list[i]);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var item in collection)
+                        {
+                            Write(item);
+                        }
+                    }
+
+                    break;
+                }
+
+                default:
+                    throw new ArgumentException("Serialization of arbitrary type is unsupported");
+            }
+        }
+
+        private void Write<T>(T value) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                    WriteBool(Unsafe.As<T, bool>(ref value));
+                    break;
+                case TypeCode.Byte:
+                    WriteByte(Unsafe.As<T, byte>(ref value));
+                    break;
+                case TypeCode.Int16:
+                    WriteInt16(Unsafe.As<T, short>(ref value));
+                    break;
+                case TypeCode.UInt16:
+                    WriteUInt16(Unsafe.As<T, ushort>(ref value));
+                    break;
+                case TypeCode.Int32:
+                    WriteInt32(Unsafe.As<T, int>(ref value));
+                    break;
+                case TypeCode.UInt32:
+                    WriteUInt32(Unsafe.As<T, uint>(ref value));
+                    break;
+                case TypeCode.Int64:
+                    WriteInt64(Unsafe.As<T, long>(ref value));
+                    break;
+                case TypeCode.UInt64:
+                    WriteUInt64(Unsafe.As<T, ulong>(ref value));
+                    break;
+                case TypeCode.Single:
+                    WriteFloat(Unsafe.As<T, float>(ref value));
+                    break;
+                case TypeCode.Double:
+                    WriteDouble(Unsafe.As<T, double>(ref value));
+                    break;
+                case TypeCode.DateTime:
+                    WriteDateTime(Unsafe.As<T, DateTime>(ref value));
+                    break;
+                case TypeCode.String:
+                    WriteString(Unsafe.As<T, string>(ref value));
+                    break;
+                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
+                    WriteSnowflakeId(Unsafe.As<T, SnowflakeId>(ref value));
+                    break;
+
+                default:
+                    throw new ArgumentException("Serialization of arbitrary type is unsupported");
+            }
+        }
+
         public bool TryWriteSnowflakeId(SnowflakeId id)
         {
             if (!CanWrite(SnowflakeId.SIZE))
@@ -155,6 +252,47 @@ namespace Sphynx.Network.Serialization
             WriteInt32(strSize);
 
             _offset += sizeof(int) + strSize;
+        }
+
+        public bool TryWriteEnum<T>(T value) where T : struct, Enum
+        {
+            if (!CanWrite(Unsafe.SizeOf<T>()))
+                return false;
+
+            WriteEnum(value);
+            return true;
+        }
+
+        public void WriteEnum<T>(T value) where T : struct, Enum
+        {
+            var underlyingType = Enum.GetUnderlyingType(typeof(T));
+            switch (Type.GetTypeCode(underlyingType))
+            {
+                case TypeCode.Byte:
+                    WriteByte(Unsafe.As<T, byte>(ref value));
+                    break;
+                case TypeCode.Int16:
+                    WriteInt16(Unsafe.As<T, short>(ref value));
+                    break;
+                case TypeCode.UInt16:
+                    WriteUInt16(Unsafe.As<T, ushort>(ref value));
+                    break;
+                case TypeCode.Int32:
+                    WriteInt32(Unsafe.As<T, int>(ref value));
+                    break;
+                case TypeCode.UInt32:
+                    WriteUInt32(Unsafe.As<T, uint>(ref value));
+                    break;
+                case TypeCode.Int64:
+                    WriteInt64(Unsafe.As<T, long>(ref value));
+                    break;
+                case TypeCode.UInt64:
+                    WriteUInt64(Unsafe.As<T, ulong>(ref value));
+                    break;
+
+                default:
+                    throw new ArgumentException($"Cannot serialize enum of type {underlyingType}");
+            }
         }
 
         public bool TryWriteDateTime(DateTime dateTime)
