@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
+using Sphynx.Core;
 using Sphynx.Model.ChatRoom;
 using Sphynx.Network.Packet;
 using Sphynx.Network.Packet.Broadcast;

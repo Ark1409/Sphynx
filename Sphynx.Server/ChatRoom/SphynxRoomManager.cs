@@ -1,3 +1,4 @@
+using Sphynx.Core;
 using Sphynx.Model.ChatRoom;
 using Sphynx.Network.Packet;
 using Sphynx.Server.Storage;

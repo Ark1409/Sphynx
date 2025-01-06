@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Sphynx.Core;
 using Sphynx.Model.ChatRoom;
 using Sphynx.Utils;
 

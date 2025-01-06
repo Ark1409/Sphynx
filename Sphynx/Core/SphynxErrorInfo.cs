@@ -1,6 +1,6 @@
 using Sphynx.Network.Packet;
 
-namespace Sphynx.Utils
+namespace Sphynx.Core
 {
     /// <summary>
     /// A type representing a wrapping for a TryXXX-style method purpsoed for asynchronous code.
@@ -17,7 +17,7 @@ namespace Sphynx.Utils
         public SphynxErrorInfo(TData? data) : this(SphynxErrorCode.SUCCESS, data)
         {
         }
-        
+
         /// <summary>
         /// Returns whether <see cref="ErrorCode"/> is <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
@@ -31,14 +31,14 @@ namespace Sphynx.Utils
         /// <param name="other">The object from which to retrieve the <see cref="Data"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo{TData}"/>.</returns>
         public static implicit operator TData?(SphynxErrorInfo<TData> other) => other.Data;
-        
+
         /// <summary>
         /// Returns a new <see cref="SphynxErrorInfo{TData}"/> with <see langword="default"/> <see cref="Data"/>.
         /// </summary>
         /// <param name="error">The error code for this <see cref="SphynxErrorInfo{TData}"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo{TData}"/>.</returns>
         public static implicit operator SphynxErrorInfo<TData>?(SphynxErrorCode error) => new SphynxErrorInfo<TData>(error);
-        
+
         /// <inheritdoc/>
         public bool Equals(TData? other)
         {

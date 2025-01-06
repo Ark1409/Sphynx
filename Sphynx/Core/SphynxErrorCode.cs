@@ -1,4 +1,4 @@
-﻿namespace Sphynx.Network.Packet
+﻿namespace Sphynx.Core
 {
     /// <summary>
     /// Error codes used within the <see cref="Sphynx"/> application.
@@ -34,33 +34,33 @@
         /// When the user attempts to complete an action but does not have sufficient permissions.
         /// </summary>
         INSUFFICIENT_PERMS,
-        
+
         /// <summary>
         /// Rate limited.
         /// </summary>
         ENHANCE_YOUR_CALM,
-        
+
         /// <summary>
         /// An error occured while attempting to read from the database. Could also happen due to an
         /// invalid query.
         /// </summary>
         DB_READ_ERROR,
-        
+
         /// <summary>
         /// An error occured while attempting to write to the database.
         /// </summary>
         DB_WRITE_ERROR,
-        
+
         /// <summary>
         /// Invalid (unknown/already exists) room ID.
         /// </summary>
         INVALID_ROOM,
-        
+
         /// <summary>
         /// Invalid (unknown/already exists) message ID.
         /// </summary>
         INVALID_MSG,
-        
+
         /// <summary>
         /// Attempt to authenticate when already logged in.
         /// </summary>

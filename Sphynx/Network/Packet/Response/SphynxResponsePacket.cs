@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 
 namespace Sphynx.Network.Packet.Response
 {
