@@ -59,12 +59,12 @@ namespace Sphynx.Network.Serialization
             return id;
         }
 
-        public bool TryReadString(Span<char> str)
+        public bool TryReadString(Span<char> dest)
         {
             if (!CanRead(BinarySerializer.SizeOf(string.Empty)))
                 return false;
 
-            ReadString(str);
+            ReadString(dest);
             return true;
         }
 

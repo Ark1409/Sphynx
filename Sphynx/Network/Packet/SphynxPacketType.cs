@@ -6,7 +6,7 @@
     public enum SphynxPacketType : uint
     {
         /// <summary>
-        /// Safe-guard against corrupted or uninitialized data. Server simply discards packet contents.
+        /// Safeguard against corrupted or uninitialized data. Server simply discards packet contents.
         /// </summary>
         NOP = 0x00000000u,
 
@@ -16,7 +16,7 @@
         LOGIN_REQ = 0x00000001u,
 
         /// <summary>
-        /// A packet sent from client to server when a user enters a message in a chat room. 
+        /// A packet sent from client to server when a user enters a message in a chat room.
         /// </summary>
         MSG_REQ = 0x00000002u,
 
@@ -64,12 +64,12 @@
         /// A packet that is sent from a client to resolve user information.
         /// </summary>
         USER_INFO_REQ = 0x0000000Bu,
-        
+
         /// <summary>
         /// A packet that is sent from a client to resolve message information.
         /// </summary>
         MSG_INFO_REQ = 0x0000000Cu,
-        
+
         /// <summary>
         /// A registration request packet sent from client to server with necessary authentication information.
         /// </summary>
@@ -130,30 +130,30 @@
         /// A packet that is sent from server to the client containing resolved user information.
         /// </summary>
         USER_INFO_RES = 0x0100000Bu,
-        
+
         /// <summary>
         /// A packet that is sent from server to the client containing resolved message information.
         /// </summary>
         MSG_INFO_RES = 0x0100000Cu,
-        
+
         /// <summary>
         /// A response sent from server to client for a <see cref="REGISTER_REQ"/> packet indicating whether the registration
         /// was successful.
         /// </summary>
         REGISTER_RES = 0x0100000Cu,
-        
+
         /// <summary>
         /// A broadcast packet sent from server to all other friends of a user when said user goes online.
         /// </summary>
         LOGIN_BCAST = 0x02000001u,
-        
+
         /// <summary>
         /// A broadcast packet sent from server to all other friends of a user when said user goes offline.
         /// </summary>
         LOGOUT_BCAST = 0x02000002u,
 
         /// <summary>
-        /// A broadcast/notification packet sent from server to all other recipients containing the message ID of the message that was sent from 
+        /// A broadcast/notification packet sent from server to all other recipients containing the message ID of the message that was sent from
         /// a <see cref="MSG_REQ"/> packet.
         /// </summary>
         MSG_BCAST = 0x02000003u,
