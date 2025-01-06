@@ -59,6 +59,26 @@ namespace Sphynx.Network.Serialization
             return id;
         }
 
+        public unsafe bool TryReadGuid([NotNullWhen(true)] out Guid? id)
+        {
+            if (!CanRead(sizeof(Guid)))
+            {
+                id = null;
+                return false;
+            }
+
+            id = ReadGuid();
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe Guid ReadGuid()
+        {
+            var id = new Guid(_span.Slice(_offset, sizeof(Guid)));
+            _offset += SnowflakeId.SIZE;
+            return id;
+        }
+
         public bool TryReadString(Span<char> dest)
         {
             if (!CanRead(BinarySerializer.SizeOf(string.Empty)))

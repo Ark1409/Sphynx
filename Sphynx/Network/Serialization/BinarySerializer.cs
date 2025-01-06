@@ -210,6 +210,24 @@ namespace Sphynx.Network.Serialization
             _offset += SnowflakeId.SIZE;
         }
 
+        public unsafe bool TryWriteGuid(Guid id)
+        {
+            if (!CanWrite(sizeof(Guid)))
+                return false;
+
+            WriteGuid(id);
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe void WriteGuid(Guid id)
+        {
+            bool written = id.TryWriteBytes(_span[_offset..]);
+            Debug.Assert(written);
+
+            _offset += sizeof(Guid);
+        }
+
         public bool TryWriteString(ReadOnlySpan<char> str)
         {
             if (!CanWrite(str.Length))
