@@ -257,7 +257,7 @@ namespace Sphynx.Core
         /// <inheritdoc />
         /// <remarks>
         /// For timestamps within the same millisecond and with the same sequence number,
-        /// the machine id will be the only bits left to compare, but may not provide a total order.
+        /// the machine id bits are the only ones left to compare, but may not provide a total order.
         /// </remarks>
         public int CompareTo(SnowflakeId other)
         {

@@ -3,7 +3,7 @@ using Sphynx.Network.Packet;
 namespace Sphynx.Core
 {
     /// <summary>
-    /// A type representing a wrapping for a TryXXX-style method purpsoed for asynchronous code.
+    /// A type representing a wrapping for a TryXXX-style method mainly purposed for asynchronous code.
     /// </summary>
     /// <param name="ErrorCode">The error code for the operation.</param>
     /// <param name="Data">The return data.</param>

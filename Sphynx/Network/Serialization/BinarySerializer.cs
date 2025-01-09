@@ -43,8 +43,11 @@ namespace Sphynx.Network.Serialization
             _offset = 0;
         }
 
+        #region Maximum and Exact sizes
+
         /// <summary>
         /// Returns the exact serialization size (in bytes) of the specified <paramref name="dateTime"/>.
+        /// For a <see cref="DateTime"/>, the maximum size is equal to the exact size.
         /// </summary>
         /// <param name="dateTime">The <see cref="DateTime"/> to serialize.</param>
         /// <returns>The exact serialization size of specified <paramref name="dateTime"/>.</returns>
@@ -52,6 +55,18 @@ namespace Sphynx.Network.Serialization
         public static int SizeOf(DateTime dateTime)
         {
             return sizeof(long);
+        }
+
+        /// <summary>
+        /// Returns the maximum serialization size (in bytes) of the specified <paramref name="dateTime"/>.
+        /// For a <see cref="DateTime"/>, the maximum size is equal to the exact size.
+        /// </summary>
+        /// <param name="dateTime">The <see cref="DateTime"/> to serialize.</param>
+        /// <returns>The maximum serialization size of specified <paramref name="dateTime"/>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int MaxSizeOf(DateTime dateTime)
+        {
+            return SizeOf(dateTime);
         }
 
         /// <summary>
@@ -97,6 +112,289 @@ namespace Sphynx.Network.Serialization
             return sizeof(int) + StringEncoding.GetMaxByteCount(str.Length);
         }
 
+        public static int SizeOf<T>(T[] array) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                case TypeCode.Byte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                    return sizeof(int) + array.Length * Unsafe.SizeOf<T>();
+
+                default:
+                    throw new ArgumentException($"The retrieval of the size of {typeof(T)} is unsupported");
+            }
+        }
+
+        public static int MaxSizeOf<T>(T[] array) where T : unmanaged
+        {
+            return SizeOf(array);
+        }
+
+        public static int SizeOf<T>(ICollection<T> collection) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                case TypeCode.Byte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                    return sizeof(int) + collection.Count * Unsafe.SizeOf<T>();
+
+                default:
+                    throw new ArgumentException($"The retrieval of the size of {typeof(T)} is unsupported");
+            }
+        }
+
+        public static int MaxSizeOf<T>(ICollection<T> collection) where T : unmanaged
+        {
+            return SizeOf(collection);
+        }
+
+        public static int SizeOf(ICollection<DateTime> collection)
+        {
+            return sizeof(int) + collection.Count * SizeOf(default(DateTime));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int MaxSizeOf(ICollection<DateTime> collection)
+        {
+            return SizeOf(collection);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int SizeOf(ICollection<Guid> collection)
+        {
+            return sizeof(int) + collection.Count * Unsafe.SizeOf<Guid>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int MaxSizeOf(ICollection<Guid> collection)
+        {
+            return SizeOf(collection);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int SizeOf(ICollection<SnowflakeId> collection)
+        {
+            return sizeof(int) + collection.Count * SnowflakeId.SIZE;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int MaxSizeOf(ICollection<SnowflakeId> collection)
+        {
+            return SizeOf(collection);
+        }
+
+        public static int SizeOf(ICollection<string?> collection)
+        {
+            int size = sizeof(int);
+
+            foreach (string? item in collection)
+            {
+                size += SizeOf(item);
+            }
+
+            return size;
+        }
+
+        public static int MaxSizeOf(ICollection<string?> collection)
+        {
+            int size = sizeof(int);
+
+            foreach (string? item in collection)
+            {
+                size += MaxSizeOf(item);
+            }
+
+            return size;
+        }
+
+        #endregion
+
+        #region Arrays & Span
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryWriteArray<T>(T[] array) where T : unmanaged
+        {
+            return TryWriteSpan(new ReadOnlySpan<T>(array));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteArray<T>(T[] array) where T : unmanaged
+        {
+            WriteSpan(new ReadOnlySpan<T>(array));
+        }
+
+        public bool TryWriteSpan<T>(ReadOnlySpan<T> span) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                case TypeCode.Byte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                {
+                    if (!CanWrite(sizeof(int) + span.Length * Unsafe.SizeOf<T>()))
+                        return false;
+
+                    WriteInt32(span.Length);
+
+                    for (int i = 0; i < span.Length; i++)
+                    {
+                        WritePrimitive(span[i]);
+                    }
+
+                    return true;
+                }
+
+                default:
+                    throw new ArgumentException($"Serialization of {typeof(T)} is unsupported");
+            }
+        }
+
+        public void WriteSpan<T>(ReadOnlySpan<T> span) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                case TypeCode.Byte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                {
+                    WriteInt32(span.Length);
+
+                    for (int i = 0; i < span.Length; i++)
+                    {
+                        WritePrimitive(span[i]);
+                    }
+
+                    break;
+                }
+
+                default:
+                    throw new ArgumentException($"Serialization of {typeof(T)} is unsupported");
+            }
+        }
+
+        #endregion
+
+        #region Collections
+
+        public bool TryWriteCollection(ICollection<DateTime> collection)
+        {
+            if (!CanWrite(SizeOf(collection)))
+                return false;
+
+            WriteCollection(collection);
+            return true;
+        }
+
+        public void WriteCollection(ICollection<DateTime> collection)
+        {
+            WriteInt32(collection.Count);
+
+            foreach (var item in collection)
+            {
+                WriteDateTime(item);
+            }
+        }
+
+        public bool TryWriteCollection(ICollection<Guid> collection)
+        {
+            if (!CanWrite(SizeOf(collection)))
+                return false;
+
+            WriteCollection(collection);
+            return true;
+        }
+
+        public void WriteCollection(ICollection<Guid> collection)
+        {
+            WriteInt32(collection.Count);
+
+            foreach (var item in collection)
+            {
+                WriteGuid(item);
+            }
+        }
+
+        public bool TryWriteCollection(ICollection<string?> collection)
+        {
+            if (!CanWrite(SizeOf(collection)))
+                return false;
+
+            WriteCollection(collection);
+            return true;
+        }
+
+        public void WriteCollection(ICollection<string?> collection)
+        {
+            WriteInt32(collection.Count);
+
+            foreach (string? item in collection)
+            {
+                WriteString(item);
+            }
+        }
+
+        public bool TryWriteCollection<T>(ICollection<T> collection) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                case TypeCode.Byte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                {
+                    if (!CanWrite(SizeOf(collection)))
+                        return false;
+
+                    WriteCollection(collection);
+                    return true;
+                }
+
+                default:
+                    return false;
+            }
+        }
+
         public void WriteCollection<T>(ICollection<T> collection) where T : unmanaged
         {
             var typeCode = Type.GetTypeCode(typeof(T));
@@ -112,85 +410,25 @@ namespace Sphynx.Network.Serialization
                 case TypeCode.UInt64:
                 case TypeCode.Single:
                 case TypeCode.Double:
-                case TypeCode.DateTime:
-                case TypeCode.String:
-                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
                 {
                     WriteInt32(collection.Count);
 
-                    if (collection is List<T> list)
+                    foreach (var item in collection)
                     {
-                        for (int i = 0; i < list.Count; i++)
-                        {
-                            Write(list[i]);
-                        }
-                    }
-                    else
-                    {
-                        foreach (var item in collection)
-                        {
-                            Write(item);
-                        }
+                        WritePrimitive(item);
                     }
 
                     break;
                 }
 
                 default:
-                    throw new ArgumentException("Serialization of arbitrary type is unsupported");
+                    throw new ArgumentException($"Serialization of {typeof(T)} type is unsupported");
             }
         }
 
-        private void Write<T>(T value) where T : unmanaged
-        {
-            var typeCode = Type.GetTypeCode(typeof(T));
+        #endregion
 
-            switch (typeCode)
-            {
-                case TypeCode.Boolean:
-                    WriteBool(Unsafe.As<T, bool>(ref value));
-                    break;
-                case TypeCode.Byte:
-                    WriteByte(Unsafe.As<T, byte>(ref value));
-                    break;
-                case TypeCode.Int16:
-                    WriteInt16(Unsafe.As<T, short>(ref value));
-                    break;
-                case TypeCode.UInt16:
-                    WriteUInt16(Unsafe.As<T, ushort>(ref value));
-                    break;
-                case TypeCode.Int32:
-                    WriteInt32(Unsafe.As<T, int>(ref value));
-                    break;
-                case TypeCode.UInt32:
-                    WriteUInt32(Unsafe.As<T, uint>(ref value));
-                    break;
-                case TypeCode.Int64:
-                    WriteInt64(Unsafe.As<T, long>(ref value));
-                    break;
-                case TypeCode.UInt64:
-                    WriteUInt64(Unsafe.As<T, ulong>(ref value));
-                    break;
-                case TypeCode.Single:
-                    WriteFloat(Unsafe.As<T, float>(ref value));
-                    break;
-                case TypeCode.Double:
-                    WriteDouble(Unsafe.As<T, double>(ref value));
-                    break;
-                case TypeCode.DateTime:
-                    WriteDateTime(Unsafe.As<T, DateTime>(ref value));
-                    break;
-                case TypeCode.String:
-                    WriteString(Unsafe.As<T, string>(ref value));
-                    break;
-                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
-                    WriteSnowflakeId(Unsafe.As<T, SnowflakeId>(ref value));
-                    break;
-
-                default:
-                    throw new ArgumentException("Serialization of arbitrary type is unsupported");
-            }
-        }
+        #region Common Types
 
         public bool TryWriteSnowflakeId(SnowflakeId id)
         {
@@ -210,9 +448,9 @@ namespace Sphynx.Network.Serialization
             _offset += SnowflakeId.SIZE;
         }
 
-        public unsafe bool TryWriteGuid(Guid id)
+        public bool TryWriteGuid(Guid id)
         {
-            if (!CanWrite(sizeof(Guid)))
+            if (!CanWrite(Unsafe.SizeOf<Guid>()))
                 return false;
 
             WriteGuid(id);
@@ -220,12 +458,12 @@ namespace Sphynx.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void WriteGuid(Guid id)
+        public void WriteGuid(Guid id)
         {
             bool written = id.TryWriteBytes(_span[_offset..]);
             Debug.Assert(written);
 
-            _offset += sizeof(Guid);
+            _offset += Unsafe.SizeOf<Guid>();
         }
 
         public bool TryWriteString(ReadOnlySpan<char> str)
@@ -327,6 +565,10 @@ namespace Sphynx.Network.Serialization
         {
             WriteInt64(dateTime.ToUniversalTime().Ticks);
         }
+
+        #endregion
+
+        #region Primitive Types
 
         public bool TryWriteBool(bool value)
         {
@@ -485,6 +727,50 @@ namespace Sphynx.Network.Serialization
             BinaryPrimitives.WriteDoubleLittleEndian(_span[_offset..], value);
             _offset += sizeof(double);
         }
+
+        private void WritePrimitive<T>(T value) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                    WriteBool(Unsafe.As<T, bool>(ref value));
+                    break;
+                case TypeCode.Byte:
+                    WriteByte(Unsafe.As<T, byte>(ref value));
+                    break;
+                case TypeCode.Int16:
+                    WriteInt16(Unsafe.As<T, short>(ref value));
+                    break;
+                case TypeCode.UInt16:
+                    WriteUInt16(Unsafe.As<T, ushort>(ref value));
+                    break;
+                case TypeCode.Int32:
+                    WriteInt32(Unsafe.As<T, int>(ref value));
+                    break;
+                case TypeCode.UInt32:
+                    WriteUInt32(Unsafe.As<T, uint>(ref value));
+                    break;
+                case TypeCode.Int64:
+                    WriteInt64(Unsafe.As<T, long>(ref value));
+                    break;
+                case TypeCode.UInt64:
+                    WriteUInt64(Unsafe.As<T, ulong>(ref value));
+                    break;
+                case TypeCode.Single:
+                    WriteFloat(Unsafe.As<T, float>(ref value));
+                    break;
+                case TypeCode.Double:
+                    WriteDouble(Unsafe.As<T, double>(ref value));
+                    break;
+
+                default:
+                    throw new ArgumentException($"Serialization of {typeof(T)} type is unsupported");
+            }
+        }
+
+        #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool CanWrite(int size)
