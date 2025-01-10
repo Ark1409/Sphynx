@@ -135,7 +135,7 @@ namespace Sphynx.Network.Serialization
             }
 
             // Try and catch it early
-            if (!CanRead(size.Value * BinarySerializer.MaxSizeOf(default(DateTime))))
+            if (!CanRead(size.Value * BinarySerializer.MaxSizeOf<DateTime>()))
             {
                 _offset = fallbackOffset;
                 collection = default;
@@ -615,7 +615,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadDateTime([NotNullWhen(true)] out DateTime? dateTime)
         {
-            if (!CanRead(BinarySerializer.SizeOf(default(DateTime))))
+            if (!CanRead(BinarySerializer.SizeOf<DateTime>()))
             {
                 dateTime = null;
                 return false;
