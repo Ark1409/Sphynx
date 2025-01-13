@@ -177,6 +177,248 @@ namespace Sphynx.Network.Serialization
             return size;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int SizeOf<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
+            where TKey : unmanaged
+            where TValue : unmanaged
+        {
+            return sizeof(int) + dictionary.Count * (SizeOf<TKey>() + SizeOf<TValue>());
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int MaxSizeOf<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
+            where TKey : unmanaged
+            where TValue : unmanaged
+        {
+            return SizeOf(dictionary);
+        }
+
+        public static int SizeOf<TValue>(IDictionary<string, TValue> dictionary)
+            where TValue : unmanaged
+        {
+            int size = sizeof(int) + dictionary.Count * SizeOf<TValue>();
+
+            foreach (var kvp in dictionary)
+            {
+                size += SizeOf(kvp.Key);
+            }
+
+            return size;
+        }
+
+        public static int MaxSizeOf<TValue>(IDictionary<string, TValue> dictionary)
+            where TValue : unmanaged
+        {
+            int size = sizeof(int) + dictionary.Count * MaxSizeOf<TValue>();
+
+            foreach (var kvp in dictionary)
+            {
+                size += MaxSizeOf(kvp.Key);
+            }
+
+            return size;
+        }
+
+        public static int SizeOf<TKey>(IDictionary<TKey, string?> dictionary)
+            where TKey : unmanaged
+        {
+            int size = sizeof(int) + dictionary.Count * SizeOf<TKey>();
+
+            foreach (var kvp in dictionary)
+            {
+                size += SizeOf(kvp.Value);
+            }
+
+            return size;
+        }
+
+        public static int MaxSizeOf<TKey>(IDictionary<TKey, string?> dictionary)
+            where TKey : unmanaged
+        {
+            int size = sizeof(int) + dictionary.Count * MaxSizeOf<TKey>();
+
+            foreach (var kvp in dictionary)
+            {
+                size += MaxSizeOf(kvp.Value);
+            }
+
+            return size;
+        }
+
+        public static int SizeOf(IDictionary<string, string?> dictionary)
+        {
+            int size = sizeof(int);
+
+            foreach (var kvp in dictionary)
+            {
+                size += SizeOf(kvp.Key);
+                size += SizeOf(kvp.Value);
+            }
+
+            return size;
+        }
+
+        public static int MaxSizeOf(IDictionary<string, string?> dictionary)
+        {
+            int size = sizeof(int);
+
+            foreach (var kvp in dictionary)
+            {
+                size += MaxSizeOf(kvp.Key);
+                size += MaxSizeOf(kvp.Value);
+            }
+
+            return size;
+        }
+
+        #endregion
+
+        #region Dictionaries
+
+        public bool TryWriteDictionary(IDictionary<string, string?> dictionary)
+        {
+            if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
+                return false;
+
+            int fallbackOffset = _offset;
+
+            // Guaranteed to succeed due to size check
+            WriteInt32(dictionary.Count);
+
+            foreach (var kvp in dictionary)
+            {
+                if (!TryWriteString(kvp.Key) || !TryWriteString(kvp.Value))
+                {
+                    _offset = fallbackOffset;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteDictionary(IDictionary<string, string?> dictionary)
+        {
+            WriteInt32(dictionary.Count);
+
+            foreach (var kvp in dictionary)
+            {
+                WriteString(kvp.Key);
+                WriteString(kvp.Value);
+            }
+        }
+
+        public bool TryWriteDictionary<TKey>(IDictionary<TKey, string?> dictionary)
+            where TKey : unmanaged
+        {
+            if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
+                return false;
+
+            int fallbackOffset = _offset;
+
+            // Guaranteed to succeed due to size check
+            WriteInt32(dictionary.Count);
+
+            foreach (var kvp in dictionary)
+            {
+                if (!TryWriteUnmanaged(kvp.Key) || !TryWriteString(kvp.Value))
+                {
+                    _offset = fallbackOffset;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteDictionary<TKey>(IDictionary<TKey, string?> dictionary)
+            where TKey : unmanaged
+        {
+            WriteInt32(dictionary.Count);
+
+            foreach (var kvp in dictionary)
+            {
+                WriteUnmanaged(kvp.Key);
+                WriteString(kvp.Value);
+            }
+        }
+
+        public bool TryWriteDictionary<TValue>(IDictionary<string, TValue> dictionary)
+            where TValue : unmanaged
+        {
+            if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
+                return false;
+
+            int fallbackOffset = _offset;
+
+            // Guaranteed to succeed due to size check
+            WriteInt32(dictionary.Count);
+
+            foreach (var kvp in dictionary)
+            {
+                if (!TryWriteString(kvp.Key) || !TryWriteUnmanaged(kvp.Value))
+                {
+                    _offset = fallbackOffset;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteDictionary<TValue>(IDictionary<string, TValue> dictionary)
+            where TValue : unmanaged
+        {
+            WriteInt32(dictionary.Count);
+
+            foreach (var kvp in dictionary)
+            {
+                WriteString(kvp.Key);
+                WriteUnmanaged(kvp.Value);
+            }
+        }
+
+        public bool TryWriteDictionary<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
+            where TKey : unmanaged
+            where TValue : unmanaged
+        {
+            if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
+                return false;
+
+            int fallbackOffset = _offset;
+
+            // Guaranteed to succeed due to size check
+            WriteInt32(dictionary.Count);
+
+            foreach (var kvp in dictionary)
+            {
+                if (!TryWriteUnmanaged(kvp.Key) || !TryWriteUnmanaged(kvp.Value))
+                {
+                    _offset = fallbackOffset;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteDictionary<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
+            where TKey : unmanaged
+            where TValue : unmanaged
+        {
+            WriteInt32(dictionary.Count);
+
+            foreach (var kvp in dictionary)
+            {
+                WriteUnmanaged(kvp.Key);
+                WriteUnmanaged(kvp.Value);
+            }
+        }
+
         #endregion
 
         #region Collections
