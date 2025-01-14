@@ -2,9 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers.Binary;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Sphynx.Core;
 
 namespace Sphynx.Network.Serialization
@@ -40,425 +42,196 @@ namespace Sphynx.Network.Serialization
 
         #region Arrays
 
-        public bool TryReadArray<T>(out T[]? array) where T : unmanaged
+        public bool TryReadArray(out string[]? array)
         {
-            var typeCode = Type.GetTypeCode(typeof(T));
-            switch (typeCode)
+            if (!TryReadInt32(out int? size))
             {
-                case TypeCode.Boolean:
-                case TypeCode.Byte:
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                case TypeCode.Double:
+                array = null;
+                return false;
+            }
+
+            array = size.Value == 0 ? Array.Empty<string>() : new string[size.Value];
+
+            for (int i = 0; i < size.Value; i++)
+            {
+                if (TryReadString(out string? str))
                 {
-                    if (!TryReadInt32(out int? size))
-                    {
-                        array = null;
-                        return false;
-                    }
-
-                    // Try and catch it early
-                    if (!CanRead(size.Value * Unsafe.SizeOf<T>()))
-                    {
-                        _offset -= sizeof(int);
-                        array = null;
-                        return false;
-                    }
-
-                    int sizeValue = size.Value;
-                    array = sizeValue == 0 ? Array.Empty<T>() : new T[sizeValue];
-
-                    for (int i = 0; i < sizeValue; i++)
-                    {
-                        array[i] = ReadPrimitive<T>();
-                    }
-
-                    return true;
+                    array[i] = str;
                 }
-
-                default:
+                else
+                {
                     array = null;
                     return false;
+                }
             }
+
+            return true;
+        }
+
+        public string[] ReadArray()
+        {
+            int size = ReadInt32();
+            string[] array = size == 0 ? Array.Empty<string>() : new string[size];
+
+            for (int i = 0; i < size; i++)
+            {
+                array[i] = ReadString();
+            }
+
+            return array;
+        }
+
+        public bool TryReadArray<T>(out T[]? array) where T : unmanaged
+        {
+            if (!TryReadInt32(out int? size))
+            {
+                array = null;
+                return false;
+            }
+
+            // Try and catch it early
+            if (!CanRead(size.Value * Unsafe.SizeOf<T>()))
+            {
+                _offset -= sizeof(int);
+                array = null;
+                return false;
+            }
+
+            array = size.Value == 0 ? Array.Empty<T>() : new T[size.Value];
+
+            for (int i = 0; i < size.Value; i++)
+            {
+                array[i] = ReadUnmanaged<T>();
+            }
+
+            return true;
         }
 
         public T[] ReadArray<T>() where T : unmanaged
         {
-            var typeCode = Type.GetTypeCode(typeof(T));
-            switch (typeCode)
+            int size = ReadInt32();
+            var array = size == 0 ? Array.Empty<T>() : new T[size];
+
+            for (int i = 0; i < size; i++)
             {
-                case TypeCode.Boolean:
-                case TypeCode.Byte:
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                case TypeCode.Double:
-                {
-                    int size = ReadInt32();
-                    var array = size == 0 ? Array.Empty<T>() : new T[size];
-
-                    for (int i = 0; i < size; i++)
-                    {
-                        array[i] = ReadPrimitive<T>();
-                    }
-
-                    return array;
-                }
-
-                default:
-                    throw new ArgumentException($"Deserialization of {typeof(T)} is unsupported");
+                array[i] = ReadUnmanaged<T>();
             }
+
+            return array;
         }
 
         #endregion
 
         #region Collections
 
-        public bool TryReadDateTimeCollection<TCollection>([NotNullWhen(true)] out TCollection? collection)
-            where TCollection : ICollection<DateTime>, new()
+        public bool TryWriteCollection<TCollection>(out TCollection? collection)
+            where TCollection : ICollection<string>, new()
         {
+            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableList<string?>.Empty)) &&
+                !CanRead(BinarySerializer.SizeOf(ImmutableList<string?>.Empty)))
+            {
+                collection = default;
+                return false;
+            }
+
             int fallbackOffset = _offset;
 
-            if (!TryReadInt32(out int? size))
-            {
-                collection = default;
-                return false;
-            }
+            // Guaranteed to succeed due to size check
+            int size = ReadInt32();
 
-            // Try and catch it early
-            if (!CanRead(size.Value * BinarySerializer.MaxSizeOf<DateTime>()))
-            {
-                _offset = fallbackOffset;
-                collection = default;
-                return false;
-            }
-
-            if (typeof(TCollection) == typeof(List<DateTime>))
-            {
-                var list = new List<DateTime>(size.Value);
-                collection = Unsafe.As<List<DateTime>, TCollection>(ref list);
-            }
-            else if (typeof(TCollection) == typeof(HashSet<DateTime>))
-            {
-                var set = new HashSet<DateTime>(size.Value);
-                collection = Unsafe.As<HashSet<DateTime>, TCollection>(ref set);
-            }
-            else
-            {
-                collection = new TCollection();
-            }
+            collection = CreateCollection<string, TCollection>(size);
 
             for (int i = 0; i < size; i++)
             {
-                if (!TryReadDateTime(out var dateTime))
+                if (TryReadString(out string? str))
+                {
+                    collection.Add(str);
+                }
+                else
                 {
                     _offset = fallbackOffset;
                     collection = default;
                     return false;
                 }
-
-                collection.Add(dateTime.Value);
             }
 
             return true;
         }
 
-        public TCollection ReadDateTimeCollection<TCollection>()
-            where TCollection : ICollection<DateTime>, new()
+        public TCollection ReadCollection<TCollection>() where TCollection : ICollection<string>, new()
         {
             int size = ReadInt32();
-            TCollection collection;
-
-            if (typeof(TCollection) == typeof(List<DateTime>))
-            {
-                var list = new List<DateTime>(size);
-                collection = Unsafe.As<List<DateTime>, TCollection>(ref list);
-            }
-            else if (typeof(TCollection) == typeof(HashSet<DateTime>))
-            {
-                var set = new HashSet<DateTime>(size);
-                collection = Unsafe.As<HashSet<DateTime>, TCollection>(ref set);
-            }
-            else
-            {
-                collection = new TCollection();
-            }
+            var collection = CreateCollection<string, TCollection>(size);
 
             for (int i = 0; i < size; i++)
-            {
-                collection.Add(ReadDateTime());
-            }
-
-            return collection;
-        }
-
-        public bool TryReadSnowflakeIdCollection<TCollection>([NotNullWhen(true)] out TCollection? collection)
-            where TCollection : ICollection<SnowflakeId>, new()
-        {
-            if (!TryReadInt32(out int? size))
-            {
-                collection = default;
-                return false;
-            }
-
-            _offset -= sizeof(int);
-
-            // Try and catch it early
-            if (!CanRead(size.Value * SnowflakeId.SIZE))
-            {
-                collection = default;
-                return false;
-            }
-
-            collection = ReadSnowflakeIdCollection<TCollection>();
-            return true;
-        }
-
-        public TCollection ReadSnowflakeIdCollection<TCollection>()
-            where TCollection : ICollection<SnowflakeId>, new()
-        {
-            int size = ReadInt32();
-            TCollection collection;
-
-            if (typeof(TCollection) == typeof(List<SnowflakeId>))
-            {
-                var list = new List<SnowflakeId>(size);
-                collection = Unsafe.As<List<SnowflakeId>, TCollection>(ref list);
-            }
-            else if (typeof(TCollection) == typeof(HashSet<SnowflakeId>))
-            {
-                var set = new HashSet<SnowflakeId>(size);
-                collection = Unsafe.As<HashSet<SnowflakeId>, TCollection>(ref set);
-            }
-            else
-            {
-                collection = new TCollection();
-            }
-
-            for (int i = 0; i < size; i++)
-            {
-                collection.Add(ReadSnowflakeId());
-            }
-
-            return collection;
-        }
-
-        public bool TryReadGuidCollection<TCollection>([NotNullWhen(true)] out TCollection? collection)
-            where TCollection : ICollection<Guid>, new()
-        {
-            if (!TryReadInt32(out int? size))
-            {
-                collection = default;
-                return false;
-            }
-
-            _offset -= sizeof(int);
-
-            // Try and catch it early
-            if (!CanRead(size.Value * Unsafe.SizeOf<Guid>()))
-            {
-                collection = default;
-                return false;
-            }
-
-            collection = ReadGuidCollection<TCollection>();
-            return true;
-        }
-
-        public TCollection ReadGuidCollection<TCollection>()
-            where TCollection : ICollection<Guid>, new()
-        {
-            int size = ReadInt32();
-            TCollection collection;
-
-            if (typeof(TCollection) == typeof(List<Guid>))
-            {
-                var list = new List<Guid>(size);
-                collection = Unsafe.As<List<Guid>, TCollection>(ref list);
-            }
-            else if (typeof(TCollection) == typeof(HashSet<Guid>))
-            {
-                var set = new HashSet<Guid>(size);
-                collection = Unsafe.As<HashSet<Guid>, TCollection>(ref set);
-            }
-            else
-            {
-                collection = new TCollection();
-            }
-
-            for (int i = 0; i < size; i++)
-            {
-                collection.Add(ReadGuid());
-            }
-
-            return collection;
-        }
-
-        public bool TryReadStringCollection<TCollection>([NotNullWhen(true)] out TCollection? collection)
-            where TCollection : ICollection<string>, new()
-        {
-            int fallbackOffset = _offset;
-
-            if (!TryReadInt32(out int? size))
-            {
-                collection = default;
-                return false;
-            }
-
-            // Try and catch it early
-            if (!CanRead(size.Value * BinarySerializer.MaxSizeOf(string.Empty)))
-            {
-                _offset = fallbackOffset;
-                collection = default;
-                return false;
-            }
-
-            if (typeof(TCollection) == typeof(List<string>))
-            {
-                var list = new List<string>(size.Value);
-                collection = Unsafe.As<List<string>, TCollection>(ref list);
-            }
-            else if (typeof(TCollection) == typeof(HashSet<string>))
-            {
-                var set = new HashSet<string>(size.Value);
-                collection = Unsafe.As<HashSet<string>, TCollection>(ref set);
-            }
-            else
-            {
-                collection = new TCollection();
-            }
-
-            for (int i = 0; i < size; i++)
-            {
-                if (!TryReadString(out string? value))
-                {
-                    _offset = fallbackOffset;
-                    collection = default;
-                    return false;
-                }
-
-                collection.Add(value);
-            }
-
-            return true;
-        }
-
-        public TCollection ReadStringCollection<TCollection>()
-            where TCollection : ICollection<string>, new()
-        {
-            int size = ReadInt32();
-            TCollection collection;
-
-            if (typeof(TCollection) == typeof(List<string>))
-            {
-                var list = new List<string>(size);
-                collection = Unsafe.As<List<string>, TCollection>(ref list);
-            }
-            else if (typeof(TCollection) == typeof(HashSet<string>))
-            {
-                var set = new HashSet<string>(size);
-                collection = Unsafe.As<HashSet<string>, TCollection>(ref set);
-            }
-            else
-            {
-                collection = new TCollection();
-            }
-
-            for (int i = 0; i < size; i++)
-            {
                 collection.Add(ReadString());
-            }
 
             return collection;
         }
 
-        public bool TryReadCollection<T, TCollection>([NotNullWhen(true)] out TCollection? collection)
+        public bool TryReadCollection<T, TCollection>(out TCollection? collection)
             where T : unmanaged
             where TCollection : ICollection<T>, new()
         {
-            var typeCode = Type.GetTypeCode(typeof(T));
-            switch (typeCode)
+            if (!CanRead(BinarySerializer.MaxSizeOf(Array.Empty<T>())) &&
+                !CanRead(BinarySerializer.SizeOf(Array.Empty<T>())))
             {
-                case TypeCode.Boolean:
-                case TypeCode.Byte:
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                case TypeCode.Double:
-                {
-                    if (!TryReadInt32(out int? size))
-                    {
-                        collection = default;
-                        return false;
-                    }
-
-                    if (!CanRead(size.Value) || !CanRead(Unsafe.SizeOf<T>() * size.Value))
-                    {
-                        _offset -= sizeof(int);
-                        collection = default;
-                        return false;
-                    }
-
-                    collection = new TCollection();
-
-                    for (int i = 0; i < size; i++)
-                    {
-                        collection.Add(ReadPrimitive<T>());
-                    }
-
-                    return true;
-                }
-
-                default:
-                    collection = default;
-                    return false;
+                collection = default;
+                return false;
             }
+
+            // Guaranteed to succeed due to size check
+            int size = ReadInt32();
+
+            // Try and catch it early
+            if (!CanRead(size * Unsafe.SizeOf<T>()))
+            {
+                _offset -= sizeof(int);
+                collection = default;
+                return false;
+            }
+
+            collection = CreateCollection<T, TCollection>(size);
+
+            for (int i = 0; i < size; i++)
+                collection.Add(ReadUnmanaged<T>());
+
+            return true;
         }
 
-        public TCollection ReadCollection<T, TCollection>() where T : unmanaged
+        public TCollection ReadCollection<T, TCollection>()
+            where T : unmanaged
             where TCollection : ICollection<T>, new()
         {
-            var typeCode = Type.GetTypeCode(typeof(T));
-            switch (typeCode)
+            int size = ReadInt32();
+            var collection = CreateCollection<T, TCollection>(size);
+
+            for (int i = 0; i < size; i++)
+                collection.Add(ReadUnmanaged<T>());
+
+            return collection;
+        }
+
+        private TCollection CreateCollection<T, TCollection>(int size)
+            where TCollection : ICollection<T>, new()
+        {
+            TCollection collection;
+            if (typeof(TCollection) == typeof(List<T>))
             {
-                case TypeCode.Boolean:
-                case TypeCode.Byte:
-                case TypeCode.Int16:
-                case TypeCode.UInt16:
-                case TypeCode.Int32:
-                case TypeCode.UInt32:
-                case TypeCode.Int64:
-                case TypeCode.UInt64:
-                case TypeCode.Single:
-                case TypeCode.Double:
-                {
-                    int size = ReadInt32();
-                    var collection = new TCollection();
-
-                    for (int i = 0; i < size; i++)
-                    {
-                        collection.Add(ReadPrimitive<T>());
-                    }
-
-                    return collection;
-                }
-
-                default:
-                    throw new ArgumentException($"Deserialization of {typeof(T)} type is unsupported");
+                var list = new List<T>(size);
+                collection = Unsafe.As<List<T>, TCollection>(ref list);
             }
+            else if (typeof(TCollection) == typeof(HashSet<T>))
+            {
+                var set = new HashSet<T>(size);
+                collection = Unsafe.As<HashSet<T>, TCollection>(ref set);
+            }
+            else
+            {
+                collection = new TCollection();
+            }
+
+            return collection;
         }
 
         #endregion
@@ -635,6 +408,223 @@ namespace Sphynx.Network.Serialization
 
         #region Primitive Types
 
+        /// <summary>
+        /// Attempts to deserialize unmanaged types from bytes.
+        /// </summary>
+        /// <param name="value">The unmanaged type to deserialize.</param>
+        /// <typeparam name="T">The type of unmanaged type.</typeparam>
+        /// <returns>true if the <paramref name="value"/> could be deserialized; false otherwise.</returns>
+        public bool TryReadUnmanaged<T>(out T? value) where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                {
+                    bool success = TryReadBool(out bool? val);
+                    value = Unsafe.As<bool?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Byte:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
+                {
+                    bool success = TryReadByte(out byte? val);
+                    value = Unsafe.As<byte?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Int16:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
+                {
+                    bool success = TryReadInt16(out short? val);
+                    value = Unsafe.As<short?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.UInt16:
+                {
+                    bool success = TryReadUInt16(out ushort? val);
+                    value = Unsafe.As<ushort?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Int32:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
+                {
+                    bool success = TryReadInt32(out int? val);
+                    value = Unsafe.As<int?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.UInt32:
+                {
+                    bool success = TryReadUInt32(out uint? val);
+                    value = Unsafe.As<uint?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Int64:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
+                {
+                    bool success = TryReadInt64(out long? val);
+                    value = Unsafe.As<long?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.UInt64:
+                {
+                    bool success = TryReadUInt64(out ulong? val);
+                    value = Unsafe.As<ulong?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Single:
+                {
+                    bool success = TryReadFloat(out float? val);
+                    value = Unsafe.As<float?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Double:
+                {
+                    bool success = TryReadDouble(out double? val);
+                    value = Unsafe.As<double?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.DateTime:
+                {
+                    bool success = TryReadDateTime(out var val);
+                    value = Unsafe.As<DateTime?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
+                {
+                    bool success = TryReadSnowflakeId(out var val);
+                    value = Unsafe.As<SnowflakeId?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Object when typeof(T) == typeof(Guid):
+                {
+                    bool success = TryReadGuid(out var val);
+                    value = Unsafe.As<Guid?, T?>(ref val);
+                    return success;
+                }
+
+                case TypeCode.Object:
+                {
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        if (MemoryMarshal.TryRead<T>(_span[_offset..], out var val))
+                        {
+                            _offset += Unsafe.SizeOf<T>();
+                            value = val;
+                            return true;
+                        }
+                    }
+
+                    goto default;
+                }
+
+                default:
+                    value = null;
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Deserializes unmanaged types from bytes.
+        /// </summary>
+        /// <typeparam name="T">The type of unmanaged type.</typeparam>
+        /// <returns>The deserialized unmanaged type.</returns>
+        /// <exception cref="ArgumentException">If <typeparamref name="T"/> is a user-defined struct
+        /// which is not of blittable size, we are not on a little-endian machine, and <typeparamref name="T"/>
+        /// is not a type for which serialization is already supported.</exception>
+        public T ReadUnmanaged<T>() where T : unmanaged
+        {
+            var typeCode = Type.GetTypeCode(typeof(T));
+            switch (typeCode)
+            {
+                case TypeCode.Boolean:
+                {
+                    bool value = ReadBool();
+                    return Unsafe.As<bool, T>(ref value);
+                }
+                case TypeCode.Byte:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
+                {
+                    byte value = ReadByte();
+                    return Unsafe.As<byte, T>(ref value);
+                }
+                case TypeCode.Int16:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
+                {
+                    short value = ReadInt16();
+                    return Unsafe.As<short, T>(ref value);
+                }
+                case TypeCode.UInt16:
+                {
+                    ushort value = ReadUInt16();
+                    return Unsafe.As<ushort, T>(ref value);
+                }
+                case TypeCode.Int32:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
+                {
+                    int value = ReadInt32();
+                    return Unsafe.As<int, T>(ref value);
+                }
+                case TypeCode.UInt32:
+                {
+                    uint value = ReadUInt32();
+                    return Unsafe.As<uint, T>(ref value);
+                }
+                case TypeCode.Int64:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
+                {
+                    long value = ReadInt64();
+                    return Unsafe.As<long, T>(ref value);
+                }
+                case TypeCode.UInt64:
+                {
+                    ulong value = ReadUInt64();
+                    return Unsafe.As<ulong, T>(ref value);
+                }
+                case TypeCode.Single:
+                {
+                    float value = ReadFloat();
+                    return Unsafe.As<float, T>(ref value);
+                }
+                case TypeCode.Double:
+                {
+                    double value = ReadDouble();
+                    return Unsafe.As<double, T>(ref value);
+                }
+                case TypeCode.DateTime:
+                {
+                    var value = ReadDateTime();
+                    return Unsafe.As<DateTime, T>(ref value);
+                }
+                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
+                {
+                    var value = ReadSnowflakeId();
+                    return Unsafe.As<SnowflakeId, T>(ref value);
+                }
+                case TypeCode.Object when typeof(T) == typeof(Guid):
+                {
+                    var value = ReadGuid();
+                    return Unsafe.As<Guid, T>(ref value);
+                }
+
+                case TypeCode.Object:
+                {
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        var value = MemoryMarshal.Read<T>(_span[_offset..]);
+                        _offset += Unsafe.SizeOf<T>();
+                        return value;
+                    }
+
+                    throw new ArgumentException(
+                        $"Deserialization of {typeof(T)} type is unsupported on this machine");
+                }
+
+                default:
+                    throw new ArgumentException($"Deserialization of {typeof(T)} type is unsupported");
+            }
+        }
+
         public bool TryReadBool([NotNullWhen(true)] out bool? value)
         {
             if (!CanRead(sizeof(bool)))
@@ -751,7 +741,7 @@ namespace Sphynx.Network.Serialization
             return value;
         }
 
-        public bool TrySerializeUInt64([NotNullWhen(true)] out ulong? value)
+        public bool TryReadUInt64([NotNullWhen(true)] out ulong? value)
         {
             if (!CanRead(sizeof(ulong)))
             {
@@ -829,67 +819,6 @@ namespace Sphynx.Network.Serialization
             double value = BinaryPrimitives.ReadDoubleLittleEndian(_span[_offset..]);
             _offset += sizeof(double);
             return value;
-        }
-
-        private T ReadPrimitive<T>() where T : unmanaged
-        {
-            var typeCode = Type.GetTypeCode(typeof(T));
-            switch (typeCode)
-            {
-                case TypeCode.Boolean:
-                {
-                    bool value = ReadBool();
-                    return Unsafe.As<bool, T>(ref value);
-                }
-                case TypeCode.Byte:
-                {
-                    byte value = ReadByte();
-                    return Unsafe.As<byte, T>(ref value);
-                }
-                case TypeCode.Int16:
-                {
-                    short value = ReadInt16();
-                    return Unsafe.As<short, T>(ref value);
-                }
-                case TypeCode.UInt16:
-                {
-                    ushort value = ReadUInt16();
-                    return Unsafe.As<ushort, T>(ref value);
-                }
-                case TypeCode.Int32:
-                {
-                    int value = ReadInt32();
-                    return Unsafe.As<int, T>(ref value);
-                }
-                case TypeCode.UInt32:
-                {
-                    uint value = ReadUInt32();
-                    return Unsafe.As<uint, T>(ref value);
-                }
-                case TypeCode.Int64:
-                {
-                    long value = ReadInt64();
-                    return Unsafe.As<long, T>(ref value);
-                }
-                case TypeCode.UInt64:
-                {
-                    ulong value = ReadUInt64();
-                    return Unsafe.As<ulong, T>(ref value);
-                }
-                case TypeCode.Single:
-                {
-                    float value = ReadFloat();
-                    return Unsafe.As<float, T>(ref value);
-                }
-                case TypeCode.Double:
-                {
-                    double value = ReadDouble();
-                    return Unsafe.As<double, T>(ref value);
-                }
-
-                default:
-                    throw new ArgumentException($"Serialization of {typeof(T)} type is unsupported");
-            }
         }
 
         #endregion
