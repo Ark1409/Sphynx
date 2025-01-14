@@ -40,6 +40,217 @@ namespace Sphynx.Network.Serialization
             _offset = 0;
         }
 
+        #region Dictionaries
+
+        public bool TryReadDictionary([NotNullWhen(true)] out IDictionary<string, string?>? dictionary)
+        {
+            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<string, string?>.Empty)) &&
+                !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<string, string?>.Empty)))
+            {
+                dictionary = null;
+                return false;
+            }
+
+            int fallbackOffset = _offset;
+
+            // Guaranteed to succeed due to size check
+            int size = ReadInt32();
+            dictionary = CreateDictionary<string, string?>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                if (!TryReadString(out string? key) || !TryReadString(out string? value))
+                {
+                    _offset = fallbackOffset;
+                    dictionary = null;
+                    return false;
+                }
+
+                dictionary.Add(key, value);
+            }
+
+            return true;
+        }
+
+        public void ReadDictionary(out IDictionary<string, string?> dictionary)
+        {
+            int size = ReadInt32();
+            dictionary = CreateDictionary<string, string?, Dictionary<string, string?>>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                string key = ReadString();
+                string value = ReadString();
+                dictionary.Add(key, value);
+            }
+        }
+
+        public bool TryReadDictionary<TKey>([NotNullWhen(true)] out IDictionary<TKey, string?>? dictionary)
+            where TKey : unmanaged
+        {
+            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<TKey, string?>.Empty)) &&
+                !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<TKey, string?>.Empty)))
+            {
+                dictionary = null;
+                return false;
+            }
+
+            int fallbackOffset = _offset;
+
+            // Guaranteed to succeed due to size check
+            int size = ReadInt32();
+            dictionary = CreateDictionary<TKey, string?>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                if (!TryReadUnmanaged<TKey>(out var key) || !TryReadString(out string? value))
+                {
+                    _offset = fallbackOffset;
+                    dictionary = null;
+                    return false;
+                }
+
+                dictionary.Add(key.Value, value);
+            }
+
+            return true;
+        }
+
+        public void ReadDictionary<TKey>(out IDictionary<TKey, string?> dictionary)
+            where TKey : unmanaged
+        {
+            int size = ReadInt32();
+            dictionary = CreateDictionary<TKey, string?, Dictionary<TKey, string?>>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                var key = ReadUnmanaged<TKey>();
+                string value = ReadString();
+                dictionary.Add(key, value);
+            }
+        }
+
+        public bool TryReadDictionary<TValue>([NotNullWhen(true)] out IDictionary<string, TValue>? dictionary)
+            where TValue : unmanaged
+        {
+            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<string, TValue>.Empty)) &&
+                !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<string, TValue>.Empty)))
+            {
+                dictionary = null;
+                return false;
+            }
+
+            int fallbackOffset = _offset;
+
+            // Guaranteed to succeed due to size check
+            int size = ReadInt32();
+            dictionary = CreateDictionary<string, TValue>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                if (!TryReadString(out string? key) || !TryReadUnmanaged<TValue>(out var value))
+                {
+                    _offset = fallbackOffset;
+                    dictionary = null;
+                    return false;
+                }
+
+                dictionary.Add(key, value.Value);
+            }
+
+            return true;
+        }
+
+        public void ReadDictionary<TValue>(out IDictionary<string, TValue> dictionary)
+            where TValue : unmanaged
+        {
+            int size = ReadInt32();
+            dictionary = CreateDictionary<string, TValue>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                string key = ReadString();
+                var value = ReadUnmanaged<TValue>();
+                dictionary.Add(key, value);
+            }
+        }
+
+        public bool TryReadDictionary<TKey, TValue, TDictionary>([NotNullWhen(true)] out TDictionary? dictionary)
+            where TKey : unmanaged
+            where TValue : unmanaged
+            where TDictionary : IDictionary<TKey, TValue>, new()
+        {
+            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<TKey, TValue>.Empty)) &&
+                !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<TKey, TValue>.Empty)))
+            {
+                dictionary = default;
+                return false;
+            }
+
+            int fallbackOffset = _offset;
+
+            // Guaranteed to succeed due to size check
+            int size = ReadInt32();
+            dictionary = CreateDictionary<TKey, TValue, TDictionary>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                if (!TryReadUnmanaged<TKey>(out var key) || !TryReadUnmanaged<TValue>(out var value))
+                {
+                    _offset = fallbackOffset;
+                    dictionary = default;
+                    return false;
+                }
+
+                dictionary.Add(key.Value, value.Value);
+            }
+
+            return true;
+        }
+
+        public TDictionary ReadDictionary<TKey, TValue, TDictionary>()
+            where TKey : unmanaged
+            where TValue : unmanaged
+            where TDictionary : IDictionary<TKey, TValue>, new()
+        {
+            int size = ReadInt32();
+            var dictionary = CreateDictionary<TKey, TValue, TDictionary>(size);
+
+            for (int i = 0; i < size; i++)
+            {
+                var key = ReadUnmanaged<TKey>();
+                var value = ReadUnmanaged<TValue>();
+                dictionary.Add(key, value);
+            }
+
+            return dictionary;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private Dictionary<TKey, TValue> CreateDictionary<TKey, TValue>(int size) where TKey : notnull =>
+            CreateDictionary<TKey, TValue, Dictionary<TKey, TValue>>(size);
+
+        private TDictionary CreateDictionary<TKey, TValue, TDictionary>(int size)
+            where TKey : notnull
+            where TDictionary : IDictionary<TKey, TValue>, new()
+        {
+            TDictionary dictionary;
+
+            if (typeof(TDictionary) == typeof(Dictionary<TKey, TValue>))
+            {
+                var dict = new Dictionary<TKey, TValue>(size);
+                dictionary = Unsafe.As<Dictionary<TKey, TValue>, TDictionary>(ref dict);
+            }
+            else
+            {
+                dictionary = new TDictionary();
+            }
+
+            return dictionary;
+        }
+
+        #endregion
+
         #region Arrays
 
         public bool TryReadArray(out string[]? array)
@@ -81,7 +292,7 @@ namespace Sphynx.Network.Serialization
             return array;
         }
 
-        public bool TryReadArray<T>(out T[]? array) where T : unmanaged
+        public bool TryReadArray<T>([NotNullWhen(true)] out T[]? array) where T : unmanaged
         {
             if (!TryReadInt32(out int? size))
             {
@@ -124,7 +335,7 @@ namespace Sphynx.Network.Serialization
 
         #region Collections
 
-        public bool TryWriteCollection<TCollection>(out TCollection? collection)
+        public bool TryReadCollection<TCollection>([NotNullWhen(true)] out TCollection? collection)
             where TCollection : ICollection<string>, new()
         {
             if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableList<string?>.Empty)) &&
@@ -169,7 +380,7 @@ namespace Sphynx.Network.Serialization
             return collection;
         }
 
-        public bool TryReadCollection<T, TCollection>(out TCollection? collection)
+        public bool TryReadCollection<T, TCollection>([NotNullWhen(true)] out TCollection? collection)
             where T : unmanaged
             where TCollection : ICollection<T>, new()
         {
@@ -328,7 +539,7 @@ namespace Sphynx.Network.Serialization
             return str;
         }
 
-        public bool TryReadEnum<T>(out T? value) where T : struct, Enum
+        public bool TryReadEnum<T>([NotNullWhen(true)] out T? value) where T : struct, Enum
         {
             if (!CanRead(Unsafe.SizeOf<T>()))
             {
@@ -414,7 +625,7 @@ namespace Sphynx.Network.Serialization
         /// <param name="value">The unmanaged type to deserialize.</param>
         /// <typeparam name="T">The type of unmanaged type.</typeparam>
         /// <returns>true if the <paramref name="value"/> could be deserialized; false otherwise.</returns>
-        public bool TryReadUnmanaged<T>(out T? value) where T : unmanaged
+        public bool TryReadUnmanaged<T>([NotNullWhen(true)] out T? value) where T : unmanaged
         {
             var typeCode = Type.GetTypeCode(typeof(T));
 
@@ -515,7 +726,8 @@ namespace Sphynx.Network.Serialization
                         }
                     }
 
-                    goto default;
+                    value = null;
+                    return false;
                 }
 
                 default:
