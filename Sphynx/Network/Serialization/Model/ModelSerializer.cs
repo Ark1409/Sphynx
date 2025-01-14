@@ -3,31 +3,23 @@
 
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-using Sphynx.Network.Packet;
 
-namespace Sphynx.Network.Serialization.Packet
+namespace Sphynx.Network.Serialization.Model
 {
-    public abstract class PacketSerializer<T> : IPacketSerializer<T> where T : SphynxPacket
+    public abstract class ModelSerializer<T> : ITypeSerializer<T> where T : notnull
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetMaxSize(T packet)
-        {
-            return sizeof(int) + GetMaxPacketSize(packet);
-        }
+        public abstract int GetMaxSize(T model);
 
-        protected abstract int GetMaxPacketSize(T packet);
-
-        public bool TrySerialize(T packet, Span<byte> buffer, out int bytesWritten)
+        public bool TrySerialize(T model, Span<byte> buffer, out int bytesWritten)
         {
-            int tempBufferSize = GetMaxSize(packet);
+            int tempBufferSize = GetMaxSize(model);
             byte[] rawTempBuffer = ArrayPool<byte>.Shared.Rent(tempBufferSize);
             var tempBuffer = rawTempBuffer.AsMemory()[..tempBufferSize];
 
             try
             {
                 var tempSpan = tempBuffer.Span;
-                bytesWritten = SerializeUnsafe(packet, tempSpan);
+                bytesWritten = SerializeUnsafe(model, tempSpan);
 
                 if (tempSpan.TryCopyTo(buffer))
                     return true;
@@ -47,53 +39,51 @@ namespace Sphynx.Network.Serialization.Packet
         }
 
         /// <summary>
-        /// Serializes the packet directly into the <paramref name="buffer"/>, without resetting its contents
+        /// Serializes the model directly into the <paramref name="buffer"/>, without resetting its contents
         /// on failure.
         /// </summary>
-        /// <param name="packet">The packet to serialize.</param>
+        /// <param name="model">The model to serialize.</param>
         /// <param name="buffer">The output buffer.</param>
         /// <returns>Number of bytes written to the buffer.</returns>
-        public int SerializeUnsafe(T packet, Span<byte> buffer)
+        public int SerializeUnsafe(T model, Span<byte> buffer)
         {
-            // Sanity check
-            if (buffer.Length < sizeof(int))
-                return 0;
-
             var serializer = new BinarySerializer(buffer[sizeof(int)..]);
 
             try
             {
-                Serialize(packet, ref serializer);
+                Serialize(model, ref serializer);
 
-                int bytesWritten = sizeof(int) + serializer.Count;
+                int byteCount = serializer.Count;
+                int bytesWritten = sizeof(int) + byteCount;
 
                 serializer = new BinarySerializer(buffer);
-                serializer.WriteInt32(bytesWritten - sizeof(int));
+                serializer.WriteInt32(byteCount);
 
                 return bytesWritten;
             }
             catch
             {
-                return sizeof(int) + serializer.Count;
+                int bytesWritten = sizeof(int) + serializer.Count;
+                return bytesWritten;
             }
         }
 
-        protected abstract void Serialize(T packet, ref BinarySerializer serializer);
+        protected abstract void Serialize(T model, ref BinarySerializer serializer);
 
-        public bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? packet, out int bytesRead)
+        public bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? model, out int bytesRead)
         {
             var deserializer = new BinaryDeserializer(buffer[sizeof(int)..]);
 
             try
             {
-                packet = Deserialize(ref deserializer);
+                model = Deserialize(ref deserializer);
                 bytesRead = sizeof(int) + deserializer.Count;
 
                 return true;
             }
             catch
             {
-                packet = null;
+                model = default;
                 bytesRead = 0;
                 return false;
             }
