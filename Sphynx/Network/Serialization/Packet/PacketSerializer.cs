@@ -4,7 +4,7 @@
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using Sphynx.Network.Packet;
+using Sphynx.Network.PacketV2;
 
 namespace Sphynx.Network.Serialization.Packet
 {
