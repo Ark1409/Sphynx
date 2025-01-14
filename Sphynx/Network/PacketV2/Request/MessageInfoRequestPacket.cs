@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.PacketV2.Request
@@ -25,7 +26,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public MessageInfoRequestPacket(Guid userId, Guid sessionId) : base(userId, sessionId)
+        public MessageInfoRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
@@ -35,7 +36,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="msgIds">The message IDs of the messages for which to retrieve information.</param>
-        public MessageInfoRequestPacket(Guid userId, Guid sessionId, params Guid[] msgIds) : base(userId, sessionId)
+        public MessageInfoRequestPacket(SnowflakeId userId, Guid sessionId, params Guid[] msgIds) : base(userId, sessionId)
         {
             MessageIds = msgIds;
         }

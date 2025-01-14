@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -20,7 +21,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// Creates a new <see cref="RoomInfoRequestPacket"/>.
         /// </summary>
         /// <param name="roomId">The ID of the room to get the information of.</param>
-        public RoomInfoRequestPacket(Guid roomId) : this(Guid.Empty, Guid.Empty, roomId)
+        public RoomInfoRequestPacket(Guid roomId) : this(SnowflakeId.Empty, Guid.Empty, roomId)
         {
         }
 
@@ -30,7 +31,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomId">The ID of the room to get the information of.</param>
-        public RoomInfoRequestPacket(Guid userId, Guid sessionId, Guid roomId) : base(userId, sessionId)
+        public RoomInfoRequestPacket(SnowflakeId userId, Guid sessionId, Guid roomId) : base(userId, sessionId)
         {
             RoomId = roomId;
         }

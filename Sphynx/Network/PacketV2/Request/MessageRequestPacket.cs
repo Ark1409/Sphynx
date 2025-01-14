@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 using Sphynx.Model.ChatRoom;
 using Sphynx.Utils;
 
@@ -30,7 +31,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessageRequestPacket(Guid roomId, string message) : this(Guid.Empty, Guid.Empty, roomId, message)
+        public MessageRequestPacket(Guid roomId, string message) : this(SnowflakeId.Empty, Guid.Empty, roomId, message)
         {
         }
 
@@ -41,7 +42,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessageRequestPacket(Guid userId, Guid sessionId, Guid roomId, string message) : base(userId, sessionId)
+        public MessageRequestPacket(SnowflakeId userId, Guid sessionId, Guid roomId, string message) : base(userId, sessionId)
         {
             RoomId = roomId;
             Message = message ?? throw new ArgumentNullException(nameof(message)); // Exceptions OK on client

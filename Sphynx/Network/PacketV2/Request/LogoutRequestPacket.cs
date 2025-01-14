@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -14,7 +15,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public LogoutRequestPacket(Guid userId, Guid sessionId) : base(userId, sessionId)
+        public LogoutRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 

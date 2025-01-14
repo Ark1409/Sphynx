@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Sphynx.Core;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.PacketV2.Request
@@ -34,7 +35,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="password">Password entered by user for login.</param>
         /// <remarks>The <see cref="SphynxRequestPacket.UserId"/> and <see cref="SphynxRequestPacket.SessionId"/> properties
         /// are not serialized for this packet.</remarks>
-        public LoginRequestPacket(string userName, string password) : base(Guid.Empty, Guid.Empty)
+        public LoginRequestPacket(string userName, string password) : base(SnowflakeId.Empty, Guid.Empty)
         {
             UserName = userName;
             Password = password;

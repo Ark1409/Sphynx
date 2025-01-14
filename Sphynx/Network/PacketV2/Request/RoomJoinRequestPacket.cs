@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 using Sphynx.Network.Packet.Response;
 using Sphynx.Utils;
 
@@ -30,7 +31,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="roomId">Room ID of the room to join.</param>
         /// <param name="password">Password for the room, if the room is guarded with a password.</param>
-        public RoomJoinRequestPacket(Guid roomId, string? password = null) : this(Guid.Empty, Guid.Empty, roomId, password)
+        public RoomJoinRequestPacket(Guid roomId, string? password = null) : this(SnowflakeId.Empty, Guid.Empty, roomId, password)
         {
         }
 
@@ -41,7 +42,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomId">Room ID of the room to join.</param>
         /// <param name="password">Password for the room, if the room is guarded with a password.</param>
-        public RoomJoinRequestPacket(Guid userId, Guid sessionId, Guid roomId, string? password = null) : base(userId, sessionId)
+        public RoomJoinRequestPacket(SnowflakeId userId, Guid sessionId, Guid roomId, string? password = null) : base(userId, sessionId)
         {
             RoomId = roomId;
             Password = password;

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -10,7 +11,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The user ID of the requesting user.
         /// </summary>
-        public Guid UserId { get; set; }
+        public SnowflakeId UserId { get; set; }
 
         /// <summary>
         /// The session ID for the requesting user.
@@ -24,7 +25,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="SphynxRequestPacket"/>.
         /// </summary>
-        public SphynxRequestPacket() : this(Guid.Empty, Guid.Empty)
+        public SphynxRequestPacket() : this(SnowflakeId.Empty, Guid.Empty)
         {
 
         }
@@ -34,7 +35,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public SphynxRequestPacket(Guid userId, Guid sessionId)
+        public SphynxRequestPacket(SnowflakeId userId, Guid sessionId)
         {
             UserId = userId;
             SessionId = sessionId;
@@ -47,7 +48,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="userId">The deserialized user ID.</param>
         /// <param name="sessionId">The deserialized session ID.</param>
         /// <returns>true if the data could be deserialized; false otherwise.</returns>
-        protected static bool TryDeserializeDefaults(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out Guid? userId, [NotNullWhen(true)] out Guid? sessionId)
+        protected static bool TryDeserializeDefaults(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out SnowflakeId? userId, [NotNullWhen(true)] out Guid? sessionId)
         {
             if (buffer.Length < DEFAULT_CONTENT_SIZE)
             {
@@ -56,7 +57,7 @@ namespace Sphynx.Network.PacketV2.Request
                 return false;
             }
 
-            userId = new Guid(buffer.Slice(USER_ID_OFFSET, GUID_SIZE));
+            userId = new SnowflakeId(buffer.Slice(USER_ID_OFFSET, SnowflakeId.SIZE));
             sessionId = new Guid(buffer.Slice(SESSION_ID_OFFSET, GUID_SIZE));
             return true;
         }
@@ -69,12 +70,12 @@ namespace Sphynx.Network.PacketV2.Request
         /// <returns>true if the default properties could be serialized; false otherwise.</returns>
         protected virtual bool TrySerializeDefaults(Span<byte> buffer)
         {
-            if (buffer.Length < DEFAULT_CONTENT_SIZE || UserId == Guid.Empty || SessionId == Guid.Empty)
+            if (buffer.Length < DEFAULT_CONTENT_SIZE || UserId == SnowflakeId.Empty || SessionId == Guid.Empty)
             {
                 return false;
             }
 
-            UserId.TryWriteBytes(buffer.Slice(USER_ID_OFFSET, GUID_SIZE));
+            UserId.TryWriteBytes(buffer.Slice(USER_ID_OFFSET, SnowflakeId.SIZE));
             SessionId.TryWriteBytes(buffer.Slice(SESSION_ID_OFFSET, GUID_SIZE));
             return true;
         }

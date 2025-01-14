@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Sphynx.Core;
 using Sphynx.Model.ChatRoom;
 using Sphynx.Utils;
 
@@ -25,7 +26,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public RoomCreateRequestPacket(Guid userId, Guid sessionId) : base(userId, sessionId)
+        public RoomCreateRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
@@ -76,7 +77,7 @@ namespace Sphynx.Network.PacketV2.Request
         }
 
         protected static bool TryDeserializeDefaults(ReadOnlySpan<byte> contents,
-            [NotNullWhen(true)] out Guid? userId,
+            [NotNullWhen(true)] out SnowflakeId? userId,
             [NotNullWhen(true)] out Guid? sessionId,
             [NotNullWhen(true)] out ChatRoomType? roomType)
         {
@@ -114,7 +115,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// Creates a new <see cref="RoomCreateRequestPacket"/>.
             /// </summary>
             /// <param name="otherId">The user ID of the other user to create the DM with.</param>
-            public Direct(Guid otherId) : this(Guid.Empty, Guid.Empty, otherId)
+            public Direct(Guid otherId) : this(SnowflakeId.Empty, Guid.Empty, otherId)
             {
             }
 
@@ -124,7 +125,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <param name="userId">The user ID of the requesting user.</param>
             /// <param name="sessionId">The session ID for the requesting user.</param>
             /// <param name="otherId">The user ID of the other user to create the DM with.</param>
-            public Direct(Guid userId, Guid sessionId, Guid otherId) : base(userId, sessionId)
+            public Direct(SnowflakeId userId, Guid sessionId, Guid otherId) : base(userId, sessionId)
             {
                 OtherId = otherId;
             }
@@ -241,7 +242,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
             /// <param name="public">Whether this room is public.</param>
-            public Group(string name, string? password = null, bool @public = true) : this(Guid.Empty, Guid.Empty, name, password, @public)
+            public Group(string name, string? password = null, bool @public = true) : this(SnowflakeId.Empty, Guid.Empty, name, password, @public)
             {
             }
 
@@ -253,7 +254,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
             /// <param name="public">Whether this room is public.</param>
-            public Group(Guid userId, Guid sessionId, string name, string? password = null, bool @public = true) : base(userId, sessionId)
+            public Group(SnowflakeId userId, Guid sessionId, string name, string? password = null, bool @public = true) : base(userId, sessionId)
             {
                 Name = name;
                 Password = password;

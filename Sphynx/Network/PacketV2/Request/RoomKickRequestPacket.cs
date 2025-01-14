@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -27,7 +28,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="roomId">Room ID of the room to kick the user from.</param>
         /// <param name="kickId">User ID of the user to kick from the room.</param>
-        public RoomKickRequestPacket(Guid roomId, Guid kickId) : this(Guid.Empty, Guid.Empty, roomId, kickId)
+        public RoomKickRequestPacket(Guid roomId, Guid kickId) : this(SnowflakeId.Empty, Guid.Empty, roomId, kickId)
         {
         }
 
@@ -38,7 +39,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomId">Room ID of the room to leave.</param>
         /// <param name="kickId">User ID of the user to kick from the room.</param>
-        public RoomKickRequestPacket(Guid userId, Guid sessionId, Guid roomId, Guid kickId) : base(userId, sessionId)
+        public RoomKickRequestPacket(SnowflakeId userId, Guid sessionId, Guid roomId, Guid kickId) : base(userId, sessionId)
         {
             RoomId = roomId;
             KickId = kickId;

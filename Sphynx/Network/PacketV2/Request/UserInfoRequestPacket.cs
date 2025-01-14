@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Core;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.PacketV2.Request
@@ -25,7 +26,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public UserInfoRequestPacket(Guid userId, Guid sessionId) : base(userId, sessionId)
+        public UserInfoRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
@@ -35,7 +36,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="userIds">The user IDs of the users for which to retrieve information.</param>
-        public UserInfoRequestPacket(Guid userId, Guid sessionId, params Guid[] userIds) : base(userId, sessionId)
+        public UserInfoRequestPacket(SnowflakeId userId, Guid sessionId, params Guid[] userIds) : base(userId, sessionId)
         {
             UserIds = userIds;
         }
@@ -46,7 +47,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="userIds">The user IDs of the users for which to retrieve information.</param>
-        public UserInfoRequestPacket(Guid userId, Guid sessionId, IEnumerable<Guid> userIds) : this(userId, sessionId,
+        public UserInfoRequestPacket(SnowflakeId userId, Guid sessionId, IEnumerable<Guid> userIds) : this(userId, sessionId,
             userIds as Guid[] ?? userIds.ToArray())
         {
         }
