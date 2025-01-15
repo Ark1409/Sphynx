@@ -175,6 +175,14 @@ namespace Sphynx.Network.Serialization
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryReadDictionary<TKey, TValue>([NotNullWhen(true)] out Dictionary<TKey, TValue>? dictionary)
+            where TKey : unmanaged
+            where TValue : unmanaged
+        {
+            return TryReadDictionary<TKey, TValue, Dictionary<TKey, TValue>>(out dictionary!);
+        }
+
         public bool TryReadDictionary<TKey, TValue, TDictionary>([NotNullWhen(true)] out TDictionary? dictionary)
             where TKey : unmanaged
             where TValue : unmanaged
@@ -227,10 +235,18 @@ namespace Sphynx.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Dictionary<TKey, TValue> ReadDictionary<TKey, TValue>()
+            where TKey : unmanaged
+            where TValue : unmanaged
+        {
+            return ReadDictionary<TKey, TValue, Dictionary<TKey, TValue>>();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private Dictionary<TKey, TValue> CreateDictionary<TKey, TValue>(int size) where TKey : notnull =>
             CreateDictionary<TKey, TValue, Dictionary<TKey, TValue>>(size);
 
-        private TDictionary CreateDictionary<TKey, TValue, TDictionary>(int size)
+        private static TDictionary CreateDictionary<TKey, TValue, TDictionary>(int size)
             where TKey : notnull
             where TDictionary : IDictionary<TKey, TValue>, new()
         {

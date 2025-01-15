@@ -8,7 +8,7 @@ namespace Sphynx.ModelV2.User
     /// <summary>
     /// A type which holds information about a specific Sphynx user.
     /// </summary>
-    public interface ISphynxUserInfo
+    public interface ISphynxUserInfo : IEquatable<ISphynxUserInfo>
     {
         /// <summary>
         /// The user ID for this Sphynx user.

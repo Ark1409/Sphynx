@@ -21,9 +21,9 @@ namespace Sphynx.ModelV2.User
         ISet<SnowflakeId> Rooms { get; set; }
 
         /// <summary>
-        /// Rooms which contain pending (unread) messages, along with the message IDs of said messages.
+        /// Collection of the last read message IDs for the messages in the rooms that the user is a part of.
         /// </summary>
-        IList<PendingRoomMessageInfo> UnreadMessages { get; set; }
+        ILastReadMessageInfo LastReadMessages { get; set; }
 
         /// <summary>
         /// The user IDs of outgoing friend requests sent by this user.
@@ -34,5 +34,13 @@ namespace Sphynx.ModelV2.User
         /// The user IDs of incoming friend requests sent to this user.
         /// </summary>
         ISet<SnowflakeId> IncomingFriendRequests { get; set; }
+    }
+
+    public interface ILastReadMessageInfo : IDictionary<SnowflakeId, SnowflakeId>
+    {
+        sealed void AddRoom(SnowflakeId roomId, SnowflakeId msgId) => Add(roomId, msgId);
+        sealed bool RemoveRoom(SnowflakeId roomId) => Remove(roomId);
+        sealed SnowflakeId GetLastMessage(SnowflakeId roomId) => this[roomId];
+        sealed bool TryGetLastMessage(SnowflakeId roomId, out SnowflakeId msgId) => TryGetValue(roomId, out msgId);
     }
 }
