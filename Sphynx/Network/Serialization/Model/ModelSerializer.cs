@@ -47,24 +47,16 @@ namespace Sphynx.Network.Serialization.Model
         /// <returns>Number of bytes written to the buffer.</returns>
         public int SerializeUnsafe(T model, Span<byte> buffer)
         {
-            var serializer = new BinarySerializer(buffer[sizeof(int)..]);
+            var serializer = new BinarySerializer(buffer);
 
             try
             {
                 Serialize(model, ref serializer);
-
-                int byteCount = serializer.Count;
-                int bytesWritten = sizeof(int) + byteCount;
-
-                serializer = new BinarySerializer(buffer);
-                serializer.WriteInt32(byteCount);
-
-                return bytesWritten;
+                return serializer.Count;
             }
             catch
             {
-                int bytesWritten = sizeof(int) + serializer.Count;
-                return bytesWritten;
+                return serializer.Count;
             }
         }
 
@@ -72,13 +64,12 @@ namespace Sphynx.Network.Serialization.Model
 
         public bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? model, out int bytesRead)
         {
-            var deserializer = new BinaryDeserializer(buffer[sizeof(int)..]);
+            var deserializer = new BinaryDeserializer(buffer);
 
             try
             {
                 model = Deserialize(ref deserializer);
-                bytesRead = sizeof(int) + deserializer.Count;
-
+                bytesRead = deserializer.Count;
                 return true;
             }
             catch
