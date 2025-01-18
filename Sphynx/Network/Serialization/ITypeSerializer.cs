@@ -29,8 +29,8 @@ namespace Sphynx.Network.Serialization
         /// Attempts to deserialize a <see cref="T"/>.
         /// </summary>
         /// <param name="buffer">The serialized <see cref="T"/> bytes.</param>
-        /// <param name="packet">The deserialized instance.</param>
+        /// <param name="instance">The deserialized instance.</param>
         /// <param name="bytesRead">Number of bytes read from the buffer.</param>
-        bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? packet, out int bytesRead);
+        bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? instance, out int bytesRead);
     }
 }

@@ -52,11 +52,11 @@ namespace Sphynx.Network.Serialization.Model
             try
             {
                 Serialize(model, ref serializer);
-                return serializer.Count;
+                return serializer.Offset;
             }
             catch
             {
-                return serializer.Count;
+                return serializer.Offset;
             }
         }
 
@@ -69,7 +69,7 @@ namespace Sphynx.Network.Serialization.Model
             try
             {
                 model = Deserialize(ref deserializer);
-                bytesRead = deserializer.Count;
+                bytesRead = deserializer.Offset;
                 return true;
             }
             catch

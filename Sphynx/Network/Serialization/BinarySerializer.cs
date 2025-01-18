@@ -20,15 +20,28 @@ namespace Sphynx.Network.Serialization
         internal static readonly Encoding StringEncoding = Encoding.UTF8;
 
         private readonly Span<byte> _span;
-        private int _offset;
 
         /// <summary>
-        /// Returns the number of bytes written to the underlying span.
+        /// Returns the write offset into the underlying span.
         /// </summary>
-        public int Count
+        public int Offset { get; set; }
+
+        /// <summary>
+        /// Returns the underlying span.
+        /// </summary>
+        public Span<byte> Span
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _offset;
+            get => _span;
+        }
+
+        /// <summary>
+        /// Returns the underlying span, starting from the <see cref="Offset"/>.
+        /// </summary>
+        public Span<byte> CurrentSpan
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _span[Offset..];
         }
 
         public BinarySerializer(Memory<byte> memory) : this(memory.Span)
@@ -39,7 +52,7 @@ namespace Sphynx.Network.Serialization
         public BinarySerializer(Span<byte> span)
         {
             _span = span;
-            _offset = 0;
+            Offset = 0;
         }
 
         #region Maximum and Exact sizes
@@ -280,7 +293,7 @@ namespace Sphynx.Network.Serialization
             if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
                 return false;
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             WriteInt32(dictionary.Count);
@@ -289,7 +302,7 @@ namespace Sphynx.Network.Serialization
             {
                 if (!TryWriteString(kvp.Key) || !TryWriteString(kvp.Value))
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     return false;
                 }
             }
@@ -315,7 +328,7 @@ namespace Sphynx.Network.Serialization
             if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
                 return false;
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             WriteInt32(dictionary.Count);
@@ -324,7 +337,7 @@ namespace Sphynx.Network.Serialization
             {
                 if (!TryWriteUnmanaged(kvp.Key) || !TryWriteString(kvp.Value))
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     return false;
                 }
             }
@@ -351,7 +364,7 @@ namespace Sphynx.Network.Serialization
             if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
                 return false;
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             WriteInt32(dictionary.Count);
@@ -360,7 +373,7 @@ namespace Sphynx.Network.Serialization
             {
                 if (!TryWriteString(kvp.Key) || !TryWriteUnmanaged(kvp.Value))
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     return false;
                 }
             }
@@ -388,7 +401,7 @@ namespace Sphynx.Network.Serialization
             if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
                 return false;
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             WriteInt32(dictionary.Count);
@@ -397,7 +410,7 @@ namespace Sphynx.Network.Serialization
             {
                 if (!TryWriteUnmanaged(kvp.Key) || !TryWriteUnmanaged(kvp.Value))
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     return false;
                 }
             }
@@ -454,7 +467,7 @@ namespace Sphynx.Network.Serialization
             if (!CanWrite(MaxSizeOf(collection)) && !CanWrite(SizeOf(collection)))
                 return false;
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             WriteInt32(collection.Count);
@@ -466,7 +479,7 @@ namespace Sphynx.Network.Serialization
                 {
                     if (!TryWriteUnmanaged(array[i]))
                     {
-                        _offset = fallbackOffset;
+                        Offset = fallbackOffset;
                         return false;
                     }
                 }
@@ -477,7 +490,7 @@ namespace Sphynx.Network.Serialization
                 {
                     if (!TryWriteUnmanaged(list[i]))
                     {
-                        _offset = fallbackOffset;
+                        Offset = fallbackOffset;
                         return false;
                     }
                 }
@@ -488,7 +501,7 @@ namespace Sphynx.Network.Serialization
                 {
                     if (!TryWriteUnmanaged(item))
                     {
-                        _offset = fallbackOffset;
+                        Offset = fallbackOffset;
                         return false;
                     }
                 }
@@ -535,10 +548,10 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteSnowflakeId(SnowflakeId id)
         {
-            bool written = id.TryWriteBytes(_span[_offset..]);
+            bool written = id.TryWriteBytes(_span[Offset..]);
             Debug.Assert(written);
 
-            _offset += SnowflakeId.SIZE;
+            Offset += SnowflakeId.SIZE;
         }
 
         public bool TryWriteGuid(Guid id)
@@ -553,10 +566,10 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteGuid(Guid id)
         {
-            bool written = id.TryWriteBytes(_span[_offset..]);
+            bool written = id.TryWriteBytes(_span[Offset..]);
             Debug.Assert(written);
 
-            _offset += Unsafe.SizeOf<Guid>();
+            Offset += Unsafe.SizeOf<Guid>();
         }
 
         public bool TryWriteString(ReadOnlySpan<char> str)
@@ -573,10 +586,10 @@ namespace Sphynx.Network.Serialization
 
         public void WriteString(ReadOnlySpan<char> str)
         {
-            int size = StringEncoding.GetBytes(str, _span[(_offset + sizeof(int))..]);
+            int size = StringEncoding.GetBytes(str, _span[(Offset + sizeof(int))..]);
             WriteInt32(size);
 
-            _offset += size;
+            Offset += size;
         }
 
         public bool TryWriteString(string? str)
@@ -593,10 +606,10 @@ namespace Sphynx.Network.Serialization
 
         public void WriteString(string? str)
         {
-            int size = StringEncoding.GetBytes(str ?? string.Empty, _span[(_offset + sizeof(int))..]);
+            int size = StringEncoding.GetBytes(str ?? string.Empty, _span[(Offset + sizeof(int))..]);
             WriteInt32(size);
 
-            _offset += size;
+            Offset += size;
         }
 
         public bool TryWriteDateTime(DateTime dateTime)
@@ -678,9 +691,9 @@ namespace Sphynx.Network.Serialization
                         default:
                             if (BitConverter.IsLittleEndian)
                             {
-                                if (MemoryMarshal.TryWrite(_span[_offset..], ref value))
+                                if (MemoryMarshal.TryWrite(_span[Offset..], ref value))
                                 {
-                                    _offset += size;
+                                    Offset += size;
                                     return true;
                                 }
                             }
@@ -773,8 +786,8 @@ namespace Sphynx.Network.Serialization
                         default:
                             if (BitConverter.IsLittleEndian)
                             {
-                                MemoryMarshal.Write(_span[_offset..], ref value);
-                                _offset += size;
+                                MemoryMarshal.Write(_span[Offset..], ref value);
+                                Offset += size;
                                 break;
                             }
 
@@ -832,7 +845,7 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteByte(byte value)
         {
-            _span[_offset++] = value;
+            _span[Offset++] = value;
         }
 
         public bool TryWriteUInt16(ushort value)
@@ -847,8 +860,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt16(ushort value)
         {
-            BinaryPrimitives.WriteUInt16LittleEndian(_span[_offset..], value);
-            _offset += sizeof(ushort);
+            BinaryPrimitives.WriteUInt16LittleEndian(_span[Offset..], value);
+            Offset += sizeof(ushort);
         }
 
         public bool TryWriteInt16(short value)
@@ -863,8 +876,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void WriteInt16(short value)
         {
-            BinaryPrimitives.WriteInt16LittleEndian(_span[_offset..], value);
-            _offset += sizeof(short);
+            BinaryPrimitives.WriteInt16LittleEndian(_span[Offset..], value);
+            Offset += sizeof(short);
         }
 
         public bool TryWriteUInt32(uint value)
@@ -879,8 +892,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt32(uint value)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(_span[_offset..], value);
-            _offset += sizeof(uint);
+            BinaryPrimitives.WriteUInt32LittleEndian(_span[Offset..], value);
+            Offset += sizeof(uint);
         }
 
         public bool TryWriteInt32(int value)
@@ -895,8 +908,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt32(int value)
         {
-            BinaryPrimitives.WriteInt32LittleEndian(_span[_offset..], value);
-            _offset += sizeof(int);
+            BinaryPrimitives.WriteInt32LittleEndian(_span[Offset..], value);
+            Offset += sizeof(int);
         }
 
         public bool TryWriteUInt64(ulong value)
@@ -911,8 +924,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt64(ulong value)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(_span[_offset..], value);
-            _offset += sizeof(ulong);
+            BinaryPrimitives.WriteUInt64LittleEndian(_span[Offset..], value);
+            Offset += sizeof(ulong);
         }
 
         public bool TryWriteInt64(long value)
@@ -927,8 +940,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt64(long value)
         {
-            BinaryPrimitives.WriteInt64LittleEndian(_span[_offset..], value);
-            _offset += sizeof(long);
+            BinaryPrimitives.WriteInt64LittleEndian(_span[Offset..], value);
+            Offset += sizeof(long);
         }
 
         public bool TryWriteFloat(float value)
@@ -943,8 +956,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteFloat(float value)
         {
-            BinaryPrimitives.WriteSingleLittleEndian(_span[_offset..], value);
-            _offset += sizeof(float);
+            BinaryPrimitives.WriteSingleLittleEndian(_span[Offset..], value);
+            Offset += sizeof(float);
         }
 
         public bool TryWriteDouble(double value)
@@ -959,8 +972,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDouble(double value)
         {
-            BinaryPrimitives.WriteDoubleLittleEndian(_span[_offset..], value);
-            _offset += sizeof(double);
+            BinaryPrimitives.WriteDoubleLittleEndian(_span[Offset..], value);
+            Offset += sizeof(double);
         }
 
         #endregion
@@ -968,7 +981,7 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool CanWrite(int size)
         {
-            return _offset <= _span.Length - size;
+            return Offset <= _span.Length - size;
         }
     }
 }

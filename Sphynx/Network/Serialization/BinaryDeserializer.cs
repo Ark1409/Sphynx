@@ -18,15 +18,28 @@ namespace Sphynx.Network.Serialization
     public ref struct BinaryDeserializer
     {
         private readonly ReadOnlySpan<byte> _span;
-        private int _offset;
 
         /// <summary>
-        /// Returns the number of bytes read from the underlying span.
+        /// Returns the read offset into the underlying span.
         /// </summary>
-        public int Count
+        public int Offset { get; set; }
+
+        /// <summary>
+        /// Returns the underlying span.
+        /// </summary>
+        public ReadOnlySpan<byte> Span
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _offset;
+            get => _span;
+        }
+
+        /// <summary>
+        /// Returns the underlying span, starting from the <see cref="Offset"/>.
+        /// </summary>
+        public ReadOnlySpan<byte> CurrentSpan
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _span[Offset..];
         }
 
         public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this(memory.Span)
@@ -37,7 +50,7 @@ namespace Sphynx.Network.Serialization
         public BinaryDeserializer(ReadOnlySpan<byte> span)
         {
             _span = span;
-            _offset = 0;
+            Offset = 0;
         }
 
         #region Dictionaries
@@ -51,7 +64,7 @@ namespace Sphynx.Network.Serialization
                 return false;
             }
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             int size = ReadInt32();
@@ -61,7 +74,7 @@ namespace Sphynx.Network.Serialization
             {
                 if (!TryReadString(out string? key) || !TryReadString(out string? value))
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     dictionary = null;
                     return false;
                 }
@@ -95,7 +108,7 @@ namespace Sphynx.Network.Serialization
                 return false;
             }
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             int size = ReadInt32();
@@ -105,7 +118,7 @@ namespace Sphynx.Network.Serialization
             {
                 if (!TryReadUnmanaged<TKey>(out var key) || !TryReadString(out string? value))
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     dictionary = null;
                     return false;
                 }
@@ -140,7 +153,7 @@ namespace Sphynx.Network.Serialization
                 return false;
             }
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             int size = ReadInt32();
@@ -150,7 +163,7 @@ namespace Sphynx.Network.Serialization
             {
                 if (!TryReadString(out string? key) || !TryReadUnmanaged<TValue>(out var value))
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     dictionary = null;
                     return false;
                 }
@@ -195,7 +208,7 @@ namespace Sphynx.Network.Serialization
                 return false;
             }
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             int size = ReadInt32();
@@ -205,7 +218,7 @@ namespace Sphynx.Network.Serialization
             {
                 if (!TryReadUnmanaged<TKey>(out var key) || !TryReadUnmanaged<TValue>(out var value))
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     dictionary = default;
                     return false;
                 }
@@ -319,7 +332,7 @@ namespace Sphynx.Network.Serialization
             // Try and catch it early
             if (!CanRead(size.Value * Unsafe.SizeOf<T>()))
             {
-                _offset -= sizeof(int);
+                Offset -= sizeof(int);
                 array = null;
                 return false;
             }
@@ -361,7 +374,7 @@ namespace Sphynx.Network.Serialization
                 return false;
             }
 
-            int fallbackOffset = _offset;
+            int fallbackOffset = Offset;
 
             // Guaranteed to succeed due to size check
             int size = ReadInt32();
@@ -376,7 +389,7 @@ namespace Sphynx.Network.Serialization
                 }
                 else
                 {
-                    _offset = fallbackOffset;
+                    Offset = fallbackOffset;
                     collection = default;
                     return false;
                 }
@@ -413,7 +426,7 @@ namespace Sphynx.Network.Serialization
             // Try and catch it early
             if (!CanRead(size * Unsafe.SizeOf<T>()))
             {
-                _offset -= sizeof(int);
+                Offset -= sizeof(int);
                 collection = default;
                 return false;
             }
@@ -480,8 +493,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SnowflakeId ReadSnowflakeId()
         {
-            var id = new SnowflakeId(_span.Slice(_offset, SnowflakeId.SIZE));
-            _offset += SnowflakeId.SIZE;
+            var id = new SnowflakeId(_span.Slice(Offset, SnowflakeId.SIZE));
+            Offset += SnowflakeId.SIZE;
             return id;
         }
 
@@ -500,8 +513,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Guid ReadGuid()
         {
-            var id = new Guid(_span.Slice(_offset, Unsafe.SizeOf<Guid>()));
-            _offset += SnowflakeId.SIZE;
+            var id = new Guid(_span.Slice(Offset, Unsafe.SizeOf<Guid>()));
+            Offset += SnowflakeId.SIZE;
             return id;
         }
 
@@ -517,11 +530,11 @@ namespace Sphynx.Network.Serialization
         public void ReadString(Span<char> dest)
         {
             int size = ReadInt32();
-            int decoded = BinarySerializer.StringEncoding.GetChars(_span.Slice(_offset, size), dest);
+            int decoded = BinarySerializer.StringEncoding.GetChars(_span.Slice(Offset, size), dest);
 
             Debug.Assert(size == decoded);
 
-            _offset += sizeof(int) + size;
+            Offset += sizeof(int) + size;
         }
 
         public bool TryReadString([NotNullWhen(true)] out string? str)
@@ -535,13 +548,13 @@ namespace Sphynx.Network.Serialization
 
             if (!CanRead(size.Value))
             {
-                _offset -= sizeof(int);
+                Offset -= sizeof(int);
                 str = null;
                 return false;
             }
 
-            str = BinarySerializer.StringEncoding.GetString(_span.Slice(_offset, size.Value));
-            _offset += sizeof(int) + size.Value;
+            str = BinarySerializer.StringEncoding.GetString(_span.Slice(Offset, size.Value));
+            Offset += sizeof(int) + size.Value;
 
             return true;
         }
@@ -549,8 +562,8 @@ namespace Sphynx.Network.Serialization
         public string ReadString()
         {
             int size = ReadInt32();
-            string str = BinarySerializer.StringEncoding.GetString(_span.Slice(_offset, size));
-            _offset += sizeof(int) + size;
+            string str = BinarySerializer.StringEncoding.GetString(_span.Slice(Offset, size));
+            Offset += sizeof(int) + size;
 
             return str;
         }
@@ -734,9 +747,9 @@ namespace Sphynx.Network.Serialization
                 {
                     if (BitConverter.IsLittleEndian)
                     {
-                        if (MemoryMarshal.TryRead<T>(_span[_offset..], out var val))
+                        if (MemoryMarshal.TryRead<T>(_span[Offset..], out var val))
                         {
-                            _offset += Unsafe.SizeOf<T>();
+                            Offset += Unsafe.SizeOf<T>();
                             value = val;
                             return true;
                         }
@@ -839,8 +852,8 @@ namespace Sphynx.Network.Serialization
                 {
                     if (BitConverter.IsLittleEndian)
                     {
-                        var value = MemoryMarshal.Read<T>(_span[_offset..]);
-                        _offset += Unsafe.SizeOf<T>();
+                        var value = MemoryMarshal.Read<T>(_span[Offset..]);
+                        Offset += Unsafe.SizeOf<T>();
                         return value;
                     }
 
@@ -886,7 +899,7 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte()
         {
-            return _span[_offset++];
+            return _span[Offset++];
         }
 
         public bool TryReadUInt16([NotNullWhen(true)] out ushort? value)
@@ -904,8 +917,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort ReadUInt16()
         {
-            ushort value = BinaryPrimitives.ReadUInt16LittleEndian(_span[_offset..]);
-            _offset += sizeof(ushort);
+            ushort value = BinaryPrimitives.ReadUInt16LittleEndian(_span[Offset..]);
+            Offset += sizeof(ushort);
             return value;
         }
 
@@ -924,8 +937,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private short ReadInt16()
         {
-            short value = BinaryPrimitives.ReadInt16LittleEndian(_span[_offset..]);
-            _offset += sizeof(short);
+            short value = BinaryPrimitives.ReadInt16LittleEndian(_span[Offset..]);
+            Offset += sizeof(short);
             return value;
         }
 
@@ -944,8 +957,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint ReadUInt32()
         {
-            uint value = BinaryPrimitives.ReadUInt32LittleEndian(_span[_offset..]);
-            _offset += sizeof(uint);
+            uint value = BinaryPrimitives.ReadUInt32LittleEndian(_span[Offset..]);
+            Offset += sizeof(uint);
             return value;
         }
 
@@ -964,8 +977,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ReadInt32()
         {
-            int value = BinaryPrimitives.ReadInt32LittleEndian(_span[_offset..]);
-            _offset += sizeof(int);
+            int value = BinaryPrimitives.ReadInt32LittleEndian(_span[Offset..]);
+            Offset += sizeof(int);
             return value;
         }
 
@@ -984,8 +997,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong ReadUInt64()
         {
-            ulong value = BinaryPrimitives.ReadUInt64LittleEndian(_span[_offset..]);
-            _offset += sizeof(ulong);
+            ulong value = BinaryPrimitives.ReadUInt64LittleEndian(_span[Offset..]);
+            Offset += sizeof(ulong);
             return value;
         }
 
@@ -1004,8 +1017,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public long ReadInt64()
         {
-            long value = BinaryPrimitives.ReadInt64LittleEndian(_span[_offset..]);
-            _offset += sizeof(long);
+            long value = BinaryPrimitives.ReadInt64LittleEndian(_span[Offset..]);
+            Offset += sizeof(long);
             return value;
         }
 
@@ -1024,8 +1037,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float ReadFloat()
         {
-            float value = BinaryPrimitives.ReadSingleLittleEndian(_span[_offset..]);
-            _offset += sizeof(float);
+            float value = BinaryPrimitives.ReadSingleLittleEndian(_span[Offset..]);
+            Offset += sizeof(float);
             return value;
         }
 
@@ -1044,8 +1057,8 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double ReadDouble()
         {
-            double value = BinaryPrimitives.ReadDoubleLittleEndian(_span[_offset..]);
-            _offset += sizeof(double);
+            double value = BinaryPrimitives.ReadDoubleLittleEndian(_span[Offset..]);
+            Offset += sizeof(double);
             return value;
         }
 
@@ -1054,7 +1067,7 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool CanRead(int size)
         {
-            return size > 0 && _offset <= _span.Length - size;
+            return size > 0 && Offset <= _span.Length - size;
         }
     }
 }

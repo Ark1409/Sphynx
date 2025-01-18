@@ -65,7 +65,7 @@ namespace Sphynx.Network.Serialization.Packet
             {
                 Serialize(packet, ref serializer);
 
-                int bytesWritten = sizeof(int) + serializer.Count;
+                int bytesWritten = sizeof(int) + serializer.Offset;
 
                 serializer = new BinarySerializer(buffer);
                 serializer.WriteInt32(bytesWritten - sizeof(int));
@@ -74,7 +74,7 @@ namespace Sphynx.Network.Serialization.Packet
             }
             catch
             {
-                return sizeof(int) + serializer.Count;
+                return sizeof(int) + serializer.Offset;
             }
         }
 
@@ -87,7 +87,7 @@ namespace Sphynx.Network.Serialization.Packet
             try
             {
                 packet = Deserialize(ref deserializer);
-                bytesRead = sizeof(int) + deserializer.Count;
+                bytesRead = sizeof(int) + deserializer.Offset;
 
                 return true;
             }
