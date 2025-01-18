@@ -1,5 +1,3 @@
-using Sphynx.Network.Packet;
-
 namespace Sphynx.Core
 {
     /// <summary>
