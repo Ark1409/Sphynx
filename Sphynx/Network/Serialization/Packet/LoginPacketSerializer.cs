@@ -95,7 +95,7 @@ namespace Sphynx.Network.Serialization.Packet
     {
         protected override int GetMaxPacketSize(LoginBroadcastPacket packet)
         {
-            return SnowflakeId.SIZE + sizeof(SphynxUserStatus);
+            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SphynxUserStatus>();
         }
 
         protected override void Serialize(LoginBroadcastPacket packet, ref BinarySerializer serializer)

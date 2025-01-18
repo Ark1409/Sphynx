@@ -10,7 +10,7 @@ namespace Sphynx.Network.Serialization.Packet
     {
         protected sealed override int GetMaxPacketSize(T packet)
         {
-            return sizeof(SphynxErrorCode) + GetMaxPacketSizeInternal(packet);
+            return BinarySerializer.MaxSizeOf<SphynxErrorCode>() + GetMaxPacketSizeInternal(packet);
         }
 
         protected abstract int GetMaxPacketSizeInternal(T packet);
@@ -35,7 +35,7 @@ namespace Sphynx.Network.Serialization.Packet
         protected abstract T DeserializeInternal(ref BinaryDeserializer deserializer, ResponsePacketInfo responseInfo);
     }
 
-    public struct ResponsePacketInfo
+    public readonly struct ResponsePacketInfo
     {
         public SphynxErrorCode ErrorCode { get; init; }
     }

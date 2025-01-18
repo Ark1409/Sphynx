@@ -13,7 +13,8 @@ namespace Sphynx.Network.Serialization.Model
     {
         public override int GetMaxSize(ISphynxUserInfo model)
         {
-            return SnowflakeId.SIZE + BinarySerializer.MaxSizeOf(model.UserName) + sizeof(SphynxUserStatus);
+            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(model.UserName) +
+                   BinarySerializer.MaxSizeOf<SphynxUserStatus>();
         }
 
         protected override void Serialize(ISphynxUserInfo model, ref BinarySerializer serializer)
@@ -47,7 +48,8 @@ namespace Sphynx.Network.Serialization.Model
     {
         public override int GetMaxSize(ISphynxSelfInfo model)
         {
-            int userInfoSize = SnowflakeId.SIZE + BinarySerializer.MaxSizeOf(model.UserName) + sizeof(SphynxUserStatus);
+            int userInfoSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(model.UserName) +
+                               BinarySerializer.MaxSizeOf<SphynxUserStatus>();
 
             int selfInfoSize = BinarySerializer.MaxSizeOf(model.Friends) + BinarySerializer.MaxSizeOf(model.Rooms) +
                                BinarySerializer.MaxSizeOf(model.LastReadMessages) +

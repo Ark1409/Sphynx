@@ -8,9 +8,10 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public abstract class RequestPacketSerializer<T> : PacketSerializer<T> where T : SphynxRequestPacket
     {
-        protected sealed override unsafe int GetMaxPacketSize(T packet)
+        protected sealed override int GetMaxPacketSize(T packet)
         {
-            return SnowflakeId.SIZE + sizeof(Guid) + GetMaxPacketSizeInternal(packet);
+            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<Guid>() +
+                   GetMaxPacketSizeInternal(packet);
         }
 
         protected abstract int GetMaxPacketSizeInternal(T packet);
@@ -37,7 +38,7 @@ namespace Sphynx.Network.Serialization.Packet
         protected abstract T DeserializeInternal(ref BinaryDeserializer deserializer, RequestPacketInfo requestInfo);
     }
 
-    public struct RequestPacketInfo
+    public readonly struct RequestPacketInfo
     {
         public SnowflakeId UserId { get; init; }
         public Guid SessionId { get; init; }
