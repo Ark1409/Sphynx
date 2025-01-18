@@ -39,22 +39,6 @@ namespace Sphynx.Network.PacketV2
         {
             switch (packetType)
             {
-                case SphynxPacketType.LOGIN_REQ:
-                {
-                    if (!LoginRequestPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.LOGIN_RES:
-                {
-                    if (!LoginResponsePacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
                 case SphynxPacketType.MSG_REQ:
                 {
                     if (!MessageRequestPacket.TryDeserialize(contents, out var p)) break;
@@ -239,14 +223,6 @@ namespace Sphynx.Network.PacketV2
                     return true;
                 }
 
-                case SphynxPacketType.LOGIN_BCAST:
-                {
-                    if (!LoginBroadcastPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
                 case SphynxPacketType.USER_INFO_REQ:
                 case SphynxPacketType.USER_INFO_RES:
                     break;
@@ -320,7 +296,11 @@ namespace Sphynx.Network.PacketV2
         /// Attempts to serialize this packet into a tightly-packed byte array.
         /// </summary>
         /// <param name="packetBytes">This packet serialized as a byte array.</param>
-        public abstract bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes);
+        public virtual bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
+        {
+            packetBytes = null;
+            return false;
+        }
 
         /// <summary>
         /// Attempts to serialize this packet into the <paramref name="stream"/>.
@@ -332,7 +312,10 @@ namespace Sphynx.Network.PacketV2
         /// Attempts to asynchronously serialize this packet into the <paramref name="stream"/>.
         /// </summary>
         /// <param name="stream">The stream to serialize this packet into.</param>
-        public abstract Task<bool> TrySerializeAsync(Stream stream);
+        public virtual Task<bool> TrySerializeAsync(Stream stream)
+        {
+            return Task.FromResult(false);
+        }
 
         /// <summary>
         /// Serializes a packet header into the specified <paramref name="packetBuffer"/>, a tightly-packed
