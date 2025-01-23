@@ -191,22 +191,6 @@ namespace Sphynx.Network.PacketV2
                     return true;
                 }
 
-                case SphynxPacketType.LOGOUT_REQ:
-                {
-                    if (!LogoutRequestPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.LOGOUT_RES:
-                {
-                    if (!LogoutResponsePacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
                 case SphynxPacketType.ROOM_INFO_REQ:
                 {
                     if (!RoomInfoRequestPacket.TryDeserialize(contents, out var p)) break;
