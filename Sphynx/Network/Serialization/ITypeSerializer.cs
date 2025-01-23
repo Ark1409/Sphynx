@@ -33,4 +33,21 @@ namespace Sphynx.Network.Serialization
         /// <param name="bytesRead">Number of bytes read from the buffer.</param>
         bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? instance, out int bytesRead);
     }
+
+    internal static class TypeSerializerExtensions
+    {
+        internal static bool TryDeserialize<T>(
+            this ITypeSerializer<T> serializer,
+            ref BinaryDeserializer deserializer,
+            [NotNullWhen(true)] out T? model)
+        {
+            if (serializer.TryDeserialize(deserializer.CurrentSpan, out model, out int bytesRead))
+            {
+                deserializer.Offset += bytesRead;
+                return true;
+            }
+
+            return false;
+        }
+    }
 }

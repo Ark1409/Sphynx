@@ -7,6 +7,7 @@ using Sphynx.ModelV2.User;
 using Sphynx.Network.PacketV2.Broadcast;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
+using Sphynx.Network.Serialization.Model;
 using SphynxUserStatus = Sphynx.Model.User.SphynxUserStatus;
 
 namespace Sphynx.Network.Serialization.Packet
@@ -62,14 +63,11 @@ namespace Sphynx.Network.Serialization.Packet
 
             serializer.WriteGuid(packet.SessionId!.Value);
 
-            if (_userSerializer.TrySerialize(packet.UserInfo!, serializer.CurrentSpan, out int bytesWritten))
+            if (!_userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer))
             {
-                serializer.Offset += bytesWritten;
-                return;
+                throw new SerializationException(
+                    $"Could not serialize user {packet.UserInfo!.UserId} with session id {packet.SessionId}");
             }
-
-            throw new SerializationException(
-                $"Could not serialize user {packet.UserInfo!.UserId} with session id {packet.SessionId}");
         }
 
         protected override LoginResponsePacket DeserializeInternal(
@@ -81,11 +79,8 @@ namespace Sphynx.Network.Serialization.Packet
 
             var sessionId = deserializer.ReadGuid();
 
-            if (_userSerializer.TryDeserialize(deserializer.CurrentSpan, out var userInfo, out int bytesRead))
-            {
-                deserializer.Offset += bytesRead;
+            if (_userSerializer.TryDeserialize(ref deserializer, out var userInfo))
                 return new LoginResponsePacket(userInfo, sessionId);
-            }
 
             throw new SerializationException($"Could not deserialize user with session id {sessionId}");
         }

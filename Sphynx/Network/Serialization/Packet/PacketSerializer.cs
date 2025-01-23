@@ -27,9 +27,8 @@ namespace Sphynx.Network.Serialization.Packet
             try
             {
                 var tempSpan = tempBuffer.Span;
-                bytesWritten = SerializeUnsafe(packet, tempSpan);
 
-                if (tempSpan.TryCopyTo(buffer))
+                if (TrySerializeUnsafe(packet, tempSpan, out bytesWritten) && tempSpan.TryCopyTo(buffer))
                     return true;
             }
             catch
@@ -46,18 +45,28 @@ namespace Sphynx.Network.Serialization.Packet
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TrySerializeUnsafe(T packet, Span<byte> buffer)
+        {
+            return TrySerialize(packet, buffer, out _);
+        }
+
         /// <summary>
         /// Serializes the packet directly into the <paramref name="buffer"/>, without resetting its contents
         /// on failure.
         /// </summary>
         /// <param name="packet">The packet to serialize.</param>
         /// <param name="buffer">The output buffer.</param>
-        /// <returns>Number of bytes written to the buffer.</returns>
-        public int SerializeUnsafe(T packet, Span<byte> buffer)
+        /// <param name="bytesWritten">Number of bytes written to the buffer.</param>
+        /// <returns>true if serialization succeeded; false otherwise.</returns>
+        public bool TrySerializeUnsafe(T packet, Span<byte> buffer, out int bytesWritten)
         {
             // Sanity check
             if (buffer.Length < sizeof(int))
-                return 0;
+            {
+                bytesWritten = 0;
+                return false;
+            }
 
             var serializer = new BinarySerializer(buffer[sizeof(int)..]);
 
@@ -65,16 +74,16 @@ namespace Sphynx.Network.Serialization.Packet
             {
                 Serialize(packet, ref serializer);
 
-                int bytesWritten = sizeof(int) + serializer.Offset;
-
+                bytesWritten = sizeof(int) + serializer.Offset;
                 serializer = new BinarySerializer(buffer);
                 serializer.WriteInt32(bytesWritten - sizeof(int));
 
-                return bytesWritten;
+                return true;
             }
             catch
             {
-                return sizeof(int) + serializer.Offset;
+                bytesWritten = sizeof(int) + serializer.Offset;
+                return false;
             }
         }
 

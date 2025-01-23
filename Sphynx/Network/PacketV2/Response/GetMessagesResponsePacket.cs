@@ -11,7 +11,7 @@ namespace Sphynx.Network.PacketV2.Response
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_INFO_RES;
 
         /// <summary>
-        /// The resolved messages' information.
+        /// The resolved messages' information. The array is in decreasing order of message creation time.
         /// </summary>
         public IChatMessage[]? Messages { get; set; }
 

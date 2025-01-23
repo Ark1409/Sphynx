@@ -6,6 +6,7 @@ using Sphynx.Core;
 using Sphynx.ModelV2;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
+using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
@@ -62,13 +63,8 @@ namespace Sphynx.Network.Serialization.Packet
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return;
 
-            if (_chatMessageSerializer.TrySerialize(packet.Messages!, serializer.CurrentSpan, out int bytesWritten))
-            {
-                serializer.Offset += bytesWritten;
-                return;
-            }
-
-            throw new SerializationException($"Could not serialize {nameof(GetMessagesResponsePacket)}");
+            if (!_chatMessageSerializer.TrySerializeUnsafe(packet.Messages!, ref serializer))
+                throw new SerializationException($"Could not serialize {nameof(GetMessagesResponsePacket)}");
         }
 
         protected override GetMessagesResponsePacket DeserializeInternal(
@@ -78,11 +74,8 @@ namespace Sphynx.Network.Serialization.Packet
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new GetMessagesResponsePacket(responseInfo.ErrorCode);
 
-            if (_chatMessageSerializer.TryDeserialize(deserializer.CurrentSpan, out var messages, out int bytesRead))
-            {
-                deserializer.Offset += bytesRead;
+            if (_chatMessageSerializer.TryDeserialize(ref deserializer, out var messages))
                 return new GetMessagesResponsePacket(messages);
-            }
 
             throw new SerializationException($"Could not deserialize {nameof(GetMessagesResponsePacket)}");
         }

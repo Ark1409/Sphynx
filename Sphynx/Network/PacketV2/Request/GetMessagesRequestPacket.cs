@@ -27,7 +27,13 @@ namespace Sphynx.Network.PacketV2.Request
         /// The number of older messages to retrieve, starting from <see cref="SinceId"/>.
         /// </summary>
         /// <remarks>Maximum value of <see cref="MAX_MESSAGES_COUNT"/>.</remarks>
-        public int Count { get; set; }
+        public int Count
+        {
+            get => _count;
+            set => _count = value > MAX_MESSAGES_COUNT ? MAX_MESSAGES_COUNT : value;
+        }
+
+        private int _count;
 
         /// <summary>
         /// Whether to include the message with id <see cref="SinceId"/> (if it exists) in the response.
