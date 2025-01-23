@@ -1,8 +1,4 @@
-﻿using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-using Sphynx.Core;
-using Sphynx.Utils;
+﻿using Sphynx.Core;
 
 namespace Sphynx.Network.PacketV2.Request
 {

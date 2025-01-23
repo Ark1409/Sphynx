@@ -19,15 +19,14 @@ namespace Sphynx.Network.PacketV2.Request
         public Guid SessionId { get; set; }
 
         protected static readonly int USER_ID_OFFSET = 0;
-        protected static readonly int SESSION_ID_OFFSET = USER_ID_OFFSET + GUID_SIZE;
-        protected static readonly int DEFAULT_CONTENT_SIZE = GUID_SIZE + GUID_SIZE;
+        protected static readonly int SESSION_ID_OFFSET = USER_ID_OFFSET + SnowflakeId.SIZE;
+        protected static readonly int DEFAULT_CONTENT_SIZE = SnowflakeId.SIZE + GUID_SIZE;
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequestPacket"/>.
         /// </summary>
         public SphynxRequestPacket() : this(SnowflakeId.Empty, Guid.Empty)
         {
-
         }
 
         /// <summary>
@@ -48,7 +47,10 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="userId">The deserialized user ID.</param>
         /// <param name="sessionId">The deserialized session ID.</param>
         /// <returns>true if the data could be deserialized; false otherwise.</returns>
-        protected static bool TryDeserializeDefaults(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out SnowflakeId? userId, [NotNullWhen(true)] out Guid? sessionId)
+        protected static bool TryDeserializeDefaults(
+            ReadOnlySpan<byte> buffer,
+            [NotNullWhen(true)] out SnowflakeId? userId,
+            [NotNullWhen(true)] out Guid? sessionId)
         {
             if (buffer.Length < DEFAULT_CONTENT_SIZE)
             {
@@ -85,6 +87,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="other">A request packet to compare with this request packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxRequestPacket? other) => base.Equals(other) && UserId == other?.UserId && SessionId == other?.SessionId;
+        protected bool Equals(SphynxRequestPacket? other) =>
+            base.Equals(other) && UserId == other?.UserId && SessionId == other?.SessionId;
     }
 }
