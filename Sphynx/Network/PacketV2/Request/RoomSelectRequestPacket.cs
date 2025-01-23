@@ -19,7 +19,7 @@ namespace Sphynx.Network.PacketV2.Request
         private static readonly int ROOM_ID_OFFSET = DEFAULT_CONTENT_SIZE;
 
         /// <summary>
-        /// Creates a new <see cref="MessageRequestPacket"/>.
+        /// Creates a new <see cref="SendMessageRequestPacket"/>.
         /// </summary>
         /// <param name="roomId">ID of the chat room that was selected.</param>
         public RoomSelectRequestPacket(Guid roomId) : this(SnowflakeId.Empty, Guid.Empty, roomId)

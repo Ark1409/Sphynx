@@ -39,30 +39,6 @@ namespace Sphynx.Network.PacketV2
         {
             switch (packetType)
             {
-                case SphynxPacketType.MSG_REQ:
-                {
-                    if (!MessageRequestPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.MSG_RES:
-                {
-                    if (!MessageResponsePacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.MSG_BCAST:
-                {
-                    if (!MessageBroadcastPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
                 case SphynxPacketType.ROOM_CREATE_REQ:
                 {
                     if (!RoomCreateRequestPacket.TryDeserialize(contents, out var p)) break;
