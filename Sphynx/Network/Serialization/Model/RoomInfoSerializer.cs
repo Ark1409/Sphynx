@@ -1,8 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor.
-
 using Sphynx.Core;
 using Sphynx.ModelV2.Room;
 
@@ -40,8 +38,8 @@ namespace Sphynx.Network.Serialization.Model
         {
             public SnowflakeId RoomId { get; set; }
             public ChatRoomType RoomType { get; set; }
-            public string Name { get; set; }
-            public ISet<SnowflakeId> Users { get; set; }
+            public string Name { get; set; } = null!;
+            public ISet<SnowflakeId> Users { get; set; } = null!;
 
             public bool Equals(IChatRoomInfo? other) => other is IDirectChatRoomInfo direct && Equals(direct);
             public bool Equals(IDirectChatRoomInfo? other) => RoomId == other?.RoomId && RoomType == other.RoomType;
@@ -96,8 +94,8 @@ namespace Sphynx.Network.Serialization.Model
         {
             public SnowflakeId RoomId { get; set; }
             public ChatRoomType RoomType { get; set; }
-            public string Name { get; set; }
-            public ISet<SnowflakeId> Users { get; set; }
+            public string Name { get; set; } = null!;
+            public ISet<SnowflakeId> Users { get; set; } = null!;
             public bool Public { get; set; }
             public SnowflakeId OwnerId { get; set; }
 

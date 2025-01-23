@@ -1,8 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor.
-
 using System.Collections;
 using Sphynx.Core;
 using Sphynx.ModelV2.User;
@@ -36,7 +34,7 @@ namespace Sphynx.Network.Serialization.Model
         private class DummySphynxUserInfo : ISphynxUserInfo
         {
             public SnowflakeId UserId { get; set; }
-            public string UserName { get; set; }
+            public string UserName { get; set; } = null!;
             public SphynxUserStatus UserStatus { get; set; }
 
             public override int GetHashCode() => UserId.GetHashCode();
@@ -103,13 +101,13 @@ namespace Sphynx.Network.Serialization.Model
         private class DummySphynxSelfInfo : ISphynxSelfInfo
         {
             public SnowflakeId UserId { get; set; }
-            public string UserName { get; set; }
+            public string UserName { get; set; } = null!;
             public SphynxUserStatus UserStatus { get; set; }
-            public ISet<SnowflakeId> Friends { get; set; }
-            public ISet<SnowflakeId> Rooms { get; set; }
-            public ILastReadMessageInfo LastReadMessages { get; set; }
-            public ISet<SnowflakeId> OutgoingFriendRequests { get; set; }
-            public ISet<SnowflakeId> IncomingFriendRequests { get; set; }
+            public ISet<SnowflakeId> Friends { get; set; } = null!;
+            public ISet<SnowflakeId> Rooms { get; set; } = null!;
+            public ILastReadMessageInfo LastReadMessages { get; set; } = null!;
+            public ISet<SnowflakeId> OutgoingFriendRequests { get; set; } = null!;
+            public ISet<SnowflakeId> IncomingFriendRequests { get; set; } = null!;
 
             public override int GetHashCode() => UserId.GetHashCode();
             public bool Equals(ISphynxUserInfo? other) => other is not null && UserId == other.UserId;

@@ -1,8 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor.
-
 using Sphynx.Core;
 using Sphynx.ModelV2;
 
@@ -49,7 +47,7 @@ namespace Sphynx.Network.Serialization.Model
             public SnowflakeId MessageId { get; set; }
             public SnowflakeId RoomId { get; set; }
             public SnowflakeId SenderId { get; set; }
-            public string Content { get; set; }
+            public string Content { get; set; } = null!;
             public DateTime? EditTimestamp { get; set; }
 
             public bool Equals(IChatMessage? other) => MessageId == other?.MessageId && RoomId == other.RoomId;
