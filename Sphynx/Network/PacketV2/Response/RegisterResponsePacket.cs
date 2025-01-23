@@ -1,6 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Sphynx.Core;
-using Sphynx.Model.User;
+﻿using Sphynx.Core;
+using Sphynx.ModelV2.User;
 
 namespace Sphynx.Network.PacketV2.Response
 {
@@ -13,18 +12,12 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Holds the authenticated user's information.
         /// </summary>
-        public SphynxUserInfo? UserInfo { get; set; }
+        public ISphynxSelfInfo? UserInfo { get; set; }
 
         /// <summary>
         /// The session ID for the client.
         /// </summary>
         public Guid? SessionId { get; set; }
-
-        private const int SESSION_ID_OFFSET = DEFAULT_CONTENT_SIZE;
-        private static readonly int USER_ID_OFFSET = SESSION_ID_OFFSET + GUID_SIZE;
-        private static readonly int USER_STATUS_OFFSET = USER_ID_OFFSET + GUID_SIZE;
-        private static readonly int USERNAME_SIZE_OFFSET = USER_STATUS_OFFSET + sizeof(SphynxUserStatus);
-        private static readonly int USERNAME_OFFSET = USERNAME_SIZE_OFFSET + sizeof(int);
 
         /// <summary>
         /// Creates a new <see cref="LoginResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
@@ -46,20 +39,10 @@ namespace Sphynx.Network.PacketV2.Response
         /// </summary>
         /// <param name="userInfo">Holds the authenticated user's information.</param>
         /// <param name="sessionId">The session ID for the client.</param>
-        public RegisterResponsePacket(SphynxUserInfo userInfo, Guid sessionId) : this(SphynxErrorCode.SUCCESS)
+        public RegisterResponsePacket(ISphynxSelfInfo userInfo, Guid sessionId) : this(SphynxErrorCode.SUCCESS)
         {
             UserInfo = userInfo;
             SessionId = sessionId;
-        }
-
-        public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override Task<bool> TrySerializeAsync(Stream stream)
-        {
-            throw new NotImplementedException();
         }
 
         /// <inheritdoc/>
