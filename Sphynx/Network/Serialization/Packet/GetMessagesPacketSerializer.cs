@@ -12,7 +12,7 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class GetMessagesRequestPacketSerializer : RequestPacketSerializer<GetMessagesRequestPacket>
     {
-        protected override int GetMaxPacketSizeInternal(GetMessagesRequestPacket packet)
+        protected override int GetMaxSizeInternal(GetMessagesRequestPacket packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>() +
                    BinarySerializer.MaxSizeOf<int>() + BinarySerializer.MaxSizeOf<bool>();

@@ -10,7 +10,7 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class LogoutRequestPacketSerializer : RequestPacketSerializer<LogoutRequestPacket>
     {
-        protected override int GetMaxPacketSizeInternal(LogoutRequestPacket packet)
+        protected override int GetMaxSizeInternal(LogoutRequestPacket packet)
         {
             return 0;
         }
@@ -48,7 +48,7 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class LogoutBroadcastPacketSerializer : PacketSerializer<LogoutBroadcastPacket>
     {
-        protected override int GetMaxPacketSize(LogoutBroadcastPacket packet)
+        public override int GetMaxSize(LogoutBroadcastPacket packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>();
         }

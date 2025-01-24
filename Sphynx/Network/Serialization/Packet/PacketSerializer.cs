@@ -10,13 +10,7 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public abstract class PacketSerializer<T> : IPacketSerializer<T> where T : SphynxPacket
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int GetMaxSize(T packet)
-        {
-            return sizeof(int) + GetMaxPacketSize(packet);
-        }
-
-        protected abstract int GetMaxPacketSize(T packet);
+        public abstract int GetMaxSize(T packet);
 
         public bool TrySerialize(T packet, Span<byte> buffer, out int bytesWritten)
         {
@@ -48,7 +42,7 @@ namespace Sphynx.Network.Serialization.Packet
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TrySerializeUnsafe(T packet, Span<byte> buffer)
         {
-            return TrySerialize(packet, buffer, out _);
+            return TrySerializeUnsafe(packet, buffer, out _);
         }
 
         /// <summary>
@@ -61,28 +55,18 @@ namespace Sphynx.Network.Serialization.Packet
         /// <returns>true if serialization succeeded; false otherwise.</returns>
         public bool TrySerializeUnsafe(T packet, Span<byte> buffer, out int bytesWritten)
         {
-            // Sanity check
-            if (buffer.Length < sizeof(int))
-            {
-                bytesWritten = 0;
-                return false;
-            }
-
-            var serializer = new BinarySerializer(buffer[sizeof(int)..]);
+            var serializer = new BinarySerializer(buffer);
 
             try
             {
                 Serialize(packet, ref serializer);
-
-                bytesWritten = sizeof(int) + serializer.Offset;
-                serializer = new BinarySerializer(buffer);
-                serializer.WriteInt32(bytesWritten - sizeof(int));
+                bytesWritten = serializer.Offset;
 
                 return true;
             }
             catch
             {
-                bytesWritten = sizeof(int) + serializer.Offset;
+                bytesWritten = serializer.Offset;
                 return false;
             }
         }
@@ -91,12 +75,12 @@ namespace Sphynx.Network.Serialization.Packet
 
         public bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? packet, out int bytesRead)
         {
-            var deserializer = new BinaryDeserializer(buffer[sizeof(int)..]);
+            var deserializer = new BinaryDeserializer(buffer);
 
             try
             {
                 packet = Deserialize(ref deserializer);
-                bytesRead = sizeof(int) + deserializer.Offset;
+                bytesRead = deserializer.Offset;
 
                 return true;
             }

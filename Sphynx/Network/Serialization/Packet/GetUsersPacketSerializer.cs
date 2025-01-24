@@ -12,7 +12,7 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class GetUsersRequestPacketSerializer : RequestPacketSerializer<GetUsersRequestPacket>
     {
-        protected override int GetMaxPacketSizeInternal(GetUsersRequestPacket packet)
+        protected override int GetMaxSizeInternal(GetUsersRequestPacket packet)
         {
             return BinarySerializer.MaxSizeOf(packet.UserIds);
         }

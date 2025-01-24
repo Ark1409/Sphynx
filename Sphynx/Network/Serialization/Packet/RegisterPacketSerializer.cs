@@ -16,7 +16,7 @@ namespace Sphynx.Network.Serialization.Packet
     /// </remarks>
     public class RegisterRequestPacketSerializer : PacketSerializer<RegisterRequestPacket>
     {
-        protected override int GetMaxPacketSize(RegisterRequestPacket packet)
+        public override int GetMaxSize(RegisterRequestPacket packet)
         {
             return BinarySerializer.MaxSizeOf(packet.UserName) + BinarySerializer.MaxSizeOf(packet.Password);
         }

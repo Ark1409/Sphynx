@@ -8,7 +8,7 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public abstract class ResponsePacketSerializer<T> : PacketSerializer<T> where T : SphynxResponsePacket
     {
-        protected sealed override int GetMaxPacketSize(T packet)
+        public sealed override int GetMaxSize(T packet)
         {
             return BinarySerializer.MaxSizeOf<SphynxErrorCode>() + GetMaxPacketSizeInternal(packet);
         }

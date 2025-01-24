@@ -18,7 +18,7 @@ namespace Sphynx.Network.Serialization.Packet
     /// </remarks>
     public class LoginRequestPacketSerializer : PacketSerializer<LoginRequestPacket>
     {
-        protected override int GetMaxPacketSize(LoginRequestPacket packet)
+        public override int GetMaxSize(LoginRequestPacket packet)
         {
             return BinarySerializer.MaxSizeOf(packet.UserName) + BinarySerializer.MaxSizeOf(packet.Password);
         }
@@ -88,7 +88,7 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class LoginBroadcastPacketSerializer : PacketSerializer<LoginBroadcastPacket>
     {
-        protected override int GetMaxPacketSize(LoginBroadcastPacket packet)
+        public override int GetMaxSize(LoginBroadcastPacket packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SphynxUserStatus>();
         }
