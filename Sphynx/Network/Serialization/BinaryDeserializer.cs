@@ -55,7 +55,7 @@ namespace Sphynx.Network.Serialization
 
         #region Dictionaries
 
-        public bool TryReadDictionary([NotNullWhen(true)] out IDictionary<string, string?>? dictionary)
+        public bool TryReadDictionary([NotNullWhen(true)] out Dictionary<string, string>? dictionary)
         {
             if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<string, string?>.Empty)) &&
                 !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<string, string?>.Empty)))
@@ -68,7 +68,7 @@ namespace Sphynx.Network.Serialization
 
             // Guaranteed to succeed due to size check
             int size = ReadInt32();
-            dictionary = CreateDictionary<string, string?>(size);
+            dictionary = CreateDictionary<string, string>(size);
 
             for (int i = 0; i < size; i++)
             {
@@ -85,10 +85,10 @@ namespace Sphynx.Network.Serialization
             return true;
         }
 
-        public void ReadDictionary(out IDictionary<string, string?> dictionary)
+        public void ReadDictionary(out Dictionary<string, string> dictionary)
         {
             int size = ReadInt32();
-            dictionary = CreateDictionary<string, string?, Dictionary<string, string?>>(size);
+            dictionary = CreateDictionary<string, string>(size);
 
             for (int i = 0; i < size; i++)
             {
@@ -98,7 +98,7 @@ namespace Sphynx.Network.Serialization
             }
         }
 
-        public bool TryReadDictionary<TKey>([NotNullWhen(true)] out IDictionary<TKey, string?>? dictionary)
+        public bool TryReadDictionary<TKey>([NotNullWhen(true)] out Dictionary<TKey, string>? dictionary)
             where TKey : unmanaged
         {
             if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<TKey, string?>.Empty)) &&
@@ -112,7 +112,7 @@ namespace Sphynx.Network.Serialization
 
             // Guaranteed to succeed due to size check
             int size = ReadInt32();
-            dictionary = CreateDictionary<TKey, string?>(size);
+            dictionary = CreateDictionary<TKey, string>(size);
 
             for (int i = 0; i < size; i++)
             {
@@ -129,11 +129,11 @@ namespace Sphynx.Network.Serialization
             return true;
         }
 
-        public void ReadDictionary<TKey>(out IDictionary<TKey, string?> dictionary)
+        public void ReadDictionary<TKey>(out Dictionary<TKey, string> dictionary)
             where TKey : unmanaged
         {
             int size = ReadInt32();
-            dictionary = CreateDictionary<TKey, string?, Dictionary<TKey, string?>>(size);
+            dictionary = CreateDictionary<TKey, string>(size);
 
             for (int i = 0; i < size; i++)
             {
@@ -143,7 +143,7 @@ namespace Sphynx.Network.Serialization
             }
         }
 
-        public bool TryReadDictionary<TValue>([NotNullWhen(true)] out IDictionary<string, TValue>? dictionary)
+        public bool TryReadDictionary<TValue>([NotNullWhen(true)] out Dictionary<string, TValue>? dictionary)
             where TValue : unmanaged
         {
             if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<string, TValue>.Empty)) &&
@@ -174,7 +174,7 @@ namespace Sphynx.Network.Serialization
             return true;
         }
 
-        public void ReadDictionary<TValue>(out IDictionary<string, TValue> dictionary)
+        public void ReadDictionary<TValue>(out Dictionary<string, TValue> dictionary)
             where TValue : unmanaged
         {
             int size = ReadInt32();
@@ -364,6 +364,18 @@ namespace Sphynx.Network.Serialization
 
         #region Collections
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryReadStringList([NotNullWhen(true)] out List<string>? list)
+        {
+            return TryReadCollection(out list);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public List<string> ReadStringList()
+        {
+            return ReadCollection<List<string>>();
+        }
+
         public bool TryReadCollection<TCollection>([NotNullWhen(true)] out TCollection? collection)
             where TCollection : ICollection<string>, new()
         {
@@ -437,6 +449,18 @@ namespace Sphynx.Network.Serialization
                 collection.Add(ReadUnmanaged<T>());
 
             return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryReadList<T>([NotNullWhen(true)] out List<T>? list) where T : unmanaged
+        {
+            return TryReadCollection<T, List<T>>(out list);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public List<T> ReadList<T>() where T : unmanaged
+        {
+            return ReadCollection<T, List<T>>();
         }
 
         public TCollection ReadCollection<T, TCollection>()
@@ -514,13 +538,13 @@ namespace Sphynx.Network.Serialization
         public Guid ReadGuid()
         {
             var id = new Guid(_span.Slice(Offset, Unsafe.SizeOf<Guid>()));
-            Offset += SnowflakeId.SIZE;
+            Offset += Unsafe.SizeOf<Guid>();
             return id;
         }
 
         public bool TryReadString(Span<char> dest)
         {
-            if (!CanRead(BinarySerializer.SizeOf(string.Empty)))
+            if (!CanRead(BinarySerializer.MaxSizeOf(string.Empty)) && !CanRead(BinarySerializer.SizeOf(string.Empty)))
                 return false;
 
             ReadString(dest);
@@ -534,28 +558,18 @@ namespace Sphynx.Network.Serialization
 
             Debug.Assert(size == decoded);
 
-            Offset += sizeof(int) + size;
+            Offset += size;
         }
 
         public bool TryReadString([NotNullWhen(true)] out string? str)
         {
-            // Try and catch it early
-            if (!TryReadInt32(out int? size))
+            if (!CanRead(BinarySerializer.MaxSizeOf(string.Empty)) && !CanRead(BinarySerializer.SizeOf(string.Empty)))
             {
                 str = null;
                 return false;
             }
 
-            if (!CanRead(size.Value))
-            {
-                Offset -= sizeof(int);
-                str = null;
-                return false;
-            }
-
-            str = BinarySerializer.StringEncoding.GetString(_span.Slice(Offset, size.Value));
-            Offset += sizeof(int) + size.Value;
-
+            str = ReadString();
             return true;
         }
 
@@ -563,7 +577,7 @@ namespace Sphynx.Network.Serialization
         {
             int size = ReadInt32();
             string str = BinarySerializer.StringEncoding.GetString(_span.Slice(Offset, size));
-            Offset += sizeof(int) + size;
+            Offset += size;
 
             return str;
         }
@@ -646,7 +660,7 @@ namespace Sphynx.Network.Serialization
 
         #endregion
 
-        #region Primitive Types
+        #region Primitives
 
         /// <summary>
         /// Attempts to deserialize unmanaged types from bytes.
@@ -1067,7 +1081,7 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool CanRead(int size)
         {
-            return size > 0 && Offset <= _span.Length - size;
+            return size >= 0 && Offset <= _span.Length - size;
         }
     }
 }

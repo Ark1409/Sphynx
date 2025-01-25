@@ -78,17 +78,19 @@ namespace Sphynx.Network.Serialization
                 case TypeCode.UInt64:
                 case TypeCode.Single:
                 case TypeCode.Double:
+                    return Unsafe.SizeOf<T>();
+                case TypeCode.DateTime:
+                    return sizeof(long);
                 case TypeCode.Object when typeof(T) == typeof(Guid):
+                    return Unsafe.SizeOf<T>();
+                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
+                    return SnowflakeId.SIZE;
+                case TypeCode.Object when BitConverter.IsLittleEndian:
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
-                case TypeCode.Object when BitConverter.IsLittleEndian:
                     return Unsafe.SizeOf<T>();
-                case TypeCode.DateTime:
-                    return sizeof(long);
-                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
-                    return SnowflakeId.SIZE;
 
                 case TypeCode.Object:
                     throw new ArgumentException(
@@ -673,35 +675,22 @@ namespace Sphynx.Network.Serialization
                 // For any other user-defined struct, we will try and marshal it directly. This should always
                 // be possible if the struct is of blittable size, but we can also add in support for writing
                 // arbitrarily-sized ones if we are in little endian.
-                case TypeCode.Object:
+                case TypeCode.Object when BitConverter.IsLittleEndian:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
                 {
-                    int size = Unsafe.SizeOf<T>();
-
-                    switch (size)
+                    if (MemoryMarshal.TryWrite(_span[Offset..], ref value))
                     {
-                        case sizeof(byte):
-                            return TryWriteByte(Unsafe.As<T, byte>(ref value));
-                        case sizeof(short):
-                            return TryWriteInt16(Unsafe.As<T, short>(ref value));
-                        case sizeof(int):
-                            return TryWriteInt32(Unsafe.As<T, int>(ref value));
-                        case sizeof(long):
-                            return TryWriteInt64(Unsafe.As<T, long>(ref value));
-
-                        default:
-                            if (BitConverter.IsLittleEndian)
-                            {
-                                if (MemoryMarshal.TryWrite(_span[Offset..], ref value))
-                                {
-                                    Offset += size;
-                                    return true;
-                                }
-                            }
-
-                            return false;
+                        Offset += Unsafe.SizeOf<T>();
+                        return true;
                     }
+
+                    return false;
                 }
 
+                case TypeCode.Object:
                 default:
                     return false;
             }
@@ -764,39 +753,19 @@ namespace Sphynx.Network.Serialization
                 // For any other user-defined struct, we will try and marshal it directly. This should always
                 // be possible if the struct is of blittable size, but we can also add in support for writing
                 // arbitrarily-sized ones if we are in little endian.
-                case TypeCode.Object:
+                case TypeCode.Object when BitConverter.IsLittleEndian:
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
+                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
                 {
-                    int size = Unsafe.SizeOf<T>();
-
-                    switch (size)
-                    {
-                        case sizeof(byte):
-                            WriteByte(Unsafe.As<T, byte>(ref value));
-                            break;
-                        case sizeof(short):
-                            WriteInt16(Unsafe.As<T, short>(ref value));
-                            break;
-                        case sizeof(int):
-                            WriteInt32(Unsafe.As<T, int>(ref value));
-                            break;
-                        case sizeof(long):
-                            WriteInt64(Unsafe.As<T, long>(ref value));
-                            break;
-
-                        default:
-                            if (BitConverter.IsLittleEndian)
-                            {
-                                MemoryMarshal.Write(_span[Offset..], ref value);
-                                Offset += size;
-                                break;
-                            }
-
-                            throw new ArgumentException(
-                                $"Serialization of {typeof(T)} type is unsupported on this machine");
-                    }
-
+                    MemoryMarshal.Write(_span[Offset..], ref value);
+                    Offset += Unsafe.SizeOf<T>();
                     break;
                 }
+
+                case TypeCode.Object:
+                    throw new ArgumentException($"Serialization of {typeof(T)} type is unsupported on this machine");
 
                 default:
                     throw new ArgumentException($"Serialization of {typeof(T)} type is unsupported");
@@ -981,7 +950,7 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool CanWrite(int size)
         {
-            return Offset <= _span.Length - size;
+            return size >= 0 && Offset <= _span.Length - size;
         }
     }
 }

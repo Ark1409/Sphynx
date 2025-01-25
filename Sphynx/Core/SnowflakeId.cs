@@ -73,12 +73,6 @@ namespace Sphynx.Core
                 throw new ArgumentException($"Length of {nameof(bytes)} must be equal to {SIZE}");
             }
 
-            if (BitConverter.IsLittleEndian)
-            {
-                this = MemoryMarshal.Read<SnowflakeId>(bytes);
-                return;
-            }
-
             _a = BinaryPrimitives.ReadInt64LittleEndian(bytes);
             _b = BinaryPrimitives.ReadInt32LittleEndian(bytes[sizeof(long)..]);
         }
@@ -104,11 +98,6 @@ namespace Sphynx.Core
         /// <returns>true if <paramref name="destination"/> is of length 12 or greater; false otherwise.</returns>
         public bool TryWriteBytes(Span<byte> destination)
         {
-            if (BitConverter.IsLittleEndian)
-            {
-                return MemoryMarshal.TryWrite(destination, ref Unsafe.AsRef(in this));
-            }
-
             if (destination.Length < SIZE)
             {
                 return false;
