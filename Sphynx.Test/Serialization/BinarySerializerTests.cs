@@ -53,11 +53,11 @@ namespace Sphynx.Test.Serialization
             // Arrange
             var value = new Dictionary<string, SnowflakeId>
             {
-                { "", new SnowflakeId("00000194b26bdebc0250bee2") },
-                { "foo", new SnowflakeId("00010194b21bdd5c0230be72") },
-                { "bar", new SnowflakeId("00000194b25badbc1220bee2") },
-                { "baz", new SnowflakeId("00001194b24bedac0220bee2") },
-                { "\ud876\ude21", new SnowflakeId("00002194b21bddbc0220bee2") },
+                { "", "test".AsSnowflakeId() },
+                { "foo", "test1".AsSnowflakeId() },
+                { "bar", "test2".AsSnowflakeId() },
+                { "baz", "test3".AsSnowflakeId() },
+                { "\ud876\ude21", "test4".AsSnowflakeId() },
             };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
@@ -276,7 +276,7 @@ namespace Sphynx.Test.Serialization
         public void BinarySerializer_ShouldSerializeSnowflakeId()
         {
             // Arrange
-            var value = new SnowflakeId("00000194b22bddbc0000bff2");
+            var value = "test".AsSnowflakeId();
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<SnowflakeId>()];
             var serializer = new BinarySerializer(buffer);
             var deserializer = new BinaryDeserializer(buffer);
@@ -299,7 +299,7 @@ namespace Sphynx.Test.Serialization
         public void BinarySerializer_ShouldSerializeGuid()
         {
             // Arrange
-            var value = new Guid("62FA647C-AD54-4BCC-A860-E5A2664B019D");
+            var value = "test".AsGuid();
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<Guid>()];
             var serializer = new BinarySerializer(buffer);
             var deserializer = new BinaryDeserializer(buffer);
