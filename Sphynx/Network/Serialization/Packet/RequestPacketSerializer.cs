@@ -16,17 +16,17 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected abstract int GetMaxSizeInternal(T packet);
 
-        protected sealed override void Serialize(T packet, ref BinarySerializer serializer)
+        protected sealed override bool Serialize(T packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.UserId);
             serializer.WriteGuid(packet.SessionId);
 
-            SerializeInternal(packet, ref serializer);
+            return SerializeInternal(packet, ref serializer);
         }
 
-        protected abstract void SerializeInternal(T packet, ref BinarySerializer serializer);
+        protected abstract bool SerializeInternal(T packet, ref BinarySerializer serializer);
 
-        protected sealed override T Deserialize(ref BinaryDeserializer deserializer)
+        protected sealed override T? Deserialize(ref BinaryDeserializer deserializer)
         {
             var userId = deserializer.ReadSnowflakeId();
             var sessionId = deserializer.ReadGuid();
@@ -35,7 +35,7 @@ namespace Sphynx.Network.Serialization.Packet
             return DeserializeInternal(ref deserializer, requestInfo);
         }
 
-        protected abstract T DeserializeInternal(ref BinaryDeserializer deserializer, RequestPacketInfo requestInfo);
+        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, RequestPacketInfo requestInfo);
     }
 
     public readonly struct RequestPacketInfo

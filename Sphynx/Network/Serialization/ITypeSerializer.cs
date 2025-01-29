@@ -39,9 +39,9 @@ namespace Sphynx.Network.Serialization
         internal static bool TryDeserialize<T>(
             this ITypeSerializer<T> serializer,
             ref BinaryDeserializer deserializer,
-            [NotNullWhen(true)] out T? model)
+            [NotNullWhen(true)] out T? instance)
         {
-            if (serializer.TryDeserialize(deserializer.CurrentSpan, out model, out int bytesRead))
+            if (serializer.TryDeserialize(deserializer.CurrentSpan, out instance, out int bytesRead))
             {
                 deserializer.Offset += bytesRead;
                 return true;

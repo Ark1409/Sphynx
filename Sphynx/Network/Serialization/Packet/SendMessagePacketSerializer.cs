@@ -15,10 +15,11 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(packet.Message);
         }
 
-        protected override void SerializeInternal(SendMessageRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(SendMessageRequestPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteString(packet.Message);
+            return true;
         }
 
         protected override SendMessageRequestPacket DeserializeInternal(
@@ -39,8 +40,9 @@ namespace Sphynx.Network.Serialization.Packet
             return 0;
         }
 
-        protected override void SerializeInternal(SendMessageResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(SendMessageResponsePacket packet, ref BinarySerializer serializer)
         {
+            return true;
         }
 
         protected override SendMessageResponsePacket DeserializeInternal(
@@ -58,10 +60,11 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override void Serialize(SendMessageBroadcastPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(SendMessageBroadcastPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.MessageId);
+            return true;
         }
 
         protected override SendMessageBroadcastPacket Deserialize(ref BinaryDeserializer deserializer)

@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Runtime.Serialization;
 using Sphynx.Core;
 using Sphynx.ModelV2;
 using Sphynx.Network.PacketV2.Request;
@@ -18,12 +17,13 @@ namespace Sphynx.Network.Serialization.Packet
                    BinarySerializer.MaxSizeOf<int>() + BinarySerializer.MaxSizeOf<bool>();
         }
 
-        protected override void SerializeInternal(GetMessagesRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(GetMessagesRequestPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.SinceId);
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteInt32(packet.Count);
             serializer.WriteBool(packet.Inclusive);
+            return true;
         }
 
         protected override GetMessagesRequestPacket DeserializeInternal(
@@ -57,27 +57,25 @@ namespace Sphynx.Network.Serialization.Packet
             return _chatMessageSerializer.GetMaxSize(packet.Messages!);
         }
 
-        protected override void SerializeInternal(GetMessagesResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(GetMessagesResponsePacket packet, ref BinarySerializer serializer)
         {
             // Only send data on success
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return;
+                return true;
 
-            if (!_chatMessageSerializer.TrySerializeUnsafe(packet.Messages!, ref serializer))
-                throw new SerializationException($"Could not serialize {nameof(GetMessagesResponsePacket)}");
+            return _chatMessageSerializer.TrySerializeUnsafe(packet.Messages!, ref serializer);
         }
 
-        protected override GetMessagesResponsePacket DeserializeInternal(
+        protected override GetMessagesResponsePacket? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponsePacketInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new GetMessagesResponsePacket(responseInfo.ErrorCode);
 
-            if (_chatMessageSerializer.TryDeserialize(ref deserializer, out var messages))
-                return new GetMessagesResponsePacket(messages);
-
-            throw new SerializationException($"Could not deserialize {nameof(GetMessagesResponsePacket)}");
+            return _chatMessageSerializer.TryDeserialize(ref deserializer, out var messages)
+                ? new GetMessagesResponsePacket(messages)
+                : null;
         }
     }
 }

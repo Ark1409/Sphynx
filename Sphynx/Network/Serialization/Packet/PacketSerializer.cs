@@ -71,7 +71,7 @@ namespace Sphynx.Network.Serialization.Packet
             }
         }
 
-        protected abstract void Serialize(T packet, ref BinarySerializer serializer);
+        protected abstract bool Serialize(T packet, ref BinarySerializer serializer);
 
         public bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? packet, out int bytesRead)
         {
@@ -82,7 +82,7 @@ namespace Sphynx.Network.Serialization.Packet
                 packet = Deserialize(ref deserializer);
                 bytesRead = deserializer.Offset;
 
-                return true;
+                return packet is not null;
             }
             catch
             {
@@ -92,6 +92,6 @@ namespace Sphynx.Network.Serialization.Packet
             }
         }
 
-        protected abstract T Deserialize(ref BinaryDeserializer deserializer);
+        protected abstract T? Deserialize(ref BinaryDeserializer deserializer);
     }
 }

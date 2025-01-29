@@ -15,16 +15,16 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected abstract int GetMaxPacketSizeInternal(T packet);
 
-        protected sealed override void Serialize(T packet, ref BinarySerializer serializer)
+        protected sealed override bool Serialize(T packet, ref BinarySerializer serializer)
         {
             serializer.WriteEnum(packet.ErrorCode);
 
-            SerializeInternal(packet, ref serializer);
+            return SerializeInternal(packet, ref serializer);
         }
 
-        protected abstract void SerializeInternal(T packet, ref BinarySerializer serializer);
+        protected abstract bool SerializeInternal(T packet, ref BinarySerializer serializer);
 
-        protected sealed override T Deserialize(ref BinaryDeserializer deserializer)
+        protected sealed override T? Deserialize(ref BinaryDeserializer deserializer)
         {
             var errorCode = deserializer.ReadEnum<SphynxErrorCode>();
             var responseInfo = new ResponsePacketInfo { ErrorCode = errorCode };
@@ -32,7 +32,7 @@ namespace Sphynx.Network.Serialization.Packet
             return DeserializeInternal(ref deserializer, responseInfo);
         }
 
-        protected abstract T DeserializeInternal(ref BinaryDeserializer deserializer, ResponsePacketInfo responseInfo);
+        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, ResponsePacketInfo responseInfo);
     }
 
     public readonly struct ResponsePacketInfo

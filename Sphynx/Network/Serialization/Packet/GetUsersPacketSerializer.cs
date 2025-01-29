@@ -17,9 +17,10 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf(packet.UserIds);
         }
 
-        protected override void SerializeInternal(GetUsersRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(GetUsersRequestPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteCollection(packet.UserIds);
+            return true;
         }
 
         protected override GetUsersRequestPacket DeserializeInternal(
@@ -48,27 +49,25 @@ namespace Sphynx.Network.Serialization.Packet
             return _userSerializer.GetMaxSize(packet.Users!);
         }
 
-        protected override void SerializeInternal(GetUsersResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(GetUsersResponsePacket packet, ref BinarySerializer serializer)
         {
             // Only serialize users on success
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return;
+                return true;
 
-            if (!_userSerializer.TrySerializeUnsafe(packet.Users!, ref serializer))
-                throw new SerializationException($"Could not serialize {nameof(GetUsersResponsePacket)}");
+            return _userSerializer.TrySerializeUnsafe(packet.Users!, ref serializer);
         }
 
-        protected override GetUsersResponsePacket DeserializeInternal(
+        protected override GetUsersResponsePacket? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponsePacketInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new GetUsersResponsePacket(responseInfo.ErrorCode);
 
-            if (_userSerializer.TryDeserialize(ref deserializer, out var users))
-                return new GetUsersResponsePacket(users);
-
-            throw new SerializationException($"Could not deserialize {nameof(GetUsersResponsePacket)}");
+            return _userSerializer.TryDeserialize(ref deserializer, out var users)
+                ? new GetUsersResponsePacket(users)
+                : null;
         }
     }
 }

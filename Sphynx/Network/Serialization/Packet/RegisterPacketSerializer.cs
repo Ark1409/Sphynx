@@ -21,10 +21,11 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf(packet.UserName) + BinarySerializer.MaxSizeOf(packet.Password);
         }
 
-        protected override void Serialize(RegisterRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(RegisterRequestPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteString(packet.UserName);
             serializer.WriteString(packet.Password);
+            return true;
         }
 
         protected override RegisterRequestPacket Deserialize(ref BinaryDeserializer deserializer)
@@ -53,22 +54,17 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<Guid>() + _userSerializer.GetMaxSize(packet.UserInfo!);
         }
 
-        protected override void SerializeInternal(RegisterResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(RegisterResponsePacket packet, ref BinarySerializer serializer)
         {
             // Only serialize user info when authentication is successful
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return;
+                return true;
 
             serializer.WriteGuid(packet.SessionId!.Value);
-
-            if (!_userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer))
-            {
-                throw new SerializationException(
-                    $"Could not serialize user {packet.UserInfo!.UserId} with session id {packet.SessionId}");
-            }
+            return _userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer);
         }
 
-        protected override RegisterResponsePacket DeserializeInternal(
+        protected override RegisterResponsePacket? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponsePacketInfo responseInfo)
         {
@@ -77,10 +73,9 @@ namespace Sphynx.Network.Serialization.Packet
 
             var sessionId = deserializer.ReadGuid();
 
-            if (_userSerializer.TryDeserialize(ref deserializer, out var userInfo))
-                return new RegisterResponsePacket(userInfo, sessionId);
-
-            throw new SerializationException($"Could not deserialize user with session id {sessionId}");
+            return _userSerializer.TryDeserialize(ref deserializer, out var userInfo)
+                ? new RegisterResponsePacket(userInfo, sessionId)
+                : null;
         }
     }
 }

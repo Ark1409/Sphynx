@@ -23,10 +23,11 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf(packet.UserName) + BinarySerializer.MaxSizeOf(packet.Password);
         }
 
-        protected override void Serialize(LoginRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(LoginRequestPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteString(packet.UserName);
             serializer.WriteString(packet.Password);
+            return true;
         }
 
         protected override LoginRequestPacket Deserialize(ref BinaryDeserializer deserializer)
@@ -55,22 +56,18 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<Guid>() + _userSerializer.GetMaxSize(packet.UserInfo!);
         }
 
-        protected override void SerializeInternal(LoginResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(LoginResponsePacket packet, ref BinarySerializer serializer)
         {
             // Only serialize user info when authentication is successful
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return;
+                return true;
 
             serializer.WriteGuid(packet.SessionId!.Value);
 
-            if (!_userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer))
-            {
-                throw new SerializationException(
-                    $"Could not serialize user {packet.UserInfo!.UserId} with session id {packet.SessionId}");
-            }
+            return _userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer);
         }
 
-        protected override LoginResponsePacket DeserializeInternal(
+        protected override LoginResponsePacket? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponsePacketInfo responseInfo)
         {
@@ -79,10 +76,9 @@ namespace Sphynx.Network.Serialization.Packet
 
             var sessionId = deserializer.ReadGuid();
 
-            if (_userSerializer.TryDeserialize(ref deserializer, out var userInfo))
-                return new LoginResponsePacket(userInfo, sessionId);
-
-            throw new SerializationException($"Could not deserialize user with session id {sessionId}");
+            return _userSerializer.TryDeserialize(ref deserializer, out var userInfo)
+                ? new LoginResponsePacket(userInfo, sessionId)
+                : null;
         }
     }
 
@@ -93,10 +89,11 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SphynxUserStatus>();
         }
 
-        protected override void Serialize(LoginBroadcastPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(LoginBroadcastPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.UserId);
             serializer.WriteEnum(packet.PacketType);
+            return true;
         }
 
         protected override LoginBroadcastPacket Deserialize(ref BinaryDeserializer deserializer)

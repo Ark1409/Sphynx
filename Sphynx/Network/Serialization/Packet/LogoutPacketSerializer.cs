@@ -15,8 +15,9 @@ namespace Sphynx.Network.Serialization.Packet
             return 0;
         }
 
-        protected override void SerializeInternal(LogoutRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(LogoutRequestPacket packet, ref BinarySerializer serializer)
         {
+            return true;
         }
 
         protected override LogoutRequestPacket DeserializeInternal(
@@ -34,8 +35,9 @@ namespace Sphynx.Network.Serialization.Packet
             return 0;
         }
 
-        protected override void SerializeInternal(LogoutResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(LogoutResponsePacket packet, ref BinarySerializer serializer)
         {
+            return true;
         }
 
         protected override LogoutResponsePacket DeserializeInternal(
@@ -53,9 +55,10 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override void Serialize(LogoutBroadcastPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(LogoutBroadcastPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.UserId);
+            return true;
         }
 
         protected override LogoutBroadcastPacket Deserialize(ref BinaryDeserializer deserializer)
