@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using NUnit.Framework.Internal;
 using NUnit.Framework.Legacy;
 using Sphynx.Core;
 using Sphynx.Network.Serialization;
@@ -11,18 +10,20 @@ namespace Sphynx.Test.Serialization
     [TestFixture]
     public class BinarySerializerTests
     {
-        private static readonly Randomizer _randomizer = new Randomizer();
-
         #region Dictionaries
 
         [Test]
-        public void BinarySerializer_ShouldSerializePrimitiveStringDictionary([Random(0, 50, 1)] int size)
+        public void BinarySerializer_ShouldSerializePrimitiveStringDictionary()
         {
             // Arrange
-            var value = new Dictionary<DateTime, string?>(size);
-
-            for (int i = 0; i < size; i++)
-                value.Add(DateTime.Now, _randomizer.GetString());
+            var value = new Dictionary<DateTime, string?>
+            {
+                { new DateTime(1990, 12, 25, 1, 9, 1, DateTimeKind.Utc), null },
+                { new DateTime(1992, 12, 30, 2, 8, 12, DateTimeKind.Utc), "" },
+                { new DateTime(2012, 04, 12, 3, 7, 13, DateTimeKind.Utc), "foo" },
+                { new DateTime(5023, 11, 01, 4, 6, 14, DateTimeKind.Utc), "bar" },
+                { new DateTime(1090, 4, 21, 5, 10, 15, DateTimeKind.Utc), "\ud846\ude38" },
+            };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
@@ -47,13 +48,17 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void BinarySerializer_ShouldSerializeStringPrimitiveDictionary([Random(0, 50, 1)] int size)
+        public void BinarySerializer_ShouldSerializeStringPrimitiveDictionary()
         {
             // Arrange
-            var value = new Dictionary<string, SnowflakeId>(size);
-
-            for (int i = 0; i < size; i++)
-                value.Add(_randomizer.GetString(), SnowflakeId.NewId());
+            var value = new Dictionary<string, SnowflakeId>
+            {
+                { "", new SnowflakeId("00000194b26bdebc0250bee2") },
+                { "foo", new SnowflakeId("00010194b21bdd5c0230be72") },
+                { "bar", new SnowflakeId("00000194b25badbc1220bee2") },
+                { "baz", new SnowflakeId("00001194b24bedac0220bee2") },
+                { "\ud876\ude21", new SnowflakeId("00002194b21bddbc0220bee2") },
+            };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
@@ -73,13 +78,17 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void BinarySerializer_ShouldSerializeStringDictionary([Random(0, 50, 1)] int size)
+        public void BinarySerializer_ShouldSerializeStringDictionary()
         {
             // Arrange
-            var value = new Dictionary<string, string?>(size);
-
-            for (int i = 0; i < size; i++)
-                value.Add(_randomizer.GetString(), _randomizer.NextFloat(1) > 0.1 ? _randomizer.GetString() : null);
+            var value = new Dictionary<string, string?>()
+            {
+                { "", null },
+                { "foo", "" },
+                { "bar", "é" },
+                { "Sphynx", "ç-1234567890/*-+!@#$%^&*()" },
+                { "凹", "The quick brown fox jumps over the lazy dog" },
+            };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
@@ -104,13 +113,18 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void BinarySerializer_ShouldSerializePrimitiveDictionary([Random(0, 50, 1)] int size)
+        public void BinarySerializer_ShouldSerializePrimitiveDictionary()
         {
             // Arrange
-            var value = new Dictionary<int, double>(size);
-
-            for (int i = 0; i < size; i++)
-                value.Add(_randomizer.Next(), _randomizer.NextDouble());
+            var value = new Dictionary<int, double>
+            {
+                { 0, double.MinValue },
+                { int.MinValue, double.MaxValue },
+                { int.MaxValue, double.Epsilon },
+                { int.MinValue / 2, double.NaN },
+                { 638712, double.PositiveInfinity },
+                { 1111, 12345.6789 },
+            };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
@@ -134,13 +148,17 @@ namespace Sphynx.Test.Serialization
         #region Collections
 
         [Test]
-        public void BinarySerializer_ShouldSerializeStringSet([Random(0, 50, 5)] int size)
+        public void BinarySerializer_ShouldSerializeStringSet()
         {
             // Arrange
-            var value = new HashSet<string?>(size);
-
-            for (int i = 0; i < size; i++)
-                value.Add(_randomizer.NextFloat(1) > 0.1 ? _randomizer.GetString() : null);
+            var value = new HashSet<string?>
+            {
+                "",
+                "foo",
+                "bar",
+                "baz",
+                "可口可樂"
+            };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
@@ -156,17 +174,22 @@ namespace Sphynx.Test.Serialization
                 "Could not perform deserialization.");
             Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
 
-            CollectionAssert.AreEqual(value.Select(x => x ?? string.Empty), readValue!);
+            CollectionAssert.AreEqual(value, readValue!);
         }
 
         [Test]
-        public void BinarySerializer_ShouldSerializeStringList([Random(0, 50, 5)] int size)
+        public void BinarySerializer_ShouldSerializeStringList()
         {
             // Arrange
-            var value = new List<string?>(size);
-
-            for (int i = 0; i < size; i++)
-                value.Add(_randomizer.NextFloat(1) > 0.1 ? _randomizer.GetString() : null);
+            var value = new List<string?>
+            {
+                null,
+                "",
+                "foo",
+                "bar",
+                "baz",
+                "可口可樂"
+            };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
@@ -186,13 +209,17 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void BinarySerializer_ShouldSerializePrimitiveSet([Random(0, 50, 5)] int size)
+        public void BinarySerializer_ShouldSerializePrimitiveSet()
         {
             // Arrange
-            var value = new HashSet<int>(size);
-
-            for (int i = 0; i < size; i++)
-                value.Add(_randomizer.Next());
+            var value = new HashSet<int>
+            {
+                int.MinValue,
+                int.MaxValue,
+                0,
+                100,
+                682317
+            };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
@@ -212,13 +239,17 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void BinarySerializer_ShouldSerializePrimitiveList([Random(0, 50, 5)] int size)
+        public void BinarySerializer_ShouldSerializePrimitiveList()
         {
             // Arrange
-            var value = new List<int>(size);
-
-            for (int i = 0; i < size; i++)
-                value.Add(_randomizer.Next());
+            var value = new List<int>
+            {
+                int.MinValue,
+                int.MaxValue,
+                0,
+                100,
+                682317
+            };
 
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
@@ -245,10 +276,12 @@ namespace Sphynx.Test.Serialization
         public void BinarySerializer_ShouldSerializeSnowflakeId()
         {
             // Arrange
-            var value = SnowflakeId.NewId();
+            var value = new SnowflakeId("00000194b22bddbc0000bff2");
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<SnowflakeId>()];
             var serializer = new BinarySerializer(buffer);
             var deserializer = new BinaryDeserializer(buffer);
+
+            Console.WriteLine(value.ToString());
 
             // Act
             bool serialized = serializer.TryWriteSnowflakeId(value);
@@ -259,14 +292,14 @@ namespace Sphynx.Test.Serialization
             Assert.That(deserializer.TryReadSnowflakeId(out var readValue), "Could not perform deserialization.");
             Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf<SnowflakeId>()));
 
-            Assert.That(value, Is.EqualTo(readValue!.Value));
+            Assert.That(readValue!.Value, Is.EqualTo(value));
         }
 
         [Test]
         public void BinarySerializer_ShouldSerializeGuid()
         {
             // Arrange
-            var value = Guid.NewGuid();
+            var value = new Guid("62FA647C-AD54-4BCC-A860-E5A2664B019D");
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<Guid>()];
             var serializer = new BinarySerializer(buffer);
             var deserializer = new BinaryDeserializer(buffer);
@@ -280,14 +313,14 @@ namespace Sphynx.Test.Serialization
             Assert.That(deserializer.TryReadGuid(out var readValue), "Could not perform deserialization.");
             Assert.That(BinarySerializer.SizeOf<Guid>(), Is.EqualTo(deserializer.Offset));
 
-            Assert.That(value, Is.EqualTo(readValue!.Value));
+            Assert.That(readValue!.Value, Is.EqualTo(value));
         }
 
         [Test]
         public void BinarySerializer_ShouldSerializeDateTime()
         {
             // Arrange
-            var value = DateTime.UtcNow;
+            var value = new DateTime(1990, 12, 25, 6, 9, 0, DateTimeKind.Utc);
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<DateTime>()];
             var serializer = new BinarySerializer(buffer);
             var deserializer = new BinaryDeserializer(buffer);
@@ -301,17 +334,18 @@ namespace Sphynx.Test.Serialization
             Assert.That(deserializer.TryReadDateTime(out var readValue), "Could not perform deserialization.");
             Assert.That(BinarySerializer.SizeOf<DateTime>(), Is.EqualTo(deserializer.Offset));
 
-            Assert.That(value, Is.EqualTo(readValue!.Value));
+            Assert.That(readValue!.Value.Kind, Is.EqualTo(value.Kind));
+            Assert.That(readValue!.Value, Is.EqualTo(value));
         }
 
         [TestCase(null), TestCase("")]
-        [TestCase(""), TestCase("")]
-        [TestCase(""), TestCase("")]
+        [TestCase("Bob Mitchell"), TestCase("\u0638\u0639 \u063A\u063B")]
+        [TestCase("Hartmann Schröder"), TestCase("Gro ß")]
+        [TestCase("漢字"), TestCase("加拿大")]
         public void BinarySerializer_ShouldSerializeString(string? value)
         {
             // Arrange
-            Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value =
-                (value == "" ? _randomizer.GetString() : value))];
+            Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf(value)];
             var serializer = new BinarySerializer(buffer);
             var deserializer = new BinaryDeserializer(buffer);
 
@@ -324,17 +358,12 @@ namespace Sphynx.Test.Serialization
             Assert.That(deserializer.TryReadString(out string? readValue), "Could not perform deserialization.");
             Assert.That(BinarySerializer.SizeOf(value), Is.EqualTo(deserializer.Offset));
 
-            if (value is null)
-                Assert.That(readValue, Is.Empty);
-            else
-                Assert.That(value, Is.EqualTo(readValue));
+            Assert.That(readValue, value is null ? Is.Empty : Is.EqualTo(value));
         }
 
         #endregion
 
         #region Primitives
-
-        private const int PRIMITIVE_COUNT = 5;
 
         [TestCase(true)]
         [TestCase(false)]
@@ -357,9 +386,11 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeByte(
-            [Random(byte.MinValue, byte.MaxValue, PRIMITIVE_COUNT, Distinct = true)] byte value)
+        [TestCase(byte.MinValue)]
+        [TestCase(byte.MaxValue)]
+        [TestCase(123)]
+        [TestCase(42)]
+        public void BinarySerializer_ShouldSerializeByte(byte value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<byte>()];
@@ -378,9 +409,11 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeInt16(
-            [Random(short.MinValue, short.MaxValue, PRIMITIVE_COUNT, Distinct = true)] short value)
+        [TestCase(short.MinValue)]
+        [TestCase(short.MaxValue)]
+        [TestCase(0)]
+        [TestCase(4252)]
+        public void BinarySerializer_ShouldSerializeInt16(short value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<short>()];
@@ -399,9 +432,11 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeUInt16(
-            [Random(ushort.MinValue, ushort.MaxValue, PRIMITIVE_COUNT, Distinct = true)] ushort value)
+        [TestCase(ushort.MinValue)]
+        [TestCase(ushort.MaxValue)]
+        [TestCase((ushort)123)]
+        [TestCase((ushort)4252)]
+        public void BinarySerializer_ShouldSerializeUInt16(ushort value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<ushort>()];
@@ -420,9 +455,11 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeInt32(
-            [Random(int.MinValue, int.MaxValue, PRIMITIVE_COUNT, Distinct = true)] int value)
+        [TestCase(int.MinValue)]
+        [TestCase(int.MaxValue)]
+        [TestCase(0)]
+        [TestCase(4252)]
+        public void BinarySerializer_ShouldSerializeInt32(int value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<int>()];
@@ -441,9 +478,11 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeUInt32(
-            [Random(uint.MinValue, uint.MaxValue, PRIMITIVE_COUNT, Distinct = true)] uint value)
+        [TestCase(uint.MinValue)]
+        [TestCase(uint.MaxValue)]
+        [TestCase((uint)123)]
+        [TestCase((uint)4252)]
+        public void BinarySerializer_ShouldSerializeUInt32(uint value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<uint>()];
@@ -462,9 +501,11 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeInt64(
-            [Random(long.MinValue, long.MaxValue, PRIMITIVE_COUNT, Distinct = true)] long value)
+        [TestCase(long.MinValue)]
+        [TestCase(long.MaxValue)]
+        [TestCase(0)]
+        [TestCase(4252)]
+        public void BinarySerializer_ShouldSerializeInt64(long value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<long>()];
@@ -483,9 +524,11 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeUInt64(
-            [Random(ulong.MinValue, ulong.MaxValue, PRIMITIVE_COUNT, Distinct = true)] ulong value)
+        [TestCase(ulong.MinValue)]
+        [TestCase(ulong.MaxValue)]
+        [TestCase(123ul)]
+        [TestCase(4252ul)]
+        public void BinarySerializer_ShouldSerializeUInt64(ulong value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<ulong>()];
@@ -504,9 +547,12 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeDouble(
-            [Random(float.MinValue, float.MaxValue, PRIMITIVE_COUNT)] double value)
+        [TestCase(double.MinValue)]
+        [TestCase(double.MaxValue)]
+        [TestCase(0)]
+        [TestCase(4252.69420d)]
+        [TestCase(1234 + double.Epsilon)]
+        public void BinarySerializer_ShouldSerializeDouble(double value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<double>()];
@@ -525,9 +571,12 @@ namespace Sphynx.Test.Serialization
             Assert.That(value, Is.EqualTo(readValue!.Value));
         }
 
-        [Test]
-        public void BinarySerializer_ShouldSerializeFloat(
-            [Random(float.MinValue, float.MaxValue, PRIMITIVE_COUNT, Distinct = true)] float value)
+        [TestCase(float.MinValue)]
+        [TestCase(float.MaxValue)]
+        [TestCase(0)]
+        [TestCase(4252.69420f)]
+        [TestCase(1234 + float.Epsilon)]
+        public void BinarySerializer_ShouldSerializeFloat(float value)
         {
             // Arrange
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<float>()];

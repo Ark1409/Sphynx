@@ -12,14 +12,12 @@ namespace Sphynx.Test.Serialization
     [TestFixture]
     public class RequestPacketTests
     {
-        private static readonly Randomizer _randomizer = new Randomizer();
-
         [Test]
         public void LoginRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new LoginRequestPacketSerializer();
-            var packet = new LoginRequestPacket(_randomizer.GetString(), _randomizer.GetString());
+            var packet = new LoginRequestPacket("Marry Jones", "password$123");
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -38,7 +36,8 @@ namespace Sphynx.Test.Serialization
         {
             // Arrange
             var serializer = new LogoutRequestPacketSerializer();
-            var packet = new LogoutRequestPacket(SnowflakeId.NewId(), Guid.NewGuid());
+            var packet = new LogoutRequestPacket(new SnowflakeId("0000a194b22bd8bc4071bf32"),
+                new Guid("62FA647C-AD54-4BCC-A860-E5A2664B019D"));
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -57,7 +56,7 @@ namespace Sphynx.Test.Serialization
         {
             // Arrange
             var serializer = new RegisterRequestPacketSerializer();
-            var packet = new RegisterRequestPacket(_randomizer.GetString(), _randomizer.GetString());
+            var packet = new RegisterRequestPacket("John Doe", "strngr$#pwd*234");
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -76,12 +75,13 @@ namespace Sphynx.Test.Serialization
         {
             // Arrange
             var serializer = new GetMessagesRequestPacketSerializer();
-            var packet = new GetMessagesRequestPacket(SnowflakeId.NewId(), Guid.NewGuid())
+            var packet = new GetMessagesRequestPacket(new SnowflakeId("0000a194b22bd8bc4071bf32"),
+                new Guid("62FA647C-AD54-4BCC-A860-E5A2664B019D"))
             {
-                SinceId = SnowflakeId.NewId(),
-                Count = _randomizer.Next(),
-                Inclusive = _randomizer.NextBool(),
-                RoomId = SnowflakeId.NewId()
+                SinceId = new SnowflakeId("0000a194ba52e1bc4071bf32"),
+                Count = 123,
+                Inclusive = true,
+                RoomId = new SnowflakeId("0000a194b22bd8bc99aec132")
             };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
@@ -103,7 +103,11 @@ namespace Sphynx.Test.Serialization
             var serializer = new GetUsersRequestPacketSerializer();
             var packet = new GetUsersRequestPacket(SnowflakeId.NewId(), Guid.NewGuid())
             {
-                UserIds = Enumerable.Range(0, _randomizer.Next(1, 50)).Select(_ => SnowflakeId.NewId()).ToArray(),
+                UserIds = new[]
+                {
+                    new SnowflakeId("00000194b22bddbc0000bff2"), new SnowflakeId("00001194b24bedac0220bee2"),
+                    new SnowflakeId("00002194b21bddbc0220bee2"), new SnowflakeId("00010194b21bdd5c0230be72")
+                }
             };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
@@ -125,8 +129,9 @@ namespace Sphynx.Test.Serialization
             var serializer = new SendMessageRequestPacketSerializer();
             var packet = new SendMessageRequestPacket(SnowflakeId.NewId(), Guid.NewGuid())
             {
-                RoomId = SnowflakeId.NewId(),
-                Message = _randomizer.GetString()
+                RoomId = new SnowflakeId("00010194b21bdd5c0230be72"),
+                Message = "This is a test message. The quick brown fox jumps over... \r\n" +
+                          "Let's also add in $some $sp4cia1 ch4r6t3rs: e, è, é, ê, ë\t\aç"
             };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
