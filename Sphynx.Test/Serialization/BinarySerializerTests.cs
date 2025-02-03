@@ -4,6 +4,7 @@
 using NUnit.Framework.Legacy;
 using Sphynx.Core;
 using Sphynx.Network.Serialization;
+using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Serialization
 {
