@@ -1,6 +1,4 @@
-﻿using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
-using Sphynx.Core;
+﻿using Sphynx.Core;
 
 namespace Sphynx.Network.PacketV2.Response
 {
@@ -11,17 +9,10 @@ namespace Sphynx.Network.PacketV2.Response
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_RES;
 
         /// <summary>
-        /// Creates a new <see cref="LogoutResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
-        /// </summary>
-        public LogoutResponsePacket() : this(SphynxErrorCode.SUCCESS)
-        {
-        }
-
-        /// <summary>
         /// Creates a new <see cref="LogoutResponsePacket"/>.
         /// </summary>
         /// <param name="errorCode">Error code for logout attempt.</param>
-        public LogoutResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
+        public LogoutResponsePacket(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
         {
         }
 

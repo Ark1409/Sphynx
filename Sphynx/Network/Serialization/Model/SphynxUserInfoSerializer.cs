@@ -110,7 +110,8 @@ namespace Sphynx.Network.Serialization.Model
             public ISet<SnowflakeId> IncomingFriendRequests { get; set; } = null!;
 
             public override int GetHashCode() => UserId.GetHashCode();
-            public bool Equals(ISphynxUserInfo? other) => other is not null && UserId == other.UserId;
+            public bool Equals(ISphynxUserInfo? other) => Equals(other as ISphynxSelfInfo);
+            public bool Equals(ISphynxSelfInfo? other) => other is not null && UserId == other.UserId;
         }
 
         private class DummyLastReadMessageInfo : ILastReadMessageInfo

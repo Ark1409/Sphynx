@@ -20,13 +20,6 @@ namespace Sphynx.Network.PacketV2.Response
         public Guid? SessionId { get; set; }
 
         /// <summary>
-        /// Creates a new <see cref="LoginResponsePacket"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
-        /// </summary>
-        public RegisterResponsePacket() : this(SphynxErrorCode.SUCCESS)
-        {
-        }
-
-        /// <summary>
         /// Creates a new <see cref="LoginResponsePacket"/>.
         /// </summary>
         /// <param name="errorCode">Error code for login attempt.</param>
