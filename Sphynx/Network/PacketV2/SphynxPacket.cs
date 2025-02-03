@@ -39,22 +39,6 @@ namespace Sphynx.Network.PacketV2
         {
             switch (packetType)
             {
-                case SphynxPacketType.ROOM_CREATE_REQ:
-                {
-                    if (!RoomCreateRequestPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.ROOM_CREATE_RES:
-                {
-                    if (!RoomCreateResponsePacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
                 case SphynxPacketType.ROOM_JOIN_REQ:
                 {
                     if (!RoomJoinRequestPacket.TryDeserialize(contents, out var p)) break;
@@ -122,30 +106,6 @@ namespace Sphynx.Network.PacketV2
                 case SphynxPacketType.CHAT_KICK_BCAST:
                 {
                     if (!RoomKickBroadcastPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.ROOM_DEL_REQ:
-                {
-                    if (!RoomDeleteRequestPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.ROOM_DEL_RES:
-                {
-                    if (!RoomDeleteResponsePacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.CHAT_DEL_BCAST:
-                {
-                    if (!RoomDeleteBroadcastPacket.TryDeserialize(contents, out var p)) break;
 
                     packet = p;
                     return true;
