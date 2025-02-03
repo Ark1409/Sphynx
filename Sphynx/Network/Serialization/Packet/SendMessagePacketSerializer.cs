@@ -35,7 +35,7 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class SendMessageResponsePacketSerializer : ResponsePacketSerializer<SendMessageResponsePacket>
     {
-        protected override int GetMaxPacketSizeInternal(SendMessageResponsePacket packet)
+        protected override int GetMaxSizeInternal(SendMessageResponsePacket packet)
         {
             return 0;
         }

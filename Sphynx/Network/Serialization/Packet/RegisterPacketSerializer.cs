@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Runtime.Serialization;
 using Sphynx.Core;
 using Sphynx.ModelV2.User;
 using Sphynx.Network.PacketV2.Request;
@@ -37,16 +36,16 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class ResponseRequestPacketSerializer : ResponsePacketSerializer<RegisterResponsePacket>
+    public class RegisterResponsePacketSerializer : ResponsePacketSerializer<RegisterResponsePacket>
     {
         private readonly ITypeSerializer<ISphynxSelfInfo> _userSerializer;
 
-        public ResponseRequestPacketSerializer(ITypeSerializer<ISphynxSelfInfo> userSerializer)
+        public RegisterResponsePacketSerializer(ITypeSerializer<ISphynxSelfInfo> userSerializer)
         {
             _userSerializer = userSerializer;
         }
 
-        protected override int GetMaxPacketSizeInternal(RegisterResponsePacket packet)
+        protected override int GetMaxSizeInternal(RegisterResponsePacket packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;

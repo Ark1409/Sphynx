@@ -30,7 +30,7 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class LogoutResponsePacketSerializer : ResponsePacketSerializer<LogoutResponsePacket>
     {
-        protected override int GetMaxPacketSizeInternal(LogoutResponsePacket packet)
+        protected override int GetMaxSizeInternal(LogoutResponsePacket packet)
         {
             return 0;
         }

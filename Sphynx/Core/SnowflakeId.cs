@@ -3,6 +3,7 @@
 
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -78,6 +79,38 @@ namespace Sphynx.Core
         }
 
         /// <summary>
+        /// Creates a new <see cref="SnowflakeId"/> from a string value.
+        /// </summary>
+        /// <param name="value">The string content of the <see cref="SnowflakeId"/>, as generated from
+        /// <see cref="ToString"/>.</param>
+        public SnowflakeId(string value)
+        {
+            // Each byte requires two chars in hex
+            const int CHARS_PER_BYTE = 2;
+            const int LENGTH = SIZE * CHARS_PER_BYTE;
+
+            if (string.IsNullOrEmpty(value) || value.Length != LENGTH)
+                throw new ArgumentException($"Length of {nameof(value)} must be equal to {LENGTH}");
+
+            var valueSpan = value.AsSpan();
+            bool validId = long.TryParse(valueSpan[..(sizeof(long) * CHARS_PER_BYTE)],
+                NumberStyles.AllowHexSpecifier,
+                null,
+                out _a);
+
+            if (!validId)
+                throw new ArgumentException($"'{value}' is not a valid {nameof(SnowflakeId)}.");
+
+            validId &= int.TryParse(valueSpan[(sizeof(long) * CHARS_PER_BYTE)..],
+                NumberStyles.AllowHexSpecifier,
+                null,
+                out _b);
+
+            if (!validId)
+                throw new ArgumentException($"'{value}' is not a valid {nameof(SnowflakeId)}.");
+        }
+
+        /// <summary>
         /// Serializes this <see cref="SnowflakeId"/> into a byte array.
         /// </summary>
         /// <returns>This id as a byte array.</returns>
@@ -120,6 +153,12 @@ namespace Sphynx.Core
             return Equals(in other);
         }
 
+        /// <inheritdoc cref="Equals(in Sphynx.Core.SnowflakeId)"/>
+        public bool Equals(SnowflakeId? other)
+        {
+            return other.HasValue && Equals(other.Value);
+        }
+
         /// <inheritdoc />
         public override bool Equals(object? obj)
         {
@@ -134,12 +173,11 @@ namespace Sphynx.Core
         {
             // Each byte requires two chars in hex
             const int CHARS_PER_BYTE = 2;
-            const int LENGTH = SIZE * CHARS_PER_BYTE;
 
-            string hex = string.Create(LENGTH, this, (span, inst) =>
+            string hex = string.Create(SIZE * CHARS_PER_BYTE, this, static (span, inst) =>
             {
                 bool formatted = inst._a.TryFormat(span, out _, format: "x16");
-                formatted &= inst._b.TryFormat(span[(sizeof(long) * CHARS_PER_BYTE)..], out _, format: "x8");
+                formatted &= inst._b.TryFormat(span[(CHARS_PER_BYTE * sizeof(long))..], out _, format: "x8");
 
                 Debug.Assert(formatted);
             });

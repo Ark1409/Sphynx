@@ -44,12 +44,17 @@ namespace Sphynx.Network.Serialization.Packet
     {
         private readonly ITypeSerializer<IChatMessage[]> _chatMessageSerializer;
 
+        public GetMessagesResponsePacketSerializer(ITypeSerializer<IChatMessage> chatMessageSerializer)
+            : this(new ArraySerializer<IChatMessage>(chatMessageSerializer))
+        {
+        }
+
         public GetMessagesResponsePacketSerializer(ITypeSerializer<IChatMessage[]> chatMessageSerializer)
         {
             _chatMessageSerializer = chatMessageSerializer;
         }
 
-        protected override int GetMaxPacketSizeInternal(GetMessagesResponsePacket packet)
+        protected override int GetMaxSizeInternal(GetMessagesResponsePacket packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
