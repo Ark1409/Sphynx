@@ -30,17 +30,17 @@ namespace Sphynx.Network.Serialization.Packet
         {
             var userId = deserializer.ReadSnowflakeId();
             var sessionId = deserializer.ReadGuid();
-            var requestInfo = new RequestPacketInfo { UserId = userId, SessionId = sessionId };
+            var requestInfo = new RequestInfo { UserId = userId, SessionId = sessionId };
 
             return DeserializeInternal(ref deserializer, requestInfo);
         }
 
-        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, RequestPacketInfo requestInfo);
-    }
+        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo);
 
-    public readonly struct RequestPacketInfo
-    {
-        public SnowflakeId UserId { get; init; }
-        public Guid SessionId { get; init; }
+        protected readonly struct RequestInfo
+        {
+            public SnowflakeId UserId { get; init; }
+            public Guid SessionId { get; init; }
+        }
     }
 }

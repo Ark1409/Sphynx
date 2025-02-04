@@ -27,16 +27,16 @@ namespace Sphynx.Network.Serialization.Packet
         protected sealed override T? Deserialize(ref BinaryDeserializer deserializer)
         {
             var errorCode = deserializer.ReadEnum<SphynxErrorCode>();
-            var responseInfo = new ResponsePacketInfo { ErrorCode = errorCode };
+            var responseInfo = new ResponseInfo { ErrorCode = errorCode };
 
             return DeserializeInternal(ref deserializer, responseInfo);
         }
 
-        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, ResponsePacketInfo responseInfo);
-    }
+        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo);
 
-    public readonly struct ResponsePacketInfo
-    {
-        public SphynxErrorCode ErrorCode { get; init; }
+        protected readonly struct ResponseInfo
+        {
+            public SphynxErrorCode ErrorCode { get; init; }
+        }
     }
 }

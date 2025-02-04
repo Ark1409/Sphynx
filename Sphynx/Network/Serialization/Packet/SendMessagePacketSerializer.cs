@@ -24,7 +24,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override SendMessageRequestPacket DeserializeInternal(
             ref BinaryDeserializer deserializer,
-            RequestPacketInfo requestInfo)
+            RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
             string message = deserializer.ReadString();
@@ -47,7 +47,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override SendMessageResponsePacket DeserializeInternal(
             ref BinaryDeserializer deserializer,
-            ResponsePacketInfo responseInfo)
+            ResponseInfo responseInfo)
         {
             return new SendMessageResponsePacket(responseInfo.ErrorCode);
         }

@@ -68,7 +68,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override LoginResponsePacket? DeserializeInternal(
             ref BinaryDeserializer deserializer,
-            ResponsePacketInfo responseInfo)
+            ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new LoginResponsePacket(responseInfo.ErrorCode);

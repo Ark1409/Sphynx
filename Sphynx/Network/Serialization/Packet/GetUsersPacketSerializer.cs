@@ -24,7 +24,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override GetUsersRequestPacket DeserializeInternal(
             ref BinaryDeserializer deserializer,
-            RequestPacketInfo requestInfo)
+            RequestInfo requestInfo)
         {
             var userIds = deserializer.ReadArray<SnowflakeId>();
             return new GetUsersRequestPacket(requestInfo.UserId, requestInfo.SessionId, userIds);
@@ -64,7 +64,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override GetUsersResponsePacket? DeserializeInternal(
             ref BinaryDeserializer deserializer,
-            ResponsePacketInfo responseInfo)
+            ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new GetUsersResponsePacket(responseInfo.ErrorCode);

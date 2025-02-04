@@ -65,7 +65,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override RegisterResponsePacket? DeserializeInternal(
             ref BinaryDeserializer deserializer,
-            ResponsePacketInfo responseInfo)
+            ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new RegisterResponsePacket(responseInfo.ErrorCode);

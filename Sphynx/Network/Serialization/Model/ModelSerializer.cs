@@ -114,7 +114,7 @@ namespace Sphynx.Network.Serialization.Model
         /// <paramref name="serializer"/> is a <see cref="ModelSerializer{T}"/>, else defaults to
         /// <see cref="ITypeSerializer{T}.TrySerialize(T, Span{byte}, out int)"/>.
         /// </summary>
-        public static bool TrySerializeUnsafe<T>(
+        internal static bool TrySerializeUnsafe<T>(
             this ITypeSerializer<T> serializer,
             T model,
             Span<byte> buffer,
