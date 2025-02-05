@@ -1,5 +1,5 @@
 ﻿using Sphynx.Core;
-using Sphynx.Model.ChatRoom;
+using Sphynx.ModelV2.Room;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -52,6 +52,15 @@ namespace Sphynx.Network.PacketV2.Request
             /// </summary>
             /// <param name="userId">The user ID of the requesting user.</param>
             /// <param name="sessionId">The session ID for the requesting user.</param>
+            public Direct(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+            {
+            }
+
+            /// <summary>
+            /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+            /// </summary>
+            /// <param name="userId">The user ID of the requesting user.</param>
+            /// <param name="sessionId">The session ID for the requesting user.</param>
             /// <param name="otherId">The user ID of the other user to create the DM with.</param>
             public Direct(SnowflakeId userId, Guid sessionId, SnowflakeId otherId) : base(userId, sessionId)
             {
@@ -70,7 +79,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// The name of the chat room.
             /// </summary>
-            public string Name { get; set; }
+            public string Name { get; set; } = null!;
 
             /// <summary>
             /// The password for the chat room.
@@ -84,6 +93,15 @@ namespace Sphynx.Network.PacketV2.Request
 
             /// <inheritdoc/>
             public override ChatRoomType RoomType => ChatRoomType.GROUP;
+
+            /// <summary>
+            /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+            /// </summary>
+            /// <param name="userId">The user ID of the requesting user.</param>
+            /// <param name="sessionId">The session ID for the requesting user.</param>
+            public Group(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+            {
+            }
 
             /// <summary>
             /// Creates a new <see cref="CreateRoomRequestPacket"/>.

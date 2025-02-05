@@ -36,11 +36,11 @@ namespace Sphynx.Network.Serialization.Packet
         }
 
         protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo);
+    }
 
-        protected readonly struct RequestInfo
-        {
-            public SnowflakeId UserId { get; init; }
-            public Guid SessionId { get; init; }
-        }
+    public readonly struct RequestInfo
+    {
+        public SnowflakeId UserId { get; init; }
+        public Guid SessionId { get; init; }
     }
 }
