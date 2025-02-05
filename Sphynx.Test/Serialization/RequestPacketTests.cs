@@ -138,5 +138,49 @@ namespace Sphynx.Test.Serialization
             Assert.That(bytesWritten, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
+
+        [Test]
+        public void CreateRoomRequestPacket_Direct_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new CreateRoomRequestPacketSerializer();
+            var packet = new CreateRoomRequestPacket.Direct("user".AsSnowflakeId(), "session".AsGuid())
+            {
+                OtherId = "other-user".AsSnowflakeId()
+            };
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
+
+        [Test]
+        public void CreateRoomRequestPacket_Group_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new CreateRoomRequestPacketSerializer();
+            var packet = new CreateRoomRequestPacket.Group("user".AsSnowflakeId(), "session".AsGuid())
+            {
+                Name = "test-group", Password = "test-group-pwd", Public = true
+            };
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
     }
 }

@@ -1,13 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Collections;
-using System.Runtime.InteropServices;
-using Moq;
-using NUnit.Framework.Internal;
-using NUnit.Framework.Legacy;
-using Sphynx.Core;
-using Sphynx.ModelV2.User;
 using Sphynx.Network.PacketV2.Response;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
@@ -129,6 +122,25 @@ namespace Sphynx.Test.Serialization
             // Arrange
             var serializer = new SendMessageResponsePacketSerializer();
             var packet = new SendMessageResponsePacket();
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
+
+        [Test]
+        public void CreateRoomResponsePacket_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new CreateRoomResponsePacketSerializer();
+            var packet = new CreateRoomResponsePacket("room1".AsSnowflakeId());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
