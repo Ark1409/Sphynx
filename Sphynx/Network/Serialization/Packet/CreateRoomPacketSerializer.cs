@@ -56,11 +56,8 @@ namespace Sphynx.Network.Serialization.Packet
 
         public CreateRoomRequestPacketSerializer()
         {
-            _serializers.Add(ChatRoomType.DIRECT_MSG,
-                new Adapter<CreateRoomRequestPacket.Direct>(new Direct()));
-
-            _serializers.Add(ChatRoomType.GROUP,
-                new Adapter<CreateRoomRequestPacket.Group>(new Group()));
+            WithSerializer(ChatRoomType.DIRECT_MSG, new Direct());
+            WithSerializer(ChatRoomType.GROUP, new Group());
         }
 
         protected internal override int GetMaxRoomSize(CreateRoomRequestPacket room)
@@ -91,7 +88,9 @@ namespace Sphynx.Network.Serialization.Packet
             return null;
         }
 
-        public void WithSerializer<T>(ChatRoomType roomType, CreateRoomRequestPacketSerializer<T> serializer)
+        public CreateRoomRequestPacketSerializer WithSerializer<T>(
+            ChatRoomType roomType,
+            CreateRoomRequestPacketSerializer<T> serializer)
             where T : CreateRoomRequestPacket
         {
             ref var existingAdapter =
@@ -106,11 +105,14 @@ namespace Sphynx.Network.Serialization.Packet
             {
                 existingAdapter = new Adapter<T>(serializer);
             }
+
+            return this;
         }
 
-        public bool WithoutSerializer(ChatRoomType roomType)
+        public CreateRoomRequestPacketSerializer WithoutSerializer(ChatRoomType roomType)
         {
-            return _serializers.Remove(roomType);
+            _serializers.Remove(roomType);
+            return this;
         }
 
         private class Adapter<T> : CreateRoomRequestPacketSerializer<CreateRoomRequestPacket>
@@ -145,7 +147,7 @@ namespace Sphynx.Network.Serialization.Packet
             }
         }
 
-        #region Default Implementations
+        #region Concrete Implementations
 
         public class Direct : CreateRoomRequestPacketSerializer<CreateRoomRequestPacket.Direct>
         {
