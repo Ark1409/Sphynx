@@ -67,5 +67,24 @@ namespace Sphynx.Test.Serialization
             Assert.That(bytesWritten, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
+
+        [Test]
+        public void DeleteRoomBroadcastPacket_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new DeleteRoomBroadcastPacketSerializer();
+            var packet = new DeleteRoomBroadcastPacket("room1".AsSnowflakeId());
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
     }
 }
