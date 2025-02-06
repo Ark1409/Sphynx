@@ -91,7 +91,7 @@ namespace Sphynx.Network.Serialization.Packet
         protected override bool Serialize(LoginBroadcastPacket packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.UserId);
-            serializer.WriteEnum(packet.PacketType);
+            serializer.WriteEnum(packet.UserStatus);
             return true;
         }
 
