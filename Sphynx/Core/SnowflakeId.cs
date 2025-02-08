@@ -3,8 +3,8 @@
 
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Sphynx.Core
@@ -26,7 +26,7 @@ namespace Sphynx.Core
         public static SnowflakeId Empty = default;
 
         private readonly long _a; // timestamp
-        private readonly int _b; // machine id + sequence number
+        private readonly int _b; // sequence number + machine id
 
         /// <summary>
         /// Returns the timestamp for this id.
@@ -85,29 +85,70 @@ namespace Sphynx.Core
         /// <see cref="ToString"/>.</param>
         public SnowflakeId(string value)
         {
+            if (string.IsNullOrEmpty(value))
+                throw new ArgumentException($"String '{value}' is not of correct length.", nameof(value));
+
+            if (!TryParse(value.AsSpan(), out var result))
+                throw new ArgumentException($"'{value}' is not a valid {nameof(SnowflakeId)}.");
+
+            this = result.Value;
+        }
+
+        private SnowflakeId(long a, int b)
+        {
+            _a = a;
+            _b = b;
+        }
+
+        /// <summary>
+        /// Attempts to create a new <see cref="SnowflakeId"/> from the input string value.
+        /// </summary>
+        /// <param name="input">The input string.</param>
+        /// <param name="snowflakeId">The resulting <see cref="SnowflakeId"/>.</param>
+        /// <returns>true if the parse operation was successful; false otherwise.</returns>
+        public static bool TryParse(ReadOnlySpan<char> input, [NotNullWhen(true)] out SnowflakeId? snowflakeId)
+        {
             // Each byte requires two chars in hex
             const int CHARS_PER_BYTE = 2;
             const int LENGTH = SIZE * CHARS_PER_BYTE;
 
-            if (string.IsNullOrEmpty(value) || value.Length != LENGTH)
-                throw new ArgumentException($"Length of {nameof(value)} must be equal to {LENGTH}");
+            if (input.Length != LENGTH)
+            {
+                snowflakeId = null;
+                return false;
+            }
 
-            var valueSpan = value.AsSpan();
-            bool validId = long.TryParse(valueSpan[..(sizeof(long) * CHARS_PER_BYTE)],
-                NumberStyles.AllowHexSpecifier,
-                null,
-                out _a);
+            if (!TryParseTimestamp(input, out long timestamp) ||
+                !TryParseSequenceAndMachine(input[(CHARS_PER_BYTE * sizeof(long))..], out int sequenceMachine))
+            {
+                snowflakeId = null;
+                return false;
+            }
 
-            if (!validId)
-                throw new ArgumentException($"'{value}' is not a valid {nameof(SnowflakeId)}.");
+            snowflakeId = new SnowflakeId(timestamp, sequenceMachine);
+            return true;
+        }
 
-            validId &= int.TryParse(valueSpan[(sizeof(long) * CHARS_PER_BYTE)..],
-                NumberStyles.AllowHexSpecifier,
-                null,
-                out _b);
+        private static bool TryParseSequenceAndMachine(ReadOnlySpan<char> input, out int value)
+        {
+            // Each byte requires two chars in hex
+            const int CHARS_PER_BYTE = 2;
+            const int SEQUENCE_MACHINE_LENGTH = sizeof(int) * CHARS_PER_BYTE;
 
-            if (!validId)
-                throw new ArgumentException($"'{value}' is not a valid {nameof(SnowflakeId)}.");
+            var sequenceAndMachineBytes = input[..SEQUENCE_MACHINE_LENGTH];
+
+            return int.TryParse(sequenceAndMachineBytes, NumberStyles.AllowHexSpecifier, null, out value);
+        }
+
+        private static bool TryParseTimestamp(ReadOnlySpan<char> input, out long value)
+        {
+            // Each byte requires two chars in hex
+            const int CHARS_PER_BYTE = 2;
+            const int TIMESTAMP_LENGTH = sizeof(long) * CHARS_PER_BYTE;
+
+            var timestampBytes = input[..TIMESTAMP_LENGTH];
+
+            return long.TryParse(timestampBytes, NumberStyles.AllowHexSpecifier, null, out value);
         }
 
         /// <summary>

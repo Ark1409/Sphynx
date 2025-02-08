@@ -16,7 +16,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The message from which older messages should be retrieved.
         /// </summary>
-        public SnowflakeId SinceId { get; set; }
+        public SnowflakeId BeforeId { get; set; }
 
         /// <summary>
         /// The room ID from which the message belongs.
@@ -24,7 +24,7 @@ namespace Sphynx.Network.PacketV2.Request
         public SnowflakeId RoomId { get; set; }
 
         /// <summary>
-        /// The number of older messages to retrieve, starting from <see cref="SinceId"/>.
+        /// The number of older messages to retrieve, starting from <see cref="BeforeId"/>.
         /// </summary>
         /// <remarks>Maximum value of <see cref="MAX_MESSAGES_COUNT"/>.</remarks>
         public int Count
@@ -36,9 +36,9 @@ namespace Sphynx.Network.PacketV2.Request
         private int _count;
 
         /// <summary>
-        /// Whether to include the message with id <see cref="SinceId"/> (if it exists) in the response.
+        /// Whether to include the message with id <see cref="BeforeId"/> (if it exists) in the response.
         /// </summary>
-        public bool Inclusive { get; set; } = false;
+        public bool Inclusive { get; set; }
 
         /// <summary>
         /// Creates a new <see cref="GetMessagesRequestPacket"/>.
@@ -54,21 +54,21 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        /// <param name="sinceId">The message from which older messages should be retrieved.</param>
+        /// <param name="beforeId">The message from which older messages should be retrieved.</param>
         /// <param name="roomId">The room ID from which the message belongs.</param>
-        /// <param name="count">The number of messages to retrieve, starting from <see cref="SinceId"/>.</param>
-        /// <param name="inclusive">Whether to include the message with id <see cref="SinceId"/> (if it exists) in the
+        /// <param name="count">The number of messages to retrieve, starting from <see cref="BeforeId"/>.</param>
+        /// <param name="inclusive">Whether to include the message with id <see cref="BeforeId"/> (if it exists) in the
         /// response.</param>
         public GetMessagesRequestPacket(
             SnowflakeId userId,
             Guid sessionId,
-            SnowflakeId sinceId,
+            SnowflakeId beforeId,
             SnowflakeId roomId,
             int count,
             bool inclusive = false)
             : base(userId, sessionId)
         {
-            SinceId = sinceId;
+            BeforeId = beforeId;
             Count = count;
             RoomId = roomId;
             Inclusive = inclusive;
@@ -76,7 +76,7 @@ namespace Sphynx.Network.PacketV2.Request
 
         /// <inheritdoc/>
         public bool Equals(GetMessagesRequestPacket? other) => base.Equals(other)
-                                                               && SinceId == other?.SinceId
+                                                               && BeforeId == other?.BeforeId
                                                                && RoomId == other?.RoomId
                                                                && Count == other.Count
                                                                && Inclusive == other.Inclusive;

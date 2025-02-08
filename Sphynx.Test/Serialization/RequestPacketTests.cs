@@ -75,7 +75,7 @@ namespace Sphynx.Test.Serialization
             var serializer = new GetMessagesRequestPacketSerializer();
             var packet = new GetMessagesRequestPacket("test".AsSnowflakeId(), "test".AsGuid())
             {
-                SinceId = "since".AsSnowflakeId(), Count = 123, Inclusive = true, RoomId = "room".AsSnowflakeId()
+                BeforeId = "before".AsSnowflakeId(), Count = 123, Inclusive = true, RoomId = "room".AsSnowflakeId()
             };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 

@@ -19,7 +19,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override bool SerializeInternal(GetMessagesRequestPacket packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.SinceId);
+            serializer.WriteSnowflakeId(packet.BeforeId);
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteInt32(packet.Count);
             serializer.WriteBool(packet.Inclusive);
