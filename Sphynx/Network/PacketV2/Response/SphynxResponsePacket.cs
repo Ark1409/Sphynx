@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using Sphynx.Core;
+﻿using Sphynx.Core;
 
 namespace Sphynx.Network.PacketV2.Response
 {
@@ -13,9 +12,6 @@ namespace Sphynx.Network.PacketV2.Response
         /// </summary>
         public SphynxErrorCode ErrorCode { get; set; }
 
-        protected const int ERROR_CODE_OFFSET = 0;
-        protected const int DEFAULT_CONTENT_SIZE = sizeof(SphynxErrorCode);
-
         /// <summary>
         /// Creates a new <see cref="SphynxResponsePacket"/>.
         /// </summary>
@@ -23,40 +19,6 @@ namespace Sphynx.Network.PacketV2.Response
         public SphynxResponsePacket(SphynxErrorCode errorCode)
         {
             ErrorCode = errorCode;
-        }
-
-        /// <summary>
-        /// Attempts to retrieve a <see cref="ErrorCode"/> from the raw <paramref name="buffer"/> bytes.
-        /// </summary>
-        /// <param name="buffer">The raw bytes to deserialize the data from.</param>
-        /// <param name="errorCode">The deserialized error code.</param>
-        /// <returns>true if the data could be deserialized; false otherwise.</returns>
-        protected static bool TryDeserializeDefaults(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out SphynxErrorCode? errorCode)
-        {
-            if (buffer.Length < DEFAULT_CONTENT_SIZE)
-            {
-                errorCode = null;
-                return false;
-            }
-
-            errorCode = (SphynxErrorCode)buffer[ERROR_CODE_OFFSET];
-            return true;
-        }
-
-        /// <summary>
-        /// Attempts to serialize the <see cref="ErrorCode"/> into the <paramref name="buffer"/>.
-        /// </summary>
-        /// <param name="buffer">The buffer to serialize this packet into.</param>
-        /// <returns>true if this packet could be serialized; false otherwise.</returns>
-        protected bool TrySerializeDefaults(Span<byte> buffer)
-        {
-            if (buffer.Length < DEFAULT_CONTENT_SIZE)
-            {
-                return false;
-            }
-
-            buffer[ERROR_CODE_OFFSET] = (byte)ErrorCode;
-            return true;
         }
 
         /// <summary>

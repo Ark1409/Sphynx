@@ -1,6 +1,4 @@
-﻿using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
-using Sphynx.Core;
+﻿using Sphynx.Core;
 
 namespace Sphynx.Network.PacketV2.Response
 {
