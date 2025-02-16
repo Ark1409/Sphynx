@@ -9,12 +9,12 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// <summary>
         /// The ID of the room to which the message was sent.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <summary>
         /// The message ID of the message that was sent.
         /// </summary>
-        public SnowflakeId MessageId { get; set; }
+        public SnowflakeId MessageId { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_BCAST;

@@ -8,12 +8,12 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// <summary>
         /// Room ID of the room the user has joined.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <summary>
         /// The user ID of the user who joined the room.
         /// </summary>
-        public SnowflakeId JoinerId { get; set; }
+        public SnowflakeId JoinerId { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;

@@ -8,12 +8,12 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The ID of the room to which the message was sent.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <summary>
         /// The contents of the chat message.
         /// </summary>
-        public string Message { get; set; } = string.Empty;
+        public string Message { get; init; } = string.Empty;
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_REQ;

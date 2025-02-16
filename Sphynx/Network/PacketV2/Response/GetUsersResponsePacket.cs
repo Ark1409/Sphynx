@@ -13,7 +13,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved users' information.
         /// </summary>
-        public ISphynxUserInfo[]? Users { get; set; }
+        public ISphynxUserInfo[]? Users { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="GetUsersResponsePacket"/>.

@@ -13,7 +13,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved messages' information. The array is in decreasing order of message creation time.
         /// </summary>
-        public IChatMessage[]? Messages { get; set; }
+        public IChatMessage[]? Messages { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="GetMessagesResponsePacket"/>.

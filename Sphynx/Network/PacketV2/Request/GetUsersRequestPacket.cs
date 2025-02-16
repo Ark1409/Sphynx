@@ -22,7 +22,7 @@ namespace Sphynx.Network.PacketV2.Request
         public SnowflakeId[] UserIds
         {
             get => _userIds;
-            set
+            init
             {
                 if (value.Length > MAX_USER_COUNT)
                 {

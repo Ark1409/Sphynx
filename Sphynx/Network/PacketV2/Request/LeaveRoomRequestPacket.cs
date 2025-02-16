@@ -8,7 +8,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Room ID of the room to leave.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_LEAVE_REQ;

@@ -37,7 +37,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// The user ID of the other user to create the DM with.
             /// </summary>
-            public SnowflakeId OtherId { get; set; }
+            public SnowflakeId OtherId { get; init; }
 
             /// <summary>
             /// Creates a new <see cref="CreateRoomRequestPacket"/>.
@@ -79,7 +79,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// The name of the chat room.
             /// </summary>
-            public string Name { get; set; } = null!;
+            public string Name { get; init; }
 
             /// <summary>
             /// The password for the chat room.
@@ -89,7 +89,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// Whether this room is public.
             /// </summary>
-            public bool Public { get; set; }
+            public bool Public { get; init; }
 
             /// <inheritdoc/>
             public override ChatRoomType RoomType => ChatRoomType.GROUP;
@@ -129,7 +129,7 @@ namespace Sphynx.Network.PacketV2.Request
                 string? password = null,
                 bool isPublic = true) : base(userId, sessionId)
             {
-                Name = name;
+                Name = name ?? throw new ArgumentNullException(nameof(name));
                 Password = password;
                 Public = isPublic;
             }

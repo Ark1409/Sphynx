@@ -10,7 +10,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// <inheritdoc cref="SphynxErrorCode"/>
         /// </summary>
-        public SphynxErrorCode ErrorCode { get; set; }
+        public SphynxErrorCode ErrorCode { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="SphynxResponsePacket"/>.

@@ -10,13 +10,13 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// User name entered by user for login.
         /// </summary>
-        public string UserName { get; set; }
+        public string UserName { get; init; }
 
         /// <summary>
         /// Password entered by user for login.
         /// </summary>
         /// <remarks>We rely on SSL connection.</remarks>
-        public string Password { get; set; }
+        public string Password { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_REQ;

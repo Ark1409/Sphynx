@@ -19,7 +19,7 @@ namespace Sphynx.Network.PacketV2.Request
         public SnowflakeId[] RoomIds
         {
             get => _roomIds;
-            set
+            init
             {
                 if (value.Length > MAX_ROOM_COUNT)
                 {

@@ -16,12 +16,12 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The message from which older messages should be retrieved.
         /// </summary>
-        public SnowflakeId BeforeId { get; set; }
+        public SnowflakeId BeforeId { get; init; }
 
         /// <summary>
         /// The room ID from which the message belongs.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <summary>
         /// The number of older messages to retrieve, starting from <see cref="BeforeId"/>.
@@ -30,7 +30,7 @@ namespace Sphynx.Network.PacketV2.Request
         public int Count
         {
             get => _count;
-            set => _count = value > MAX_MESSAGES_COUNT ? MAX_MESSAGES_COUNT : value;
+            init => _count = value > MAX_MESSAGES_COUNT ? MAX_MESSAGES_COUNT : value;
         }
 
         private int _count;

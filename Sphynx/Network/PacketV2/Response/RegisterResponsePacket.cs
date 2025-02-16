@@ -12,12 +12,12 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Holds the authenticated user's information.
         /// </summary>
-        public ISphynxSelfInfo? UserInfo { get; set; }
+        public ISphynxSelfInfo? UserInfo { get; init; }
 
         /// <summary>
         /// The session ID for the client.
         /// </summary>
-        public Guid? SessionId { get; set; }
+        public Guid? SessionId { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="LoginResponsePacket"/>.

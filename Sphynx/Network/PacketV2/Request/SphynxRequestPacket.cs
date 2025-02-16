@@ -10,12 +10,12 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The user ID of the requesting user.
         /// </summary>
-        public SnowflakeId UserId { get; set; }
+        public SnowflakeId UserId { get; init; }
 
         /// <summary>
         /// The session ID for the requesting user.
         /// </summary>s
-        public Guid SessionId { get; set; }
+        public Guid SessionId { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequestPacket"/>.

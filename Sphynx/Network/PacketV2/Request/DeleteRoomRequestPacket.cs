@@ -11,7 +11,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// The ID of the room to delete.
         /// </summary>
         /// <remarks>Must be a room ID for a group chat room.</remarks>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <summary>
         /// The password for the room to delete, if the room was guarded with a password.

@@ -9,12 +9,12 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// <summary>
         /// User ID of the user who went online.
         /// </summary>
-        public SnowflakeId UserId { get; set; }
+        public SnowflakeId UserId { get; init; }
 
         /// <summary>
         /// The status of the user who went online.
         /// </summary>
-        public SphynxUserStatus UserStatus { get; set; }
+        public SphynxUserStatus UserStatus { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_BCAST;

@@ -12,7 +12,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The information for the chat room which was joined.
         /// </summary>
-        public IChatRoomInfo? RoomInfo { get; set; }
+        public IChatRoomInfo? RoomInfo { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="JoinRoomResponsePacket"/>.

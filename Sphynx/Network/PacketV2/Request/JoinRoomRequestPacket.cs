@@ -9,7 +9,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Room ID of the room to join.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <summary>
         /// Password for the room, if the room is guarded with a password.

@@ -8,7 +8,7 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// <summary>
         /// Room ID of the deleted room.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_DEL_BCAST;

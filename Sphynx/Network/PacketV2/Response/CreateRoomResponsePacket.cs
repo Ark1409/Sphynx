@@ -8,7 +8,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Room ID assigned to the newly created room.
         /// </summary>
-        public SnowflakeId? RoomId { get; set; }
+        public SnowflakeId? RoomId { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_RES;

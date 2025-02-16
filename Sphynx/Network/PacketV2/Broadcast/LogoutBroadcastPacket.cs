@@ -8,7 +8,7 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// <summary>
         /// User ID of the user who went offline.
         /// </summary>
-        public SnowflakeId UserId { get; set; }
+        public SnowflakeId UserId { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_BCAST;

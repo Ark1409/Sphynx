@@ -8,12 +8,12 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Room ID of the room to kick the user from.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public SnowflakeId RoomId { get; init; }
 
         /// <summary>
         /// User ID of the user to kick from the room.
         /// </summary>
-        public SnowflakeId KickId { get; set; }
+        public SnowflakeId KickId { get; init; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_KICK_REQ;
