@@ -184,7 +184,7 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void DeleteRoomRequestPacket_Group_ShouldSerializeAndDeserialize()
+        public void DeleteRoomRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new DeleteRoomRequestPacketSerializer();
@@ -206,7 +206,7 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void JoinRoomRequestPacket_Group_ShouldSerializeAndDeserialize()
+        public void JoinRoomRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new JoinRoomRequestPacketSerializer();
@@ -228,7 +228,7 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void KickUserRequestPacket_Group_ShouldSerializeAndDeserialize()
+        public void KickUserRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new KickUserRequestPacketSerializer();
@@ -250,13 +250,35 @@ namespace Sphynx.Test.Serialization
         }
 
         [Test]
-        public void LeaveRoomRequestPacket_Group_ShouldSerializeAndDeserialize()
+        public void LeaveRoomRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new LeaveRoomRequestPacketSerializer();
             var packet = new LeaveRoomRequestPacket("user".AsSnowflakeId(), "session".AsGuid())
             {
                 RoomId = "room".AsSnowflakeId()
+            };
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
+
+        [Test]
+        public void GetRoomsRequestPacket_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new GetRoomsRequestPacketSerializer();
+            var packet = new GetRoomsRequestPacket("user".AsSnowflakeId(), "session".AsGuid())
+            {
+                RoomIds = new[] { "room1".AsSnowflakeId(), "room2".AsSnowflakeId(), "room3".AsSnowflakeId() }
             };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 

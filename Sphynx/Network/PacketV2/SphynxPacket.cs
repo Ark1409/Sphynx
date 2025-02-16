@@ -55,22 +55,6 @@ namespace Sphynx.Network.PacketV2
                     return true;
                 }
 
-                case SphynxPacketType.ROOM_INFO_REQ:
-                {
-                    if (!RoomInfoRequestPacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
-                case SphynxPacketType.ROOM_INFO_RES:
-                {
-                    if (!RoomInfoResponsePacket.TryDeserialize(contents, out var p)) break;
-
-                    packet = p;
-                    return true;
-                }
-
                 case SphynxPacketType.USER_INFO_REQ:
                 case SphynxPacketType.USER_INFO_RES:
                     break;

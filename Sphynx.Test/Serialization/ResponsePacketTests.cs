@@ -1,6 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using Sphynx.ModelV2.Room;
 using Sphynx.Network.PacketV2.Response;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
@@ -179,7 +180,7 @@ namespace Sphynx.Test.Serialization
         {
             // Arrange
             var serializer = new JoinRoomResponsePacketSerializer(new ChatRoomInfoSerializer());
-            var packet = new JoinRoomResponsePacket { RoomInfo = new TestDirectChatRoom() };
+            var packet = new JoinRoomResponsePacket { RoomInfo = new TestDirectChatRoomInfo() };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -218,6 +219,28 @@ namespace Sphynx.Test.Serialization
             // Arrange
             var serializer = new LeaveRoomResponsePacketSerializer();
             var packet = new LeaveRoomResponsePacket();
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
+
+        [Test]
+        public void GetRoomsResponsePacket_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new GetRoomsResponsePacketSerializer(new ChatRoomInfoSerializer());
+            var packet = new GetRoomsResponsePacket
+            {
+                Rooms = new IChatRoomInfo[] { new TestDirectChatRoomInfo(), new TestGroupChatRoomInfo() }
+            };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act

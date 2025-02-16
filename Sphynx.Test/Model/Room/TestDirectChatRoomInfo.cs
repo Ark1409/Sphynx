@@ -7,16 +7,28 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.Room
 {
-    public class TestDirectChatRoom : TestChatRoomInfo, IDirectChatRoomInfo
+    public class TestDirectChatRoomInfo : TestChatRoomInfo, IDirectChatRoomInfo
     {
         public override ChatRoomType RoomType { get; set; } = ChatRoomType.DIRECT_MSG;
         public SnowflakeId UserOne { get; set; }
         public SnowflakeId UserTwo { get; set; }
 
-        public TestDirectChatRoom(string name = "Test-Room") : base(name)
+        public TestDirectChatRoomInfo(string name = "Test-Room") : base(name)
         {
             UserOne = "user1".AsSnowflakeId();
             UserTwo = "user2".AsSnowflakeId();
+        }
+
+        public static TestDirectChatRoomInfo[] FromArray(params string[] names)
+        {
+            var users = new TestDirectChatRoomInfo[names.Length];
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                users[i] = new TestDirectChatRoomInfo(names[i]);
+            }
+
+            return users;
         }
 
         public bool Equals(IDirectChatRoomInfo? other) =>

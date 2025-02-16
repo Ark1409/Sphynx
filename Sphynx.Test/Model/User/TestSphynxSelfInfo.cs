@@ -40,7 +40,7 @@ namespace Sphynx.Test.Model.User
             LastReadMessages = new TestLastReadMessagesInfo($"msg1+{name}", $"msg2+{name}", $"msg3+{name}");
         }
 
-        public static TestSphynxSelfInfo[] FromArray(params string[] names)
+        public new static TestSphynxSelfInfo[] FromArray(params string[] names)
         {
             var users = new TestSphynxSelfInfo[names.Length];
 

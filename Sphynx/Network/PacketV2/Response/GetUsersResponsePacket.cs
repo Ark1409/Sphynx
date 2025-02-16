@@ -35,11 +35,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <inheritdoc/>
         public bool Equals(GetUsersResponsePacket? other)
         {
-            if (other is null || !base.Equals(other)) return false;
-            if (Users is null && other.Users is null) return true;
-            if (Users is null || other.Users is null) return false;
-
-            return MemoryUtils.SequenceEqual(Users, other.Users);
+            return base.Equals(other) && MemoryUtils.SequenceEqual(Users, other?.Users);
         }
     }
 }
