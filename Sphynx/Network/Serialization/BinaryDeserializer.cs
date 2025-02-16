@@ -13,7 +13,7 @@ namespace Sphynx.Network.Serialization
 {
     /// <summary>
     /// Deserializes primitive types from a <see cref="ReadOnlySpan{T}"/>, while also tracking the number of
-    /// bytes currently written.
+    /// bytes currently read.
     /// </summary>
     public ref struct BinaryDeserializer
     {
