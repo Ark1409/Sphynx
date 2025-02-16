@@ -11,27 +11,37 @@ namespace Sphynx.Network.Serialization.Model
         public override int GetMaxSize(IDirectChatRoomInfo model)
         {
             int roomSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<ChatRoomType>() +
-                           BinarySerializer.MaxSizeOf(model.Name) + BinarySerializer.MaxSizeOf(model.Users);
+                           BinarySerializer.MaxSizeOf(model.Name);
+            int directSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
 
-            return roomSize;
+            return roomSize + directSize;
         }
 
         protected override void Serialize(IDirectChatRoomInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.RoomId);
+            serializer.WriteSnowflakeId(model.UserOne);
+            serializer.WriteSnowflakeId(model.UserTwo);
             serializer.WriteEnum(model.RoomType);
             serializer.WriteString(model.Name);
-            serializer.WriteCollection(model.Users);
         }
 
         protected override IDirectChatRoomInfo Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
+            var userOne = deserializer.ReadSnowflakeId();
+            var userTwo = deserializer.ReadSnowflakeId();
             var roomType = deserializer.ReadEnum<ChatRoomType>();
             string name = deserializer.ReadString();
-            var users = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
 
-            return new DummyDirectChatRoomInfo { RoomId = roomId, RoomType = roomType, Name = name, Users = users };
+            return new DummyDirectChatRoomInfo
+            {
+                RoomId = roomId,
+                RoomType = roomType,
+                Name = name,
+                UserOne = userOne,
+                UserTwo = userTwo
+            };
         }
 
         private class DummyDirectChatRoomInfo : IDirectChatRoomInfo
@@ -39,7 +49,8 @@ namespace Sphynx.Network.Serialization.Model
             public SnowflakeId RoomId { get; set; }
             public ChatRoomType RoomType { get; set; }
             public string Name { get; set; } = null!;
-            public ISet<SnowflakeId> Users { get; set; } = null!;
+            public SnowflakeId UserOne { get; set; }
+            public SnowflakeId UserTwo { get; set; }
 
             public bool Equals(IChatRoomInfo? other) => other is IDirectChatRoomInfo direct && Equals(direct);
             public bool Equals(IDirectChatRoomInfo? other) => RoomId == other?.RoomId && RoomType == other.RoomType;
@@ -52,7 +63,7 @@ namespace Sphynx.Network.Serialization.Model
         public override int GetMaxSize(IGroupChatRoomInfo model)
         {
             int roomSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<ChatRoomType>() +
-                           BinarySerializer.MaxSizeOf(model.Name) + BinarySerializer.MaxSizeOf(model.Users);
+                           BinarySerializer.MaxSizeOf(model.Name);
             int groupSize = BinarySerializer.MaxSizeOf<bool>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
 
             return roomSize + groupSize;
@@ -63,7 +74,6 @@ namespace Sphynx.Network.Serialization.Model
             serializer.WriteSnowflakeId(model.RoomId);
             serializer.WriteEnum(model.RoomType);
             serializer.WriteString(model.Name);
-            serializer.WriteCollection(model.Users);
 
             serializer.WriteBool(model.Public);
             serializer.WriteSnowflakeId(model.OwnerId);
@@ -74,7 +84,6 @@ namespace Sphynx.Network.Serialization.Model
             var roomId = deserializer.ReadSnowflakeId();
             var roomType = deserializer.ReadEnum<ChatRoomType>();
             string name = deserializer.ReadString();
-            var users = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
 
             bool isPublic = deserializer.ReadBool();
             var ownerId = deserializer.ReadSnowflakeId();
@@ -84,7 +93,6 @@ namespace Sphynx.Network.Serialization.Model
                 RoomId = roomId,
                 RoomType = roomType,
                 Name = name,
-                Users = users,
                 Public = isPublic,
                 OwnerId = ownerId
             };
@@ -95,7 +103,6 @@ namespace Sphynx.Network.Serialization.Model
             public SnowflakeId RoomId { get; set; }
             public ChatRoomType RoomType { get; set; }
             public string Name { get; set; } = null!;
-            public ISet<SnowflakeId> Users { get; set; } = null!;
             public bool Public { get; set; }
             public SnowflakeId OwnerId { get; set; }
 

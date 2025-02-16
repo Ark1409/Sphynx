@@ -24,10 +24,5 @@ namespace Sphynx.ModelV2.Room
         /// The name of this chat room.
         /// </summary>
         string Name { get; set; }
-
-        /// <summary>
-        /// A collection of the user IDs of the users within this chat room.
-        /// </summary>
-        ISet<SnowflakeId> Users { get; set; }
     }
 }

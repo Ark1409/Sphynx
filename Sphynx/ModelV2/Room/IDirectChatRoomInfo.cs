@@ -13,25 +13,11 @@ namespace Sphynx.ModelV2.Room
         /// <summary>
         /// Returns the user ID of one of the users within this direct-message chat room.
         /// </summary>
-        /// <remarks>Null if this information has not yet been populated.</remarks>
-        public SnowflakeId? UserOne => Users.Count == 0 ? null : Users.First();
+        public SnowflakeId UserOne { get; set; }
 
         /// <summary>
         /// Returns the other user within this direct-message chat room.
         /// </summary>
-        /// <remarks>Null if this information has not yet been populated.</remarks>
-        public SnowflakeId? UserTwo
-        {
-            get
-            {
-                if (Users.Count < 2) return null;
-
-                using var enumerator = Users.GetEnumerator();
-                enumerator.MoveNext();
-                enumerator.MoveNext();
-
-                return enumerator.Current;
-            }
-        }
+        public SnowflakeId UserTwo { get; set; }
     }
 }
