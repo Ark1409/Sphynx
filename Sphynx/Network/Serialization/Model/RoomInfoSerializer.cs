@@ -1,44 +1,178 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Runtime.InteropServices;
 using Sphynx.Core;
 using Sphynx.ModelV2.Room;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public class DirectRoomInfoSerializer : ModelSerializer<IDirectChatRoomInfo>
+    public abstract class ChatRoomInfoSerializer<TRoom> : ModelSerializer<TRoom>
+        where TRoom : IChatRoomInfo
     {
-        public override int GetMaxSize(IDirectChatRoomInfo model)
+        public sealed override int GetMaxSize(TRoom packet)
         {
-            int roomSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<ChatRoomType>() +
-                           BinarySerializer.MaxSizeOf(model.Name);
-            int directSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
-
-            return roomSize + directSize;
+            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<ChatRoomType>() +
+                   BinarySerializer.MaxSizeOf(packet.Name) + GetMaxRoomSize(packet);
         }
 
-        protected override void Serialize(IDirectChatRoomInfo model, ref BinarySerializer serializer)
+        protected internal abstract int GetMaxRoomSize(TRoom packet);
+
+        protected sealed override void Serialize(TRoom packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(model.RoomId);
-            serializer.WriteSnowflakeId(model.UserOne);
-            serializer.WriteSnowflakeId(model.UserTwo);
-            serializer.WriteEnum(model.RoomType);
-            serializer.WriteString(model.Name);
+            serializer.WriteSnowflakeId(packet.RoomId);
+            serializer.WriteEnum(packet.RoomType);
+            serializer.WriteString(packet.Name);
+
+            SerializeRoom(packet, ref serializer);
         }
 
-        protected override IDirectChatRoomInfo Deserialize(ref BinaryDeserializer deserializer)
+        protected internal abstract void SerializeRoom(TRoom packet, ref BinarySerializer serializer);
+
+        protected sealed override TRoom Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
+            var roomType = deserializer.ReadEnum<ChatRoomType>();
+            string roomName = deserializer.ReadString();
+
+            var roomInfo = new RoomInfo { RoomId = roomId, RoomType = roomType, Name = roomName };
+
+            return DeserializeRoom(ref deserializer, roomInfo);
+        }
+
+        protected internal abstract TRoom DeserializeRoom(ref BinaryDeserializer deserializer, RoomInfo roomInfo);
+    }
+
+    public readonly struct RoomInfo
+    {
+        public SnowflakeId RoomId { get; init; }
+        public ChatRoomType RoomType { get; init; }
+        public string Name { get; init; }
+    }
+
+    public sealed class ChatRoomInfoSerializer : ChatRoomInfoSerializer<IChatRoomInfo>
+    {
+        private readonly Dictionary<ChatRoomType, ChatRoomInfoSerializer<IChatRoomInfo>> _serializers = new();
+
+        public ChatRoomInfoSerializer()
+        {
+            WithSerializer(ChatRoomType.DIRECT_MSG, new DirectChatRoomInfoSerializer());
+            WithSerializer(ChatRoomType.GROUP, new GroupChatRoomInfoSerializer());
+        }
+
+        protected internal override int GetMaxRoomSize(IChatRoomInfo room)
+        {
+            return _serializers.TryGetValue(room.RoomType, out var serializer)
+                ? serializer.GetMaxRoomSize(room)
+                : 0;
+        }
+
+        protected internal override void SerializeRoom(IChatRoomInfo room, ref BinarySerializer serializer)
+        {
+            if (_serializers.TryGetValue(room.RoomType, out var roomSerializer))
+            {
+                roomSerializer.SerializeRoom(room, ref serializer);
+            }
+
+            // We can allow it, but it may not deserialize
+        }
+
+        protected internal override IChatRoomInfo DeserializeRoom(
+            ref BinaryDeserializer deserializer,
+            RoomInfo roomInfo)
+        {
+            if (_serializers.TryGetValue(roomInfo.RoomType, out var roomDeserializer))
+            {
+                return roomDeserializer.DeserializeRoom(ref deserializer, roomInfo);
+            }
+
+            throw new InvalidOperationException("Unknown room type");
+        }
+
+        public ChatRoomInfoSerializer WithSerializer<T>(
+            ChatRoomType roomType,
+            ChatRoomInfoSerializer<T> serializer)
+            where T : IChatRoomInfo
+        {
+            ref var existingAdapter =
+                ref CollectionsMarshal.GetValueRefOrAddDefault(_serializers, roomType, out bool exists);
+
+            // Avoid extra allocations
+            if (exists && existingAdapter is Adapter<T> adapter)
+            {
+                adapter.InnerSerializer = serializer;
+            }
+            else
+            {
+                existingAdapter = new Adapter<T>(serializer);
+            }
+
+            return this;
+        }
+
+        public ChatRoomInfoSerializer WithoutSerializer(ChatRoomType roomType)
+        {
+            _serializers.Remove(roomType);
+            return this;
+        }
+
+        // TODO: Find a more elegant way of accomplishing this
+
+        private class Adapter<T> : ChatRoomInfoSerializer<IChatRoomInfo> where T : IChatRoomInfo
+        {
+            internal ChatRoomInfoSerializer<T> InnerSerializer { get; set; }
+
+            public Adapter(ChatRoomInfoSerializer<T> innerSerializer)
+            {
+                InnerSerializer = innerSerializer;
+            }
+
+            protected internal override int GetMaxRoomSize(IChatRoomInfo packet)
+            {
+                return InnerSerializer.GetMaxRoomSize((T)packet);
+            }
+
+            protected internal override void SerializeRoom(
+                IChatRoomInfo packet,
+                ref BinarySerializer serializer)
+            {
+                InnerSerializer.SerializeRoom((T)packet, ref serializer);
+            }
+
+            protected internal override IChatRoomInfo DeserializeRoom(
+                ref BinaryDeserializer deserializer,
+                RoomInfo roomInfo)
+            {
+                return InnerSerializer.DeserializeRoom(ref deserializer, roomInfo);
+            }
+        }
+    }
+
+    public class DirectChatRoomInfoSerializer : ChatRoomInfoSerializer<IDirectChatRoomInfo>
+    {
+        protected internal override int GetMaxRoomSize(IDirectChatRoomInfo model)
+        {
+            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
+        }
+
+        protected internal override void SerializeRoom(IDirectChatRoomInfo model, ref BinarySerializer serializer)
+        {
+            serializer.WriteSnowflakeId(model.UserOne);
+            serializer.WriteSnowflakeId(model.UserTwo);
+        }
+
+        protected internal override IDirectChatRoomInfo DeserializeRoom(
+            ref BinaryDeserializer deserializer,
+            RoomInfo roomInfo)
+        {
             var userOne = deserializer.ReadSnowflakeId();
             var userTwo = deserializer.ReadSnowflakeId();
-            var roomType = deserializer.ReadEnum<ChatRoomType>();
-            string name = deserializer.ReadString();
 
             return new DummyDirectChatRoomInfo
             {
-                RoomId = roomId,
-                RoomType = roomType,
-                Name = name,
+                RoomId = roomInfo.RoomId,
+                RoomType = roomInfo.RoomType,
+                Name = roomInfo.Name,
                 UserOne = userOne,
                 UserTwo = userTwo
             };
@@ -58,18 +192,14 @@ namespace Sphynx.Network.Serialization.Model
         }
     }
 
-    public class GroupRoomInfoSerializer : ModelSerializer<IGroupChatRoomInfo>
+    public class GroupChatRoomInfoSerializer : ChatRoomInfoSerializer<IGroupChatRoomInfo>
     {
-        public override int GetMaxSize(IGroupChatRoomInfo model)
+        protected internal override int GetMaxRoomSize(IGroupChatRoomInfo model)
         {
-            int roomSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<ChatRoomType>() +
-                           BinarySerializer.MaxSizeOf(model.Name);
-            int groupSize = BinarySerializer.MaxSizeOf<bool>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
-
-            return roomSize + groupSize;
+            return BinarySerializer.MaxSizeOf<bool>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override void Serialize(IGroupChatRoomInfo model, ref BinarySerializer serializer)
+        protected internal override void SerializeRoom(IGroupChatRoomInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.RoomId);
             serializer.WriteEnum(model.RoomType);
@@ -79,20 +209,18 @@ namespace Sphynx.Network.Serialization.Model
             serializer.WriteSnowflakeId(model.OwnerId);
         }
 
-        protected override IGroupChatRoomInfo Deserialize(ref BinaryDeserializer deserializer)
+        protected internal override IGroupChatRoomInfo DeserializeRoom(
+            ref BinaryDeserializer deserializer,
+            RoomInfo roomInfo)
         {
-            var roomId = deserializer.ReadSnowflakeId();
-            var roomType = deserializer.ReadEnum<ChatRoomType>();
-            string name = deserializer.ReadString();
-
             bool isPublic = deserializer.ReadBool();
             var ownerId = deserializer.ReadSnowflakeId();
 
             return new DummyGroupChatRoomInfo
             {
-                RoomId = roomId,
-                RoomType = roomType,
-                Name = name,
+                RoomId = roomInfo.RoomId,
+                RoomType = roomInfo.RoomType,
+                Name = roomInfo.Name,
                 Public = isPublic,
                 OwnerId = ownerId
             };

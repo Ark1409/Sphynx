@@ -5,6 +5,7 @@ using Sphynx.Network.PacketV2.Response;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Test.Model;
+using Sphynx.Test.Model.Room;
 using Sphynx.Test.Model.User;
 using Sphynx.Test.Utils;
 
@@ -160,6 +161,63 @@ namespace Sphynx.Test.Serialization
             // Arrange
             var serializer = new DeleteRoomResponsePacketSerializer();
             var packet = new DeleteRoomResponsePacket();
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
+
+        [Test]
+        public void JoinRoomResponsePacket_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new JoinRoomResponsePacketSerializer(new ChatRoomInfoSerializer());
+            var packet = new JoinRoomResponsePacket { RoomInfo = new TestDirectChatRoom() };
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
+
+        [Test]
+        public void KickUserResponsePacket_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new KickUserResponsePacketSerializer();
+            var packet = new KickUserResponsePacket();
+            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+
+            // Act
+            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
+                "Could not perform deserialization.");
+            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
+        }
+
+        [Test]
+        public void LeaveRoomResponsePacket_ShouldSerializeAndDeserialize()
+        {
+            // Arrange
+            var serializer = new LeaveRoomResponsePacketSerializer();
+            var packet = new LeaveRoomResponsePacket();
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
