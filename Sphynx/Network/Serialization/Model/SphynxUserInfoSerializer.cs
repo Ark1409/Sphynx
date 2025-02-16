@@ -15,11 +15,12 @@ namespace Sphynx.Network.Serialization.Model
                    BinarySerializer.MaxSizeOf<SphynxUserStatus>();
         }
 
-        protected override void Serialize(ISphynxUserInfo model, ref BinarySerializer serializer)
+        protected override bool Serialize(ISphynxUserInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.UserId);
             serializer.WriteString(model.UserName);
             serializer.WriteEnum(model.UserStatus);
+            return true;
         }
 
         protected override ISphynxUserInfo Deserialize(ref BinaryDeserializer deserializer)
@@ -57,7 +58,7 @@ namespace Sphynx.Network.Serialization.Model
             return userInfoSize + selfInfoSize;
         }
 
-        protected override void Serialize(ISphynxSelfInfo model, ref BinarySerializer serializer)
+        protected override bool Serialize(ISphynxSelfInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.UserId);
             serializer.WriteString(model.UserName);
@@ -68,6 +69,7 @@ namespace Sphynx.Network.Serialization.Model
             serializer.WriteDictionary(model.LastReadMessages);
             serializer.WriteCollection(model.OutgoingFriendRequests);
             serializer.WriteCollection(model.IncomingFriendRequests);
+            return true;
         }
 
         protected override ISphynxSelfInfo Deserialize(ref BinaryDeserializer deserializer)

@@ -69,7 +69,7 @@ namespace Sphynx.Network.Serialization.Model
             }
         }
 
-        protected abstract void Serialize(T model, ref BinarySerializer serializer);
+        protected abstract bool Serialize(T model, ref BinarySerializer serializer);
 
         public bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? model, out int bytesRead)
         {
@@ -79,7 +79,7 @@ namespace Sphynx.Network.Serialization.Model
             {
                 model = Deserialize(ref deserializer);
                 bytesRead = deserializer.Offset;
-                return true;
+                return model is not null;
             }
             catch
             {
@@ -89,7 +89,7 @@ namespace Sphynx.Network.Serialization.Model
             }
         }
 
-        protected abstract T Deserialize(ref BinaryDeserializer deserializer);
+        protected abstract T? Deserialize(ref BinaryDeserializer deserializer);
     }
 
     internal static class ModelSerializerExtensions

@@ -15,13 +15,14 @@ namespace Sphynx.Network.Serialization.Model
                    BinarySerializer.MaxSizeOf<DateTime>();
         }
 
-        protected override void Serialize(IChatMessage model, ref BinarySerializer serializer)
+        protected override bool Serialize(IChatMessage model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.MessageId);
             serializer.WriteSnowflakeId(model.RoomId);
             serializer.WriteSnowflakeId(model.SenderId);
             serializer.WriteString(model.Content);
             serializer.WriteDateTime(model.EditTimestamp ?? DateTime.MinValue);
+            return true;
         }
 
         protected override IChatMessage Deserialize(ref BinaryDeserializer deserializer)

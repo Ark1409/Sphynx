@@ -785,7 +785,7 @@ namespace Sphynx.Network.Serialization
         /// <typeparam name="T">The type of unmanaged type.</typeparam>
         /// <returns>The deserialized unmanaged type.</returns>
         /// <exception cref="ArgumentException">If <typeparamref name="T"/> is a user-defined struct
-        /// which is not of blittable size, we are not on a little-endian machine, and <typeparamref name="T"/>
+        /// which is not of blittable size, or we are on a big-endian machine and <typeparamref name="T"/>
         /// is not a type for which serialization is already supported.</exception>
         public T ReadUnmanaged<T>() where T : unmanaged
         {
