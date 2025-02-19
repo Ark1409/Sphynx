@@ -25,7 +25,7 @@ namespace Sphynx.Network.Serialization
         /// <summary>
         /// Returns the write offset into the underlying span.
         /// </summary>
-        public int Offset { get; set; }
+        public int Offset { get; internal set; }
 
         /// <summary>
         /// Returns the underlying span.
