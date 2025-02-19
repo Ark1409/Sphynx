@@ -8,6 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Sphynx.Core;
+using Version = Sphynx.Core.Version;
 
 namespace Sphynx.Network.Serialization
 {
@@ -501,6 +502,24 @@ namespace Sphynx.Network.Serialization
         #endregion
 
         #region Common Types
+
+        public bool TryReadVersion([NotNullWhen(true)] out Version? version)
+        {
+            if (!CanRead(BinarySerializer.SizeOf<Version>()))
+            {
+                version = null;
+                return false;
+            }
+
+            version = ReadVersion();
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Version ReadVersion()
+        {
+            return Version.FromInt32(ReadInt32());
+        }
 
         public bool TryReadSnowflakeId([NotNullWhen(true)] out SnowflakeId? id)
         {

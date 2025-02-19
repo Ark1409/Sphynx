@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using Sphynx.Core;
+using Version = Sphynx.Core.Version;
 
 namespace Sphynx.Network.Serialization
 {
@@ -85,6 +86,8 @@ namespace Sphynx.Network.Serialization
                     return Unsafe.SizeOf<T>();
                 case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
                     return SnowflakeId.SIZE;
+                case TypeCode.Object when typeof(T) == typeof(Version):
+                    return sizeof(int);
                 case TypeCode.Object when BitConverter.IsLittleEndian:
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
@@ -538,6 +541,21 @@ namespace Sphynx.Network.Serialization
 
         #region Common Types
 
+        public bool TryVersion(Version id)
+        {
+            if (!CanWrite(SizeOf<Version>()))
+                return false;
+
+            WriteVersion(id);
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteVersion(Version id)
+        {
+            WriteInt32(id.ToInt32());
+        }
+
         public bool TryWriteSnowflakeId(SnowflakeId id)
         {
             if (!CanWrite(SnowflakeId.SIZE))
@@ -558,7 +576,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteGuid(Guid id)
         {
-            if (!CanWrite(Unsafe.SizeOf<Guid>()))
+            if (!CanWrite(SizeOf<Guid>()))
                 return false;
 
             WriteGuid(id);
@@ -571,7 +589,7 @@ namespace Sphynx.Network.Serialization
             bool written = id.TryWriteBytes(_span[Offset..]);
             Debug.Assert(written);
 
-            Offset += Unsafe.SizeOf<Guid>();
+            Offset += SizeOf<Guid>();
         }
 
         public bool TryWriteString(ReadOnlySpan<char> str)
@@ -774,7 +792,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteEnum<T>(T value) where T : unmanaged, Enum
         {
-            if (!CanWrite(Unsafe.SizeOf<T>()))
+            if (!CanWrite(SizeOf<T>()))
                 return false;
 
             WriteEnum(value);
