@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using Sphynx.Network.Packet.Response;
+using Sphynx.Network.Transport;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Request
@@ -85,7 +86,7 @@ namespace Sphynx.Network.Packet.Request
             int passwordSize = !string.IsNullOrEmpty(Password) ? TEXT_ENCODING.GetByteCount(Password) : 0;
             int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int) + passwordSize;
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize], passwordSize))
             {
@@ -104,7 +105,7 @@ namespace Sphynx.Network.Packet.Request
             int passwordSize = !string.IsNullOrEmpty(Password) ? TEXT_ENCODING.GetByteCount(Password) : 0;
             int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int) + passwordSize;
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -130,7 +131,7 @@ namespace Sphynx.Network.Packet.Request
 
         private bool TrySerialize(Span<byte> buffer, int passwordSize)
         {
-            if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+            if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.Size..]))
             {
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
 

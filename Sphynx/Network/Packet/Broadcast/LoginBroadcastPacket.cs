@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using Sphynx.Model.User;
+using Sphynx.Network.Transport;
 
 namespace Sphynx.Network.Packet.Broadcast
 {
@@ -59,7 +60,7 @@ namespace Sphynx.Network.Packet.Broadcast
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
             int contentSize = GUID_SIZE + sizeof(SphynxUserStatus); // UserId, UserStatus
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
             {
@@ -77,7 +78,7 @@ namespace Sphynx.Network.Packet.Broadcast
 
             int contentSize = GUID_SIZE + sizeof(SphynxUserStatus); // UserId, UserStatus
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -101,7 +102,7 @@ namespace Sphynx.Network.Packet.Broadcast
         {
             if (TrySerializeHeader(buffer))
             {
-                buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
+                buffer = buffer[SphynxPacketHeader.Size..];
                 UserId.TryWriteBytes(buffer.Slice(USER_ID_OFFSET, GUID_SIZE));
                 buffer[USER_STATUS_OFFSET] = (byte)UserStatus;
                 return true;

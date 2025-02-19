@@ -5,6 +5,8 @@ using System.Text;
 using Sphynx.Network.Packet.Broadcast;
 using Sphynx.Network.Packet.Request;
 using Sphynx.Network.Packet.Response;
+using Sphynx.Network.Transport;
+using Version = Sphynx.Core.Version;
 
 namespace Sphynx.Network.Packet
 {
@@ -42,7 +44,7 @@ namespace Sphynx.Network.Packet
                 case SphynxPacketType.LOGIN_REQ:
                 {
                     if (!LoginRequestPacket.TryDeserialize(contents, out var p)) break;
-                    
+
                     packet = p;
                     return true;
                 }
@@ -50,7 +52,7 @@ namespace Sphynx.Network.Packet
                 case SphynxPacketType.LOGIN_RES:
                 {
                     if (!LoginResponsePacket.TryDeserialize(contents, out var p)) break;
-                    
+
                     packet = p;
                     return true;
                 }
@@ -58,7 +60,7 @@ namespace Sphynx.Network.Packet
                 case SphynxPacketType.MSG_REQ:
                 {
                     if (!MessageRequestPacket.TryDeserialize(contents, out var p)) break;
-                    
+
                     packet = p;
                     return true;
                 }
@@ -66,7 +68,7 @@ namespace Sphynx.Network.Packet
                 case SphynxPacketType.MSG_RES:
                 {
                     if (!MessageResponsePacket.TryDeserialize(contents, out var p)) break;
-                    
+
                     packet = p;
                     return true;
                 }
@@ -74,7 +76,7 @@ namespace Sphynx.Network.Packet
                 case SphynxPacketType.MSG_BCAST:
                 {
                     if (!MessageBroadcastPacket.TryDeserialize(contents, out var p)) break;
-                    
+
                     packet = p;
                     return true;
                 }
@@ -82,7 +84,7 @@ namespace Sphynx.Network.Packet
                 case SphynxPacketType.ROOM_CREATE_REQ:
                 {
                     if (!RoomCreateRequestPacket.TryDeserialize(contents, out var p)) break;
-                    
+
                     packet = p;
                     return true;
                 }
@@ -90,7 +92,7 @@ namespace Sphynx.Network.Packet
                 case SphynxPacketType.ROOM_CREATE_RES:
                 {
                     if (!RoomCreateResponsePacket.TryDeserialize(contents, out var p)) break;
-                    
+
                     packet = p;
                     return true;
                 }
@@ -98,7 +100,7 @@ namespace Sphynx.Network.Packet
                 case SphynxPacketType.ROOM_JOIN_REQ:
                 {
                     if (!RoomJoinRequestPacket.TryDeserialize(contents, out var p)) break;
-                    
+
                     packet = p;
                     return true;
                 }
@@ -238,7 +240,7 @@ namespace Sphynx.Network.Packet
                     packet = p;
                     return true;
                 }
-                
+
                 case SphynxPacketType.LOGIN_BCAST:
                 {
                     if (!LoginBroadcastPacket.TryDeserialize(contents, out var p)) break;
@@ -261,12 +263,12 @@ namespace Sphynx.Network.Packet
         }
 
         /// <summary>
-        /// Creates the appropriate <see cref="SphynxPacket"/> (specified by the 
-        /// <paramref name="header"/>'s <see cref="SphynxPacketHeader.PacketType"/>) by reading from the <paramref name="contentStream"/>. 
+        /// Creates the appropriate <see cref="SphynxPacket"/> (specified by the
+        /// <paramref name="header"/>'s <see cref="SphynxPacketHeader.PacketType"/>) by reading from the <paramref name="contentStream"/>.
         /// Note that the stream must be positioned at the start of the packet contents (excluding the header).
         /// </summary>
         /// <param name="header">The header for the packet to create.</param>
-        /// <param name="contentStream">The contents of the packet, excluding the header. Must be positioned at the start 
+        /// <param name="contentStream">The contents of the packet, excluding the header. Must be positioned at the start
         /// of the packet contents (excluding the header)</param>
         /// <param name="packet">The actual packet.</param>
         /// <returns>true if the <see cref="SphynxPacket"/> could be created successfully; false otherwise.</returns>
@@ -276,12 +278,12 @@ namespace Sphynx.Network.Packet
         }
 
         /// <summary>
-        /// Asynchronously creates the appropriate <see cref="SphynxPacket"/> (specified by the 
-        /// <paramref name="header"/>'s <see cref="SphynxPacketHeader.PacketType"/>) by reading from the <paramref name="contentStream"/>. 
+        /// Asynchronously creates the appropriate <see cref="SphynxPacket"/> (specified by the
+        /// <paramref name="header"/>'s <see cref="SphynxPacketHeader.PacketType"/>) by reading from the <paramref name="contentStream"/>.
         /// Note that the stream must be positioned at the start of the packet contents (excluding the header).
         /// </summary>
         /// <param name="header">The header for the packet to create.</param>
-        /// <param name="contentStream">The contents of the packet, excluding the header. Must be positioned at the start 
+        /// <param name="contentStream">The contents of the packet, excluding the header. Must be positioned at the start
         /// of the packet contents (excluding the header)</param>
         /// <returns>The actual packet, or null if it could not be deserialized.</returns>
         public static async Task<SphynxPacket?> CreateAsync(SphynxPacketHeader header, Stream contentStream)
@@ -293,7 +295,7 @@ namespace Sphynx.Network.Packet
 
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(header.ContentSize);
             var buffer = rawBuffer.AsMemory()[..header.ContentSize];
-            
+
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static async Task ReadBytesAsync(Stream stream, Memory<byte> buffer)
             {
@@ -307,7 +309,7 @@ namespace Sphynx.Network.Packet
             try
             {
                 await ReadBytesAsync(contentStream, buffer).ConfigureAwait(false);
-                _ = TryCreate(header.PacketType, buffer.Span, out var packet);
+                _ = TryCreate((SphynxPacketType)header.PacketType, buffer.Span, out var packet);
                 return packet;
             }
             finally
@@ -341,8 +343,8 @@ namespace Sphynx.Network.Packet
         /// <param name="packetBuffer">The buffer to serialize the header into.</param>
         protected bool TrySerializeHeader(Span<byte> packetBuffer)
         {
-            var header = new SphynxPacketHeader(PacketType, packetBuffer.Length - SphynxPacketHeader.HEADER_SIZE);
-            return header.TrySerialize(packetBuffer[..SphynxPacketHeader.HEADER_SIZE]);
+            var header = new SphynxPacketHeader(new Version(), (PacketV2.SphynxPacketType)PacketType, packetBuffer.Length - SphynxPacketHeader.Size);
+            return header.TrySerialize(packetBuffer[..SphynxPacketHeader.Size]);
         }
 
         /// <summary>

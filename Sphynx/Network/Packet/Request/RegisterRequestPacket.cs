@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Sphynx.Network.Transport;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Request
@@ -88,7 +89,7 @@ namespace Sphynx.Network.Packet.Request
         {
             GetPacketInfo(out int usernameSize, out int passwordSize, out int contentSize);
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize], usernameSize, passwordSize))
             {
@@ -108,7 +109,7 @@ namespace Sphynx.Network.Packet.Request
 
             GetPacketInfo(out int usernameSize, out int passwordSize, out int contentSize);
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -143,7 +144,7 @@ namespace Sphynx.Network.Packet.Request
                 return false;
             }
 
-            buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
+            buffer = buffer[SphynxPacketHeader.Size..];
 
             usernameSize.WriteBytes(buffer[USERNAME_SIZE_OFFSET..]);
             TEXT_ENCODING.GetBytes(UserName, buffer.Slice(USERNAME_OFFSET, usernameSize));

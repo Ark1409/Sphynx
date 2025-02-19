@@ -1,7 +1,9 @@
 using System.Reflection.PortableExecutable;
 
 using NUnit.Framework.Constraints;
-using Sphynx.Network.Packet;
+using Sphynx.Network.PacketV2;
+using Sphynx.Network.Transport;
+using Version = Sphynx.Core.Version;
 
 namespace Sphynx.Test
 {
@@ -19,7 +21,7 @@ namespace Sphynx.Test
         [TestCase(SphynxPacketType.LOGIN_RES, 512)]
         public void PacketHeader_ShouldSerializeWithCorrectFormat(SphynxPacketType packetType, int contentSize)
         {
-            var sampleHeader = new SphynxPacketHeader(packetType, contentSize);
+            var sampleHeader = new SphynxPacketHeader(new Version(),packetType, contentSize);
             byte[] serializedHeader = sampleHeader.Serialize();
 
             Assert.Multiple(() =>

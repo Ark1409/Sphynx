@@ -1,5 +1,6 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using Sphynx.Network.Transport;
 
 namespace Sphynx.Network.Packet.Request
 {
@@ -39,9 +40,9 @@ namespace Sphynx.Network.Packet.Request
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
             int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
 
-            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) || !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
+            if (!TrySerializeHeader(packetBytes = new byte[bufferSize]) || !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.Size..]))
             {
                 packetBytes = null;
                 return false;
@@ -57,13 +58,13 @@ namespace Sphynx.Network.Packet.Request
 
             int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE;
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
             try
             {
-                if (TrySerializeHeader(buffer.Span) && TrySerializeDefaults(buffer.Span[SphynxPacketHeader.HEADER_SIZE..]))
+                if (TrySerializeHeader(buffer.Span) && TrySerializeDefaults(buffer.Span[SphynxPacketHeader.Size..]))
                 {
                     await stream.WriteAsync(buffer);
                     return true;

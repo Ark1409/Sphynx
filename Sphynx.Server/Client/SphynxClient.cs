@@ -1,5 +1,6 @@
 ﻿using System.Net.Sockets;
 using Sphynx.Network.Packet;
+using Sphynx.Network.Transport;
 using Sphynx.Server.Utils;
 
 // ReSharper disable ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
@@ -100,18 +101,18 @@ namespace Sphynx.Server.Client
         public async Task StartAsync()
         {
             if (Started) return;
-            
+
             // TODO: Properly check for half-open sockets
             try
             {
                 Started = true;
-                
+
                 // TODO: Make second loop for login req and just GOTO it on logout
                 while (true)
                 {
                     var packet = await ReceivePacketAsync().ConfigureAwait(false);
                     if (packet is null) continue;
-                    
+
                     // We want authentication to be the only packet evaluated "synchronously"
                     if (packet.PacketType == SphynxPacketType.LOGIN_REQ && SphynxClientManager.IsAnonymous(this))
                     {
@@ -119,7 +120,7 @@ namespace Sphynx.Server.Client
                     }
                     else
                     {
-                        // Do we require that packets sent by the same user are processed and "executed" in order? If so then 
+                        // Do we require that packets sent by the same user are processed and "executed" in order? If so then
                         // we should await this task as the current setup causes them to run in parallel
                         _packetHandler.HandlePacketAsync(packet).SafeBackgroundExecute();
                     }
@@ -137,7 +138,7 @@ namespace Sphynx.Server.Client
         /// <returns>The deserialized packet, or null if an instantiation error occurs.</returns>
         private async Task<SphynxPacket?> ReceivePacketAsync()
         {
-            var header = await SphynxPacketHeader.ReceiveAsync(SocketStream).ConfigureAwait(false);
+            SphynxPacketHeader? header = new SphynxPacketHeader();
 
             if (header is null)
                 return null;

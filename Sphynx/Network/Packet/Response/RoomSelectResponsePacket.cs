@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Sphynx.Core;
 using Sphynx.Model.ChatRoom;
+using Sphynx.Network.Transport;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Response
@@ -118,7 +119,7 @@ namespace Sphynx.Network.Packet.Response
         /// <inheritdoc/>
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + ContentSize;
+            int bufferSize = SphynxPacketHeader.Size + ContentSize;
 
             try
             {
@@ -142,7 +143,7 @@ namespace Sphynx.Network.Packet.Response
         {
             if (!stream.CanWrite) return false;
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + ContentSize;
+            int bufferSize = SphynxPacketHeader.Size + ContentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -168,7 +169,7 @@ namespace Sphynx.Network.Packet.Response
 
         private bool TrySerialize(Span<byte> buffer)
         {
-            if (!TrySerializeHeader(buffer) || !TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+            if (!TrySerializeHeader(buffer) || !TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.Size..]))
             {
                 return false;
             }

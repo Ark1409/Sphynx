@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Sphynx.Core;
 using Sphynx.Model.ChatRoom;
+using Sphynx.Network.Transport;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Response
@@ -152,7 +153,7 @@ namespace Sphynx.Network.Packet.Response
                 case ChatRoomType.DIRECT_MSG:
                 {
                     GetDirectPacketInfo(out int roomNameSize, out int contentSize);
-                    int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                    int bufferSize = SphynxPacketHeader.Size + contentSize;
 
                     try
                     {
@@ -174,7 +175,7 @@ namespace Sphynx.Network.Packet.Response
                 case ChatRoomType.GROUP:
                 {
                     GetGroupPacketInfo(out int pwdSize, out int roomNameSize, out int contentSize);
-                    int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                    int bufferSize = SphynxPacketHeader.Size + contentSize;
 
                     try
                     {
@@ -194,9 +195,9 @@ namespace Sphynx.Network.Packet.Response
                 }
             }
 
-            const int NULL_BUFFER_SIZE = SphynxPacketHeader.HEADER_SIZE;
+            int NULL_BUFFER_SIZE = SphynxPacketHeader.Size;
             if (!TrySerializeHeader(packetBytes = new byte[NULL_BUFFER_SIZE]) ||
-                !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.HEADER_SIZE..]))
+                !TrySerializeDefaults(packetBytes.AsSpan()[SphynxPacketHeader.Size..]))
             {
                 return false;
             }
@@ -216,7 +217,7 @@ namespace Sphynx.Network.Packet.Response
                 {
                     GetDirectPacketInfo(out int roomNameSize, out int contentSize);
 
-                    int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                    int bufferSize = SphynxPacketHeader.Size + contentSize;
                     byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
                     var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -244,7 +245,7 @@ namespace Sphynx.Network.Packet.Response
                 {
                     GetGroupPacketInfo(out int pwdSize, out int roomNameSize, out int contentSize);
 
-                    int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                    int bufferSize = SphynxPacketHeader.Size + contentSize;
                     byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
                     var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -269,12 +270,12 @@ namespace Sphynx.Network.Packet.Response
                 }
             }
 
-            const int NULL_BUFFER_SIZE = SphynxPacketHeader.HEADER_SIZE;
+            int NULL_BUFFER_SIZE = SphynxPacketHeader.Size;
             byte[] rawNullBuffer = ArrayPool<byte>.Shared.Rent(NULL_BUFFER_SIZE);
             var nullBuffer = rawNullBuffer.AsMemory()[..NULL_BUFFER_SIZE];
             try
             {
-                if (!TrySerializeHeader(nullBuffer.Span) || !TrySerializeDefaults(nullBuffer.Span[SphynxPacketHeader.HEADER_SIZE..]))
+                if (!TrySerializeHeader(nullBuffer.Span) || !TrySerializeDefaults(nullBuffer.Span[SphynxPacketHeader.Size..]))
                 {
                     return false;
                 }
@@ -330,14 +331,14 @@ namespace Sphynx.Network.Packet.Response
                 return;
             }
 
-            // Room type, RoomId, OwnerId, IsPublic, UserCount, Pwd size, Pwd, Room name size, Room name, Users 
+            // Room type, RoomId, OwnerId, IsPublic, UserCount, Pwd size, Pwd, Room name size, Room name, Users
             contentSize += sizeof(ChatRoomType) + GUID_SIZE + GUID_SIZE + sizeof(bool) + sizeof(int) + sizeof(int) + passwordSize + sizeof(int) +
                            roomNameSize + GUID_SIZE * roomInfo.Users.Count;
         }
 
         private bool TrySerializeDirect(Span<byte> buffer, int roomNameSize)
         {
-            if (!TrySerializeHeader(buffer) || !TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+            if (!TrySerializeHeader(buffer) || !TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.Size..]))
             {
                 return false;
             }
@@ -359,7 +360,7 @@ namespace Sphynx.Network.Packet.Response
 
         private bool TrySerializeGroup(Span<byte> buffer, int pwdSize, int roomNameSize)
         {
-            if (!TrySerializeHeader(buffer) || !TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+            if (!TrySerializeHeader(buffer) || !TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.Size..]))
             {
                 return false;
             }

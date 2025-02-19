@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using Sphynx.Model.ChatRoom;
+using Sphynx.Network.Transport;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Request
@@ -83,7 +84,7 @@ namespace Sphynx.Network.Packet.Request
         {
             int messageSize = TEXT_ENCODING.GetByteCount(Message);
             int contentSize = DEFAULT_CONTENT_SIZE + GUID_SIZE + sizeof(int) + messageSize;
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize], messageSize))
             {
@@ -102,7 +103,7 @@ namespace Sphynx.Network.Packet.Request
             int messageSize = TEXT_ENCODING.GetByteCount(Message);
             int contentSize = DEFAULT_CONTENT_SIZE + sizeof(ChatRoomType) + GUID_SIZE + sizeof(int) + messageSize;
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -128,7 +129,7 @@ namespace Sphynx.Network.Packet.Request
 
         private bool TrySerialize(Span<byte> buffer, int messageSize)
         {
-            if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+            if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.Size..]))
             {
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
                 messageSize.WriteBytes(buffer[MESSAGE_SIZE_OFFSET..]);

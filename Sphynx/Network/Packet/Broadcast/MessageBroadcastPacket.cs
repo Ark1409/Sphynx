@@ -1,6 +1,7 @@
 ﻿using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Transport;
 
 namespace Sphynx.Network.Packet.Broadcast
 {
@@ -60,7 +61,7 @@ namespace Sphynx.Network.Packet.Broadcast
         public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
         {
             int contentSize = GUID_SIZE + GUID_SIZE; // RoomId, MessageId
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
 
             if (!TrySerialize(packetBytes = new byte[bufferSize]))
             {
@@ -78,7 +79,7 @@ namespace Sphynx.Network.Packet.Broadcast
 
             int contentSize = GUID_SIZE + GUID_SIZE; // RoomId, MessageId
 
-            int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+            int bufferSize = SphynxPacketHeader.Size + contentSize;
             byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
             var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -102,7 +103,7 @@ namespace Sphynx.Network.Packet.Broadcast
         {
             if (TrySerializeHeader(buffer))
             {
-                buffer = buffer[SphynxPacketHeader.HEADER_SIZE..];
+                buffer = buffer[SphynxPacketHeader.Size..];
                 RoomId.TryWriteBytes(buffer.Slice(ROOM_ID_OFFSET, GUID_SIZE));
                 MessageID.TryWriteBytes(buffer.Slice(MESSAGE_ID_OFFSET, GUID_SIZE));
                 return true;

@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Sphynx.Model.ChatRoom;
+using Sphynx.Network.Transport;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Request
@@ -155,7 +156,7 @@ namespace Sphynx.Network.Packet.Request
             public override bool TrySerialize([NotNullWhen(true)] out byte[]? packetBytes)
             {
                 int contentSize = DEFAULTS_SIZE + GUID_SIZE;
-                int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                int bufferSize = SphynxPacketHeader.Size + contentSize;
 
                 if (!TrySerialize(packetBytes = new byte[bufferSize]))
                 {
@@ -173,7 +174,7 @@ namespace Sphynx.Network.Packet.Request
 
                 int contentSize = DEFAULTS_SIZE + GUID_SIZE;
 
-                int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                int bufferSize = SphynxPacketHeader.Size + contentSize;
                 byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
                 var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -195,7 +196,7 @@ namespace Sphynx.Network.Packet.Request
 
             private bool TrySerialize(Span<byte> buffer)
             {
-                if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+                if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.Size..]))
                 {
                     OtherId.TryWriteBytes(buffer.Slice(OTHER_ID_OFFSET, GUID_SIZE));
                     return true;
@@ -303,7 +304,7 @@ namespace Sphynx.Network.Packet.Request
             {
                 GetPacketInfo(out int nameSize, out int passwordSize, out int contentSize);
 
-                int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                int bufferSize = SphynxPacketHeader.Size + contentSize;
 
                 if (!TrySerialize(packetBytes = new byte[bufferSize], nameSize, passwordSize))
                 {
@@ -321,7 +322,7 @@ namespace Sphynx.Network.Packet.Request
 
                 GetPacketInfo(out int nameSize, out int passwordSize, out int contentSize);
 
-                int bufferSize = SphynxPacketHeader.HEADER_SIZE + contentSize;
+                int bufferSize = SphynxPacketHeader.Size + contentSize;
                 byte[] rawBuffer = ArrayPool<byte>.Shared.Rent(bufferSize);
                 var buffer = rawBuffer.AsMemory()[..bufferSize];
 
@@ -355,7 +356,7 @@ namespace Sphynx.Network.Packet.Request
 
             private bool TrySerialize(Span<byte> buffer, int nameSize, int passwordSize)
             {
-                if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.HEADER_SIZE..]))
+                if (TrySerializeHeader(buffer) && TrySerializeDefaults(buffer = buffer[SphynxPacketHeader.Size..]))
                 {
                     buffer[VISIBILITY_OFFSET] = (byte)(Public ? 0 : 1);
 
