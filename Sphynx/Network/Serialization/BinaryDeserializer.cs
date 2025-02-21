@@ -659,6 +659,24 @@ namespace Sphynx.Network.Serialization
             }
         }
 
+        public bool TryReadDateTimeOffset([NotNullWhen(true)] out DateTimeOffset? dto)
+        {
+            if (!CanRead(BinarySerializer.SizeOf<DateTimeOffset>()))
+            {
+                dto = null;
+                return false;
+            }
+
+            dto = ReadDateTime();
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public DateTimeOffset ReadDateTimeOffset()
+        {
+            return new DateTimeOffset(ReadInt64(), TimeSpan.FromTicks(ReadInt64()));
+        }
+
         public bool TryReadDateTime([NotNullWhen(true)] out DateTime? dateTime)
         {
             if (!CanRead(BinarySerializer.SizeOf<DateTime>()))
@@ -769,6 +787,18 @@ namespace Sphynx.Network.Serialization
                     value = Unsafe.As<SnowflakeId?, T?>(ref val);
                     return success;
                 }
+                case TypeCode.Object when typeof(T) == typeof(Version):
+                {
+                    bool success = TryReadVersion(out var val);
+                    value = Unsafe.As<Version?, T?>(ref val);
+                    return success;
+                }
+                case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
+                {
+                    bool success = TryReadDateTimeOffset(out var val);
+                    value = Unsafe.As<DateTimeOffset?, T?>(ref val);
+                    return success;
+                }
                 case TypeCode.Object when typeof(T) == typeof(Guid):
                 {
                     bool success = TryReadGuid(out var val);
@@ -874,6 +904,16 @@ namespace Sphynx.Network.Serialization
                 {
                     var value = ReadSnowflakeId();
                     return Unsafe.As<SnowflakeId, T>(ref value);
+                }
+                case TypeCode.Object when typeof(T) == typeof(Version):
+                {
+                    var value = ReadVersion();
+                    return Unsafe.As<Version, T>(ref value);
+                }
+                case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
+                {
+                    var value = ReadDateTimeOffset();
+                    return Unsafe.As<DateTimeOffset, T>(ref value);
                 }
                 case TypeCode.Object when typeof(T) == typeof(Guid):
                 {

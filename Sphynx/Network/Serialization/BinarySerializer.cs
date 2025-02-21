@@ -84,6 +84,8 @@ namespace Sphynx.Network.Serialization
                     return sizeof(long);
                 case TypeCode.Object when typeof(T) == typeof(Guid):
                     return Unsafe.SizeOf<T>();
+                case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
+                    return 2 * sizeof(long);
                 case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
                     return SnowflakeId.SIZE;
                 case TypeCode.Object when typeof(T) == typeof(Version):
@@ -541,7 +543,7 @@ namespace Sphynx.Network.Serialization
 
         #region Common Types
 
-        public bool TryVersion(Version id)
+        public bool TryWriteVersion(Version id)
         {
             if (!CanWrite(SizeOf<Version>()))
                 return false;
@@ -632,6 +634,22 @@ namespace Sphynx.Network.Serialization
             Offset += size;
         }
 
+        public bool TryWriteDateTimeOffset(DateTimeOffset dto)
+        {
+            if (!CanWrite(SizeOf<DateTimeOffset>()))
+                return false;
+
+            WriteDateTimeOffset(dto);
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteDateTimeOffset(DateTimeOffset dto)
+        {
+            WriteInt64(dto.UtcTicks);
+            WriteInt64(dto.Offset.Ticks);
+        }
+
         public bool TryWriteDateTime(DateTime dateTime)
         {
             if (!CanWrite(SizeOf<DateTime>()))
@@ -687,6 +705,10 @@ namespace Sphynx.Network.Serialization
                     return TryWriteDateTime(Unsafe.As<T, DateTime>(ref value));
                 case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
                     return TryWriteSnowflakeId(Unsafe.As<T, SnowflakeId>(ref value));
+                case TypeCode.Object when typeof(T) == typeof(Version):
+                    return TryWriteVersion(Unsafe.As<T, Version>(ref value));
+                case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
+                    return TryWriteDateTimeOffset(Unsafe.As<T, DateTimeOffset>(ref value));
                 case TypeCode.Object when typeof(T) == typeof(Guid):
                     return TryWriteGuid(Unsafe.As<T, Guid>(ref value));
 
@@ -763,6 +785,12 @@ namespace Sphynx.Network.Serialization
                     break;
                 case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
                     WriteSnowflakeId(Unsafe.As<T, SnowflakeId>(ref value));
+                    break;
+                case TypeCode.Object when typeof(T) == typeof(Version):
+                    WriteVersion(Unsafe.As<T, Version>(ref value));
+                    break;
+                case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
+                    WriteDateTimeOffset(Unsafe.As<T, DateTimeOffset>(ref value));
                     break;
                 case TypeCode.Object when typeof(T) == typeof(Guid):
                     WriteGuid(Unsafe.As<T, Guid>(ref value));
