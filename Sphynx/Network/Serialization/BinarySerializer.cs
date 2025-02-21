@@ -560,7 +560,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteSnowflakeId(SnowflakeId id)
         {
-            if (!CanWrite(SnowflakeId.SIZE))
+            if (!CanWrite(SizeOf<SnowflakeId>()))
                 return false;
 
             WriteSnowflakeId(id);
@@ -591,7 +591,7 @@ namespace Sphynx.Network.Serialization
             bool written = id.TryWriteBytes(_span[Offset..]);
             Debug.Assert(written);
 
-            Offset += SizeOf<Guid>();
+            Offset += Unsafe.SizeOf<Guid>();
         }
 
         public bool TryWriteString(ReadOnlySpan<char> str)
@@ -835,7 +835,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteBool(bool value)
         {
-            if (!CanWrite(sizeof(bool)))
+            if (!CanWrite(SizeOf<bool>()))
                 return false;
 
             WriteBool(value);
@@ -850,7 +850,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteByte(byte value)
         {
-            if (!CanWrite(sizeof(byte)))
+            if (!CanWrite(SizeOf<byte>()))
                 return false;
 
             WriteByte(value);
@@ -865,7 +865,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteUInt16(ushort value)
         {
-            if (!CanWrite(sizeof(ushort)))
+            if (!CanWrite(SizeOf<ushort>()))
                 return false;
 
             WriteUInt16(value);
@@ -881,7 +881,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteInt16(short value)
         {
-            if (!CanWrite(sizeof(short)))
+            if (!CanWrite(SizeOf<short>()))
                 return false;
 
             WriteInt16(value);
@@ -897,7 +897,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteUInt32(uint value)
         {
-            if (!CanWrite(sizeof(uint)))
+            if (!CanWrite(SizeOf<uint>()))
                 return false;
 
             WriteUInt32(value);
@@ -913,7 +913,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteInt32(int value)
         {
-            if (!CanWrite(sizeof(int)))
+            if (!CanWrite(SizeOf<int>()))
                 return false;
 
             WriteInt32(value);
@@ -929,7 +929,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteUInt64(ulong value)
         {
-            if (!CanWrite(sizeof(ulong)))
+            if (!CanWrite(SizeOf<ulong>()))
                 return false;
 
             WriteUInt64(value);
@@ -945,7 +945,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteInt64(long value)
         {
-            if (!CanWrite(sizeof(long)))
+            if (!CanWrite(SizeOf<long>()))
                 return false;
 
             WriteInt64(value);
@@ -961,7 +961,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteFloat(float value)
         {
-            if (!CanWrite(sizeof(float)))
+            if (!CanWrite(SizeOf<float>()))
                 return false;
 
             WriteFloat(value);
@@ -977,7 +977,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryWriteDouble(double value)
         {
-            if (!CanWrite(sizeof(double)))
+            if (!CanWrite(SizeOf<double>()))
                 return false;
 
             WriteDouble(value);

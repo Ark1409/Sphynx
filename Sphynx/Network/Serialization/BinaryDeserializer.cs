@@ -523,7 +523,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadSnowflakeId([NotNullWhen(true)] out SnowflakeId? id)
         {
-            if (!CanRead(SnowflakeId.SIZE))
+            if (!CanRead(BinarySerializer.SizeOf<SnowflakeId>()))
             {
                 id = null;
                 return false;
@@ -543,7 +543,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadGuid([NotNullWhen(true)] out Guid? id)
         {
-            if (!CanRead(Unsafe.SizeOf<Guid>()))
+            if (!CanRead(BinarySerializer.SizeOf<Guid>()))
             {
                 id = null;
                 return false;
@@ -941,7 +941,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadBool([NotNullWhen(true)] out bool? value)
         {
-            if (!CanRead(sizeof(bool)))
+            if (!CanRead(BinarySerializer.SizeOf<bool>()))
             {
                 value = null;
                 return false;
@@ -959,7 +959,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadByte([NotNullWhen(true)] out byte? value)
         {
-            if (!CanRead(sizeof(byte)))
+            if (!CanRead(BinarySerializer.SizeOf<byte>()))
             {
                 value = null;
                 return false;
@@ -977,7 +977,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadUInt16([NotNullWhen(true)] out ushort? value)
         {
-            if (!CanRead(sizeof(ushort)))
+            if (!CanRead(BinarySerializer.SizeOf<ushort>()))
             {
                 value = null;
                 return false;
@@ -997,7 +997,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadInt16([NotNullWhen(true)] out short? value)
         {
-            if (!CanRead(sizeof(short)))
+            if (!CanRead(BinarySerializer.SizeOf<short>()))
             {
                 value = null;
                 return false;
@@ -1017,7 +1017,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadUInt32([NotNullWhen(true)] out uint? value)
         {
-            if (!CanRead(sizeof(uint)))
+            if (!CanRead(BinarySerializer.SizeOf<uint>()))
             {
                 value = null;
                 return false;
@@ -1037,7 +1037,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadInt32([NotNullWhen(true)] out int? value)
         {
-            if (!CanRead(sizeof(int)))
+            if (!CanRead(BinarySerializer.SizeOf<int>()))
             {
                 value = null;
                 return false;
@@ -1057,7 +1057,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadUInt64([NotNullWhen(true)] out ulong? value)
         {
-            if (!CanRead(sizeof(ulong)))
+            if (!CanRead(BinarySerializer.SizeOf<ulong>()))
             {
                 value = null;
                 return false;
@@ -1077,7 +1077,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadInt64([NotNullWhen(true)] out long? value)
         {
-            if (!CanRead(sizeof(long)))
+            if (!CanRead(BinarySerializer.SizeOf<long>()))
             {
                 value = null;
                 return false;
@@ -1097,7 +1097,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadFloat([NotNullWhen(true)] out float? value)
         {
-            if (!CanRead(sizeof(float)))
+            if (!CanRead(BinarySerializer.SizeOf<float>()))
             {
                 value = null;
                 return false;
@@ -1117,7 +1117,7 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadDouble([NotNullWhen(true)] out double? value)
         {
-            if (!CanRead(sizeof(double)))
+            if (!CanRead(BinarySerializer.SizeOf<double>()))
             {
                 value = null;
                 return false;
