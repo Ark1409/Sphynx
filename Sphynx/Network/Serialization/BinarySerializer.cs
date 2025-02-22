@@ -79,23 +79,22 @@ namespace Sphynx.Network.Serialization
                 case TypeCode.UInt64:
                 case TypeCode.Single:
                 case TypeCode.Double:
-                    return Unsafe.SizeOf<T>();
-                case TypeCode.DateTime:
-                    return sizeof(long);
-                case TypeCode.Object when typeof(T) == typeof(Guid):
-                    return Unsafe.SizeOf<T>();
-                case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
-                    return 2 * sizeof(long);
-                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
-                    return SnowflakeId.SIZE;
-                case TypeCode.Object when typeof(T) == typeof(Version):
-                    return sizeof(int);
                 case TypeCode.Object when BitConverter.IsLittleEndian:
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
                     return Unsafe.SizeOf<T>();
+                case TypeCode.DateTime:
+                    return SizeOf<long>();
+                case TypeCode.Object when typeof(T) == typeof(Guid):
+                    return Unsafe.SizeOf<T>();
+                case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
+                    return 2 * SizeOf<long>();
+                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
+                    return SnowflakeId.SIZE;
+                case TypeCode.Object when typeof(T) == typeof(Version):
+                    return SizeOf<int>();
 
                 case TypeCode.Object:
                     throw new ArgumentException(
@@ -131,7 +130,7 @@ namespace Sphynx.Network.Serialization
         {
             int charCount = str?.Length ?? 0;
             int byteCount = (charCount == 0 ? charCount : StringEncoding.GetByteCount(str!));
-            return sizeof(int) + byteCount;
+            return SizeOf<int>() + byteCount;
         }
 
         /// <summary>
@@ -143,7 +142,7 @@ namespace Sphynx.Network.Serialization
         public static int MaxSizeOf(string? str)
         {
             int charCount = str?.Length ?? 0;
-            return sizeof(int) + StringEncoding.GetMaxByteCount(charCount);
+            return SizeOf<int>() + StringEncoding.GetMaxByteCount(charCount);
         }
 
         /// <inheritdoc cref="SizeOf(string?)"/>
@@ -151,20 +150,20 @@ namespace Sphynx.Network.Serialization
         public static int SizeOf(ReadOnlySpan<char> str)
         {
             int byteCount = (str.Length == 0 ? str.Length : StringEncoding.GetByteCount(str));
-            return sizeof(int) + byteCount;
+            return SizeOf<int>() + byteCount;
         }
 
         /// <inheritdoc cref="MaxSizeOf(string?)"/>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int MaxSizeOf(ReadOnlySpan<char> str)
         {
-            return sizeof(int) + StringEncoding.GetMaxByteCount(str.Length);
+            return SizeOf<int>() + StringEncoding.GetMaxByteCount(str.Length);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int SizeOf<T>(ICollection<T> collection) where T : unmanaged
         {
-            return sizeof(int) + collection.Count * SizeOf<T>();
+            return SizeOf<int>() + collection.Count * SizeOf<T>();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -175,7 +174,7 @@ namespace Sphynx.Network.Serialization
 
         public static int SizeOf(ICollection<string?> collection)
         {
-            int size = sizeof(int);
+            int size = SizeOf<int>();
 
             foreach (string? item in collection)
             {
@@ -187,7 +186,7 @@ namespace Sphynx.Network.Serialization
 
         public static int MaxSizeOf(ICollection<string?> collection)
         {
-            int size = sizeof(int);
+            int size = SizeOf<int>();
 
             foreach (string? item in collection)
             {
@@ -202,7 +201,7 @@ namespace Sphynx.Network.Serialization
             where TKey : unmanaged
             where TValue : unmanaged
         {
-            return sizeof(int) + dictionary.Count * (SizeOf<TKey>() + SizeOf<TValue>());
+            return SizeOf<int>() + dictionary.Count * (SizeOf<TKey>() + SizeOf<TValue>());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -216,7 +215,7 @@ namespace Sphynx.Network.Serialization
         public static int SizeOf<TValue>(IDictionary<string, TValue> dictionary)
             where TValue : unmanaged
         {
-            int size = sizeof(int) + dictionary.Count * SizeOf<TValue>();
+            int size = SizeOf<int>() + dictionary.Count * SizeOf<TValue>();
 
             foreach (var kvp in dictionary)
             {
@@ -229,7 +228,7 @@ namespace Sphynx.Network.Serialization
         public static int MaxSizeOf<TValue>(IDictionary<string, TValue> dictionary)
             where TValue : unmanaged
         {
-            int size = sizeof(int) + dictionary.Count * MaxSizeOf<TValue>();
+            int size = SizeOf<int>() + dictionary.Count * MaxSizeOf<TValue>();
 
             foreach (var kvp in dictionary)
             {
@@ -242,7 +241,7 @@ namespace Sphynx.Network.Serialization
         public static int SizeOf<TKey>(IDictionary<TKey, string?> dictionary)
             where TKey : unmanaged
         {
-            int size = sizeof(int) + dictionary.Count * SizeOf<TKey>();
+            int size = SizeOf<int>() + dictionary.Count * SizeOf<TKey>();
 
             foreach (var kvp in dictionary)
             {
@@ -255,7 +254,7 @@ namespace Sphynx.Network.Serialization
         public static int MaxSizeOf<TKey>(IDictionary<TKey, string?> dictionary)
             where TKey : unmanaged
         {
-            int size = sizeof(int) + dictionary.Count * MaxSizeOf<TKey>();
+            int size = SizeOf<int>() + dictionary.Count * MaxSizeOf<TKey>();
 
             foreach (var kvp in dictionary)
             {
@@ -267,7 +266,7 @@ namespace Sphynx.Network.Serialization
 
         public static int SizeOf(IDictionary<string, string?> dictionary)
         {
-            int size = sizeof(int);
+            int size = SizeOf<int>();
 
             foreach (var kvp in dictionary)
             {
@@ -280,7 +279,7 @@ namespace Sphynx.Network.Serialization
 
         public static int MaxSizeOf(IDictionary<string, string?> dictionary)
         {
-            int size = sizeof(int);
+            int size = SizeOf<int>();
 
             foreach (var kvp in dictionary)
             {
@@ -608,7 +607,7 @@ namespace Sphynx.Network.Serialization
 
         public void WriteString(ReadOnlySpan<char> str)
         {
-            int size = StringEncoding.GetBytes(str, _span[(Offset + sizeof(int))..]);
+            int size = StringEncoding.GetBytes(str, _span[(Offset + SizeOf<int>())..]);
             WriteInt32(size);
 
             Offset += size;
@@ -628,7 +627,7 @@ namespace Sphynx.Network.Serialization
 
         public void WriteString(string? str)
         {
-            int size = StringEncoding.GetBytes(str ?? string.Empty, _span[(Offset + sizeof(int))..]);
+            int size = StringEncoding.GetBytes(str ?? string.Empty, _span[(Offset + SizeOf<int>())..]);
             WriteInt32(size);
 
             Offset += size;

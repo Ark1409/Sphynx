@@ -257,7 +257,7 @@ namespace Sphynx.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private Dictionary<TKey, TValue> CreateDictionary<TKey, TValue>(int size) where TKey : notnull =>
+        private static Dictionary<TKey, TValue> CreateDictionary<TKey, TValue>(int size) where TKey : notnull =>
             CreateDictionary<TKey, TValue, Dictionary<TKey, TValue>>(size);
 
         private static TDictionary CreateDictionary<TKey, TValue, TDictionary>(int size)
@@ -477,7 +477,7 @@ namespace Sphynx.Network.Serialization
             return collection;
         }
 
-        private TCollection CreateCollection<T, TCollection>(int size)
+        private static TCollection CreateCollection<T, TCollection>(int size)
             where TCollection : ICollection<T>, new()
         {
             TCollection collection;
@@ -563,10 +563,15 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadString(Span<char> dest)
         {
-            if (!CanRead(BinarySerializer.MaxSizeOf(string.Empty)) && !CanRead(BinarySerializer.SizeOf(string.Empty)))
+            if (!TryReadInt32(out int? size))
                 return false;
 
-            ReadString(dest);
+            if (size > BinarySerializer.StringEncoding.GetMaxByteCount(dest.Length))
+                return false;
+
+            int decoded = BinarySerializer.StringEncoding.GetChars(_span.Slice(Offset, size.Value), dest);
+
+            Debug.Assert(decoded == size);
             return true;
         }
 
@@ -601,9 +606,9 @@ namespace Sphynx.Network.Serialization
             return str;
         }
 
-        public bool TryReadEnum<T>([NotNullWhen(true)] out T? value) where T : struct, Enum
+        public bool TryReadEnum<T>([NotNullWhen(true)] out T? value) where T : unmanaged, Enum
         {
-            if (!CanRead(Unsafe.SizeOf<T>()))
+            if (!CanRead(BinarySerializer.SizeOf<T>()))
             {
                 value = null;
                 return false;
@@ -613,50 +618,10 @@ namespace Sphynx.Network.Serialization
             return true;
         }
 
-        public T ReadEnum<T>() where T : struct, Enum
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T ReadEnum<T>() where T : unmanaged, Enum
         {
-            var underlyingType = Enum.GetUnderlyingType(typeof(T));
-            switch (Type.GetTypeCode(underlyingType))
-            {
-                case TypeCode.Byte:
-                {
-                    byte value = ReadByte();
-                    return Unsafe.As<byte, T>(ref value);
-                }
-                case TypeCode.Int16:
-                {
-                    short value = ReadInt16();
-                    return Unsafe.As<short, T>(ref value);
-                }
-                case TypeCode.UInt16:
-                {
-                    ushort value = ReadUInt16();
-                    return Unsafe.As<ushort, T>(ref value);
-                }
-                case TypeCode.Int32:
-                {
-                    int value = ReadInt32();
-                    return Unsafe.As<int, T>(ref value);
-                }
-                case TypeCode.UInt32:
-                {
-                    uint value = ReadUInt32();
-                    return Unsafe.As<uint, T>(ref value);
-                }
-                case TypeCode.Int64:
-                {
-                    long value = ReadInt64();
-                    return Unsafe.As<long, T>(ref value);
-                }
-                case TypeCode.UInt64:
-                {
-                    ulong value = ReadUInt64();
-                    return Unsafe.As<ulong, T>(ref value);
-                }
-
-                default:
-                    throw new ArgumentException($"Unsupported underlying type: {underlyingType}");
-            }
+            return ReadUnmanaged<T>();
         }
 
         public bool TryReadDateTimeOffset([NotNullWhen(true)] out DateTimeOffset? dto)
