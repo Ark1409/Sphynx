@@ -136,7 +136,7 @@ namespace Sphynx.Core
             const int SEQUENCE_MACHINE_LENGTH = sizeof(int) * CHARS_PER_BYTE;
 
             var sequenceAndMachineBytes = input[..SEQUENCE_MACHINE_LENGTH];
-
+            
             return int.TryParse(sequenceAndMachineBytes, NumberStyles.AllowHexSpecifier, null, out value);
         }
 

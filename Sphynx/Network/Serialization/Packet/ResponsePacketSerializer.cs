@@ -33,10 +33,10 @@ namespace Sphynx.Network.Serialization.Packet
         }
 
         protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo);
+    }
 
-        protected readonly struct ResponseInfo
-        {
-            public SphynxErrorCode ErrorCode { get; init; }
-        }
+    public readonly struct ResponseInfo
+    {
+        public SphynxErrorCode ErrorCode { get; init; }
     }
 }
