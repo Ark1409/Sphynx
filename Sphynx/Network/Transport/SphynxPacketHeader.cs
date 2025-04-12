@@ -1,15 +1,27 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Buffers;
+using System.Buffers.Binary;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using FastEnumUtility;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.Serialization;
+using Sphynx.Utils;
 using Version = Sphynx.Core.Version;
 
 namespace Sphynx.Network.Transport
 {
     /// <summary>
-    /// Represents the transport header of a <see cref="SphynxPacket"/>.
+    /// The transport header of a <see cref="SphynxPacket"/>.
     /// </summary>
-    public readonly struct SphynxPacketHeader : IEquatable<SphynxPacketHeader?>, IEquatable<SphynxPacketHeader>
+    public readonly struct SphynxPacketHeader : IEquatable<SphynxPacketHeader>, IEquatable<SphynxPacketHeader?>
     {
+        /// <summary>
+        /// The (exact) Serialization size of <see cref="SIGNATURE"/> in bytes.
+        /// </summary>
+        public static readonly int SignatureSize = BinarySerializer.SizeOf<ushort>();
+
         /// <summary>
         /// The packet signature to safeguard against corrupted packets.
         /// </summary>
@@ -18,8 +30,10 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// The (exact) serialization size of this header in bytes.
         /// </summary>
-        public static readonly int Size = BinarySerializer.SizeOf<Version>() +
-                                          BinarySerializer.SizeOf<SphynxPacketType>() + BinarySerializer.SizeOf<int>();
+        public static readonly int Size = SignatureSize
+                                          + BinarySerializer.SizeOf<Version>()
+                                          + BinarySerializer.SizeOf<SphynxPacketType>()
+                                          + BinarySerializer.SizeOf<int>();
 
         /// <summary>
         /// The schema version against which the packet was serialized.
@@ -50,6 +64,47 @@ namespace Sphynx.Network.Transport
         }
 
         /// <summary>
+        /// Continuously reads from the <paramref name="stream"/> until a valid <see cref="SphynxPacketHeader"/> has
+        /// been successfully consumed, or cancellation is requested.
+        /// </summary>
+        /// <param name="stream">The stream from which to consume the header.</param>
+        /// <param name="cancellationToken">The cancellation token to abort the consumption request.</param>
+        /// <returns>The first successfully consumed <see cref="SphynxPacketHeader"/>.</returns>
+        public static async ValueTask<SphynxPacketHeader> ReceiveAsync(
+            Stream stream,
+            CancellationToken cancellationToken = default)
+        {
+            if (!stream.CanRead)
+                throw new ArgumentException("Stream must be readable", nameof(stream));
+
+            byte[] rentBuffer = ArrayPool<byte>.Shared.Rent(Size);
+            var buffer = rentBuffer.AsMemory()[..Size];
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await stream.FillAsync(buffer, cancellationToken).ConfigureAwait(false);
+                SphynxPacketHeader? header;
+
+                while (!TryDeserialize(buffer.Span, out header))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    buffer.ShiftLeft(1);
+
+                    await stream.FillAsync(buffer[^1..], cancellationToken).ConfigureAwait(false);
+                }
+
+                return header.Value;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentBuffer);
+            }
+        }
+
+        /// <summary>
         /// Creates a new <see cref="SphynxPacketHeader"/> from the <paramref name="packetHeader"/>.
         /// </summary>
         /// <param name="packetHeader">The raw bytes for a <see cref="SphynxPacketHeader"/>.</param>
@@ -72,7 +127,15 @@ namespace Sphynx.Network.Transport
             ref BinaryDeserializer deserializer,
             [NotNullWhen(true)] out SphynxPacketHeader? header)
         {
-            if (deserializer.CurrentSpan.Length < Size)
+            if (deserializer.CurrentSpan.Length != Size)
+            {
+                header = null;
+                return false;
+            }
+
+            ushort signature = deserializer.ReadUnmanaged<ushort>();
+
+            if (signature != SIGNATURE)
             {
                 header = null;
                 return false;
@@ -80,6 +143,13 @@ namespace Sphynx.Network.Transport
 
             var version = deserializer.ReadVersion();
             var packetType = deserializer.ReadEnum<SphynxPacketType>();
+
+            if (!FastEnum.IsDefined(packetType))
+            {
+                header = null;
+                return false;
+            }
+
             int contentSize = deserializer.ReadInt32();
 
             header = new SphynxPacketHeader(version, packetType, contentSize);
@@ -118,6 +188,7 @@ namespace Sphynx.Network.Transport
                 return false;
             }
 
+            serializer.WriteUnmanaged(SIGNATURE);
             serializer.WriteVersion(Version);
             serializer.WriteEnum(PacketType);
             serializer.WriteInt32(ContentSize);
