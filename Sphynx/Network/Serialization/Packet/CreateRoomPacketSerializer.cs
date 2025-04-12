@@ -62,7 +62,9 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected internal override int GetMaxRoomSize(CreateRoomRequestPacket packet)
         {
-            return _serializers.TryGetValue(packet.RoomType, out var serializer) ? serializer.GetMaxRoomSize(packet) : 0;
+            return _serializers.TryGetValue(packet.RoomType, out var serializer)
+                ? serializer.GetMaxRoomSize(packet)
+                : 0;
         }
 
         protected internal override bool SerializeRoom(CreateRoomRequestPacket packet, ref BinarySerializer serializer)
@@ -97,13 +99,13 @@ namespace Sphynx.Network.Serialization.Packet
                 ref CollectionsMarshal.GetValueRefOrAddDefault(_serializers, roomType, out bool exists);
 
             // Avoid extra allocations
-            if (exists && existingAdapter is Adapter<T> adapter)
+            if (exists && existingAdapter is SerializerAdapter<T> adapter)
             {
                 adapter.InnerSerializer = serializer;
             }
             else
             {
-                existingAdapter = new Adapter<T>(serializer);
+                existingAdapter = new SerializerAdapter<T>(serializer);
             }
 
             return this;
@@ -115,14 +117,12 @@ namespace Sphynx.Network.Serialization.Packet
             return this;
         }
 
-        // TODO: Find a more elegant way of accomplishing this
-
-        private class Adapter<T> : CreateRoomRequestPacketSerializer<CreateRoomRequestPacket>
+        private class SerializerAdapter<T> : CreateRoomRequestPacketSerializer<CreateRoomRequestPacket>
             where T : CreateRoomRequestPacket
         {
             internal CreateRoomRequestPacketSerializer<T> InnerSerializer { get; set; }
 
-            public Adapter(CreateRoomRequestPacketSerializer<T> innerSerializer)
+            public SerializerAdapter(CreateRoomRequestPacketSerializer<T> innerSerializer)
             {
                 InnerSerializer = innerSerializer;
             }

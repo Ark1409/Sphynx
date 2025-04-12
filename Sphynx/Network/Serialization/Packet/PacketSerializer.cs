@@ -39,6 +39,8 @@ namespace Sphynx.Network.Serialization.Packet
             return false;
         }
 
+        // TODO: Bring the unsafe serialization all the way up
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TrySerializeUnsafe(T packet, Span<byte> buffer)
         {
