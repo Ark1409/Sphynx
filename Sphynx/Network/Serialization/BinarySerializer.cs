@@ -79,7 +79,6 @@ namespace Sphynx.Network.Serialization
                 case TypeCode.UInt64:
                 case TypeCode.Single:
                 case TypeCode.Double:
-                case TypeCode.Object when BitConverter.IsLittleEndian:
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
@@ -95,6 +94,9 @@ namespace Sphynx.Network.Serialization
                     return SnowflakeId.SIZE;
                 case TypeCode.Object when typeof(T) == typeof(Version):
                     return SizeOf<int>();
+
+                case TypeCode.Object when BitConverter.IsLittleEndian:
+                    return Unsafe.SizeOf<T>();
 
                 case TypeCode.Object:
                     throw new ArgumentException(
