@@ -122,7 +122,8 @@ namespace Sphynx.Utils
                 return sizeof(int);
             }
 
-            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount, output = new HashSet<Guid>(guidCount));
+            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount,
+                output = new HashSet<Guid>(guidCount));
             return bytesRead;
         }
 
@@ -138,7 +139,8 @@ namespace Sphynx.Utils
                 return sizeof(int);
             }
 
-            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount, output = new List<Guid>(guidCount));
+            bytesRead += ReadGuidCollection(guidCountAndBytes[bytesRead..], guidCount,
+                output = new List<Guid>(guidCount));
             return bytesRead;
         }
 
@@ -153,7 +155,10 @@ namespace Sphynx.Utils
             return bytesRead;
         }
 
-        public static unsafe int ReadGuidCollection<TCollection>(this ReadOnlySpan<byte> guidBytes, int guidCount, TCollection output)
+        public static unsafe int ReadGuidCollection<TCollection>(
+            this ReadOnlySpan<byte> guidBytes,
+            int guidCount,
+            TCollection output)
             where TCollection : ICollection<Guid>
         {
             for (int i = 0; i < guidCount; i++)
@@ -168,6 +173,44 @@ namespace Sphynx.Utils
         #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ShiftLeft<T>(this Memory<T> memory, int amount)
+            => ShiftLeft(memory.Span, amount);
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static Span<T> ShiftLeft<T>(this Span<T> span, int amount)
+        {
+            if (amount == 0)
+                return span;
+
+            if (amount < 0)
+                return ShiftRight(span, -amount);
+
+            span[amount..].CopyTo(span);
+            span[..(span.Length - amount)].Clear();
+
+            return span;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static Span<T> ShiftRight<T>(this Memory<T> memory, int amount)
+            => ShiftRight(memory.Span, amount);
+
+        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        public static Span<T> ShiftRight<T>(this Span<T> span, int amount)
+        {
+            if (amount == 0)
+                return span;
+
+            if (amount < 0)
+                return ShiftLeft(span, -amount);
+
+            span[(span.Length - amount)..].CopyTo(span[amount..]);
+            span[..amount].Clear();
+
+            return span;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool SequenceEqual<T>(T[]? first, T[]? second)
         {
             if (first is null && second is null) return true;
@@ -177,6 +220,7 @@ namespace Sphynx.Utils
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool SequenceEqual<T>(T[] first, ReadOnlySpan<T> second) => new ReadOnlySpan<T>(first).SequenceEqual(second);
+        public static bool SequenceEqual<T>(T[] first, ReadOnlySpan<T> second) =>
+            new ReadOnlySpan<T>(first).SequenceEqual(second);
     }
 }
