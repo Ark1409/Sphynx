@@ -9,7 +9,7 @@ using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class GetMessagesRequestPacketSerializer : RequestPacketSerializer<FetchMessagesRequest>
+    public class FetchMessagesRequestSerializer : RequestSerializer<FetchMessagesRequest>
     {
         protected override int GetMaxSizeInternal(FetchMessagesRequest packet)
         {
@@ -26,9 +26,7 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override FetchMessagesRequest DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            RequestInfo requestInfo)
+        protected override FetchMessagesRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
         {
             var sinceId = deserializer.ReadSnowflakeId();
             var roomId = deserializer.ReadSnowflakeId();
@@ -40,16 +38,16 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class GetMessagesResponsePacketSerializer : ResponsePacketSerializer<GetMessagesResponse>
+    public class FetchMessagesResponseSerializer : ResponseSerializer<GetMessagesResponse>
     {
         private readonly ITypeSerializer<IChatMessage[]> _chatMessageSerializer;
 
-        public GetMessagesResponsePacketSerializer(ITypeSerializer<IChatMessage> chatMessageSerializer)
+        public FetchMessagesResponseSerializer(ITypeSerializer<IChatMessage> chatMessageSerializer)
             : this(new ArraySerializer<IChatMessage>(chatMessageSerializer))
         {
         }
 
-        public GetMessagesResponsePacketSerializer(ITypeSerializer<IChatMessage[]> chatMessageSerializer)
+        public FetchMessagesResponseSerializer(ITypeSerializer<IChatMessage[]> chatMessageSerializer)
         {
             _chatMessageSerializer = chatMessageSerializer;
         }
@@ -71,9 +69,7 @@ namespace Sphynx.Network.Serialization.Packet
             return _chatMessageSerializer.TrySerializeUnsafe(packet.Messages!, ref serializer);
         }
 
-        protected override GetMessagesResponse? DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            ResponseInfo responseInfo)
+        protected override GetMessagesResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new GetMessagesResponse(responseInfo.ErrorCode);

@@ -9,7 +9,7 @@ using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class GetUsersRequestPacketSerializer : RequestPacketSerializer<FetchUsersRequest>
+    public class FetchUsersRequestSerializer : RequestSerializer<FetchUsersRequest>
     {
         protected override int GetMaxSizeInternal(FetchUsersRequest packet)
         {
@@ -22,25 +22,23 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override FetchUsersRequest DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            RequestInfo requestInfo)
+        protected override FetchUsersRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
         {
             var userIds = deserializer.ReadArray<SnowflakeId>();
             return new FetchUsersRequest(requestInfo.UserId, requestInfo.SessionId, userIds);
         }
     }
 
-    public class GetUsersResponsePacketSerializer : ResponsePacketSerializer<GetUsersResponse>
+    public class FetchUsersResponseSerializer : ResponseSerializer<GetUsersResponse>
     {
         private readonly ITypeSerializer<ISphynxUserInfo[]> _userSerializer;
 
-        public GetUsersResponsePacketSerializer(ITypeSerializer<ISphynxUserInfo> userSerializer)
+        public FetchUsersResponseSerializer(ITypeSerializer<ISphynxUserInfo> userSerializer)
             : this(new ArraySerializer<ISphynxUserInfo>(userSerializer))
         {
         }
 
-        public GetUsersResponsePacketSerializer(ITypeSerializer<ISphynxUserInfo[]> userSerializer)
+        public FetchUsersResponseSerializer(ITypeSerializer<ISphynxUserInfo[]> userSerializer)
         {
             _userSerializer = userSerializer;
         }
@@ -62,9 +60,7 @@ namespace Sphynx.Network.Serialization.Packet
             return _userSerializer.TrySerializeUnsafe(packet.Users!, ref serializer);
         }
 
-        protected override GetUsersResponse? DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            ResponseInfo responseInfo)
+        protected override GetUsersResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new GetUsersResponse(responseInfo.ErrorCode);

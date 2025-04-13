@@ -12,7 +12,7 @@ using SphynxUserStatus = Sphynx.Model.User.SphynxUserStatus;
 namespace Sphynx.Network.Serialization.Packet
 {
     /// <remarks>
-    /// Does not inherit <see cref="RequestPacketSerializer{T}"/> in order to save bytes (since user and session
+    /// Does not inherit <see cref="RequestSerializer{T}"/> in order to save bytes (since user and session
     /// id will always be zero).
     /// </remarks>
     public class LoginRequestPacketSerializer : PacketSerializer<LoginRequest>
@@ -38,11 +38,11 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LoginResponsePacketSerializer : ResponsePacketSerializer<LoginResponse>
+    public class LoginResponseSerializer : ResponseSerializer<LoginResponse>
     {
         private readonly ITypeSerializer<ISphynxSelfInfo> _userSerializer;
 
-        public LoginResponsePacketSerializer(ITypeSerializer<ISphynxSelfInfo> userSerializer)
+        public LoginResponseSerializer(ITypeSerializer<ISphynxSelfInfo> userSerializer)
         {
             _userSerializer = userSerializer;
         }
@@ -81,7 +81,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LoginBroadcastPacketSerializer : PacketSerializer<LoginBroadcast>
+    public class LoginBroadcastSerializer : PacketSerializer<LoginBroadcast>
     {
         public override int GetMaxSize(LoginBroadcast packet)
         {

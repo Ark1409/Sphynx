@@ -10,10 +10,10 @@ using Sphynx.Network.Serialization.Model;
 namespace Sphynx.Network.Serialization.Packet
 {
     /// <remarks>
-    /// Does not inherit <see cref="RequestPacketSerializer{T}"/> in order to save bytes (since user and session
+    /// Does not inherit <see cref="RequestSerializer{T}"/> in order to save bytes (since user and session
     /// id will always be zero).
     /// </remarks>
-    public class RegisterRequestPacketSerializer : PacketSerializer<RegisterRequest>
+    public class RegisterRequestSerializer : PacketSerializer<RegisterRequest>
     {
         public override int GetMaxSize(RegisterRequest packet)
         {
@@ -36,11 +36,11 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class RegisterResponsePacketSerializer : ResponsePacketSerializer<RegisterResponse>
+    public class RegisterResponseSerializer : ResponseSerializer<RegisterResponse>
     {
         private readonly ITypeSerializer<ISphynxSelfInfo> _userSerializer;
 
-        public RegisterResponsePacketSerializer(ITypeSerializer<ISphynxSelfInfo> userSerializer)
+        public RegisterResponseSerializer(ITypeSerializer<ISphynxSelfInfo> userSerializer)
         {
             _userSerializer = userSerializer;
         }
@@ -63,9 +63,7 @@ namespace Sphynx.Network.Serialization.Packet
             return _userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer);
         }
 
-        protected override RegisterResponse? DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            ResponseInfo responseInfo)
+        protected override RegisterResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new RegisterResponse(responseInfo.ErrorCode);

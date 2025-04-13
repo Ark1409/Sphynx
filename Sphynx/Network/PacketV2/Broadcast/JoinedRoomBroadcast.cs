@@ -3,7 +3,7 @@
 namespace Sphynx.Network.PacketV2.Broadcast
 {
     /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_BCAST"/>
-    public sealed class RoomJoinedBroadcast : SphynxPacket, IEquatable<RoomJoinedBroadcast>
+    public sealed class JoinedRoomBroadcast : SphynxPacket, IEquatable<JoinedRoomBroadcast>
     {
         /// <summary>
         /// Room ID of the room the user has joined.
@@ -19,18 +19,18 @@ namespace Sphynx.Network.PacketV2.Broadcast
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
 
         /// <summary>
-        /// Creates a new <see cref="RoomJoinedBroadcast"/>.
+        /// Creates a new <see cref="JoinedRoomBroadcast"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the room the user has joined.</param>
         /// <param name="joinerId">The user ID of the user who joined the room.</param>
-        public RoomJoinedBroadcast(SnowflakeId roomId, SnowflakeId joinerId)
+        public JoinedRoomBroadcast(SnowflakeId roomId, SnowflakeId joinerId)
         {
             RoomId = roomId;
             JoinerId = joinerId;
         }
 
         /// <inheritdoc/>
-        public bool Equals(RoomJoinedBroadcast? other) =>
+        public bool Equals(JoinedRoomBroadcast? other) =>
             base.Equals(other) && RoomId == other?.RoomId && JoinerId == other?.JoinerId;
     }
 }

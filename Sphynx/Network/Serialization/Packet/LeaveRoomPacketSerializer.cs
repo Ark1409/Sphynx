@@ -8,7 +8,7 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class LeaveRoomRequestPacketSerializer : RequestPacketSerializer<LeaveRoomRequest>
+    public class LeaveRoomRequestSerializer : RequestSerializer<LeaveRoomRequest>
     {
         protected override int GetMaxSizeInternal(LeaveRoomRequest packet)
         {
@@ -21,9 +21,7 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override LeaveRoomRequest DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            RequestInfo requestInfo)
+        protected override LeaveRoomRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
 
@@ -31,7 +29,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LeaveRoomResponsePacketSerializer : ResponsePacketSerializer<LeaveRoomResponse>
+    public class LeaveRoomResponseSerializer : ResponseSerializer<LeaveRoomResponse>
     {
         protected override int GetMaxSizeInternal(LeaveRoomResponse packet)
         {
@@ -51,26 +49,26 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LeaveRoomBroadcastPacketSerializer : PacketSerializer<RoomLeftBroadcast>
+    public class LeftRoomBroadcastSerializer : PacketSerializer<LeftRoomBroadcast>
     {
-        public override int GetMaxSize(RoomLeftBroadcast packet)
+        public override int GetMaxSize(LeftRoomBroadcast packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override bool Serialize(RoomLeftBroadcast packet, ref BinarySerializer serializer)
+        protected override bool Serialize(LeftRoomBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.LeaverId);
             return true;
         }
 
-        protected override RoomLeftBroadcast Deserialize(ref BinaryDeserializer deserializer)
+        protected override LeftRoomBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var leaverId = deserializer.ReadSnowflakeId();
 
-            return new RoomLeftBroadcast(roomId, leaverId);
+            return new LeftRoomBroadcast(roomId, leaverId);
         }
     }
 }

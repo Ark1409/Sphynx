@@ -8,7 +8,7 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class DeleteRoomRequestPacketSerializer : RequestPacketSerializer<RoomDeleteRequest>
+    public class DeleteRoomRequestSerializer : RequestSerializer<RoomDeleteRequest>
     {
         protected override int GetMaxSizeInternal(RoomDeleteRequest packet)
         {
@@ -22,9 +22,7 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override RoomDeleteRequest DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            RequestInfo requestInfo)
+        protected override RoomDeleteRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
             string password = deserializer.ReadString();
@@ -34,7 +32,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class DeleteRoomResponsePacketSerializer : ResponsePacketSerializer<RoomDeleteResponse>
+    public class RoomDeleteResponseSerializer : ResponseSerializer<RoomDeleteResponse>
     {
         protected override int GetMaxSizeInternal(RoomDeleteResponse packet)
         {
@@ -46,15 +44,13 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override RoomDeleteResponse DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            ResponseInfo responseInfo)
+        protected override RoomDeleteResponse DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
             return new RoomDeleteResponse(responseInfo.ErrorCode);
         }
     }
 
-    public class DeleteRoomBroadcastPacketSerializer : PacketSerializer<RoomDeletedBroadcast>
+    public class RoomDeletedBroadcastSerializer : PacketSerializer<RoomDeletedBroadcast>
     {
         public override int GetMaxSize(RoomDeletedBroadcast packet)
         {

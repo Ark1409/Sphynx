@@ -6,7 +6,7 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public abstract class ResponsePacketSerializer<T> : PacketSerializer<T> where T : SphynxResponse
+    public abstract class ResponseSerializer<T> : PacketSerializer<T> where T : SphynxResponse
     {
         public sealed override int GetMaxSize(T packet)
         {

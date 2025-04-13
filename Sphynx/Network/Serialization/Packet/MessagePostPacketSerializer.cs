@@ -8,7 +8,7 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class SendMessageRequestPacketSerializer : RequestPacketSerializer<MessagePostRequest>
+    public class MessagePostRequestSerializer : RequestSerializer<MessagePostRequest>
     {
         protected override int GetMaxSizeInternal(MessagePostRequest packet)
         {
@@ -22,9 +22,7 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override MessagePostRequest DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            RequestInfo requestInfo)
+        protected override MessagePostRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
             string message = deserializer.ReadString();
@@ -33,7 +31,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class SendMessageResponsePacketSerializer : ResponsePacketSerializer<MessagePostResponse>
+    public class MessagePostResponseSerializer : ResponseSerializer<MessagePostResponse>
     {
         protected override int GetMaxSizeInternal(MessagePostResponse packet)
         {
@@ -45,15 +43,13 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override MessagePostResponse DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            ResponseInfo responseInfo)
+        protected override MessagePostResponse DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
             return new MessagePostResponse(responseInfo.ErrorCode);
         }
     }
 
-    public class SendMessageBroadcastPacketSerializer : PacketSerializer<MessagePostedBroadcast>
+    public class MessagePostedBroadcastSerializer : PacketSerializer<MessagePostedBroadcast>
     {
         public override int GetMaxSize(MessagePostedBroadcast packet)
         {

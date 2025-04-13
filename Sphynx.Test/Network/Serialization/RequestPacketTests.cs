@@ -34,7 +34,7 @@ namespace Sphynx.Test.Network.Serialization
         public void LogoutRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new LogoutRequestPacketSerializer();
+            var serializer = new LogoutRequestSerializer();
             var packet = new LogoutRequest("test".AsSnowflakeId(), "test".AsGuid());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
@@ -52,7 +52,7 @@ namespace Sphynx.Test.Network.Serialization
         public void RegisterRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new RegisterRequestPacketSerializer();
+            var serializer = new RegisterRequestSerializer();
             var packet = new RegisterRequest("John Doe", "stronger$#pwd*234");
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
@@ -70,7 +70,7 @@ namespace Sphynx.Test.Network.Serialization
         public void GetMessagesRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new GetMessagesRequestPacketSerializer();
+            var serializer = new FetchMessagesRequestSerializer();
             var packet = new FetchMessagesRequest("test".AsSnowflakeId(), "test".AsGuid())
             {
                 BeforeId = "before".AsSnowflakeId(), Count = 123, Inclusive = true, RoomId = "room".AsSnowflakeId()
@@ -91,7 +91,7 @@ namespace Sphynx.Test.Network.Serialization
         public void GetUsersRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new GetUsersRequestPacketSerializer();
+            var serializer = new FetchUsersRequestSerializer();
             var packet = new FetchUsersRequest(SnowflakeId.NewId(), Guid.NewGuid())
             {
                 UserIds = new[] { "test user".AsSnowflakeId(), "test user 2".AsSnowflakeId(), "test user 3".AsSnowflakeId(), }
@@ -112,7 +112,7 @@ namespace Sphynx.Test.Network.Serialization
         public void SendMessageRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new SendMessageRequestPacketSerializer();
+            var serializer = new MessagePostRequestSerializer();
             var packet = new MessagePostRequest("user".AsSnowflakeId(), "session".AsGuid())
             {
                 RoomId = "test room id".AsSnowflakeId(),
@@ -135,7 +135,7 @@ namespace Sphynx.Test.Network.Serialization
         public void CreateRoomRequestPacket_Direct_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new CreateRoomRequestPacketSerializer();
+            var serializer = new RoomCreateRequestSerializer();
             var packet = new RoomCreateRequest.Direct("user".AsSnowflakeId(), "session".AsGuid()) { OtherId = "other-user".AsSnowflakeId() };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
@@ -153,7 +153,7 @@ namespace Sphynx.Test.Network.Serialization
         public void CreateRoomRequestPacket_Group_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new CreateRoomRequestPacketSerializer();
+            var serializer = new RoomCreateRequestSerializer();
             var packet = new RoomCreateRequest.Group("user".AsSnowflakeId(), "session".AsGuid())
             {
                 Name = "test-group", Password = "test-group-pwd", Public = true
@@ -174,7 +174,7 @@ namespace Sphynx.Test.Network.Serialization
         public void DeleteRoomRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new DeleteRoomRequestPacketSerializer();
+            var serializer = new DeleteRoomRequestSerializer();
             var packet = new RoomDeleteRequest("user".AsSnowflakeId(), "session".AsGuid())
             {
                 RoomId = "room".AsSnowflakeId(), Password = "test-group-pwd"
@@ -196,7 +196,7 @@ namespace Sphynx.Test.Network.Serialization
         public void JoinRoomRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new JoinRoomRequestPacketSerializer();
+            var serializer = new JoinRoomRequestSerializer();
             var packet = new JoinRoomRequest("user".AsSnowflakeId(), "session".AsGuid())
             {
                 RoomId = "room".AsSnowflakeId(), Password = "test-group-pwd"
@@ -217,7 +217,7 @@ namespace Sphynx.Test.Network.Serialization
         public void KickUserRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new KickUserRequestPacketSerializer();
+            var serializer = new KickUserRequestSerializer();
             var packet = new KickUserRequest("user".AsSnowflakeId(), "session".AsGuid())
             {
                 RoomId = "room".AsSnowflakeId(), KickId = "kick-user".AsSnowflakeId()
@@ -238,7 +238,7 @@ namespace Sphynx.Test.Network.Serialization
         public void LeaveRoomRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new LeaveRoomRequestPacketSerializer();
+            var serializer = new LeaveRoomRequestSerializer();
             var packet = new LeaveRoomRequest("user".AsSnowflakeId(), "session".AsGuid()) { RoomId = "room".AsSnowflakeId() };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
@@ -256,7 +256,7 @@ namespace Sphynx.Test.Network.Serialization
         public void GetRoomsRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new GetRoomsRequestPacketSerializer();
+            var serializer = new FetchRoomsRequestSerializer();
             var packet = new FetchRoomsRequest("user".AsSnowflakeId(), "session".AsGuid())
             {
                 RoomIds = new[] { "room1".AsSnowflakeId(), "room2".AsSnowflakeId(), "room3".AsSnowflakeId() }

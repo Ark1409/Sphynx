@@ -2,7 +2,7 @@
 
 namespace Sphynx.Network.PacketV2.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.MSG_REQ"/>.
+    /// <inheritdoc cref="SphynxPacketType.MSG_REQ"/>
     public sealed class MessagePostRequest : SphynxRequest, IEquatable<MessagePostRequest>
     {
         /// <summary>

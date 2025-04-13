@@ -23,8 +23,8 @@ namespace Sphynx.Test.Network.Transport
             _transporter = new PacketTransporter();
 
             _transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer())
-                .AddSerializer(SphynxPacketType.LOGOUT_REQ, new LogoutRequestPacketSerializer())
-                .AddSerializer(SphynxPacketType.MSG_REQ, new SendMessageRequestPacketSerializer());
+                .AddSerializer(SphynxPacketType.LOGOUT_REQ, new LogoutRequestSerializer())
+                .AddSerializer(SphynxPacketType.MSG_REQ, new MessagePostRequestSerializer());
 
             _transporter.Version = new Version(0, 0, 1);
         }

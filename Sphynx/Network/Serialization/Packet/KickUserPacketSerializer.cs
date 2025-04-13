@@ -8,7 +8,7 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class KickUserRequestPacketSerializer : RequestPacketSerializer<KickUserRequest>
+    public class KickUserRequestSerializer : RequestSerializer<KickUserRequest>
     {
         protected override int GetMaxSizeInternal(KickUserRequest packet)
         {
@@ -33,7 +33,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class KickUserResponsePacketSerializer : ResponsePacketSerializer<KickUserResponse>
+    public class KickUserResponseSerializer : ResponseSerializer<KickUserResponse>
     {
         protected override int GetMaxSizeInternal(KickUserResponse packet)
         {
@@ -53,7 +53,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class KickUserBroadcastPacketSerializer : PacketSerializer<UserKickedBroadcast>
+    public class UserKickedBroadcastSerializer : PacketSerializer<UserKickedBroadcast>
     {
         public override int GetMaxSize(UserKickedBroadcast packet)
         {

@@ -8,7 +8,7 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class LogoutRequestPacketSerializer : RequestPacketSerializer<LogoutRequest>
+    public class LogoutRequestSerializer : RequestSerializer<LogoutRequest>
     {
         protected override int GetMaxSizeInternal(LogoutRequest packet)
         {
@@ -20,15 +20,13 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override LogoutRequest DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            RequestInfo requestInfo)
+        protected override LogoutRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
         {
             return new LogoutRequest(requestInfo.UserId, requestInfo.SessionId);
         }
     }
 
-    public class LogoutResponsePacketSerializer : ResponsePacketSerializer<LogoutResponse>
+    public class LogoutResponseSerializer : ResponseSerializer<LogoutResponse>
     {
         protected override int GetMaxSizeInternal(LogoutResponse packet)
         {
@@ -48,7 +46,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LogoutBroadcastPacketSerializer : PacketSerializer<LogoutBroadcast>
+    public class LogoutBroadcastSerializer : PacketSerializer<LogoutBroadcast>
     {
         public override int GetMaxSize(LogoutBroadcast packet)
         {

@@ -59,13 +59,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="count">The number of messages to retrieve, starting from <see cref="BeforeId"/>.</param>
         /// <param name="inclusive">Whether to include the message with id <see cref="BeforeId"/> (if it exists) in the
         /// response.</param>
-        public FetchMessagesRequest(
-            SnowflakeId userId,
-            Guid sessionId,
-            SnowflakeId beforeId,
-            SnowflakeId roomId,
-            int count,
-            bool inclusive = false)
+        public FetchMessagesRequest(SnowflakeId userId, Guid sessionId, SnowflakeId beforeId, SnowflakeId roomId, int count, bool inclusive = false)
             : base(userId, sessionId)
         {
             BeforeId = beforeId;
@@ -76,9 +70,9 @@ namespace Sphynx.Network.PacketV2.Request
 
         /// <inheritdoc/>
         public bool Equals(FetchMessagesRequest? other) => base.Equals(other)
-                                                               && BeforeId == other?.BeforeId
-                                                               && RoomId == other?.RoomId
-                                                               && Count == other.Count
-                                                               && Inclusive == other.Inclusive;
+                                                           && BeforeId == other?.BeforeId
+                                                           && RoomId == other?.RoomId
+                                                           && Count == other.Count
+                                                           && Inclusive == other.Inclusive;
     }
 }
