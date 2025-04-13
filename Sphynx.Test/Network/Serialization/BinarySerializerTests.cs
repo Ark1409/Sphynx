@@ -17,7 +17,7 @@ namespace Sphynx.Test.Network.Serialization
         public void BinarySerializer_ShouldSerializePrimitiveStringDictionary()
         {
             // Arrange
-            var value = new Dictionary<DateTime, string?>
+            var value = new Dictionary<DateTimeOffset, string?>
             {
                 { new DateTime(1990, 12, 25, 1, 9, 1, DateTimeKind.Utc), null },
                 { new DateTime(1992, 12, 30, 2, 8, 12, DateTimeKind.Utc), "" },
@@ -36,8 +36,7 @@ namespace Sphynx.Test.Network.Serialization
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
             Assert.That(serializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
-            Assert.That(deserializer.TryReadDictionary(out Dictionary<DateTime, string>? readValue),
-                "Could not perform deserialization.");
+            Assert.That(deserializer.TryReadDictionary(out Dictionary<DateTimeOffset, string>? readValue), "Could not perform deserialization.");
             Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
 
             Assert.That(readValue!.Count, Is.EqualTo(value.Count));
@@ -71,8 +70,7 @@ namespace Sphynx.Test.Network.Serialization
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
             Assert.That(serializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
-            Assert.That(deserializer.TryReadDictionary(out Dictionary<string, SnowflakeId>? readValue),
-                "Could not perform deserialization.");
+            Assert.That(deserializer.TryReadDictionary(out Dictionary<string, SnowflakeId>? readValue), "Could not perform deserialization.");
             Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
 
             CollectionAssert.AreEqual(value, readValue!);
@@ -101,8 +99,7 @@ namespace Sphynx.Test.Network.Serialization
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
             Assert.That(serializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
-            Assert.That(deserializer.TryReadDictionary(out var readValue),
-                "Could not perform deserialization.");
+            Assert.That(deserializer.TryReadDictionary(out var readValue), "Could not perform deserialization.");
             Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
 
             Assert.That(readValue!.Count, Is.EqualTo(value.Count));
@@ -137,8 +134,7 @@ namespace Sphynx.Test.Network.Serialization
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
             Assert.That(serializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
-            Assert.That(deserializer.TryReadDictionary<int, double>(out var readValue),
-                "Could not perform deserialization.");
+            Assert.That(deserializer.TryReadDictionary<int, double>(out var readValue), "Could not perform deserialization.");
             Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
 
             CollectionAssert.AreEqual(value, readValue!);
@@ -277,7 +273,7 @@ namespace Sphynx.Test.Network.Serialization
         public void BinarySerializer_ShouldSerializeSnowflakeId()
         {
             // Arrange
-            var value = "test".AsSnowflakeId();
+            var value = "test-id".AsSnowflakeId();
             Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<SnowflakeId>()];
             var serializer = new BinarySerializer(buffer);
             var deserializer = new BinaryDeserializer(buffer);
@@ -310,9 +306,9 @@ namespace Sphynx.Test.Network.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(BinarySerializer.SizeOf<Guid>(), Is.EqualTo(serializer.Offset));
+            Assert.That(serializer.Offset, Is.EqualTo(BinarySerializer.SizeOf<Guid>()));
             Assert.That(deserializer.TryReadGuid(out var readValue), "Could not perform deserialization.");
-            Assert.That(BinarySerializer.SizeOf<Guid>(), Is.EqualTo(deserializer.Offset));
+            Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf<Guid>()));
 
             Assert.That(readValue!.Value, Is.EqualTo(value));
         }
@@ -331,11 +327,33 @@ namespace Sphynx.Test.Network.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(BinarySerializer.SizeOf<DateTime>(), Is.EqualTo(serializer.Offset));
+            Assert.That(serializer.Offset, Is.EqualTo(BinarySerializer.SizeOf<DateTime>()));
             Assert.That(deserializer.TryReadDateTime(out var readValue), "Could not perform deserialization.");
-            Assert.That(BinarySerializer.SizeOf<DateTime>(), Is.EqualTo(deserializer.Offset));
+            Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf<DateTime>()));
 
             Assert.That(readValue!.Value.Kind, Is.EqualTo(value.Kind));
+            Assert.That(readValue!.Value, Is.EqualTo(value));
+        }
+
+        [Test]
+        public void BinarySerializer_ShouldSerializeDateTimeOffset()
+        {
+            // Arrange
+            var value = new DateTimeOffset(new DateTime(1990, 12, 25, 6, 9, 0));
+            Span<byte> buffer = stackalloc byte[BinarySerializer.MaxSizeOf<DateTimeOffset>()];
+            var serializer = new BinarySerializer(buffer);
+            var deserializer = new BinaryDeserializer(buffer);
+
+            // Act
+            bool serialized = serializer.TryWriteDateTimeOffset(value);
+
+            // Assert
+            Assert.That(serialized, "Could not perform serialization.");
+            Assert.That(serializer.Offset, Is.EqualTo(BinarySerializer.SizeOf<DateTimeOffset>()));
+            Assert.That(deserializer.TryReadDateTimeOffset(out var readValue), "Could not perform deserialization.");
+            Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf<DateTimeOffset>()));
+
+            Assert.That(readValue!.Value.Offset, Is.EqualTo(value.Offset));
             Assert.That(readValue!.Value, Is.EqualTo(value));
         }
 
@@ -355,9 +373,9 @@ namespace Sphynx.Test.Network.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(BinarySerializer.SizeOf(value), Is.EqualTo(serializer.Offset));
+            Assert.That(serializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
             Assert.That(deserializer.TryReadString(out string? readValue), "Could not perform deserialization.");
-            Assert.That(BinarySerializer.SizeOf(value), Is.EqualTo(deserializer.Offset));
+            Assert.That(deserializer.Offset, Is.EqualTo(BinarySerializer.SizeOf(value)));
 
             Assert.That(readValue, value is null ? Is.Empty : Is.EqualTo(value));
         }
