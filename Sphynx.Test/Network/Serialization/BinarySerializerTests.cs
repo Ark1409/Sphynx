@@ -6,7 +6,7 @@ using Sphynx.Core;
 using Sphynx.Network.Serialization;
 using Sphynx.Test.Utils;
 
-namespace Sphynx.Test.Serialization
+namespace Sphynx.Test.Network.Serialization
 {
     [TestFixture]
     public class BinarySerializerTests

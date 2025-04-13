@@ -6,7 +6,7 @@ using Sphynx.Network.PacketV2.Broadcast;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Test.Utils;
 
-namespace Sphynx.Test.Serialization
+namespace Sphynx.Test.Network.Serialization
 {
     [TestFixture]
     public class BroadcastPacketTests
@@ -24,8 +24,7 @@ namespace Sphynx.Test.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
-                "Could not perform deserialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
             Assert.That(bytesWritten, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
@@ -43,8 +42,7 @@ namespace Sphynx.Test.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
-                "Could not perform deserialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
             Assert.That(bytesWritten, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
@@ -81,8 +79,7 @@ namespace Sphynx.Test.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
-                "Could not perform deserialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
             Assert.That(bytesWritten, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
@@ -100,8 +97,7 @@ namespace Sphynx.Test.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
-                "Could not perform deserialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
             Assert.That(bytesWritten, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
@@ -119,8 +115,7 @@ namespace Sphynx.Test.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
-                "Could not perform deserialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
             Assert.That(bytesWritten, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
@@ -138,8 +133,7 @@ namespace Sphynx.Test.Serialization
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead),
-                "Could not perform deserialization.");
+            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
             Assert.That(bytesWritten, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
