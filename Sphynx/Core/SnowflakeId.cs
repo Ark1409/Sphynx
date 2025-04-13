@@ -135,8 +135,10 @@ namespace Sphynx.Core
             const int CHARS_PER_BYTE = 2;
             const int SEQUENCE_MACHINE_LENGTH = sizeof(int) * CHARS_PER_BYTE;
 
+            Debug.Assert(input.Length >= SEQUENCE_MACHINE_LENGTH);
+
             var sequenceAndMachineBytes = input[..SEQUENCE_MACHINE_LENGTH];
-            
+
             return int.TryParse(sequenceAndMachineBytes, NumberStyles.AllowHexSpecifier, null, out value);
         }
 
@@ -145,6 +147,8 @@ namespace Sphynx.Core
             // Each byte requires two chars in hex
             const int CHARS_PER_BYTE = 2;
             const int TIMESTAMP_LENGTH = sizeof(long) * CHARS_PER_BYTE;
+
+            Debug.Assert(input.Length >= TIMESTAMP_LENGTH);
 
             var timestampBytes = input[..TIMESTAMP_LENGTH];
 
