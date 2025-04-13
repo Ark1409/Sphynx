@@ -647,7 +647,7 @@ namespace Sphynx.Network.Serialization
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDateTimeOffset(DateTimeOffset dto)
         {
-            WriteInt64(dto.UtcTicks);
+            WriteInt64(dto.Ticks);
             WriteInt64(dto.Offset.Ticks);
         }
 

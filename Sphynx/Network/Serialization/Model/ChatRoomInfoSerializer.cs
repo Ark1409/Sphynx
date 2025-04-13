@@ -112,8 +112,6 @@ namespace Sphynx.Network.Serialization.Model
             return this;
         }
 
-        // TODO: Find a more elegant way of accomplishing this
-
         private class SerializerAdapter<T> : ChatRoomInfoSerializer<IChatRoomInfo>
             where T : IChatRoomInfo
         {
@@ -129,16 +127,12 @@ namespace Sphynx.Network.Serialization.Model
                 return InnerSerializer.GetMaxRoomSize((T)packet);
             }
 
-            protected internal override bool SerializeRoom(
-                IChatRoomInfo packet,
-                ref BinarySerializer serializer)
+            protected internal override bool SerializeRoom(IChatRoomInfo packet, ref BinarySerializer serializer)
             {
                 return InnerSerializer.SerializeRoom((T)packet, ref serializer);
             }
 
-            protected internal override IChatRoomInfo? DeserializeRoom(
-                ref BinaryDeserializer deserializer,
-                RoomInfo roomInfo)
+            protected internal override IChatRoomInfo? DeserializeRoom(ref BinaryDeserializer deserializer, RoomInfo roomInfo)
             {
                 return InnerSerializer.DeserializeRoom(ref deserializer, roomInfo);
             }
@@ -199,7 +193,7 @@ namespace Sphynx.Network.Serialization.Model
 
         protected internal override bool SerializeRoom(IGroupChatRoomInfo model, ref BinarySerializer serializer)
         {
-            serializer.WriteBool(model.Public);
+            serializer.WriteBool(model.IsPublic);
             serializer.WriteSnowflakeId(model.OwnerId);
             return true;
         }
@@ -214,7 +208,7 @@ namespace Sphynx.Network.Serialization.Model
                 RoomId = roomInfo.RoomId,
                 RoomType = roomInfo.RoomType,
                 Name = roomInfo.Name,
-                Public = isPublic,
+                IsPublic = isPublic,
                 OwnerId = ownerId
             };
         }
@@ -224,7 +218,7 @@ namespace Sphynx.Network.Serialization.Model
             public SnowflakeId RoomId { get; set; }
             public ChatRoomType RoomType { get; set; }
             public string Name { get; set; } = null!;
-            public bool Public { get; set; }
+            public bool IsPublic { get; set; }
             public SnowflakeId OwnerId { get; set; }
 
             public bool Equals(IChatRoomInfo? other) => other is IGroupChatRoomInfo direct && Equals(direct);

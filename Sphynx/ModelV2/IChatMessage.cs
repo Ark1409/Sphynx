@@ -33,6 +33,6 @@ namespace Sphynx.ModelV2
         /// <summary>
         /// The timestamp at which this message was edited.
         /// </summary>
-        DateTime? EditTimestamp { get; set; }
+        DateTimeOffset? EditTimestamp { get; set; }
     }
 }

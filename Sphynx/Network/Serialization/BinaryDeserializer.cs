@@ -632,7 +632,7 @@ namespace Sphynx.Network.Serialization
                 return false;
             }
 
-            dto = ReadDateTime();
+            dto = ReadDateTimeOffset();
             return true;
         }
 

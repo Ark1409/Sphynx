@@ -13,7 +13,7 @@ namespace Sphynx.ModelV2.Room
         /// <summary>
         /// Whether this room is public.
         /// </summary>
-        bool Public { get; set; }
+        bool IsPublic { get; set; }
 
         /// <summary>
         /// The user ID of the owner/creator of this group chat.

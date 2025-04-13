@@ -11,12 +11,12 @@ namespace Sphynx.Test.Model.Room
     {
         public override ChatRoomType RoomType { get; set; } = ChatRoomType.GROUP;
         public SnowflakeId OwnerId { get; set; }
-        public bool Public { get; set; }
+        public bool IsPublic { get; set; }
 
         public TestGroupChatRoomInfo(string name = "Test-Group-Room") : base(name)
         {
             OwnerId = $"owner+{name}".AsSnowflakeId();
-            Public = name.Length % 2 == 0;
+            IsPublic = name.Length % 2 == 0;
         }
 
         public static TestGroupChatRoomInfo[] FromArray(params string[] names)
@@ -32,6 +32,6 @@ namespace Sphynx.Test.Model.Room
         }
 
         public bool Equals(IGroupChatRoomInfo? other) =>
-            base.Equals(other) && OwnerId == other.OwnerId && Public == other.Public;
+            base.Equals(other) && OwnerId == other.OwnerId && IsPublic == other.IsPublic;
     }
 }

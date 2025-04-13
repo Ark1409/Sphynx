@@ -13,7 +13,7 @@ namespace Sphynx.Test.Model
         public SnowflakeId RoomId { get; set; }
         public SnowflakeId SenderId { get; set; }
         public string Content { get; set; }
-        public DateTime? EditTimestamp { get; set; }
+        public DateTimeOffset? EditTimestamp { get; set; }
 
         public TestChatMessage(string msg)
         {

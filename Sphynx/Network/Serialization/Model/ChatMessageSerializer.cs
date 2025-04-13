@@ -12,7 +12,7 @@ namespace Sphynx.Network.Serialization.Model
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>() +
                    BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(model.Content) +
-                   BinarySerializer.MaxSizeOf<DateTime>();
+                   BinarySerializer.MaxSizeOf<DateTimeOffset>();
         }
 
         protected override bool Serialize(IChatMessage model, ref BinarySerializer serializer)
@@ -21,7 +21,7 @@ namespace Sphynx.Network.Serialization.Model
             serializer.WriteSnowflakeId(model.RoomId);
             serializer.WriteSnowflakeId(model.SenderId);
             serializer.WriteString(model.Content);
-            serializer.WriteDateTime(model.EditTimestamp ?? DateTime.MinValue);
+            serializer.WriteDateTimeOffset(model.EditTimestamp ?? DateTimeOffset.MinValue);
             return true;
         }
 
@@ -31,7 +31,7 @@ namespace Sphynx.Network.Serialization.Model
             var roomId = deserializer.ReadSnowflakeId();
             var senderId = deserializer.ReadSnowflakeId();
             string content = deserializer.ReadString();
-            var editTimestamp = deserializer.ReadDateTime();
+            var editTimestamp = deserializer.ReadDateTimeOffset();
 
             return new DummyChatMessage
             {
@@ -39,7 +39,7 @@ namespace Sphynx.Network.Serialization.Model
                 RoomId = roomId,
                 SenderId = senderId,
                 Content = content,
-                EditTimestamp = editTimestamp == DateTime.MinValue ? null : editTimestamp
+                EditTimestamp = editTimestamp == DateTimeOffset.MinValue ? null : editTimestamp
             };
         }
 
@@ -49,7 +49,7 @@ namespace Sphynx.Network.Serialization.Model
             public SnowflakeId RoomId { get; set; }
             public SnowflakeId SenderId { get; set; }
             public string Content { get; set; } = null!;
-            public DateTime? EditTimestamp { get; set; }
+            public DateTimeOffset? EditTimestamp { get; set; }
 
             public bool Equals(IChatMessage? other) => MessageId == other?.MessageId && RoomId == other.RoomId;
         }
