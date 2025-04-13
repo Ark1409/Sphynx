@@ -1,9 +1,6 @@
 ﻿using System.Buffers;
-using System.Buffers.Binary;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
-using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using FastEnumUtility;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.Serialization;
@@ -157,7 +154,10 @@ namespace Sphynx.Network.Transport
         public byte[] Serialize()
         {
             byte[] packetBytes = new byte[Size];
-            TrySerialize(packetBytes);
+
+            if (!TrySerialize(packetBytes))
+                throw new SerializationException("Could not serialize packet header");
+
             return packetBytes;
         }
 

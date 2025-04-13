@@ -55,7 +55,9 @@ namespace Sphynx.Test.Network.Transport
             // Arrange
             var packets = new SphynxPacket[]
             {
-                new LoginResponsePacket(SphynxErrorCode.INVALID_USER), new LogoutResponsePacket(), new SendMessageResponsePacket()
+                new LoginResponsePacket(SphynxErrorCode.INVALID_USER),
+                new LogoutResponsePacket(),
+                new SendMessageResponsePacket()
             };
 
             using var stream = new MemoryStream();
