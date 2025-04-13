@@ -10,11 +10,14 @@ namespace Sphynx.Test.Network.Transport
         [Theory]
         public void SphynxPacketHeader_ShouldSerializeCorrectly(SphynxPacketType packetType)
         {
+            // Arrange
             const int CONTENT_SIZE = 1024;
-
             var sampleHeader = new SphynxPacketHeader(new Version(1, 2, 3), packetType, CONTENT_SIZE);
+
+            // Act
             byte[] serializedHeader = sampleHeader.Serialize();
 
+            // Assert
             Assert.Multiple(() =>
             {
                 Assert.That(SphynxPacketHeader.TryDeserialize(serializedHeader, out var deserializedHeader));
