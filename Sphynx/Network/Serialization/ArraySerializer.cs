@@ -25,7 +25,7 @@ namespace Sphynx.Network.Serialization
             return size;
         }
 
-        public bool TrySerialize(T[] instance, Span<byte> buffer, out int bytesWritten)
+        public bool TrySerializeUnsafe(T[] instance, Span<byte> buffer, out int bytesWritten)
         {
             var serializer = new BinarySerializer(buffer);
             serializer.WriteInt32(instance.Length);

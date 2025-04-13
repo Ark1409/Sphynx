@@ -1,48 +1,13 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace Sphynx.Network.Serialization.Model
 {
     public abstract class ModelSerializer<T> : ITypeSerializer<T> where T : notnull
     {
         public abstract int GetMaxSize(T model);
-
-        public bool TrySerialize(T model, Span<byte> buffer, out int bytesWritten)
-        {
-            int tempBufferSize = GetMaxSize(model);
-            byte[] rawTempBuffer = ArrayPool<byte>.Shared.Rent(tempBufferSize);
-            var tempBuffer = rawTempBuffer.AsMemory()[..tempBufferSize];
-
-            try
-            {
-                var tempSpan = tempBuffer.Span;
-
-                if (TrySerializeUnsafe(model, tempSpan, out bytesWritten) && tempSpan.TryCopyTo(buffer))
-                    return true;
-            }
-            catch
-            {
-                bytesWritten = 0;
-                return false;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(rawTempBuffer);
-            }
-
-            bytesWritten = 0;
-            return false;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TrySerializeUnsafe(T model, Span<byte> buffer)
-        {
-            return TrySerializeUnsafe(model, buffer, out _);
-        }
 
         /// <summary>
         /// Serializes the model directly into the <paramref name="buffer"/>, without resetting its contents
@@ -94,33 +59,14 @@ namespace Sphynx.Network.Serialization.Model
 
     internal static class ModelSerializerExtensions
     {
-        /// <inheritdoc cref="TrySerializeUnsafe{T}(ITypeSerializer{T},T,Span{byte}, out int)"/>
         internal static bool TrySerializeUnsafe<T>(this ITypeSerializer<T> serializer, T model, ref BinarySerializer binarySerializer)
             where T : notnull
         {
-            if (TrySerializeUnsafe(serializer, model, binarySerializer.CurrentSpan, out int bytesWritten))
-            {
-                binarySerializer.Offset += bytesWritten;
-                return true;
-            }
+            if (!serializer.TrySerializeUnsafe(model, binarySerializer.CurrentSpan, out int bytesWritten))
+                return false;
 
-            return false;
-        }
-
-        /// <summary>
-        /// Calls <see cref="ModelSerializer{T}.TrySerializeUnsafe(T, Span{byte}, out int)"/> if the underlying
-        /// <paramref name="serializer"/> is a <see cref="ModelSerializer{T}"/>, else defaults to
-        /// <see cref="ITypeSerializer{T}.TrySerialize(T, Span{byte}, out int)"/>.
-        /// </summary>
-        internal static bool TrySerializeUnsafe<T>(this ITypeSerializer<T> serializer, T model, Span<byte> buffer, out int bytesWritten)
-            where T : notnull
-        {
-            if (serializer is ModelSerializer<T> modelSerializer)
-            {
-                return modelSerializer.TrySerializeUnsafe(model, buffer, out bytesWritten);
-            }
-
-            return serializer.TrySerialize(model, buffer, out bytesWritten);
+            binarySerializer.Offset += bytesWritten;
+            return true;
         }
     }
 }

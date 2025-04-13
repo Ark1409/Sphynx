@@ -3,6 +3,7 @@
 
 using Sphynx.ModelV2.Room;
 using Sphynx.Network.PacketV2.Response;
+using Sphynx.Network.Serialization;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Test.Model;

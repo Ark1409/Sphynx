@@ -3,6 +3,7 @@
 
 using Sphynx.Core;
 using Sphynx.Network.PacketV2.Request;
+using Sphynx.Network.Serialization;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Test.Utils;
 
@@ -139,7 +140,7 @@ namespace Sphynx.Test.Network.Serialization
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            bool serialized = serializer.TrySerialize((CreateRoomRequestPacket)packet, buffer, out int bytesWritten);
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");
@@ -160,7 +161,7 @@ namespace Sphynx.Test.Network.Serialization
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            bool serialized = serializer.TrySerialize((CreateRoomRequestPacket)packet, buffer, out int bytesWritten);
 
             // Assert
             Assert.That(serialized, "Could not perform serialization.");

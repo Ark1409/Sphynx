@@ -1,9 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using Sphynx.Network.PacketV2;
 
 namespace Sphynx.Network.Serialization.Packet
@@ -11,41 +9,6 @@ namespace Sphynx.Network.Serialization.Packet
     public abstract class PacketSerializer<T> : IPacketSerializer<T> where T : SphynxPacket
     {
         public abstract int GetMaxSize(T packet);
-
-        public bool TrySerialize(T packet, Span<byte> buffer, out int bytesWritten)
-        {
-            int tempBufferSize = GetMaxSize(packet);
-            byte[] rawTempBuffer = ArrayPool<byte>.Shared.Rent(tempBufferSize);
-            var tempBuffer = rawTempBuffer.AsMemory()[..tempBufferSize];
-
-            try
-            {
-                var tempSpan = tempBuffer.Span;
-
-                if (TrySerializeUnsafe(packet, tempSpan, out bytesWritten) && tempSpan[..bytesWritten].TryCopyTo(buffer))
-                    return true;
-            }
-            catch
-            {
-                bytesWritten = 0;
-                return false;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(rawTempBuffer);
-            }
-
-            bytesWritten = 0;
-            return false;
-        }
-
-        // TODO: Bring the unsafe serialization all the way up
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TrySerializeUnsafe(T packet, Span<byte> buffer)
-        {
-            return TrySerializeUnsafe(packet, buffer, out _);
-        }
 
         /// <summary>
         /// Serializes the packet directly into the <paramref name="buffer"/>, without resetting its contents

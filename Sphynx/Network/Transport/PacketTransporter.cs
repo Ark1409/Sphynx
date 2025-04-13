@@ -163,7 +163,7 @@ namespace Sphynx.Network.Transport
                 return InnerSerializer.GetMaxSize((T)packet);
             }
 
-            public bool TrySerialize(SphynxPacket packet, Span<byte> buffer, out int bytesWritten)
+            public bool TrySerializeUnsafe(SphynxPacket packet, Span<byte> buffer, out int bytesWritten)
             {
                 return InnerSerializer.TrySerializeUnsafe((T)packet, buffer, out bytesWritten);
             }
