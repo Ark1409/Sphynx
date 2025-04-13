@@ -7,7 +7,7 @@ namespace Sphynx.Network.Transport
 {
     public interface IPacketTransporter
     {
-        ValueTask SendPacketAsync(Stream stream, SphynxPacket packet, CancellationToken cancellationToken = default);
-        ValueTask<SphynxPacket> ReceivePacketAsync(Stream stream, CancellationToken cancellationToken = default);
+        ValueTask SendAsync(Stream stream, SphynxPacket packet, CancellationToken cancellationToken = default);
+        ValueTask<SphynxPacket> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default);
     }
 }

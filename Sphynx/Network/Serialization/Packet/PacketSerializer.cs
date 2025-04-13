@@ -22,7 +22,7 @@ namespace Sphynx.Network.Serialization.Packet
             {
                 var tempSpan = tempBuffer.Span;
 
-                if (TrySerializeUnsafe(packet, tempSpan, out bytesWritten) && tempSpan.TryCopyTo(buffer))
+                if (TrySerializeUnsafe(packet, tempSpan, out bytesWritten) && tempSpan[..bytesWritten].TryCopyTo(buffer))
                     return true;
             }
             catch

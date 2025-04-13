@@ -70,9 +70,7 @@ namespace Sphynx.Network.Transport
         /// <param name="stream">The stream from which to consume the header.</param>
         /// <param name="cancellationToken">The cancellation token to abort the consumption request.</param>
         /// <returns>The first successfully consumed <see cref="SphynxPacketHeader"/>.</returns>
-        public static async ValueTask<SphynxPacketHeader> ReceiveAsync(
-            Stream stream,
-            CancellationToken cancellationToken = default)
+        public static async ValueTask<SphynxPacketHeader> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
         {
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable", nameof(stream));
@@ -109,9 +107,7 @@ namespace Sphynx.Network.Transport
         /// </summary>
         /// <param name="packetHeader">The raw bytes for a <see cref="SphynxPacketHeader"/>.</param>
         /// <param name="header">The deserialized header.</param>
-        public static bool TryDeserialize(
-            ReadOnlySpan<byte> packetHeader,
-            [NotNullWhen(true)] out SphynxPacketHeader? header)
+        public static bool TryDeserialize(ReadOnlySpan<byte> packetHeader, [NotNullWhen(true)] out SphynxPacketHeader? header)
         {
             var deserializer = new BinaryDeserializer(packetHeader);
             return TryDeserialize(ref deserializer, out header);
@@ -123,9 +119,7 @@ namespace Sphynx.Network.Transport
         /// <param name="deserializer">The deserializer containing the bytes for a
         /// <see cref="SphynxPacketHeader"/>.</param>
         /// <param name="header">The deserialized header.</param>
-        public static bool TryDeserialize(
-            ref BinaryDeserializer deserializer,
-            [NotNullWhen(true)] out SphynxPacketHeader? header)
+        public static bool TryDeserialize(ref BinaryDeserializer deserializer, [NotNullWhen(true)] out SphynxPacketHeader? header)
         {
             if (deserializer.CurrentSpan.Length != Size)
             {

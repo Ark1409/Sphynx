@@ -173,8 +173,7 @@ namespace Sphynx.Utils
         #endregion
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ShiftLeft<T>(this Memory<T> memory, int amount)
-            => ShiftLeft(memory.Span, amount);
+        public static void ShiftLeft<T>(this Memory<T> memory, int amount) => ShiftLeft(memory.Span, amount);
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static Span<T> ShiftLeft<T>(this Span<T> span, int amount)
@@ -191,9 +190,8 @@ namespace Sphynx.Utils
             return span;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static Span<T> ShiftRight<T>(this Memory<T> memory, int amount)
-            => ShiftRight(memory.Span, amount);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Span<T> ShiftRight<T>(this Memory<T> memory, int amount) => ShiftRight(memory.Span, amount);
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static Span<T> ShiftRight<T>(this Span<T> span, int amount)
@@ -210,7 +208,6 @@ namespace Sphynx.Utils
             return span;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool SequenceEqual<T>(T[]? first, T[]? second)
         {
             if (first is null && second is null) return true;
@@ -220,7 +217,6 @@ namespace Sphynx.Utils
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool SequenceEqual<T>(T[] first, ReadOnlySpan<T> second) =>
-            new ReadOnlySpan<T>(first).SequenceEqual(second);
+        public static bool SequenceEqual<T>(T[] first, ReadOnlySpan<T> second) => new ReadOnlySpan<T>(first).SequenceEqual(second);
     }
 }
