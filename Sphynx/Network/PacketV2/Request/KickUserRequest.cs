@@ -3,7 +3,7 @@
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_KICK_REQ"/>
-    public sealed class KickUserRequestPacket : SphynxRequestPacket, IEquatable<KickUserRequestPacket>
+    public sealed class KickUserRequest : SphynxRequest, IEquatable<KickUserRequest>
     {
         /// <summary>
         /// Room ID of the room to kick the user from.
@@ -19,32 +19,32 @@ namespace Sphynx.Network.PacketV2.Request
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_KICK_REQ;
 
         /// <summary>
-        /// Creates a new <see cref="KickUserRequestPacket"/>.
+        /// Creates a new <see cref="KickUserRequest"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the room to kick the user from.</param>
         /// <param name="kickId">User ID of the user to kick from the room.</param>
-        public KickUserRequestPacket(SnowflakeId roomId, SnowflakeId kickId)
+        public KickUserRequest(SnowflakeId roomId, SnowflakeId kickId)
             : this(SnowflakeId.Empty, Guid.Empty, roomId, kickId)
         {
         }
 
         /// <summary>
-        /// Creates new <see cref="KickUserRequestPacket"/>.
+        /// Creates new <see cref="KickUserRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public KickUserRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public KickUserRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="LeaveRoomRequestPacket"/>.
+        /// Creates a new <see cref="LeaveRoomRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomId">Room ID of the room to leave.</param>
         /// <param name="kickId">User ID of the user to kick from the room.</param>
-        public KickUserRequestPacket(SnowflakeId userId, Guid sessionId, SnowflakeId roomId, SnowflakeId kickId)
+        public KickUserRequest(SnowflakeId userId, Guid sessionId, SnowflakeId roomId, SnowflakeId kickId)
             : base(userId, sessionId)
         {
             RoomId = roomId;
@@ -52,7 +52,7 @@ namespace Sphynx.Network.PacketV2.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(KickUserRequestPacket? other) =>
+        public bool Equals(KickUserRequest? other) =>
             base.Equals(other) && RoomId == other?.RoomId && KickId == other?.KickId;
     }
 }

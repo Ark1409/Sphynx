@@ -8,28 +8,28 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class KickUserRequestPacketSerializer : RequestPacketSerializer<KickUserRequestPacket>
+    public class KickUserRequestPacketSerializer : RequestPacketSerializer<KickUserRequest>
     {
-        protected override int GetMaxSizeInternal(KickUserRequestPacket packet)
+        protected override int GetMaxSizeInternal(KickUserRequest packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override bool SerializeInternal(KickUserRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(KickUserRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.KickId);
             return true;
         }
 
-        protected override KickUserRequestPacket DeserializeInternal(
+        protected override KickUserRequest DeserializeInternal(
             ref BinaryDeserializer deserializer,
             RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var kickId = deserializer.ReadSnowflakeId();
 
-            return new KickUserRequestPacket(requestInfo.UserId, requestInfo.SessionId, roomId, kickId);
+            return new KickUserRequest(requestInfo.UserId, requestInfo.SessionId, roomId, kickId);
         }
     }
 

@@ -35,9 +35,9 @@ namespace Sphynx.Test.Network.Transport
             // Arrange
             var packets = new SphynxPacket[]
             {
-                new LoginRequestPacket("username", "password"),
-                new LogoutRequestPacket("user-id".AsSnowflakeId(), "session-id".AsGuid()),
-                new SendMessageRequestPacket("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
+                new LoginRequest("username", "password"),
+                new LogoutRequest("user-id".AsSnowflakeId(), "session-id".AsGuid()),
+                new MessagePostRequest("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
             };
 
             using var stream = new MemoryStream();
@@ -75,9 +75,9 @@ namespace Sphynx.Test.Network.Transport
             // Arrange
             var packets = new SphynxPacket[]
             {
-                new LoginRequestPacket("username", "password"),
-                new LogoutRequestPacket("user-id".AsSnowflakeId(), "session-id".AsGuid()),
-                new SendMessageRequestPacket("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
+                new LoginRequest("username", "password"),
+                new LogoutRequest("user-id".AsSnowflakeId(), "session-id".AsGuid()),
+                new MessagePostRequest("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
             };
 
             using var stream = new MemoryStream();
@@ -103,9 +103,9 @@ namespace Sphynx.Test.Network.Transport
             // Arrange
             var packets = new SphynxPacket[]
             {
-                new LoginRequestPacket("username", "password"),
-                new LogoutRequestPacket("user-id".AsSnowflakeId(), "session-id".AsGuid()),
-                new SendMessageRequestPacket("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
+                new LoginRequest("username", "password"),
+                new LogoutRequest("user-id".AsSnowflakeId(), "session-id".AsGuid()),
+                new MessagePostRequest("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
             };
 
             using var stream = new MemoryStream();

@@ -15,26 +15,26 @@ namespace Sphynx.Network.Serialization.Packet
     /// Does not inherit <see cref="RequestPacketSerializer{T}"/> in order to save bytes (since user and session
     /// id will always be zero).
     /// </remarks>
-    public class LoginRequestPacketSerializer : PacketSerializer<LoginRequestPacket>
+    public class LoginRequestPacketSerializer : PacketSerializer<LoginRequest>
     {
-        public override int GetMaxSize(LoginRequestPacket packet)
+        public override int GetMaxSize(LoginRequest packet)
         {
             return BinarySerializer.MaxSizeOf(packet.UserName) + BinarySerializer.MaxSizeOf(packet.Password);
         }
 
-        protected override bool Serialize(LoginRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(LoginRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteString(packet.UserName);
             serializer.WriteString(packet.Password);
             return true;
         }
 
-        protected override LoginRequestPacket Deserialize(ref BinaryDeserializer deserializer)
+        protected override LoginRequest Deserialize(ref BinaryDeserializer deserializer)
         {
             string userName = deserializer.ReadString();
             string password = deserializer.ReadString();
 
-            return new LoginRequestPacket(userName, password);
+            return new LoginRequest(userName, password);
         }
     }
 

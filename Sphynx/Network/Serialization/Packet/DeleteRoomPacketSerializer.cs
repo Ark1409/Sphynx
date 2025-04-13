@@ -8,28 +8,28 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class DeleteRoomRequestPacketSerializer : RequestPacketSerializer<DeleteRoomRequestPacket>
+    public class DeleteRoomRequestPacketSerializer : RequestPacketSerializer<RoomDeleteRequest>
     {
-        protected override int GetMaxSizeInternal(DeleteRoomRequestPacket packet)
+        protected override int GetMaxSizeInternal(RoomDeleteRequest packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(packet.Password);
         }
 
-        protected override bool SerializeInternal(DeleteRoomRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(RoomDeleteRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteString(packet.Password);
             return true;
         }
 
-        protected override DeleteRoomRequestPacket DeserializeInternal(
+        protected override RoomDeleteRequest DeserializeInternal(
             ref BinaryDeserializer deserializer,
             RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
             string password = deserializer.ReadString();
 
-            return new DeleteRoomRequestPacket(requestInfo.UserId, requestInfo.SessionId, roomId,
+            return new RoomDeleteRequest(requestInfo.UserId, requestInfo.SessionId, roomId,
                 string.IsNullOrEmpty(password) ? null : password);
         }
     }

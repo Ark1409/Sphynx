@@ -4,7 +4,7 @@ using Sphynx.Network.Packet.Response;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_JOIN_REQ"/>
-    public sealed class JoinRoomRequestPacket : SphynxRequestPacket, IEquatable<JoinRoomRequestPacket>
+    public sealed class JoinRoomRequest : SphynxRequest, IEquatable<JoinRoomRequest>
     {
         /// <summary>
         /// Room ID of the room to join.
@@ -24,17 +24,17 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="roomId">Room ID of the room to join.</param>
         /// <param name="password">Password for the room, if the room is guarded with a password.</param>
-        public JoinRoomRequestPacket(SnowflakeId roomId, string? password = null)
+        public JoinRoomRequest(SnowflakeId roomId, string? password = null)
             : this(SnowflakeId.Empty, Guid.Empty, roomId, password)
         {
         }
 
         /// <summary>
-        /// Creates new <see cref="JoinRoomRequestPacket"/>.
+        /// Creates new <see cref="JoinRoomRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public JoinRoomRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public JoinRoomRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
@@ -45,7 +45,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomId">Room ID of the room to join.</param>
         /// <param name="password">Password for the room, if the room is guarded with a password.</param>
-        public JoinRoomRequestPacket(
+        public JoinRoomRequest(
             SnowflakeId userId,
             Guid sessionId,
             SnowflakeId roomId,
@@ -56,7 +56,7 @@ namespace Sphynx.Network.PacketV2.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(JoinRoomRequestPacket? other) =>
+        public bool Equals(JoinRoomRequest? other) =>
             base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
     }
 }

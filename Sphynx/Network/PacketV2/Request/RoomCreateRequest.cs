@@ -4,7 +4,7 @@ using Sphynx.ModelV2.Room;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_CREATE_REQ"/>
-    public abstract class CreateRoomRequestPacket : SphynxRequestPacket, IEquatable<CreateRoomRequestPacket>
+    public abstract class RoomCreateRequest : SphynxRequest, IEquatable<RoomCreateRequest>
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_REQ;
@@ -15,21 +15,21 @@ namespace Sphynx.Network.PacketV2.Request
         public abstract ChatRoomType RoomType { get; }
 
         /// <summary>
-        /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+        /// Creates a new <see cref="RoomCreateRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public CreateRoomRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public RoomCreateRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
         /// <inheritdoc/>
-        public bool Equals(CreateRoomRequestPacket? other) => base.Equals(other) && RoomType == other?.RoomType;
+        public bool Equals(RoomCreateRequest? other) => base.Equals(other) && RoomType == other?.RoomType;
 
         /// <summary>
         /// <see cref="ChatRoomType.DIRECT_MSG"/> room creation request.
         /// </summary>
-        public sealed class Direct : CreateRoomRequestPacket, IEquatable<Direct>
+        public sealed class Direct : RoomCreateRequest, IEquatable<Direct>
         {
             /// <inheritdoc/>
             public override ChatRoomType RoomType => ChatRoomType.DIRECT_MSG;
@@ -40,7 +40,7 @@ namespace Sphynx.Network.PacketV2.Request
             public SnowflakeId OtherId { get; init; }
 
             /// <summary>
-            /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
             /// <param name="otherId">The user ID of the other user to create the DM with.</param>
             public Direct(SnowflakeId otherId) : this(SnowflakeId.Empty, Guid.Empty, otherId)
@@ -48,7 +48,7 @@ namespace Sphynx.Network.PacketV2.Request
             }
 
             /// <summary>
-            /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
             /// <param name="userId">The user ID of the requesting user.</param>
             /// <param name="sessionId">The session ID for the requesting user.</param>
@@ -57,7 +57,7 @@ namespace Sphynx.Network.PacketV2.Request
             }
 
             /// <summary>
-            /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
             /// <param name="userId">The user ID of the requesting user.</param>
             /// <param name="sessionId">The session ID for the requesting user.</param>
@@ -74,7 +74,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// <see cref="ChatRoomType.GROUP"/> room creation request.
         /// </summary>
-        public sealed class Group : CreateRoomRequestPacket, IEquatable<Group>
+        public sealed class Group : RoomCreateRequest, IEquatable<Group>
         {
             /// <summary>
             /// The name of the chat room.
@@ -95,7 +95,7 @@ namespace Sphynx.Network.PacketV2.Request
             public override ChatRoomType RoomType => ChatRoomType.GROUP;
 
             /// <summary>
-            /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
             /// <param name="userId">The user ID of the requesting user.</param>
             /// <param name="sessionId">The session ID for the requesting user.</param>
@@ -104,7 +104,7 @@ namespace Sphynx.Network.PacketV2.Request
             }
 
             /// <summary>
-            /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
@@ -115,7 +115,7 @@ namespace Sphynx.Network.PacketV2.Request
             }
 
             /// <summary>
-            /// Creates a new <see cref="CreateRoomRequestPacket"/>.
+            /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
             /// <param name="userId">The user ID of the requesting user.</param>
             /// <param name="sessionId">The session ID for the requesting user.</param>

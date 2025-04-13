@@ -9,25 +9,25 @@ using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class GetUsersRequestPacketSerializer : RequestPacketSerializer<GetUsersRequestPacket>
+    public class GetUsersRequestPacketSerializer : RequestPacketSerializer<FetchUsersRequest>
     {
-        protected override int GetMaxSizeInternal(GetUsersRequestPacket packet)
+        protected override int GetMaxSizeInternal(FetchUsersRequest packet)
         {
             return BinarySerializer.MaxSizeOf(packet.UserIds);
         }
 
-        protected override bool SerializeInternal(GetUsersRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(FetchUsersRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteCollection(packet.UserIds);
             return true;
         }
 
-        protected override GetUsersRequestPacket DeserializeInternal(
+        protected override FetchUsersRequest DeserializeInternal(
             ref BinaryDeserializer deserializer,
             RequestInfo requestInfo)
         {
             var userIds = deserializer.ReadArray<SnowflakeId>();
-            return new GetUsersRequestPacket(requestInfo.UserId, requestInfo.SessionId, userIds);
+            return new FetchUsersRequest(requestInfo.UserId, requestInfo.SessionId, userIds);
         }
     }
 

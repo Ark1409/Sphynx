@@ -10,28 +10,28 @@ using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class JoinRoomRequestPacketSerializer : RequestPacketSerializer<JoinRoomRequestPacket>
+    public class JoinRoomRequestPacketSerializer : RequestPacketSerializer<JoinRoomRequest>
     {
-        protected override int GetMaxSizeInternal(JoinRoomRequestPacket packet)
+        protected override int GetMaxSizeInternal(JoinRoomRequest packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(packet.Password);
         }
 
-        protected override bool SerializeInternal(JoinRoomRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(JoinRoomRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteString(packet.Password);
             return true;
         }
 
-        protected override JoinRoomRequestPacket DeserializeInternal(
+        protected override JoinRoomRequest DeserializeInternal(
             ref BinaryDeserializer deserializer,
             RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
             string password = deserializer.ReadString();
 
-            return new JoinRoomRequestPacket(requestInfo.UserId, requestInfo.SessionId, roomId,
+            return new JoinRoomRequest(requestInfo.UserId, requestInfo.SessionId, roomId,
                 string.IsNullOrEmpty(password) ? null : password);
         }
     }

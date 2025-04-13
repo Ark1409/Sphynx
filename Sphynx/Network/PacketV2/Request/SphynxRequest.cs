@@ -5,7 +5,7 @@ namespace Sphynx.Network.PacketV2.Request
     /// <summary>
     /// Represents a request packet.
     /// </summary>
-    public abstract class SphynxRequestPacket : SphynxPacket
+    public abstract class SphynxRequest : SphynxPacket
     {
         /// <summary>
         /// The user ID of the requesting user.
@@ -18,18 +18,18 @@ namespace Sphynx.Network.PacketV2.Request
         public Guid SessionId { get; init; }
 
         /// <summary>
-        /// Creates a new <see cref="SphynxRequestPacket"/>.
+        /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        public SphynxRequestPacket() : this(SnowflakeId.Empty, Guid.Empty)
+        public SphynxRequest() : this(SnowflakeId.Empty, Guid.Empty)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="SphynxRequestPacket"/>.
+        /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public SphynxRequestPacket(SnowflakeId userId, Guid sessionId)
+        public SphynxRequest(SnowflakeId userId, Guid sessionId)
         {
             UserId = userId;
             SessionId = sessionId;
@@ -40,7 +40,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="other">A request packet to compare with this request packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxRequestPacket? other) =>
+        protected bool Equals(SphynxRequest? other) =>
             base.Equals(other) && UserId == other?.UserId && SessionId == other?.SessionId;
     }
 }

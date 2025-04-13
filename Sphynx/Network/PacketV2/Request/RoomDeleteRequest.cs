@@ -5,7 +5,7 @@ namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_DEL_REQ"/>
     /// <remarks>Only rooms of type <see cref="ChatRoomType.GROUP"/> can be deleted.</remarks>
-    public sealed class DeleteRoomRequestPacket : SphynxRequestPacket, IEquatable<DeleteRoomRequestPacket>
+    public sealed class RoomDeleteRequest : SphynxRequest, IEquatable<RoomDeleteRequest>
     {
         /// <summary>
         /// The ID of the room to delete.
@@ -23,32 +23,32 @@ namespace Sphynx.Network.PacketV2.Request
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_DEL_REQ;
 
         /// <summary>
-        /// Creates new <see cref="DeleteRoomRequestPacket"/>.
+        /// Creates new <see cref="RoomDeleteRequest"/>.
         /// </summary>
         /// <param name="roomId">The ID of the room to delete.</param>
         /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
-        public DeleteRoomRequestPacket(SnowflakeId roomId, string? password)
+        public RoomDeleteRequest(SnowflakeId roomId, string? password)
             : this(SnowflakeId.Empty, Guid.Empty, roomId, password)
         {
         }
 
         /// <summary>
-        /// Creates new <see cref="DeleteRoomRequestPacket"/>.
+        /// Creates new <see cref="RoomDeleteRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public DeleteRoomRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public RoomDeleteRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
         /// <summary>
-        /// Creates new <see cref="DeleteRoomRequestPacket"/>.
+        /// Creates new <see cref="RoomDeleteRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomId">The ID of the room to delete. Only rooms of type <see cref="ChatRoomType.GROUP"/> can be deleted.</param>
         /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
-        public DeleteRoomRequestPacket(SnowflakeId userId, Guid sessionId, SnowflakeId roomId, string? password)
+        public RoomDeleteRequest(SnowflakeId userId, Guid sessionId, SnowflakeId roomId, string? password)
             : base(userId, sessionId)
         {
             RoomId = roomId;
@@ -56,7 +56,7 @@ namespace Sphynx.Network.PacketV2.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(DeleteRoomRequestPacket? other) =>
+        public bool Equals(RoomDeleteRequest? other) =>
             base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
     }
 }

@@ -9,15 +9,15 @@ using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class GetMessagesRequestPacketSerializer : RequestPacketSerializer<GetMessagesRequestPacket>
+    public class GetMessagesRequestPacketSerializer : RequestPacketSerializer<FetchMessagesRequest>
     {
-        protected override int GetMaxSizeInternal(GetMessagesRequestPacket packet)
+        protected override int GetMaxSizeInternal(FetchMessagesRequest packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>() +
                    BinarySerializer.MaxSizeOf<int>() + BinarySerializer.MaxSizeOf<bool>();
         }
 
-        protected override bool SerializeInternal(GetMessagesRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(FetchMessagesRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.BeforeId);
             serializer.WriteSnowflakeId(packet.RoomId);
@@ -26,7 +26,7 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override GetMessagesRequestPacket DeserializeInternal(
+        protected override FetchMessagesRequest DeserializeInternal(
             ref BinaryDeserializer deserializer,
             RequestInfo requestInfo)
         {
@@ -35,7 +35,7 @@ namespace Sphynx.Network.Serialization.Packet
             int count = deserializer.ReadInt32();
             bool inclusive = deserializer.ReadBool();
 
-            return new GetMessagesRequestPacket(requestInfo.UserId, requestInfo.SessionId,
+            return new FetchMessagesRequest(requestInfo.UserId, requestInfo.SessionId,
                 sinceId, roomId, count, inclusive);
         }
     }

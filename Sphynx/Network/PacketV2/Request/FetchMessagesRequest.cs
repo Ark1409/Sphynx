@@ -3,7 +3,7 @@
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.MSG_INFO_REQ"/>
-    public sealed class GetMessagesRequestPacket : SphynxRequestPacket, IEquatable<GetMessagesRequestPacket>
+    public sealed class FetchMessagesRequest : SphynxRequest, IEquatable<FetchMessagesRequest>
     {
         /// <summary>
         /// The maximum number of messages which can be requested at once.
@@ -41,16 +41,16 @@ namespace Sphynx.Network.PacketV2.Request
         public bool Inclusive { get; set; }
 
         /// <summary>
-        /// Creates a new <see cref="GetMessagesRequestPacket"/>.
+        /// Creates a new <see cref="FetchMessagesRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public GetMessagesRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public FetchMessagesRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="GetMessagesRequestPacket"/>.
+        /// Creates a new <see cref="FetchMessagesRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
@@ -59,7 +59,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <param name="count">The number of messages to retrieve, starting from <see cref="BeforeId"/>.</param>
         /// <param name="inclusive">Whether to include the message with id <see cref="BeforeId"/> (if it exists) in the
         /// response.</param>
-        public GetMessagesRequestPacket(
+        public FetchMessagesRequest(
             SnowflakeId userId,
             Guid sessionId,
             SnowflakeId beforeId,
@@ -75,7 +75,7 @@ namespace Sphynx.Network.PacketV2.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(GetMessagesRequestPacket? other) => base.Equals(other)
+        public bool Equals(FetchMessagesRequest? other) => base.Equals(other)
                                                                && BeforeId == other?.BeforeId
                                                                && RoomId == other?.RoomId
                                                                && Count == other.Count

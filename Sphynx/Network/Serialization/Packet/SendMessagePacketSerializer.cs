@@ -8,28 +8,28 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class SendMessageRequestPacketSerializer : RequestPacketSerializer<SendMessageRequestPacket>
+    public class SendMessageRequestPacketSerializer : RequestPacketSerializer<MessagePostRequest>
     {
-        protected override int GetMaxSizeInternal(SendMessageRequestPacket packet)
+        protected override int GetMaxSizeInternal(MessagePostRequest packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(packet.Message);
         }
 
-        protected override bool SerializeInternal(SendMessageRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(MessagePostRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteString(packet.Message);
             return true;
         }
 
-        protected override SendMessageRequestPacket DeserializeInternal(
+        protected override MessagePostRequest DeserializeInternal(
             ref BinaryDeserializer deserializer,
             RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
             string message = deserializer.ReadString();
 
-            return new SendMessageRequestPacket(requestInfo.UserId, requestInfo.SessionId, roomId, message);
+            return new MessagePostRequest(requestInfo.UserId, requestInfo.SessionId, roomId, message);
         }
     }
 

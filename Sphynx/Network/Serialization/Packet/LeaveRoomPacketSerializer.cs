@@ -8,26 +8,26 @@ using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
-    public class LeaveRoomRequestPacketSerializer : RequestPacketSerializer<LeaveRoomRequestPacket>
+    public class LeaveRoomRequestPacketSerializer : RequestPacketSerializer<LeaveRoomRequest>
     {
-        protected override int GetMaxSizeInternal(LeaveRoomRequestPacket packet)
+        protected override int GetMaxSizeInternal(LeaveRoomRequest packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override bool SerializeInternal(LeaveRoomRequestPacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(LeaveRoomRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             return true;
         }
 
-        protected override LeaveRoomRequestPacket DeserializeInternal(
+        protected override LeaveRoomRequest DeserializeInternal(
             ref BinaryDeserializer deserializer,
             RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
 
-            return new LeaveRoomRequestPacket(requestInfo.UserId, requestInfo.SessionId, roomId);
+            return new LeaveRoomRequest(requestInfo.UserId, requestInfo.SessionId, roomId);
         }
     }
 

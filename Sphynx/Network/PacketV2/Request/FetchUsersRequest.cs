@@ -4,7 +4,7 @@ using Sphynx.Utils;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.USER_INFO_REQ"/>
-    public sealed class GetUsersRequestPacket : SphynxRequestPacket, IEquatable<GetUsersRequestPacket>
+    public sealed class FetchUsersRequest : SphynxRequest, IEquatable<FetchUsersRequest>
     {
         /// <summary>
         /// The maximum number of users which can be requested at once.
@@ -40,28 +40,28 @@ namespace Sphynx.Network.PacketV2.Request
         private SnowflakeId[] _userIds = Array.Empty<SnowflakeId>();
 
         /// <summary>
-        /// Creates a new <see cref="GetUsersRequestPacket"/>.
+        /// Creates a new <see cref="FetchUsersRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public GetUsersRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public FetchUsersRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="GetUsersRequestPacket"/>.
+        /// Creates a new <see cref="FetchUsersRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="userIds">The user IDs of the users for which to retrieve information.</param>
-        public GetUsersRequestPacket(SnowflakeId userId, Guid sessionId, params SnowflakeId[] userIds) : base(userId,
+        public FetchUsersRequest(SnowflakeId userId, Guid sessionId, params SnowflakeId[] userIds) : base(userId,
             sessionId)
         {
             UserIds = userIds;
         }
 
         /// <inheritdoc/>
-        public bool Equals(GetUsersRequestPacket? other) =>
+        public bool Equals(FetchUsersRequest? other) =>
             base.Equals(other) && MemoryUtils.SequenceEqual(UserIds, other?.UserIds);
     }
 }

@@ -4,7 +4,7 @@ using Sphynx.Utils;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_INFO_REQ"/>
-    public sealed class GetRoomsRequestPacket : SphynxRequestPacket, IEquatable<GetRoomsRequestPacket>
+    public sealed class FetchRoomsRequest : SphynxRequest, IEquatable<FetchRoomsRequest>
     {
         /// <summary>
         /// The maximum number of rooms which can be requested at once.
@@ -40,28 +40,28 @@ namespace Sphynx.Network.PacketV2.Request
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_INFO_REQ;
 
         /// <summary>
-        /// Creates a new <see cref="GetRoomsRequestPacket"/>.
+        /// Creates a new <see cref="FetchRoomsRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public GetRoomsRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public FetchRoomsRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="GetRoomsRequestPacket"/>.
+        /// Creates a new <see cref="FetchRoomsRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomIds">The ID of the room to get the information of.</param>
-        public GetRoomsRequestPacket(SnowflakeId userId, Guid sessionId, params SnowflakeId[] roomIds)
+        public FetchRoomsRequest(SnowflakeId userId, Guid sessionId, params SnowflakeId[] roomIds)
             : base(userId, sessionId)
         {
             RoomIds = roomIds;
         }
 
         /// <inheritdoc/>
-        public bool Equals(GetRoomsRequestPacket? other) =>
+        public bool Equals(FetchRoomsRequest? other) =>
             base.Equals(other) && MemoryUtils.SequenceEqual(RoomIds, other?.RoomIds);
     }
 }

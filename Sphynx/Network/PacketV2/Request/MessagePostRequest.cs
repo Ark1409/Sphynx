@@ -3,7 +3,7 @@
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.MSG_REQ"/>.
-    public sealed class SendMessageRequestPacket : SphynxRequestPacket, IEquatable<SendMessageRequestPacket>
+    public sealed class MessagePostRequest : SphynxRequest, IEquatable<MessagePostRequest>
     {
         /// <summary>
         /// The ID of the room to which the message was sent.
@@ -19,22 +19,22 @@ namespace Sphynx.Network.PacketV2.Request
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_REQ;
 
         /// <summary>
-        /// Creates a new <see cref="SendMessageRequestPacket"/>.
+        /// Creates a new <see cref="MessagePostRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
-        public SendMessageRequestPacket(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public MessagePostRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="SendMessageRequestPacket"/>.
+        /// Creates a new <see cref="MessagePostRequest"/>.
         /// </summary>
         /// <param name="userId">The user ID of the requesting user.</param>
         /// <param name="sessionId">The session ID for the requesting user.</param>
         /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public SendMessageRequestPacket(SnowflakeId userId, Guid sessionId, SnowflakeId roomId, string message)
+        public MessagePostRequest(SnowflakeId userId, Guid sessionId, SnowflakeId roomId, string message)
             : base(userId, sessionId)
         {
             RoomId = roomId;
@@ -42,7 +42,7 @@ namespace Sphynx.Network.PacketV2.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(SendMessageRequestPacket? other) =>
+        public bool Equals(MessagePostRequest? other) =>
             base.Equals(other) && RoomId == other?.RoomId && Message == other?.Message;
     }
 }
