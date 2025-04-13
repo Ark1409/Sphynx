@@ -7,7 +7,7 @@ using Sphynx.ModelV2.Room;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public abstract class ChatRoomInfoSerializer<TRoom> : ModelSerializer<TRoom>
+    public abstract class ChatRoomInfoSerializer<TRoom> : TypeSerializer<TRoom>
         where TRoom : IChatRoomInfo
     {
         public sealed override int GetMaxSize(TRoom packet)

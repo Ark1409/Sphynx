@@ -6,7 +6,7 @@ using Sphynx.ModelV2;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public class ChatMessageSerializer : ModelSerializer<IChatMessage>
+    public class ChatMessageSerializer : TypeSerializer<IChatMessage>
     {
         public override int GetMaxSize(IChatMessage model)
         {

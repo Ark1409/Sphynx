@@ -93,7 +93,7 @@ namespace Sphynx.Network.Serialization
         bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? instance, out int bytesRead);
     }
 
-    public static class TypeSerializerExtensions
+    public static partial class TypeSerializerExtensions
     {
         public static bool TrySerialize<TSerializer, T>(this TSerializer serializer, T instance, Span<byte> buffer)
             where TSerializer : ITypeSerializer<T>

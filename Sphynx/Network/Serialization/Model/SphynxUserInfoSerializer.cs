@@ -7,7 +7,7 @@ using Sphynx.ModelV2.User;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public class SphynxUserInfoSerializer : ModelSerializer<ISphynxUserInfo>
+    public class SphynxUserInfoSerializer : TypeSerializer<ISphynxUserInfo>
     {
         public override int GetMaxSize(ISphynxUserInfo model)
         {
@@ -43,7 +43,7 @@ namespace Sphynx.Network.Serialization.Model
         }
     }
 
-    public class SphynxSelfInfoSerializer : ModelSerializer<ISphynxSelfInfo>
+    public class SphynxSelfInfoSerializer : TypeSerializer<ISphynxSelfInfo>
     {
         public override int GetMaxSize(ISphynxSelfInfo model)
         {
