@@ -56,8 +56,8 @@ namespace Sphynx.Network.Serialization.Model
 
         public ChatRoomInfoSerializer()
         {
-            WithSerializer(ChatRoomType.DIRECT_MSG, new DirectChatRoomInfoSerializer());
-            WithSerializer(ChatRoomType.GROUP, new GroupChatRoomInfoSerializer());
+            AddSerializer(ChatRoomType.DIRECT_MSG, new DirectChatRoomInfoSerializer());
+            AddSerializer(ChatRoomType.GROUP, new GroupChatRoomInfoSerializer());
         }
 
         protected internal override int GetMaxRoomSize(IChatRoomInfo room)
@@ -78,9 +78,7 @@ namespace Sphynx.Network.Serialization.Model
             return true;
         }
 
-        protected internal override IChatRoomInfo? DeserializeRoom(
-            ref BinaryDeserializer deserializer,
-            RoomInfo roomInfo)
+        protected internal override IChatRoomInfo? DeserializeRoom(ref BinaryDeserializer deserializer, RoomInfo roomInfo)
         {
             if (_serializers.TryGetValue(roomInfo.RoomType, out var roomDeserializer))
             {
@@ -90,28 +88,25 @@ namespace Sphynx.Network.Serialization.Model
             return null;
         }
 
-        public ChatRoomInfoSerializer WithSerializer<T>(
-            ChatRoomType roomType,
-            ChatRoomInfoSerializer<T> serializer)
+        public ChatRoomInfoSerializer AddSerializer<T>(ChatRoomType roomType, ChatRoomInfoSerializer<T> serializer)
             where T : IChatRoomInfo
         {
-            ref var existingAdapter =
-                ref CollectionsMarshal.GetValueRefOrAddDefault(_serializers, roomType, out bool exists);
+            ref var existingAdapter = ref CollectionsMarshal.GetValueRefOrAddDefault(_serializers, roomType, out bool exists);
 
             // Avoid extra allocations
-            if (exists && existingAdapter is Adapter<T> adapter)
+            if (exists && existingAdapter is SerializerAdapter<T> adapter)
             {
                 adapter.InnerSerializer = serializer;
             }
             else
             {
-                existingAdapter = new Adapter<T>(serializer);
+                existingAdapter = new SerializerAdapter<T>(serializer);
             }
 
             return this;
         }
 
-        public ChatRoomInfoSerializer WithoutSerializer(ChatRoomType roomType)
+        public ChatRoomInfoSerializer RemoveSerializer(ChatRoomType roomType)
         {
             _serializers.Remove(roomType);
             return this;
@@ -119,11 +114,12 @@ namespace Sphynx.Network.Serialization.Model
 
         // TODO: Find a more elegant way of accomplishing this
 
-        private class Adapter<T> : ChatRoomInfoSerializer<IChatRoomInfo> where T : IChatRoomInfo
+        private class SerializerAdapter<T> : ChatRoomInfoSerializer<IChatRoomInfo>
+            where T : IChatRoomInfo
         {
             internal ChatRoomInfoSerializer<T> InnerSerializer { get; set; }
 
-            public Adapter(ChatRoomInfoSerializer<T> innerSerializer)
+            public SerializerAdapter(ChatRoomInfoSerializer<T> innerSerializer)
             {
                 InnerSerializer = innerSerializer;
             }
@@ -208,9 +204,7 @@ namespace Sphynx.Network.Serialization.Model
             return true;
         }
 
-        protected internal override IGroupChatRoomInfo DeserializeRoom(
-            ref BinaryDeserializer deserializer,
-            RoomInfo roomInfo)
+        protected internal override IGroupChatRoomInfo DeserializeRoom(ref BinaryDeserializer deserializer, RoomInfo roomInfo)
         {
             bool isPublic = deserializer.ReadBool();
             var ownerId = deserializer.ReadSnowflakeId();

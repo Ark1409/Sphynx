@@ -95,10 +95,8 @@ namespace Sphynx.Network.Serialization.Model
     internal static class ModelSerializerExtensions
     {
         /// <inheritdoc cref="TrySerializeUnsafe{T}(ITypeSerializer{T},T,Span{byte}, out int)"/>
-        internal static bool TrySerializeUnsafe<T>(
-            this ITypeSerializer<T> serializer,
-            T model,
-            ref BinarySerializer binarySerializer) where T : notnull
+        internal static bool TrySerializeUnsafe<T>(this ITypeSerializer<T> serializer, T model, ref BinarySerializer binarySerializer)
+            where T : notnull
         {
             if (TrySerializeUnsafe(serializer, model, binarySerializer.CurrentSpan, out int bytesWritten))
             {
@@ -114,11 +112,8 @@ namespace Sphynx.Network.Serialization.Model
         /// <paramref name="serializer"/> is a <see cref="ModelSerializer{T}"/>, else defaults to
         /// <see cref="ITypeSerializer{T}.TrySerialize(T, Span{byte}, out int)"/>.
         /// </summary>
-        internal static bool TrySerializeUnsafe<T>(
-            this ITypeSerializer<T> serializer,
-            T model,
-            Span<byte> buffer,
-            out int bytesWritten) where T : notnull
+        internal static bool TrySerializeUnsafe<T>(this ITypeSerializer<T> serializer, T model, Span<byte> buffer, out int bytesWritten)
+            where T : notnull
         {
             if (serializer is ModelSerializer<T> modelSerializer)
             {
