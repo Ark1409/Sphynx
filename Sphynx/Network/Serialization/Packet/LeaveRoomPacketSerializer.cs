@@ -51,26 +51,26 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LeaveRoomBroadcastPacketSerializer : PacketSerializer<LeaveRoomBroadcastPacket>
+    public class LeaveRoomBroadcastPacketSerializer : PacketSerializer<RoomLeftBroadcast>
     {
-        public override int GetMaxSize(LeaveRoomBroadcastPacket packet)
+        public override int GetMaxSize(RoomLeftBroadcast packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override bool Serialize(LeaveRoomBroadcastPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(RoomLeftBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.LeaverId);
             return true;
         }
 
-        protected override LeaveRoomBroadcastPacket Deserialize(ref BinaryDeserializer deserializer)
+        protected override RoomLeftBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var leaverId = deserializer.ReadSnowflakeId();
 
-            return new LeaveRoomBroadcastPacket(roomId, leaverId);
+            return new RoomLeftBroadcast(roomId, leaverId);
         }
     }
 }

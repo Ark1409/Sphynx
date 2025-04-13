@@ -4,7 +4,7 @@ using Sphynx.Network.Packet.Request;
 namespace Sphynx.Network.PacketV2.Broadcast
 {
     /// <inheritdoc cref="SphynxPacketType.MSG_BCAST"/>
-    public class SendMessageBroadcastPacket : SphynxPacket, IEquatable<SendMessageBroadcastPacket>
+    public class MessagePostedBroadcast : SphynxPacket, IEquatable<MessagePostedBroadcast>
     {
         /// <summary>
         /// The ID of the room to which the message was sent.
@@ -24,14 +24,14 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// </summary>
         /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="messageId">The message ID of the message that was sent.</param>
-        public SendMessageBroadcastPacket(SnowflakeId roomId, SnowflakeId messageId)
+        public MessagePostedBroadcast(SnowflakeId roomId, SnowflakeId messageId)
         {
             RoomId = roomId;
             MessageId = messageId;
         }
 
         /// <inheritdoc/>
-        public bool Equals(SendMessageBroadcastPacket? other) =>
+        public bool Equals(MessagePostedBroadcast? other) =>
             base.Equals(other) && RoomId == other?.RoomId && MessageId == other?.MessageId;
     }
 }

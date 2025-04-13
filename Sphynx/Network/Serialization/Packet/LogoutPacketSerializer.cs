@@ -48,23 +48,23 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LogoutBroadcastPacketSerializer : PacketSerializer<LogoutBroadcastPacket>
+    public class LogoutBroadcastPacketSerializer : PacketSerializer<LogoutBroadcast>
     {
-        public override int GetMaxSize(LogoutBroadcastPacket packet)
+        public override int GetMaxSize(LogoutBroadcast packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override bool Serialize(LogoutBroadcastPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(LogoutBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.UserId);
             return true;
         }
 
-        protected override LogoutBroadcastPacket Deserialize(ref BinaryDeserializer deserializer)
+        protected override LogoutBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var userId = deserializer.ReadSnowflakeId();
-            return new LogoutBroadcastPacket(userId);
+            return new LogoutBroadcast(userId);
         }
     }
 }

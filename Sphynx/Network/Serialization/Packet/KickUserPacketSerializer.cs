@@ -53,26 +53,26 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class KickUserBroadcastPacketSerializer : PacketSerializer<KickUserBroadcastPacket>
+    public class KickUserBroadcastPacketSerializer : PacketSerializer<UserKickedBroadcast>
     {
-        public override int GetMaxSize(KickUserBroadcastPacket packet)
+        public override int GetMaxSize(UserKickedBroadcast packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override bool Serialize(KickUserBroadcastPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(UserKickedBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.KickId);
             return true;
         }
 
-        protected override KickUserBroadcastPacket Deserialize(ref BinaryDeserializer deserializer)
+        protected override UserKickedBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var kickId = deserializer.ReadSnowflakeId();
 
-            return new KickUserBroadcastPacket(roomId, kickId);
+            return new UserKickedBroadcast(roomId, kickId);
         }
     }
 }

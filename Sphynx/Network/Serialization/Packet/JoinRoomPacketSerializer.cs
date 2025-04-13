@@ -74,26 +74,26 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class JoinRoomBroadcastPacketSerializer : PacketSerializer<JoinRoomBroadcastPacket>
+    public class JoinRoomBroadcastPacketSerializer : PacketSerializer<RoomJoinedBroadcast>
     {
-        public override int GetMaxSize(JoinRoomBroadcastPacket packet)
+        public override int GetMaxSize(RoomJoinedBroadcast packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override bool Serialize(JoinRoomBroadcastPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(RoomJoinedBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.JoinerId);
             return true;
         }
 
-        protected override JoinRoomBroadcastPacket Deserialize(ref BinaryDeserializer deserializer)
+        protected override RoomJoinedBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var joinerId = deserializer.ReadSnowflakeId();
 
-            return new JoinRoomBroadcastPacket(roomId, joinerId);
+            return new RoomJoinedBroadcast(roomId, joinerId);
         }
     }
 }

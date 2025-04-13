@@ -17,7 +17,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LoginBroadcastPacketSerializer();
-            var packet = new LoginBroadcastPacket("user1".AsSnowflakeId(), SphynxUserStatus.ONLINE);
+            var packet = new LoginBroadcast("user1".AsSnowflakeId(), SphynxUserStatus.ONLINE);
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -35,7 +35,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LogoutBroadcastPacketSerializer();
-            var packet = new LogoutBroadcastPacket("user1".AsSnowflakeId());
+            var packet = new LogoutBroadcast("user1".AsSnowflakeId());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -53,7 +53,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new SendMessageBroadcastPacketSerializer();
-            var packet = new SendMessageBroadcastPacket("room1".AsSnowflakeId(), "msg1".AsSnowflakeId());
+            var packet = new MessagePostedBroadcast("room1".AsSnowflakeId(), "msg1".AsSnowflakeId());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -72,7 +72,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new DeleteRoomBroadcastPacketSerializer();
-            var packet = new DeleteRoomBroadcastPacket("room1".AsSnowflakeId());
+            var packet = new RoomDeletedBroadcast("room1".AsSnowflakeId());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -90,7 +90,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new JoinRoomBroadcastPacketSerializer();
-            var packet = new JoinRoomBroadcastPacket("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
+            var packet = new RoomJoinedBroadcast("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -108,7 +108,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new KickUserBroadcastPacketSerializer();
-            var packet = new KickUserBroadcastPacket("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
+            var packet = new UserKickedBroadcast("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -126,7 +126,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LeaveRoomBroadcastPacketSerializer();
-            var packet = new LeaveRoomBroadcastPacket("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
+            var packet = new RoomLeftBroadcast("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act

@@ -3,7 +3,7 @@
 namespace Sphynx.Network.PacketV2.Broadcast
 {
     /// <inheritdoc cref="SphynxPacketType.CHAT_DEL_BCAST"/>
-    public sealed class DeleteRoomBroadcastPacket : SphynxPacket, IEquatable<DeleteRoomBroadcastPacket>
+    public sealed class RoomDeletedBroadcast : SphynxPacket, IEquatable<RoomDeletedBroadcast>
     {
         /// <summary>
         /// Room ID of the deleted room.
@@ -14,15 +14,15 @@ namespace Sphynx.Network.PacketV2.Broadcast
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_DEL_BCAST;
 
         /// <summary>
-        /// Creates a new <see cref="DeleteRoomBroadcastPacket"/>.
+        /// Creates a new <see cref="RoomDeletedBroadcast"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the deleted room.</param>
-        public DeleteRoomBroadcastPacket(SnowflakeId roomId)
+        public RoomDeletedBroadcast(SnowflakeId roomId)
         {
             RoomId = roomId;
         }
 
         /// <inheritdoc/>
-        public bool Equals(DeleteRoomBroadcastPacket? other) => base.Equals(other) && RoomId == other?.RoomId;
+        public bool Equals(RoomDeletedBroadcast? other) => base.Equals(other) && RoomId == other?.RoomId;
     }
 }

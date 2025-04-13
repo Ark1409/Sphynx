@@ -81,26 +81,26 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LoginBroadcastPacketSerializer : PacketSerializer<LoginBroadcastPacket>
+    public class LoginBroadcastPacketSerializer : PacketSerializer<LoginBroadcast>
     {
-        public override int GetMaxSize(LoginBroadcastPacket packet)
+        public override int GetMaxSize(LoginBroadcast packet)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SphynxUserStatus>();
         }
 
-        protected override bool Serialize(LoginBroadcastPacket packet, ref BinarySerializer serializer)
+        protected override bool Serialize(LoginBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.UserId);
             serializer.WriteEnum(packet.UserStatus);
             return true;
         }
 
-        protected override LoginBroadcastPacket Deserialize(ref BinaryDeserializer deserializer)
+        protected override LoginBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var userId = deserializer.ReadSnowflakeId();
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
 
-            return new LoginBroadcastPacket(userId, userStatus);
+            return new LoginBroadcast(userId, userStatus);
         }
     }
 }
