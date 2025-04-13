@@ -36,7 +36,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class JoinRoomResponsePacketSerializer : ResponsePacketSerializer<JoinRoomResponsePacket>
+    public class JoinRoomResponsePacketSerializer : ResponsePacketSerializer<JoinRoomResponse>
     {
         private readonly ITypeSerializer<IChatRoomInfo> _roomSerializer;
 
@@ -45,7 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
             _roomSerializer = roomSerializer;
         }
 
-        protected override int GetMaxSizeInternal(JoinRoomResponsePacket packet)
+        protected override int GetMaxSizeInternal(JoinRoomResponse packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
@@ -53,7 +53,7 @@ namespace Sphynx.Network.Serialization.Packet
             return _roomSerializer.GetMaxSize(packet.RoomInfo!);
         }
 
-        protected override bool SerializeInternal(JoinRoomResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(JoinRoomResponse packet, ref BinarySerializer serializer)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return true;
@@ -61,15 +61,15 @@ namespace Sphynx.Network.Serialization.Packet
             return _roomSerializer.TrySerializeUnsafe(packet.RoomInfo!, ref serializer);
         }
 
-        protected override JoinRoomResponsePacket? DeserializeInternal(
+        protected override JoinRoomResponse? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new JoinRoomResponsePacket(responseInfo.ErrorCode);
+                return new JoinRoomResponse(responseInfo.ErrorCode);
 
             return _roomSerializer.TryDeserialize(ref deserializer, out var room)
-                ? new JoinRoomResponsePacket(room)
+                ? new JoinRoomResponse(room)
                 : null;
         }
     }

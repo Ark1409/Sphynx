@@ -3,20 +3,20 @@
 namespace Sphynx.Network.PacketV2.Response
 {
     /// <inheritdoc cref="SphynxPacketType.LOGOUT_RES"/>
-    public sealed class LogoutResponsePacket : SphynxResponsePacket, IEquatable<LogoutResponsePacket>
+    public sealed class LogoutResponse : SphynxResponse, IEquatable<LogoutResponse>
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_RES;
 
         /// <summary>
-        /// Creates a new <see cref="LogoutResponsePacket"/>.
+        /// Creates a new <see cref="LogoutResponse"/>.
         /// </summary>
         /// <param name="errorCode">Error code for logout attempt.</param>
-        public LogoutResponsePacket(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
+        public LogoutResponse(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
         {
         }
 
         /// <inheritdoc/>
-        public bool Equals(LogoutResponsePacket? other) => base.Equals(other);
+        public bool Equals(LogoutResponse? other) => base.Equals(other);
     }
 }

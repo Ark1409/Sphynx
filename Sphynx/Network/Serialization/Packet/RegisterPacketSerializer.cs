@@ -36,7 +36,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class RegisterResponsePacketSerializer : ResponsePacketSerializer<RegisterResponsePacket>
+    public class RegisterResponsePacketSerializer : ResponsePacketSerializer<RegisterResponse>
     {
         private readonly ITypeSerializer<ISphynxSelfInfo> _userSerializer;
 
@@ -45,7 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer = userSerializer;
         }
 
-        protected override int GetMaxSizeInternal(RegisterResponsePacket packet)
+        protected override int GetMaxSizeInternal(RegisterResponse packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
@@ -53,7 +53,7 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<Guid>() + _userSerializer.GetMaxSize(packet.UserInfo!);
         }
 
-        protected override bool SerializeInternal(RegisterResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(RegisterResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize user info when authentication is successful
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
@@ -63,17 +63,17 @@ namespace Sphynx.Network.Serialization.Packet
             return _userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer);
         }
 
-        protected override RegisterResponsePacket? DeserializeInternal(
+        protected override RegisterResponse? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new RegisterResponsePacket(responseInfo.ErrorCode);
+                return new RegisterResponse(responseInfo.ErrorCode);
 
             var sessionId = deserializer.ReadGuid();
 
             return _userSerializer.TryDeserialize(ref deserializer, out var userInfo)
-                ? new RegisterResponsePacket(userInfo, sessionId)
+                ? new RegisterResponse(userInfo, sessionId)
                 : null;
         }
     }

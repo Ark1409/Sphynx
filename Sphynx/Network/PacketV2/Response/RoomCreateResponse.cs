@@ -3,7 +3,7 @@
 namespace Sphynx.Network.PacketV2.Response
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_CREATE_RES"/>
-    public sealed class CreateRoomResponsePacket : SphynxResponsePacket, IEquatable<CreateRoomResponsePacket>
+    public sealed class RoomCreateResponse : SphynxResponse, IEquatable<RoomCreateResponse>
     {
         /// <summary>
         /// Room ID assigned to the newly created room.
@@ -14,10 +14,10 @@ namespace Sphynx.Network.PacketV2.Response
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_RES;
 
         /// <summary>
-        /// Creates a new <see cref="CreateRoomResponsePacket"/>.
+        /// Creates a new <see cref="RoomCreateResponse"/>.
         /// </summary>
         /// <param name="errorCode">Error code for room creation attempt.</param>
-        public CreateRoomResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
+        public RoomCreateResponse(SphynxErrorCode errorCode) : base(errorCode)
         {
             // Assume the room is to be created
             if (errorCode == SphynxErrorCode.SUCCESS)
@@ -25,15 +25,15 @@ namespace Sphynx.Network.PacketV2.Response
         }
 
         /// <summary>
-        /// Creates a new <see cref="CreateRoomResponsePacket"/>.
+        /// Creates a new <see cref="RoomCreateResponse"/>.
         /// </summary>
         /// <param name="roomId">Room ID assigned to the newly created room.</param>
-        public CreateRoomResponsePacket(SnowflakeId roomId) : base(SphynxErrorCode.SUCCESS)
+        public RoomCreateResponse(SnowflakeId roomId) : base(SphynxErrorCode.SUCCESS)
         {
             RoomId = roomId;
         }
 
         /// <inheritdoc/>
-        public bool Equals(CreateRoomResponsePacket? other) => base.Equals(other) && RoomId == other?.RoomId;
+        public bool Equals(RoomCreateResponse? other) => base.Equals(other) && RoomId == other?.RoomId;
     }
 }

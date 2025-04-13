@@ -4,7 +4,7 @@ using Sphynx.ModelV2.User;
 namespace Sphynx.Network.PacketV2.Response
 {
     /// <inheritdoc cref="SphynxPacketType.LOGIN_RES"/>
-    public sealed class LoginResponsePacket : SphynxResponsePacket, IEquatable<LoginResponsePacket>
+    public sealed class LoginResponse : SphynxResponse, IEquatable<LoginResponse>
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_RES;
@@ -20,26 +20,26 @@ namespace Sphynx.Network.PacketV2.Response
         public Guid? SessionId { get; init; }
 
         /// <summary>
-        /// Creates a new <see cref="LoginResponsePacket"/>.
+        /// Creates a new <see cref="LoginResponse"/>.
         /// </summary>
         /// <param name="errorCode">Error code for login attempt. Cannot be <see cref="SphynxErrorCode.SUCCESS"/>.</param>
-        public LoginResponsePacket(SphynxErrorCode errorCode) : base(errorCode)
+        public LoginResponse(SphynxErrorCode errorCode) : base(errorCode)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="LoginResponsePacket"/>.
+        /// Creates a new <see cref="LoginResponse"/>.
         /// </summary>
         /// <param name="userInfo">Holds the authenticated user's information.</param>
         /// <param name="sessionId">The session ID for the client.</param>
-        public LoginResponsePacket(ISphynxSelfInfo userInfo, Guid sessionId) : base(SphynxErrorCode.SUCCESS)
+        public LoginResponse(ISphynxSelfInfo userInfo, Guid sessionId) : base(SphynxErrorCode.SUCCESS)
         {
             UserInfo = userInfo ?? throw new ArgumentNullException(nameof(userInfo));
             SessionId = sessionId;
         }
 
         /// <inheritdoc/>
-        public bool Equals(LoginResponsePacket? other)
+        public bool Equals(LoginResponse? other)
         {
             if (other is null || !base.Equals(other) || SessionId != other.SessionId)
                 return false;

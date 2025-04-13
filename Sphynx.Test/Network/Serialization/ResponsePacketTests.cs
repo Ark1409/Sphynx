@@ -21,7 +21,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LoginResponsePacketSerializer(new SphynxSelfInfoSerializer());
-            var packet = new LoginResponsePacket(new TestSphynxSelfInfo(), "test".AsGuid());
+            var packet = new LoginResponse(new TestSphynxSelfInfo(), "test".AsGuid());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -39,7 +39,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LogoutResponsePacketSerializer();
-            var packet = new LogoutResponsePacket();
+            var packet = new LogoutResponse();
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -57,7 +57,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new RegisterResponsePacketSerializer(new SphynxSelfInfoSerializer());
-            var packet = new RegisterResponsePacket(new TestSphynxSelfInfo(), "test".AsGuid());
+            var packet = new RegisterResponse(new TestSphynxSelfInfo(), "test".AsGuid());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -75,7 +75,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new GetMessagesResponsePacketSerializer(new ChatMessageSerializer());
-            var packet = new GetMessagesResponsePacket
+            var packet = new GetMessagesResponse
             {
                 // ReSharper disable once CoVariantArrayConversion
                 Messages = TestChatMessage.FromArray("Hello World", "Test message", "Crème glacée")
@@ -97,7 +97,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new GetUsersResponsePacketSerializer(new SphynxUserInfoSerializer());
-            var packet = new GetUsersResponsePacket
+            var packet = new GetUsersResponse
             {
                 // ReSharper disable once CoVariantArrayConversion
                 Users = TestSphynxSelfInfo.FromArray("user1", "user2", "user3")!
@@ -119,7 +119,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new SendMessageResponsePacketSerializer();
-            var packet = new SendMessageResponsePacket();
+            var packet = new MessagePostResponse();
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -137,7 +137,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new CreateRoomResponsePacketSerializer();
-            var packet = new CreateRoomResponsePacket("room1".AsSnowflakeId());
+            var packet = new RoomCreateResponse("room1".AsSnowflakeId());
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -155,7 +155,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new DeleteRoomResponsePacketSerializer();
-            var packet = new DeleteRoomResponsePacket();
+            var packet = new RoomDeleteResponse();
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -173,7 +173,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new JoinRoomResponsePacketSerializer(new ChatRoomInfoSerializer());
-            var packet = new JoinRoomResponsePacket { RoomInfo = new TestDirectChatRoomInfo() };
+            var packet = new JoinRoomResponse { RoomInfo = new TestDirectChatRoomInfo() };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -191,7 +191,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new KickUserResponsePacketSerializer();
-            var packet = new KickUserResponsePacket();
+            var packet = new KickUserResponse();
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -210,7 +210,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LeaveRoomResponsePacketSerializer();
-            var packet = new LeaveRoomResponsePacket();
+            var packet = new LeaveRoomResponse();
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -228,7 +228,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new GetRoomsResponsePacketSerializer(new ChatRoomInfoSerializer());
-            var packet = new GetRoomsResponsePacket { Rooms = new IChatRoomInfo[] { new TestDirectChatRoomInfo(), new TestGroupChatRoomInfo() } };
+            var packet = new GetRoomsResponse { Rooms = new IChatRoomInfo[] { new TestDirectChatRoomInfo(), new TestGroupChatRoomInfo() } };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act

@@ -34,23 +34,23 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class DeleteRoomResponsePacketSerializer : ResponsePacketSerializer<DeleteRoomResponsePacket>
+    public class DeleteRoomResponsePacketSerializer : ResponsePacketSerializer<RoomDeleteResponse>
     {
-        protected override int GetMaxSizeInternal(DeleteRoomResponsePacket packet)
+        protected override int GetMaxSizeInternal(RoomDeleteResponse packet)
         {
             return 0;
         }
 
-        protected override bool SerializeInternal(DeleteRoomResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(RoomDeleteResponse packet, ref BinarySerializer serializer)
         {
             return true;
         }
 
-        protected override DeleteRoomResponsePacket DeserializeInternal(
+        protected override RoomDeleteResponse DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            return new DeleteRoomResponsePacket(responseInfo.ErrorCode);
+            return new RoomDeleteResponse(responseInfo.ErrorCode);
         }
     }
 

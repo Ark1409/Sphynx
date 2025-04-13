@@ -31,7 +31,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class GetRoomsResponsePacketSerializer : ResponsePacketSerializer<GetRoomsResponsePacket>
+    public class GetRoomsResponsePacketSerializer : ResponsePacketSerializer<GetRoomsResponse>
     {
         private readonly ITypeSerializer<IChatRoomInfo[]> _roomSerializer;
 
@@ -45,7 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
             _roomSerializer = roomSerializer;
         }
 
-        protected override int GetMaxSizeInternal(GetRoomsResponsePacket packet)
+        protected override int GetMaxSizeInternal(GetRoomsResponse packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
@@ -53,7 +53,7 @@ namespace Sphynx.Network.Serialization.Packet
             return _roomSerializer.GetMaxSize(packet.Rooms!);
         }
 
-        protected override bool SerializeInternal(GetRoomsResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(GetRoomsResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize Rooms on success
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
@@ -62,15 +62,15 @@ namespace Sphynx.Network.Serialization.Packet
             return _roomSerializer.TrySerializeUnsafe(packet.Rooms!, ref serializer);
         }
 
-        protected override GetRoomsResponsePacket? DeserializeInternal(
+        protected override GetRoomsResponse? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new GetRoomsResponsePacket(responseInfo.ErrorCode);
+                return new GetRoomsResponse(responseInfo.ErrorCode);
 
             return _roomSerializer.TryDeserialize(ref deserializer, out var rooms)
-                ? new GetRoomsResponsePacket(rooms)
+                ? new GetRoomsResponse(rooms)
                 : null;
         }
     }

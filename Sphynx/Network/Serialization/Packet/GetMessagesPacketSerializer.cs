@@ -40,7 +40,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class GetMessagesResponsePacketSerializer : ResponsePacketSerializer<GetMessagesResponsePacket>
+    public class GetMessagesResponsePacketSerializer : ResponsePacketSerializer<GetMessagesResponse>
     {
         private readonly ITypeSerializer<IChatMessage[]> _chatMessageSerializer;
 
@@ -54,7 +54,7 @@ namespace Sphynx.Network.Serialization.Packet
             _chatMessageSerializer = chatMessageSerializer;
         }
 
-        protected override int GetMaxSizeInternal(GetMessagesResponsePacket packet)
+        protected override int GetMaxSizeInternal(GetMessagesResponse packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
@@ -62,7 +62,7 @@ namespace Sphynx.Network.Serialization.Packet
             return _chatMessageSerializer.GetMaxSize(packet.Messages!);
         }
 
-        protected override bool SerializeInternal(GetMessagesResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(GetMessagesResponse packet, ref BinarySerializer serializer)
         {
             // Only send data on success
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
@@ -71,15 +71,15 @@ namespace Sphynx.Network.Serialization.Packet
             return _chatMessageSerializer.TrySerializeUnsafe(packet.Messages!, ref serializer);
         }
 
-        protected override GetMessagesResponsePacket? DeserializeInternal(
+        protected override GetMessagesResponse? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new GetMessagesResponsePacket(responseInfo.ErrorCode);
+                return new GetMessagesResponse(responseInfo.ErrorCode);
 
             return _chatMessageSerializer.TryDeserialize(ref deserializer, out var messages)
-                ? new GetMessagesResponsePacket(messages)
+                ? new GetMessagesResponse(messages)
                 : null;
         }
     }

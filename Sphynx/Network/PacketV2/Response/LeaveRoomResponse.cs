@@ -3,20 +3,20 @@
 namespace Sphynx.Network.PacketV2.Response
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_LEAVE_RES"/>
-    public sealed class LeaveRoomResponsePacket : SphynxResponsePacket, IEquatable<LeaveRoomResponsePacket>
+    public sealed class LeaveRoomResponse : SphynxResponse, IEquatable<LeaveRoomResponse>
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_LEAVE_RES;
 
         /// <summary>
-        /// Creates a new <see cref="LeaveRoomResponsePacket"/>.
+        /// Creates a new <see cref="LeaveRoomResponse"/>.
         /// </summary>
         /// <param name="errorCode">Error code for leave attempt.</param>
-        public LeaveRoomResponsePacket(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
+        public LeaveRoomResponse(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
         {
         }
 
         /// <inheritdoc/>
-        public bool Equals(LeaveRoomResponsePacket? other) => base.Equals(other);
+        public bool Equals(LeaveRoomResponse? other) => base.Equals(other);
     }
 }

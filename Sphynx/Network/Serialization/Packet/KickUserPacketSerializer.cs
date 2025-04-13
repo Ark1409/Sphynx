@@ -33,23 +33,23 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class KickUserResponsePacketSerializer : ResponsePacketSerializer<KickUserResponsePacket>
+    public class KickUserResponsePacketSerializer : ResponsePacketSerializer<KickUserResponse>
     {
-        protected override int GetMaxSizeInternal(KickUserResponsePacket packet)
+        protected override int GetMaxSizeInternal(KickUserResponse packet)
         {
             return 0;
         }
 
-        protected override bool SerializeInternal(KickUserResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(KickUserResponse packet, ref BinarySerializer serializer)
         {
             return true;
         }
 
-        protected override KickUserResponsePacket DeserializeInternal(
+        protected override KickUserResponse DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            return new KickUserResponsePacket(responseInfo.ErrorCode);
+            return new KickUserResponse(responseInfo.ErrorCode);
         }
     }
 

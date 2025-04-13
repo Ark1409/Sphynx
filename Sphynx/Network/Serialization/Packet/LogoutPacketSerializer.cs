@@ -28,23 +28,23 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LogoutResponsePacketSerializer : ResponsePacketSerializer<LogoutResponsePacket>
+    public class LogoutResponsePacketSerializer : ResponsePacketSerializer<LogoutResponse>
     {
-        protected override int GetMaxSizeInternal(LogoutResponsePacket packet)
+        protected override int GetMaxSizeInternal(LogoutResponse packet)
         {
             return 0;
         }
 
-        protected override bool SerializeInternal(LogoutResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(LogoutResponse packet, ref BinarySerializer serializer)
         {
             return true;
         }
 
-        protected override LogoutResponsePacket DeserializeInternal(
+        protected override LogoutResponse DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            return new LogoutResponsePacket(responseInfo.ErrorCode);
+            return new LogoutResponse(responseInfo.ErrorCode);
         }
     }
 

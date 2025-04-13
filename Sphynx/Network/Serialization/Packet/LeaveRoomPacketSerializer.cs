@@ -31,23 +31,23 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LeaveRoomResponsePacketSerializer : ResponsePacketSerializer<LeaveRoomResponsePacket>
+    public class LeaveRoomResponsePacketSerializer : ResponsePacketSerializer<LeaveRoomResponse>
     {
-        protected override int GetMaxSizeInternal(LeaveRoomResponsePacket packet)
+        protected override int GetMaxSizeInternal(LeaveRoomResponse packet)
         {
             return 0;
         }
 
-        protected override bool SerializeInternal(LeaveRoomResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(LeaveRoomResponse packet, ref BinarySerializer serializer)
         {
             return true;
         }
 
-        protected override LeaveRoomResponsePacket DeserializeInternal(
+        protected override LeaveRoomResponse DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            return new LeaveRoomResponsePacket(responseInfo.ErrorCode);
+            return new LeaveRoomResponse(responseInfo.ErrorCode);
         }
     }
 

@@ -33,23 +33,23 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class SendMessageResponsePacketSerializer : ResponsePacketSerializer<SendMessageResponsePacket>
+    public class SendMessageResponsePacketSerializer : ResponsePacketSerializer<MessagePostResponse>
     {
-        protected override int GetMaxSizeInternal(SendMessageResponsePacket packet)
+        protected override int GetMaxSizeInternal(MessagePostResponse packet)
         {
             return 0;
         }
 
-        protected override bool SerializeInternal(SendMessageResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(MessagePostResponse packet, ref BinarySerializer serializer)
         {
             return true;
         }
 
-        protected override SendMessageResponsePacket DeserializeInternal(
+        protected override MessagePostResponse DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            return new SendMessageResponsePacket(responseInfo.ErrorCode);
+            return new MessagePostResponse(responseInfo.ErrorCode);
         }
     }
 

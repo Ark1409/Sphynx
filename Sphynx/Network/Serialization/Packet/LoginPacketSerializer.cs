@@ -38,7 +38,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class LoginResponsePacketSerializer : ResponsePacketSerializer<LoginResponsePacket>
+    public class LoginResponsePacketSerializer : ResponsePacketSerializer<LoginResponse>
     {
         private readonly ITypeSerializer<ISphynxSelfInfo> _userSerializer;
 
@@ -47,7 +47,7 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer = userSerializer;
         }
 
-        protected override int GetMaxSizeInternal(LoginResponsePacket packet)
+        protected override int GetMaxSizeInternal(LoginResponse packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
@@ -55,7 +55,7 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<Guid>() + _userSerializer.GetMaxSize(packet.UserInfo!);
         }
 
-        protected override bool SerializeInternal(LoginResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(LoginResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize user info when authentication is successful
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
@@ -66,17 +66,17 @@ namespace Sphynx.Network.Serialization.Packet
             return _userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer);
         }
 
-        protected override LoginResponsePacket? DeserializeInternal(
+        protected override LoginResponse? DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new LoginResponsePacket(responseInfo.ErrorCode);
+                return new LoginResponse(responseInfo.ErrorCode);
 
             var sessionId = deserializer.ReadGuid();
 
             return _userSerializer.TryDeserialize(ref deserializer, out var userInfo)
-                ? new LoginResponsePacket(userInfo, sessionId)
+                ? new LoginResponse(userInfo, sessionId)
                 : null;
         }
     }

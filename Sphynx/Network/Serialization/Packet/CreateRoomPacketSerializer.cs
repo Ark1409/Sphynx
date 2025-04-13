@@ -208,9 +208,9 @@ namespace Sphynx.Network.Serialization.Packet
         #endregion
     }
 
-    public class CreateRoomResponsePacketSerializer : ResponsePacketSerializer<CreateRoomResponsePacket>
+    public class CreateRoomResponsePacketSerializer : ResponsePacketSerializer<RoomCreateResponse>
     {
-        protected override int GetMaxSizeInternal(CreateRoomResponsePacket packet)
+        protected override int GetMaxSizeInternal(RoomCreateResponse packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
@@ -218,7 +218,7 @@ namespace Sphynx.Network.Serialization.Packet
             return BinarySerializer.MaxSizeOf<SnowflakeId>();
         }
 
-        protected override bool SerializeInternal(CreateRoomResponsePacket packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(RoomCreateResponse packet, ref BinarySerializer serializer)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return true;
@@ -227,15 +227,15 @@ namespace Sphynx.Network.Serialization.Packet
             return true;
         }
 
-        protected override CreateRoomResponsePacket DeserializeInternal(
+        protected override RoomCreateResponse DeserializeInternal(
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new CreateRoomResponsePacket(responseInfo.ErrorCode);
+                return new RoomCreateResponse(responseInfo.ErrorCode);
 
             var roomId = deserializer.ReadSnowflakeId();
-            return new CreateRoomResponsePacket(roomId);
+            return new RoomCreateResponse(roomId);
         }
     }
 }
