@@ -2,11 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using Sphynx.Network.PacketV2;
-using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Utils;
 using Version = Sphynx.Core.Version;
@@ -44,21 +44,10 @@ namespace Sphynx.Network.Transport
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var contentBuffer = buffer[SphynxPacketHeader.Size..];
-
-                if (!serializer.TrySerialize(packet, contentBuffer.Span, out int contentSize))
-                    throw new SerializationException(
-                        $"Could not serialize packet {packet.GetType()} ({packet.PacketType}) with serializer {serializer.GetType()}.");
-
-                var header = new SphynxPacketHeader(Version, packet.PacketType, contentSize);
-                var headerBuffer = buffer[..SphynxPacketHeader.Size];
-
-                if (!header.TrySerialize(headerBuffer.Span))
-                    throw new SerializationException($"Could not serialize header for packet {packet.GetType()}");
+                int packetSize = WritePacket(packet, buffer, serializer);
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                int packetSize = SphynxPacketHeader.Size + contentSize;
                 await stream.WriteAsync(buffer[..packetSize], cancellationToken).ConfigureAwait(false);
             }
             finally
@@ -67,15 +56,41 @@ namespace Sphynx.Network.Transport
             }
         }
 
+        private int WritePacket(SphynxPacket packet, Memory<byte> buffer, IPacketSerializer<SphynxPacket> serializer)
+        {
+            int contentSize = WriteContent(packet, buffer[SphynxPacketHeader.Size..], serializer);
+            WriteHeader(packet, contentSize, buffer[..SphynxPacketHeader.Size]);
+
+            return SphynxPacketHeader.Size + contentSize;
+        }
+
+        private SphynxPacketHeader WriteHeader(SphynxPacket packet, int contentSize, Memory<byte> buffer)
+        {
+            Debug.Assert(buffer.Length >= SphynxPacketHeader.Size);
+
+            var header = new SphynxPacketHeader(Version, packet.PacketType, contentSize);
+
+            if (!header.TrySerialize(buffer.Span))
+                throw new SerializationException($"Could not serialize header for packet {packet.GetType()}");
+
+            return header;
+        }
+
+        private int WriteContent(SphynxPacket packet, Memory<byte> buffer, IPacketSerializer<SphynxPacket> serializer)
+        {
+            Debug.Assert(_serializers[packet.PacketType].Equals(serializer));
+            Debug.Assert(serializer.GetMaxSize(packet) >= 0);
+
+            if (!serializer.TrySerializeUnsafe(packet, buffer.Span, out int contentSize))
+                throw new SerializationException(
+                    $"Could not serialize packet {packet.GetType()} ({packet.PacketType}) with serializer {serializer.GetType()}.");
+
+            return contentSize;
+        }
+
         public async ValueTask<SphynxPacket> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
         {
-            var header = await SphynxPacketHeader.ReceiveAsync(stream, cancellationToken).ConfigureAwait(false);
-
-            // TODO: Add proper version handling
-            if (header.Version > Version)
-                throw new SerializationException(
-                    $"Could not deserialize packet of type {header.PacketType} against newer" +
-                    $"version ({header.Version} > {Version})");
+            var header = await ReceiveHeaderAsync(stream, cancellationToken);
 
             int contentBufferSize = header.ContentSize;
             byte[] rentContentBuffer = ArrayPool<byte>.Shared.Rent(contentBufferSize);
@@ -87,12 +102,7 @@ namespace Sphynx.Network.Transport
 
                 await stream.FillAsync(contentBuffer, cancellationToken).ConfigureAwait(false);
 
-                var serializer = _serializers[header.PacketType];
-
-                if (!serializer.TryDeserialize(contentBuffer.Span, out var packet, out _))
-                    throw new SerializationException($"Could not deserialize packet of type {header.PacketType}");
-
-                return packet;
+                return ReadContent(header, contentBuffer);
             }
             finally
             {
@@ -100,30 +110,59 @@ namespace Sphynx.Network.Transport
             }
         }
 
+        private async ValueTask<SphynxPacketHeader> ReceiveHeaderAsync(Stream stream, CancellationToken cancellationToken = default)
+        {
+            var header = await SphynxPacketHeader.ReceiveAsync(stream, cancellationToken).ConfigureAwait(false);
+
+            // TODO: Add proper version handling
+            if (header.Version > Version)
+            {
+                throw new SerializationException(
+                    $"Could not deserialize packet of type {header.PacketType} against newer" +
+                    $"version ({header.Version} > {Version})");
+            }
+
+            return header;
+        }
+
+        private SphynxPacket ReadContent(SphynxPacketHeader header, Memory<byte> buffer)
+        {
+            var serializer = _serializers[header.PacketType];
+
+            if (!serializer.TryDeserialize(buffer.Span, out var packet, out _))
+                throw new SerializationException($"Could not deserialize packet of type {header.PacketType}");
+
+            return packet;
+        }
+
         public IPacketSerializer<T> GetSerializer<T>(SphynxPacketType packetType)
             where T : SphynxPacket
         {
-            SerializerAdapter<T> serializerAdapter = (SerializerAdapter<T>)_serializers[packetType];
-            return serializerAdapter.InnerSerializer;
+            var serializer = _serializers[packetType];
+
+            if (serializer is SerializerAdapter<T> adapter)
+                return adapter.InnerSerializer;
+
+            return (IPacketSerializer<T>)serializer;
         }
 
         public PacketTransporter AddSerializer<T>(SphynxPacketType packetType, IPacketSerializer<T> serializer)
             where T : SphynxPacket
         {
-            ref var existingAdapter =
-                ref CollectionsMarshal.GetValueRefOrAddDefault(_serializers, packetType, out bool exists);
-
-            // TODO: Check if `T` is SphynxPacket and perform optimization.
-            //  Also check if `T` is already a serializer adapter
+            ref var existingSerializer = ref CollectionsMarshal.GetValueRefOrAddDefault(_serializers, packetType, out bool exists);
 
             // Avoid extra allocations
-            if (exists && existingAdapter is SerializerAdapter<T> adapter)
+            if (exists && existingSerializer is SerializerAdapter<T> adapter)
             {
                 adapter.InnerSerializer = serializer;
             }
+            else if (serializer is IPacketSerializer<SphynxPacket> baseSerializer)
+            {
+                existingSerializer = baseSerializer;
+            }
             else
             {
-                existingAdapter = new SerializerAdapter<T>(serializer);
+                existingSerializer = new SerializerAdapter<T>(serializer);
             }
 
             return this;
