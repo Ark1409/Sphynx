@@ -1,4 +1,4 @@
-﻿namespace Sphynx.Server.Auth
+﻿namespace Sphynx.ServerV2
 {
     class Program
     {
