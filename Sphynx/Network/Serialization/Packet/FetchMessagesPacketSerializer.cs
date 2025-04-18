@@ -38,7 +38,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class FetchMessagesResponseSerializer : ResponseSerializer<GetMessagesResponse>
+    public class FetchMessagesResponseSerializer : ResponseSerializer<FetchMessagesResponse>
     {
         private readonly ITypeSerializer<IChatMessage[]> _chatMessageSerializer;
 
@@ -52,7 +52,7 @@ namespace Sphynx.Network.Serialization.Packet
             _chatMessageSerializer = chatMessageSerializer;
         }
 
-        protected override int GetMaxSizeInternal(GetMessagesResponse packet)
+        protected override int GetMaxSizeInternal(FetchMessagesResponse packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
@@ -60,7 +60,7 @@ namespace Sphynx.Network.Serialization.Packet
             return _chatMessageSerializer.GetMaxSize(packet.Messages!);
         }
 
-        protected override bool SerializeInternal(GetMessagesResponse packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(FetchMessagesResponse packet, ref BinarySerializer serializer)
         {
             // Only send data on success
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
@@ -69,13 +69,13 @@ namespace Sphynx.Network.Serialization.Packet
             return _chatMessageSerializer.TrySerializeUnsafe(packet.Messages!, ref serializer);
         }
 
-        protected override GetMessagesResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
+        protected override FetchMessagesResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new GetMessagesResponse(responseInfo.ErrorCode);
+                return new FetchMessagesResponse(responseInfo.ErrorCode);
 
             return _chatMessageSerializer.TryDeserialize(ref deserializer, out var messages)
-                ? new GetMessagesResponse(messages)
+                ? new FetchMessagesResponse(messages)
                 : null;
         }
     }

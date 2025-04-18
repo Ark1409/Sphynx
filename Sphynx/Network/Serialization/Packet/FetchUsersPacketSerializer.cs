@@ -29,7 +29,7 @@ namespace Sphynx.Network.Serialization.Packet
         }
     }
 
-    public class FetchUsersResponseSerializer : ResponseSerializer<GetUsersResponse>
+    public class FetchUsersResponseSerializer : ResponseSerializer<FetchUsersResponse>
     {
         private readonly ITypeSerializer<ISphynxUserInfo[]> _userSerializer;
 
@@ -43,7 +43,7 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer = userSerializer;
         }
 
-        protected override int GetMaxSizeInternal(GetUsersResponse packet)
+        protected override int GetMaxSizeInternal(FetchUsersResponse packet)
         {
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
                 return 0;
@@ -51,7 +51,7 @@ namespace Sphynx.Network.Serialization.Packet
             return _userSerializer.GetMaxSize(packet.Users!);
         }
 
-        protected override bool SerializeInternal(GetUsersResponse packet, ref BinarySerializer serializer)
+        protected override bool SerializeInternal(FetchUsersResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize users on success
             if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
@@ -60,13 +60,13 @@ namespace Sphynx.Network.Serialization.Packet
             return _userSerializer.TrySerializeUnsafe(packet.Users!, ref serializer);
         }
 
-        protected override GetUsersResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
+        protected override FetchUsersResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new GetUsersResponse(responseInfo.ErrorCode);
+                return new FetchUsersResponse(responseInfo.ErrorCode);
 
             return _userSerializer.TryDeserialize(ref deserializer, out var users)
-                ? new GetUsersResponse(users)
+                ? new FetchUsersResponse(users)
                 : null;
         }
     }

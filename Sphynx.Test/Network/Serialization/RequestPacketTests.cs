@@ -67,7 +67,7 @@ namespace Sphynx.Test.Network.Serialization
         }
 
         [Test]
-        public void GetMessagesRequestPacket_ShouldSerializeAndDeserialize()
+        public void FetchMessagesRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new FetchMessagesRequestSerializer();
@@ -88,7 +88,7 @@ namespace Sphynx.Test.Network.Serialization
         }
 
         [Test]
-        public void GetUsersRequestPacket_ShouldSerializeAndDeserialize()
+        public void FetchUsersRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new FetchUsersRequestSerializer();
@@ -109,7 +109,7 @@ namespace Sphynx.Test.Network.Serialization
         }
 
         [Test]
-        public void SendMessageRequestPacket_ShouldSerializeAndDeserialize()
+        public void MessagePostRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new MessagePostRequestSerializer();
@@ -132,7 +132,7 @@ namespace Sphynx.Test.Network.Serialization
         }
 
         [Test]
-        public void CreateRoomRequestPacket_Direct_ShouldSerializeAndDeserialize()
+        public void RoomCreateRequestPacket_Direct_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new RoomCreateRequestSerializer();
@@ -150,7 +150,7 @@ namespace Sphynx.Test.Network.Serialization
         }
 
         [Test]
-        public void CreateRoomRequestPacket_Group_ShouldSerializeAndDeserialize()
+        public void RoomCreateRequestPacket_Group_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new RoomCreateRequestSerializer();
@@ -171,7 +171,7 @@ namespace Sphynx.Test.Network.Serialization
         }
 
         [Test]
-        public void DeleteRoomRequestPacket_ShouldSerializeAndDeserialize()
+        public void RoomDeleteRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new DeleteRoomRequestSerializer();
@@ -253,7 +253,7 @@ namespace Sphynx.Test.Network.Serialization
         }
 
         [Test]
-        public void GetRoomsRequestPacket_ShouldSerializeAndDeserialize()
+        public void FetchRoomsRequestPacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new FetchRoomsRequestSerializer();
