@@ -5,6 +5,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using Sphynx.Core;
 using Sphynx.Network.Transport;
 using Sphynx.ServerV2.Client;
 
@@ -70,6 +71,7 @@ namespace Sphynx.ServerV2
 
         private readonly CancellationTokenSource _acceptCts = new();
 
+        // TODO: Abstract away to inteface (for Redis)
         private readonly ConcurrentDictionary<Guid, SphynxClient> _connectedClients = new();
 
         /// <summary>
@@ -127,6 +129,7 @@ namespace Sphynx.ServerV2
             {
                 try
                 {
+                    // TODO: Accept async and reuse sockets
                     RegisterClient(_serverSocket.Accept(), _acceptCts.Token);
                 }
                 catch (SocketException)
@@ -137,9 +140,17 @@ namespace Sphynx.ServerV2
             }
         }
 
-        private void RegisterClient(Socket clientSocket, CancellationToken cancellationToken = default) => Task.Run(() =>
+        private void RegisterClient(Socket clientSocket, CancellationToken cancellationToken) => Task.Run(async () =>
         {
+            var clientId = Guid.NewGuid();
+            var userId = SnowflakeId.NewId();
             // TODO: what do we do on exception
+            var client = new SphynxClient(clientSocket, clientId, userId, PacketTransporter);
+
+            bool insertedClient = _connectedClients.TryAdd(clientId, client);
+            Debug.Assert(insertedClient);
+
+            await client.StartAsync(cancellationToken);
         }, cancellationToken);
 
         /// <inheritdoc/>
@@ -159,17 +170,40 @@ namespace Sphynx.ServerV2
                 _disposed = true;
                 _running = false;
 
-                foreach (var (id, _) in _connectedClients)
-                {
-                    bool removed = _connectedClients.TryRemove(id, out _);
-                    Debug.Assert(removed);
-                }
+                DisposeClients();
+                DisposeServer();
+            }
+        }
 
-                _serverSocket?.Dispose();
-                _serverThread.Join(10_000);
+        private void DisposeClients()
+        {
+            try
+            {
+                _acceptCts.Cancel();
+            }
+            catch
+            {
+                // We're disposing anyway
+            }
 
-                if (_serverThread.IsAlive)
-                    throw new TimeoutException($"Accept thread {Name} took too long to terminate");
+            foreach (var (id, _) in _connectedClients)
+            {
+                bool removed = _connectedClients.TryRemove(id, out _);
+                Debug.Assert(removed);
+            }
+        }
+
+        private void DisposeServer()
+        {
+            _acceptCts.Cancel();
+            _acceptCts.Dispose();
+
+            _serverSocket?.Dispose();
+
+            if (_serverThread.IsAlive)
+            {
+                _serverThread.Join(30_000);
+                throw new TimeoutException($"Accept thread {Name} took too long to terminate");
             }
         }
     }
