@@ -34,6 +34,9 @@ namespace Sphynx.ModelV2.User
         /// The user IDs of incoming friend requests sent to this user.
         /// </summary>
         ISet<SnowflakeId> IncomingFriendRequests { get; set; }
+
+        /// <inheritdoc/>
+        bool IEquatable<ISphynxSelfInfo>.Equals(ISphynxSelfInfo? other) => UserId == other?.UserId;
     }
 
     public interface ILastReadMessageInfo : IDictionary<SnowflakeId, SnowflakeId>

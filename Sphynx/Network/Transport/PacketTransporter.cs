@@ -90,8 +90,12 @@ namespace Sphynx.Network.Transport
 
         public async ValueTask<SphynxPacket> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
         {
+            if (!stream.CanRead)
+                throw new ArgumentException("Stream must be readable", nameof(stream));
+
             var header = await ReceiveHeaderAsync(stream, cancellationToken);
 
+            // TODO: Length sanity check
             int contentBufferSize = header.ContentSize;
             byte[] rentContentBuffer = ArrayPool<byte>.Shared.Rent(contentBufferSize);
             var contentBuffer = rentContentBuffer.AsMemory()[..contentBufferSize];

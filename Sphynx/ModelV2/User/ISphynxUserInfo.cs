@@ -24,5 +24,8 @@ namespace Sphynx.ModelV2.User
         /// The activity status of this Sphynx user.
         /// </summary>
         SphynxUserStatus UserStatus { get; set; }
+
+        /// <inheritdoc/>
+        bool IEquatable<ISphynxUserInfo>.Equals(ISphynxUserInfo? other) => UserId == other?.UserId;
     }
 }

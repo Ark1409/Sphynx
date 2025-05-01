@@ -7,10 +7,17 @@ namespace Sphynx.Utils
     {
         public static async ValueTask FillAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            int readCount = 0;
 
-            if (bytesRead < buffer.Length || bytesRead <= 0)
-                throw new EndOfStreamException();
+            while (readCount < buffer.Length)
+            {
+                int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+
+                if (bytesRead <= 0)
+                    throw new EndOfStreamException();
+
+                readCount += bytesRead;
+            }
         }
     }
 }
