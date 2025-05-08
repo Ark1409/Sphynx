@@ -12,7 +12,11 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="MongoDB.Driver" Version="3.3.0" />
+        <InternalsVisibleTo Include="$(SolutionName).Server.Auth"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MongoDB.Driver" Version="3.3.0"/>
     </ItemGroup>
 
 </Project>
