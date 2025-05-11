@@ -11,35 +11,42 @@ namespace Sphynx.ServerV2.Persistence
     [BsonIgnoreExtraElements]
     public class SphynxSelfInfo : SphynxUserInfo, ISphynxSelfInfo
     {
-        [BsonElement("friends")]
+        public const string FRIENDS_FIELD = "friends";
+        public const string ROOMS_FIELD = "rooms";
+        public const string LAST_READ_MSGS_FIELD = "last_read";
+        public const string OUT_FRIEND_REQS_FIELD = "out_reqs";
+        public const string INC_FRIEND_REQS_FIELD = "inc_recs";
+        public const string PWD_FIELD = "pwd";
+        public const string PWD_SALT_FIELD = "pwd_salt";
+
+        [BsonElement(FRIENDS_FIELD)]
         public ISet<SnowflakeId> Friends { get; set; }
 
-        [BsonElement("rooms")]
+        [BsonElement(ROOMS_FIELD)]
         public ISet<SnowflakeId> Rooms { get; set; }
 
-        [BsonElement("last_read")]
+        [BsonElement(LAST_READ_MSGS_FIELD)]
         public ILastReadMessageInfo LastReadMessages { get; set; }
 
-        [BsonElement("out_reqs")]
+        [BsonElement(OUT_FRIEND_REQS_FIELD)]
         public ISet<SnowflakeId> OutgoingFriendRequests { get; set; }
 
-        [BsonElement("inc_reqs")]
+        [BsonElement(INC_FRIEND_REQS_FIELD)]
         public ISet<SnowflakeId> IncomingFriendRequests { get; set; }
 
         /// <summary>
         /// The hashed password for this Sphynx user, as a base-64 string.
         /// </summary>
-        [BsonElement("pwd")]
+        [BsonElement(PWD_FIELD)]
         internal string? Password { get; set; }
 
         /// <summary>
         /// The salt for the password of this Sphynx user.
         /// </summary>
-        [BsonElement("pwd_salt")]
+        [BsonElement(PWD_SALT_FIELD)]
         internal string? PasswordSalt { get; set; }
 
-        public SphynxSelfInfo(
-            SnowflakeId userId,
+        public SphynxSelfInfo(SnowflakeId userId,
             string userName,
             SphynxUserStatus status,
             IEnumerable<Guid>? friends = null,
@@ -56,8 +63,7 @@ namespace Sphynx.ServerV2.Persistence
         /// <param name="encodedSalt">The salt for the password of this Sphynx user.</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
-        internal SphynxSelfInfo(
-            string userName,
+        internal SphynxSelfInfo(string userName,
             byte[] encodedPwd,
             byte[] encodedSalt,
             SphynxUserStatus status,
@@ -75,8 +81,7 @@ namespace Sphynx.ServerV2.Persistence
         /// <param name="encodedSalt">The salt for the password of this Sphynx user.</param>
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
-        internal SphynxSelfInfo(
-            string userName,
+        internal SphynxSelfInfo(string userName,
             string encodedPwd,
             string encodedSalt,
             SphynxUserStatus status,
@@ -96,8 +101,7 @@ namespace Sphynx.ServerV2.Persistence
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
         /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
-        public SphynxSelfInfo(
-            SnowflakeId userId,
+        public SphynxSelfInfo(SnowflakeId userId,
             string userName,
             byte[] encodedPwd,
             byte[] encodedSalt,
@@ -119,8 +123,7 @@ namespace Sphynx.ServerV2.Persistence
         /// <param name="status">The activity status of the Sphynx user.</param>
         /// <param name="friends">User IDs of friends for this user.</param>
         /// <param name="rooms">Room IDs of chat rooms which this user is in (including DMs).</param>
-        public SphynxSelfInfo(
-            SnowflakeId userId,
+        public SphynxSelfInfo(SnowflakeId userId,
             string userName,
             string encodedPwd,
             string encodedSalt,

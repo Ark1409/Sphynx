@@ -15,14 +15,18 @@ namespace Sphynx.ServerV2.Persistence
     /// </summary>
     public class SphynxUserInfo : ISphynxUserInfo
     {
+        public const string ID_FIELD = "_id";
+        public const string NAME_FIELD = "name";
+        public const string STATUS_FIELD = "status";
+
         [BsonId(IdGenerator = typeof(CombGuidGenerator))]
         [BsonGuidRepresentation(GuidRepresentation.Standard)]
         public SnowflakeId UserId { get; set; }
 
-        [BsonElement("name")]
+        [BsonElement(NAME_FIELD)]
         public string UserName { get; set; }
 
-        [BsonElement("status")]
+        [BsonElement(STATUS_FIELD)]
         public SphynxUserStatus UserStatus { get; set; }
 
         public SphynxUserInfo(SnowflakeId userId, string userName, SphynxUserStatus userStatus)

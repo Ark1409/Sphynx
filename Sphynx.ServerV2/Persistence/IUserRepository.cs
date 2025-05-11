@@ -23,5 +23,8 @@ namespace Sphynx.ServerV2.Persistence
 
         Task<SphynxErrorInfo<ISphynxUserInfo[]?>> GetUsersAsync(SnowflakeId[] userIds, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<ISphynxUserInfo[]?>> GetUsersAsync(string[] userNames, CancellationToken cancellationToken = default);
+
+        Task<SphynxErrorInfo<T?>> GetUserFieldAsync<T>(SnowflakeId userId, string fieldName, CancellationToken cancellationToken = default);
+        Task<SphynxErrorCode> UpdateUserFieldAsync(SnowflakeId userId, string fieldName, CancellationToken cancellationToken = default);
     }
 }
