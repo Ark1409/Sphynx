@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.Transport;
 using Sphynx.Server.Auth.Handlers;
+using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2;
 using Sphynx.ServerV2.Persistence;
 using Sphynx.Storage;
@@ -66,12 +67,12 @@ namespace Sphynx.Server.Auth
         /// <summary>
         /// The packet transporter used by clients.
         /// </summary>
-        public IPacketTransporter PacketTransporter { get; set; } = new PacketTransporter();
+        public IPacketTransporter PacketTransporter { get; init; } = new PacketTransporter();
 
-        public IUserRepository UserRepository { get; set; }
-
-        public IPacketHandler<LoginRequest> LoginHandler { get; set; }
-        public IPacketHandler<RegisterRequest> RegisterHandler { get; set; }
+        public IPasswordHasher PasswordHasher { get; init; } = new Pbkdf2PasswordHasher();
+        public IUserRepository UserRepository { get; init; }
+        public IPacketHandler<LoginRequest> LoginHandler { get; init; }
+        public IPacketHandler<RegisterRequest> RegisterHandler { get; init; }
 
         private Socket? _serverSocket;
         private CancellationTokenSource? _acceptCts;
@@ -102,10 +103,10 @@ namespace Sphynx.Server.Auth
             UserRepository = null!;
 
             if (LoginHandler is null)
-                LoginHandler = new LoginHandler(UserRepository);
+                LoginHandler = new LoginHandler(UserRepository, PasswordHasher, Logger);
 
             if (RegisterHandler is null)
-                RegisterHandler = new RegisterHandler();
+                RegisterHandler = new RegisterHandler(UserRepository, PasswordHasher, Logger);
         }
 
         /// <summary>
@@ -165,11 +166,18 @@ namespace Sphynx.Server.Auth
                 bool insertedClient = _connectedClients.TryAdd(client.ClientId, client);
                 Debug.Assert(insertedClient);
 
+                client.OnDisconnect += (c, ex) =>
+                {
+                    Logger.LogError(ex, "[{EndPoint}]: Client disconnected", c.Socket.RemoteEndPoint);
+                    c.Dispose();
+                    _socketPool!.Return(c.Socket);
+                };
+
                 await client.StartAsync(ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "[{EndPoint}]: Unhandled exception from client read loop", clientSocket.RemoteEndPoint);
+                Logger.LogError(ex, "[{EndPoint}]: Unhandled exception when starting client", clientSocket.RemoteEndPoint);
             }
         }, cancellationToken, false);
 

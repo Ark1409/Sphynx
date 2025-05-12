@@ -133,6 +133,8 @@ namespace Sphynx.Network.Transport
         {
             var serializer = _serializers[header.PacketType];
 
+            // TODO: Maybe just continue reading, instead of throwing,
+            // to protect against the server being overflowed with random bytes
             if (!serializer.TryDeserialize(buffer.Span, out var packet, out _))
                 throw new SerializationException($"Could not deserialize packet of type {header.PacketType}");
 

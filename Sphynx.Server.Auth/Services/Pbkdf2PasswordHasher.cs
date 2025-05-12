@@ -21,7 +21,9 @@ namespace Sphynx.Server.Auth.Services
 
             Span<byte> hash = hashedPassword.Length < 256
                 ? stackalloc byte[256]
-                : (hashArray = ArrayPool<byte>.Shared.Rent(hashedPassword.Length));
+                : hashArray = ArrayPool<byte>.Shared.Rent(hashedPassword.Length);
+
+            hash = hash[..hashedPassword.Length];
 
             try
             {
@@ -31,7 +33,7 @@ namespace Sphynx.Server.Auth.Services
             finally
             {
                 if (hashArray != null)
-                    ArrayPool<byte>.Shared.Return(hashArray);
+                    ArrayPool<byte>.Shared.Return(hashArray, true);
             }
         }
     }
