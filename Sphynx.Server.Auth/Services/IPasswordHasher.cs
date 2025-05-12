@@ -22,9 +22,9 @@ namespace Sphynx.Server.Auth.Services
             return RandomNumberGenerator.GetBytes(length);
         }
 
-        public static void GenerateSalt(this IPasswordHasher hasher, Span<byte> outSalt)
+        public static void GenerateSalt(this IPasswordHasher hasher, Span<byte> fill)
         {
-            RandomNumberGenerator.Fill(outSalt);
+            RandomNumberGenerator.Fill(fill);
         }
 
         public static byte[] HashPassword(this IPasswordHasher hasher, ReadOnlySpan<char> password, ReadOnlySpan<byte> salt)
@@ -34,7 +34,8 @@ namespace Sphynx.Server.Auth.Services
             return dest;
         }
 
-        public static bool VerifyPassword(this IPasswordHasher hasher, ReadOnlySpan<char> input, ReadOnlySpan<char> encodedSalt, ReadOnlySpan<char> encodedPassword)
+        public static bool VerifyPassword(this IPasswordHasher hasher, ReadOnlySpan<char> input, ReadOnlySpan<char> encodedSalt,
+            ReadOnlySpan<char> encodedPassword)
         {
             byte[] scratchArray = ArrayPool<byte>.Shared.Rent(encodedSalt.Length + encodedPassword.Length);
             var scratch = scratchArray.AsSpan();

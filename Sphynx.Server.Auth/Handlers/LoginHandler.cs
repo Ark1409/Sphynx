@@ -1,11 +1,11 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Sphynx.Core;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
-using Sphynx.ServerV2.Auth;
+using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2.Persistence;
 
 namespace Sphynx.Server.Auth.Handlers
@@ -13,10 +13,14 @@ namespace Sphynx.Server.Auth.Handlers
     public class LoginHandler : IPacketHandler<LoginRequest>
     {
         private readonly IUserRepository _userRepository;
+        private readonly IPasswordHasher _passwordHasher;
+        private readonly ILogger _logger;
 
-        public LoginHandler(IUserRepository userRepository)
+        public LoginHandler(IUserRepository userRepository, IPasswordHasher passwordHasher, ILogger logger)
         {
             _userRepository = userRepository;
+            _passwordHasher = passwordHasher;
+            _logger = logger;
         }
 
         public ValueTask HandlePacketAsync(SphynxClient client, LoginRequest request, CancellationToken token = default)
@@ -34,28 +38,34 @@ namespace Sphynx.Server.Auth.Handlers
         {
             token.ThrowIfCancellationRequested();
 
-            var credentials = new SphynxUserCredentials(request.UserName, request.Password);
-            var selfData = await _userRepository.GetSelfAsync(credentials.UserName, token);
+            var selfResult = await _userRepository.GetSelfAsync(request.UserName, token);
 
-            if (selfData.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (selfResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendPacketAsync(new LoginResponse(selfData.ErrorCode), token);
+                await client.SendPacketAsync(new LoginResponse(selfResult.ErrorCode), token).ConfigureAwait(false);
                 return;
             }
 
-            Debug.Assert(selfData.Data is SphynxSelfInfo);
+            var selfInfo = (SphynxSelfInfo)selfResult.Data!;
 
-            var selfInfo = (SphynxSelfInfo)selfData.Data;
-
-            // TODO: Verify password
-            if (selfInfo.Password == credentials.Password)
+            if (_passwordHasher.VerifyPassword(request.Password, selfInfo.PasswordSalt, selfInfo.Password))
             {
-                await client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_PASSWORD), token);
+                await client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_PASSWORD), token).ConfigureAwait(false);
                 return;
             }
 
-            // TODO: Maybe store this session id
-            await client.SendPacketAsync(new LoginResponse(selfInfo, Guid.NewGuid()), token);
+            token.ThrowIfCancellationRequested();
+
+            // TODO: Alert message server
+            await client.SendPacketAsync(new LoginResponse(selfInfo, Guid.NewGuid()), token).ConfigureAwait(false);
+
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("[{ClientId}]: Successfully authenticated with user {UserId} ({UserName})",
+                    client.ClientId, selfInfo.UserId, request.UserName);
+            }
+
+            await client.DisposeAsync().ConfigureAwait(false);
         }
     }
 }

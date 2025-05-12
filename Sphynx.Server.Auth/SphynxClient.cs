@@ -118,7 +118,7 @@ namespace Sphynx.Server.Auth
                         var packet = await _packetTransporter.ReceiveAsync(_stream, ct).ConfigureAwait(false);
 
                         // TODO: Rate-limit
-                        HandlePacket(packet, ct, TRANSIENT_RETRY_COUNT);
+                        await HandlePacketAsync(packet, ct, TRANSIENT_RETRY_COUNT).ConfigureAwait(false);
                     }
                 }
                 catch (Exception ex) when (ex.IsTransient())
@@ -144,47 +144,46 @@ namespace Sphynx.Server.Auth
                 }
 
                 int retryDelay = 500 * (1 << attempt);
-                await Task.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
+                await Task.Delay(retryDelay, ct).ConfigureAwait(false);
             }
         }
 
-        private void HandlePacket(SphynxPacket packet, CancellationToken cancellationToken, int maxRetryAttempts) => ThreadPool.QueueUserWorkItem(
-            async void (ct) =>
+        private async Task HandlePacketAsync(SphynxPacket packet, CancellationToken cancellationToken, int maxRetryAttempts)
+        {
+            for (int attempt = 1; attempt < maxRetryAttempts; attempt++)
             {
-                for (int attempt = 1; attempt < maxRetryAttempts; attempt++)
+                try
                 {
-                    try
-                    {
-                        await HandlePacketAsync(packet, ct).ConfigureAwait(false);
-                        return;
-                    }
-                    catch (Exception ex) when (ex.IsTransient())
-                    {
-                        _logger.LogError(ex, "[{ClientId} ({EndPoint})]: Transient error occured while handling packet {PacketType}. Retrying...",
-                            ClientId, Socket.RemoteEndPoint, packet.PacketType);
-
-                        if (attempt == maxRetryAttempts)
-                            OnDisconnect?.Invoke(this, ex);
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        _logger.LogWarning("[{ClientId} ({EndPoint})]: Packet handling for {PacketType} aborted",
-                            ClientId, Socket.RemoteEndPoint, packet.PacketType);
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "[{ClientId} ({EndPoint})]: Unexpected exception occured while handling packet {PacketType}",
-                            ClientId, Socket.RemoteEndPoint, packet.PacketType);
-
-                        await DisposeAsync().ConfigureAwait(false);
-                        break;
-                    }
-
-                    int retryDelay = 500 * (1 << attempt);
-                    await Task.Delay(retryDelay, ct).ConfigureAwait(false);
+                    await HandlePacketAsync(packet, cancellationToken).ConfigureAwait(false);
+                    return;
                 }
-            }, cancellationToken, false);
+                catch (Exception ex) when (ex.IsTransient())
+                {
+                    _logger.LogError(ex, "[{ClientId} ({EndPoint})]: Transient error occured while handling packet {PacketType}. Retrying...",
+                        ClientId, Socket.RemoteEndPoint, packet.PacketType);
+
+                    if (attempt == maxRetryAttempts)
+                        OnDisconnect?.Invoke(this, ex);
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogWarning("[{ClientId} ({EndPoint})]: Packet handling for {PacketType} aborted",
+                        ClientId, Socket.RemoteEndPoint, packet.PacketType);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[{ClientId} ({EndPoint})]: Unexpected exception occured while handling packet {PacketType}",
+                        ClientId, Socket.RemoteEndPoint, packet.PacketType);
+
+                    await DisposeAsync().ConfigureAwait(false);
+                    break;
+                }
+
+                int retryDelay = 500 * (1 << attempt);
+                await Task.Delay(retryDelay, cancellationToken).ConfigureAwait(false);
+            }
+        }
 
         private async Task HandlePacketAsync(SphynxPacket packet, CancellationToken cancellationToken = default)
         {
