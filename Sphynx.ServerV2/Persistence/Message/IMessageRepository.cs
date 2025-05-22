@@ -4,7 +4,7 @@
 using Sphynx.Core;
 using Sphynx.ModelV2;
 
-namespace Sphynx.ServerV2.Persistence
+namespace Sphynx.ServerV2.Persistence.Message
 {
     /// <summary>
     /// Represents a storage space for chat messages handled by the server.

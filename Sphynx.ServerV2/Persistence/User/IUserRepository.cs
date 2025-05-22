@@ -3,16 +3,15 @@
 
 using Sphynx.Core;
 using Sphynx.ModelV2.User;
-using Sphynx.ServerV2.Auth;
 
-namespace Sphynx.ServerV2.Persistence
+namespace Sphynx.ServerV2.Persistence.User
 {
     public interface IUserRepository
     {
         event Action<ISphynxUserInfo>? UserCreated;
         event Action<ISphynxUserInfo>? UserDeleted;
 
-        Task<SphynxErrorInfo<ISphynxSelfInfo?>> CreateUserAsync(SphynxUserCredentials credentials, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<ISphynxSelfInfo?>> InsertUserAsync(ISphynxSelfInfo user, CancellationToken cancellationToken = default);
         Task<SphynxErrorCode> UpdateUserAsync(ISphynxSelfInfo updatedUser, CancellationToken cancellationToken = default);
         Task<SphynxErrorCode> DeleteUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
 
@@ -25,6 +24,6 @@ namespace Sphynx.ServerV2.Persistence
         Task<SphynxErrorInfo<ISphynxUserInfo[]?>> GetUsersAsync(string[] userNames, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<T?>> GetUserFieldAsync<T>(SnowflakeId userId, string fieldName, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> UpdateUserFieldAsync(SnowflakeId userId, string fieldName, CancellationToken cancellationToken = default);
+        Task<SphynxErrorCode> UpdateUserFieldAsync<T>(SnowflakeId userId, string fieldName, T value, CancellationToken cancellationToken = default);
     }
 }

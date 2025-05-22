@@ -7,7 +7,7 @@ using MongoDB.Bson.Serialization.IdGenerators;
 using Sphynx.Core;
 using Sphynx.ModelV2.User;
 
-namespace Sphynx.ServerV2.Persistence
+namespace Sphynx.ServerV2.Persistence.User
 {
     /// <summary>
     /// Represents a public view of a <c>Sphynx</c> user.
@@ -19,8 +19,7 @@ namespace Sphynx.ServerV2.Persistence
         public const string NAME_FIELD = "name";
         public const string STATUS_FIELD = "status";
 
-        [BsonId(IdGenerator = typeof(CombGuidGenerator))]
-        [BsonGuidRepresentation(GuidRepresentation.Standard)]
+        [BsonId]
         public SnowflakeId UserId { get; set; }
 
         [BsonElement(NAME_FIELD)]
