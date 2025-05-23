@@ -1,12 +1,14 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Sphynx.Core;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
 using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2.Persistence;
+using Sphynx.ServerV2.Persistence.User;
 
 namespace Sphynx.Server.Auth.Handlers
 {
@@ -45,6 +47,8 @@ namespace Sphynx.Server.Auth.Handlers
                 await client.SendPacketAsync(new LoginResponse(selfResult.ErrorCode), token).ConfigureAwait(false);
                 return;
             }
+
+            Debug.Assert(selfResult.Data is SphynxSelfInfo);
 
             var selfInfo = (SphynxSelfInfo)selfResult.Data!;
 

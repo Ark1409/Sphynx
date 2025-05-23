@@ -6,12 +6,16 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
+using Sphynx.Core;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.Transport;
 using Sphynx.Server.Auth.Handlers;
 using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2;
 using Sphynx.ServerV2.Persistence;
+using Sphynx.ServerV2.Persistence.User;
 using Sphynx.Storage;
 
 namespace Sphynx.Server.Auth
@@ -24,7 +28,7 @@ namespace Sphynx.Server.Auth
         /// <summary>
         /// Returns the default IP endpoint for the server.
         /// </summary>
-        public static readonly IPEndPoint DefaultEndPoint = new(Dns.GetHostEntry(Dns.GetHostName()).AddressList[1], DefaultPort);
+        public static readonly IPEndPoint DefaultEndPoint = new(IPAddress.Any, DefaultPort);
 
         /// <summary>
         /// Retrieves the default port for socket information exchange between client and server.
@@ -90,6 +94,15 @@ namespace Sphynx.Server.Auth
         }
 
         /// <summary>
+        /// Creates (but does not start) a new <c>Sphynx</c> authentication server, associating it with the given <param name="ipAddress">
+        /// and </param><see cref="DefaultPort"/>.
+        /// </summary>
+        /// <param name="ipAddress">The ip address to run to server on.</param>
+        public SphynxAuthServer(IPAddress ipAddress) : this(new IPEndPoint(ipAddress, DefaultPort))
+        {
+        }
+
+        /// <summary>
         /// Creates (but does not start) a new <c>Sphynx</c> authentication server and associates it
         /// with the specified <paramref name="serverEndpoint"/>.
         /// </summary>
@@ -99,8 +112,7 @@ namespace Sphynx.Server.Auth
             EndPoint = serverEndpoint;
             Name = $"{GetType().Name}@{EndPoint.Address}:{EndPoint.Port}";
 
-            // TODO: Initialize user repository
-            UserRepository = null!;
+            UserRepository = new NullUserRepository()!;
 
             if (LoginHandler is null)
                 LoginHandler = new LoginHandler(UserRepository, PasswordHasher, Logger);
@@ -127,13 +139,19 @@ namespace Sphynx.Server.Auth
             Debug.Assert(_socketPool == null);
             Debug.Assert(_acceptCts == null);
 
+            Logger.LogInformation("Initializing socket pool");
+
             _socketPool = new WeakObjectPool<Socket>(Backlog);
             _acceptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+            Logger.LogInformation("Initializing listening socket");
 
             _serverSocket = new Socket(EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _serverSocket.SendBufferSize = _serverSocket.ReceiveBufferSize = BufferSize;
             _serverSocket.Bind(EndPoint);
             _serverSocket.Listen(Backlog);
+
+            Logger.LogInformation("Server started at {DateTime} on {Address}:{Port}", DateTime.Now, EndPoint.Address, EndPoint.Port);
 
             while (Running)
             {
@@ -144,7 +162,9 @@ namespace Sphynx.Server.Auth
                 {
                     _socketPool.TryTake(out var socket);
 
+                    Logger.LogInformation("Listening for client...");
                     socket = await _serverSocket.AcceptAsync(socket, cancellationToken).ConfigureAwait(false);
+                    Logger.LogInformation("Accepted client on {Address}", socket.RemoteEndPoint);
 
                     StartClient(socket, _acceptCts.Token);
                 }
@@ -177,7 +197,7 @@ namespace Sphynx.Server.Auth
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "[{EndPoint}]: Unhandled exception when starting client", clientSocket.RemoteEndPoint);
+                Logger.LogError(ex, "[{EndPoint}]: Unhandled exception in client read loop", clientSocket.RemoteEndPoint);
             }
         }, cancellationToken, false);
 
