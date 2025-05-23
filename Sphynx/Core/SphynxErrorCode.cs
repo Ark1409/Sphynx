@@ -31,6 +31,16 @@
         INVALID_USER,
 
         /// <summary>
+        /// Attempted to query an invalid or unknown field from the database.
+        /// </summary>
+        INVALID_FIELD,
+
+        /// <summary>
+        /// An error occured on the server-side.
+        /// </summary>
+        SERVER_ERROR,
+
+        /// <summary>
         /// When the user attempts to complete an action but does not have sufficient permissions.
         /// </summary>
         INSUFFICIENT_PERMS,

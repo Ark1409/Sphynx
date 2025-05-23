@@ -23,7 +23,7 @@ namespace Sphynx.Core
         /// <summary>
         /// Represents an empty instance which should never be obtainable through generation.
         /// </summary>
-        public static SnowflakeId Empty = default;
+        public static readonly SnowflakeId Empty = default;
 
         private readonly long _a; // timestamp
         private readonly int _b; // sequence number + machine id
