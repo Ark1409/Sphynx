@@ -1,9 +1,28 @@
-﻿namespace Sphynx.Server.Auth;
+﻿using System.Net;
+using Sphynx.Network.PacketV2;
+using Sphynx.Network.Serialization.Model;
+using Sphynx.Network.Serialization.Packet;
+using Sphynx.Network.Transport;
 
-class Program
+namespace Sphynx.Server.Auth
 {
-    static void Main(string[] args)
+    public class Program
     {
-        Console.WriteLine("Hello, World!");
+        public static async Task Main(string[] args)
+        {
+            var transporter = new PacketTransporter();
+
+            transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer());
+            transporter.AddSerializer(SphynxPacketType.LOGIN_RES, new LoginResponseSerializer(new SphynxSelfInfoSerializer()));
+            transporter.AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer());
+            transporter.AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
+
+            await using var server = new SphynxAuthServer(IPAddress.Parse("10.0.0.115"))
+            {
+                PacketTransporter = transporter
+            };
+
+            await server.StartAsync();
+        }
     }
 }
