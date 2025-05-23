@@ -7,7 +7,7 @@ namespace Sphynx.Network.PacketV2.Response
     public sealed class RegisterResponse : SphynxResponse, IEquatable<RegisterResponse>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_RES;
+        public override SphynxPacketType PacketType => SphynxPacketType.REGISTER_RES;
 
         /// <summary>
         /// Holds the authenticated user's information.
