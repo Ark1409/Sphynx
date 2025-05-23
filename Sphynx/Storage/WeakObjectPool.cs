@@ -1,16 +1,15 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Sphynx.Storage
 {
     /// <summary>
-    /// A thread-safe object pool of fixed size. The pool starts off empty, requiring items to enqueued before
-    /// they can be taken from the pool.
+    /// A thread-safe object pool of fixed size holding weak references to its items.
     /// </summary>
     /// <typeparam name="T">The type of objects within this pool.</typeparam>
+    /// <remarks>The pool starts off empty, requiring items to enqueued before they can be taken from the pool.</remarks>
     public class WeakObjectPool<T> where T : class
     {
         // The following implementation is based on Roslyn's ObjectPool`1 source code:
@@ -85,13 +84,13 @@ namespace Sphynx.Storage
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool TryTakeFast(out T? item)
         {
-            // If allowed, we de not synchronize our initial read.
-            // In the worst case, we miss some recently returned objects.
+            // If allowed, we de not synchronize our initial read. In the worst case, we miss some recently returned objects.
             item = _fastChecks ? _firstItem : Volatile.Read(ref _firstItem);
 
-            bool reservedFirstItem = item is not null && item == Interlocked.CompareExchange(ref _firstItem, null, item);
+            if (item is null)
+                return false;
 
-            return reservedFirstItem;
+            return item == Interlocked.CompareExchange(ref _firstItem, null, item);
         }
 
         private bool TryTakeSlow(out T? item)
@@ -104,10 +103,8 @@ namespace Sphynx.Storage
                 if (itemRef is null)
                     continue;
 
-                if (itemRef != Interlocked.CompareExchange(ref _items[i], null, itemRef) || !itemRef.TryGetTarget(out item))
-                    continue;
-
-                return true;
+                if (itemRef == Interlocked.CompareExchange(ref _items[i], null, itemRef) && itemRef.TryGetTarget(out item))
+                    return true;
             }
 
             item = null;
@@ -151,7 +148,7 @@ namespace Sphynx.Storage
 
         private bool ReturnSlow(T obj)
         {
-            WeakReference<T>? objReference = null;
+            WeakReference<T>? objRef = null;
 
             for (int i = 0; i < _items.Length; i++)
             {
@@ -160,17 +157,17 @@ namespace Sphynx.Storage
                 if (itemRef is not null)
                     continue;
 
+                objRef ??= new WeakReference<T>(obj);
+
                 if (_fastChecks)
                 {
-                    objReference = new WeakReference<T>(obj);
-
                     // In the worst case, two objects may be stored into same slot.
                     // It is very unlikely to happen and will only mean that one of the objects will get collected.
-                    _items[i] = objReference;
+                    _items[i] = objRef;
                     return true;
                 }
 
-                if (null == Interlocked.CompareExchange(ref _items[i], objReference ??= new WeakReference<T>(obj), null))
+                if (null == Interlocked.CompareExchange(ref _items[i], objRef, null))
                 {
                     Interlocked.Increment(ref _version);
                     return true;
