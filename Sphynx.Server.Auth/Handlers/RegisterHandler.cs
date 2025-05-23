@@ -1,18 +1,23 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Buffers;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Sphynx.Core;
+using Sphynx.ModelV2.User;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
 using Sphynx.Server.Auth.Services;
-using Sphynx.ServerV2.Auth;
-using Sphynx.ServerV2.Persistence;
+using Sphynx.ServerV2.Persistence.User;
 
 namespace Sphynx.Server.Auth.Handlers
 {
     public class RegisterHandler : IPacketHandler<RegisterRequest>
     {
+        private const int PASSWORD_HASH_LENGTH = 256;
+        private const int SALT_HASH_LENGTH = PASSWORD_HASH_LENGTH;
+
         private readonly IUserRepository _userRepository;
         private readonly IPasswordHasher _passwordHasher;
         private readonly ILogger _logger;
@@ -39,17 +44,40 @@ namespace Sphynx.Server.Auth.Handlers
         {
             token.ThrowIfCancellationRequested();
 
-            var credentials = new SphynxUserCredentials(request.UserName, request.Password);
-            // TODO: Change to InsertUser (you need to hash the pwd)
-            var createResult = await _userRepository.CreateUserAsync(credentials, token);
+            byte[] rentBuffer = ArrayPool<byte>.Shared.Rent(SALT_HASH_LENGTH + PASSWORD_HASH_LENGTH);
+            var buffer = rentBuffer.AsMemory();
+            var pwdSalt = buffer[..SALT_HASH_LENGTH];
+            var pwd = buffer.Slice(SALT_HASH_LENGTH, PASSWORD_HASH_LENGTH);
 
-            if (createResult.ErrorCode != SphynxErrorCode.SUCCESS)
+            SphynxSelfInfo dbUser;
+
+            try
             {
-                await client.SendPacketAsync(new RegisterResponse(createResult.ErrorCode), token).ConfigureAwait(false);
+                _passwordHasher.GenerateSalt(pwdSalt.Span);
+                _passwordHasher.HashPassword(request.Password, pwdSalt.Span, pwd.Span);
+
+                dbUser = new SphynxSelfInfo(SnowflakeId.NewId(), request.UserName, SphynxUserStatus.ONLINE)
+                {
+                    Password = Convert.ToBase64String(pwd.Span),
+                    PasswordSalt = Convert.ToBase64String(pwdSalt.Span)
+                };
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentBuffer);
+            }
+
+            var registerResult = await _userRepository.InsertUserAsync(dbUser, token);
+
+            if (registerResult.ErrorCode != SphynxErrorCode.SUCCESS)
+            {
+                await client.SendPacketAsync(new RegisterResponse(registerResult.ErrorCode), token).ConfigureAwait(false);
                 return;
             }
 
-            var selfInfo = (SphynxSelfInfo)createResult.Data!;
+            Debug.Assert(registerResult.Data is SphynxSelfInfo);
+
+            var selfInfo = (SphynxSelfInfo)registerResult.Data!;
 
             // TODO: Alert message server
             await client.SendPacketAsync(new RegisterResponse(selfInfo, Guid.NewGuid()), token).ConfigureAwait(false);
