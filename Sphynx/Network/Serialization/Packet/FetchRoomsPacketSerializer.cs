@@ -31,14 +31,14 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class FetchRoomsResponseSerializer : ResponseSerializer<FetchRoomsResponse>
     {
-        private readonly ITypeSerializer<IChatRoomInfo[]> _roomSerializer;
+        private readonly ITypeSerializer<ChatRoomInfo[]> _roomSerializer;
 
-        public FetchRoomsResponseSerializer(ITypeSerializer<IChatRoomInfo> roomSerializer)
-            : this(new ArraySerializer<IChatRoomInfo>(roomSerializer))
+        public FetchRoomsResponseSerializer(ITypeSerializer<ChatRoomInfo> roomSerializer)
+            : this(new ArraySerializer<ChatRoomInfo>(roomSerializer))
         {
         }
 
-        public FetchRoomsResponseSerializer(ITypeSerializer<IChatRoomInfo[]> roomSerializer)
+        public FetchRoomsResponseSerializer(ITypeSerializer<ChatRoomInfo[]> roomSerializer)
         {
             _roomSerializer = roomSerializer;
         }

@@ -12,25 +12,25 @@ namespace Sphynx.ServerV2.Persistence.Message
     /// <remarks>Unless explicitly stated otherwise, all tasks will complete successfully for validation-related issues, the tasks complete successfully, but there may be sphynx error</remarks>
     public interface IMessageRepository
     {
-        event Action<IChatMessage>? MessagePosted;
-        event Action<IChatMessage>? MessageDeleted;
+        event Action<ChatMessage>? MessagePosted;
+        event Action<ChatMessage>? MessageDeleted;
 
-        Task<SphynxErrorInfo<IChatMessage?>> PostMessageAsync(IChatMessage message, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<ChatMessage?>> PostMessageAsync(ChatMessage message, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorCode> UpdateMessageAsync(IChatMessage updatedMessage, CancellationToken cancellationToken = default);
+        Task<SphynxErrorCode> UpdateMessageAsync(ChatMessage updatedMessage, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorInfo<IChatMessage?>> GetMessageAsync(SnowflakeId roomId,
+        Task<SphynxErrorInfo<ChatMessage?>> GetMessageAsync(SnowflakeId roomId,
             SnowflakeId messageId,
             CancellationToken cancellationToken = default);
 
         //
-        Task<SphynxErrorInfo<IChatMessage[]?>> GetMessagesAsync(SnowflakeId roomId,
+        Task<SphynxErrorInfo<ChatMessage[]?>> GetMessagesAsync(SnowflakeId roomId,
             SnowflakeId startMessageId,
             int count,
             bool inclusive = true,
             CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorInfo<IChatMessage[]?>> GetMessagesAsync(SnowflakeId roomId, int count, CancellationToken cancellationToken = default)
+        Task<SphynxErrorInfo<ChatMessage[]?>> GetMessagesAsync(SnowflakeId roomId, int count, CancellationToken cancellationToken = default)
             => GetMessagesAsync(roomId, SnowflakeId.Empty, count, true, cancellationToken);
     }
 }

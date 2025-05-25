@@ -6,16 +6,16 @@ using Sphynx.ModelV2;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public class ChatMessageSerializer : TypeSerializer<IChatMessage>
+    public class ChatMessageSerializer : TypeSerializer<ChatMessage>
     {
-        public override int GetMaxSize(IChatMessage model)
+        public override int GetMaxSize(ChatMessage model)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>() +
                    BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(model.Content) +
                    BinarySerializer.MaxSizeOf<DateTimeOffset>();
         }
 
-        protected override bool Serialize(IChatMessage model, ref BinarySerializer serializer)
+        protected override bool Serialize(ChatMessage model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.MessageId);
             serializer.WriteSnowflakeId(model.RoomId);
@@ -25,7 +25,7 @@ namespace Sphynx.Network.Serialization.Model
             return true;
         }
 
-        protected override IChatMessage Deserialize(ref BinaryDeserializer deserializer)
+        protected override ChatMessage Deserialize(ref BinaryDeserializer deserializer)
         {
             var msgId = deserializer.ReadSnowflakeId();
             var roomId = deserializer.ReadSnowflakeId();
@@ -33,7 +33,7 @@ namespace Sphynx.Network.Serialization.Model
             string content = deserializer.ReadString();
             var editTimestamp = deserializer.ReadDateTimeOffset();
 
-            return new DummyChatMessage
+            return new ChatMessage
             {
                 MessageId = msgId,
                 RoomId = roomId,
@@ -41,17 +41,6 @@ namespace Sphynx.Network.Serialization.Model
                 Content = content,
                 EditTimestamp = editTimestamp == DateTimeOffset.MinValue ? null : editTimestamp
             };
-        }
-
-        private class DummyChatMessage : IChatMessage
-        {
-            public SnowflakeId MessageId { get; set; }
-            public SnowflakeId RoomId { get; set; }
-            public SnowflakeId SenderId { get; set; }
-            public string Content { get; set; } = null!;
-            public DateTimeOffset? EditTimestamp { get; set; }
-
-            public bool Equals(IChatMessage? other) => MessageId == other?.MessageId && RoomId == other.RoomId;
         }
     }
 }

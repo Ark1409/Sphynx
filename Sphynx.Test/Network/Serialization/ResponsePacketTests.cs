@@ -227,7 +227,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new FetchRoomsResponseSerializer(new ChatRoomInfoSerializer());
-            var packet = new FetchRoomsResponse { Rooms = new IChatRoomInfo[] { new TestDirectChatRoomInfo(), new TestGroupChatRoomInfo() } };
+            var packet = new FetchRoomsResponse { Rooms = new ChatRoomInfo[] { new TestDirectChatRoomInfo(), new TestGroupChatRoomInfo() } };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act

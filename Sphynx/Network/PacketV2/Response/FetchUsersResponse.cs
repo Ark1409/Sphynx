@@ -13,7 +13,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved users' information.
         /// </summary>
-        public ISphynxUserInfo[]? Users { get; init; }
+        public SphynxUserInfo[]? Users { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="FetchUsersResponse"/>.
@@ -27,7 +27,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// Creates a new <see cref="FetchUsersResponse"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
         /// <param name="users">The resolved users' information.</param>
-        public FetchUsersResponse(params ISphynxUserInfo[] users) : this(SphynxErrorCode.SUCCESS)
+        public FetchUsersResponse(params SphynxUserInfo[] users) : this(SphynxErrorCode.SUCCESS)
         {
             Users = users;
         }

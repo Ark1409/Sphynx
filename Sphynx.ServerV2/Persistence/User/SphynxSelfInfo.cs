@@ -8,9 +8,9 @@ namespace Sphynx.ServerV2.Persistence.User
     /// <summary>
     /// Represents a complete representation of a <c>Sphynx</c> user within the database.
     /// </summary>
-    /// <seealso cref="ISphynxSelfInfo"/>
+    /// <seealso cref="ModelV2.User.SphynxSelfInfo"/>
     [BsonIgnoreExtraElements]
-    public class SphynxSelfInfo : SphynxUserInfo, ISphynxSelfInfo
+    public class SphynxSelfInfo : SphynxUserInfo
     {
         public const string FRIENDS_FIELD = "friends";
         public const string ROOMS_FIELD = "rooms";
@@ -27,7 +27,7 @@ namespace Sphynx.ServerV2.Persistence.User
         public ISet<SnowflakeId> Rooms { get; set; } = ImmutableHashSet<SnowflakeId>.Empty;
 
         [BsonElement(LAST_READ_MSGS_FIELD)]
-        public ILastReadMessageInfo LastReadMessages { get; set; }
+        public ModelV2.User.LastReadMessageInfo LastReadMessages { get; set; }
 
         [BsonElement(OUT_FRIEND_REQS_FIELD)]
         public ISet<SnowflakeId> OutgoingFriendRequests { get; set; } = ImmutableHashSet<SnowflakeId>.Empty;
@@ -51,11 +51,11 @@ namespace Sphynx.ServerV2.Persistence.User
         {
         }
 
-        public SphynxSelfInfo(ISphynxUserInfo userInfo) : base(userInfo.UserId, userInfo.UserName, userInfo.UserStatus)
+        public SphynxSelfInfo(ModelV2.User.SphynxUserInfo userInfo) : base(userInfo.UserId, userInfo.UserName, userInfo.UserStatus)
         {
         }
 
-        public SphynxSelfInfo(ISphynxSelfInfo selfInfo) : base(selfInfo.UserId, selfInfo.UserName, selfInfo.UserStatus)
+        public SphynxSelfInfo(SphynxSelfInfo selfInfo) : base(selfInfo.UserId, selfInfo.UserName, selfInfo.UserStatus)
         {
             Friends = selfInfo.Friends;
             Rooms = selfInfo.Rooms;
@@ -63,11 +63,8 @@ namespace Sphynx.ServerV2.Persistence.User
             OutgoingFriendRequests = selfInfo.OutgoingFriendRequests;
             IncomingFriendRequests = selfInfo.IncomingFriendRequests;
 
-            if (selfInfo is SphynxSelfInfo dbSelfInfo)
-            {
-                Password = dbSelfInfo.Password;
-                PasswordSalt = dbSelfInfo.PasswordSalt;
-            }
+            Password = selfInfo.Password;
+            PasswordSalt = selfInfo.PasswordSalt;
         }
 
         public SphynxSelfInfo(SnowflakeId userId,
@@ -77,7 +74,7 @@ namespace Sphynx.ServerV2.Persistence.User
             string? passwordSalt,
             ISet<SnowflakeId> friends,
             ISet<SnowflakeId> rooms,
-            ILastReadMessageInfo lastReadMessages,
+            ModelV2.User.LastReadMessageInfo lastReadMessages,
             ISet<SnowflakeId> outgoingFriendRequests,
             ISet<SnowflakeId> incomingFriendRequests)
             : base(userId, userName, userStatus)
@@ -91,7 +88,7 @@ namespace Sphynx.ServerV2.Persistence.User
             PasswordSalt = passwordSalt;
         }
 
-        private void Initialize(ISphynxUserInfo userInfo)
+        private void Initialize(ModelV2.User.SphynxUserInfo userInfo)
         {
         }
 

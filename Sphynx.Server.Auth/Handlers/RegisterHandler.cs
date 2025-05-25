@@ -10,6 +10,7 @@ using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
 using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2.Persistence.User;
+using SphynxSelfInfo = Sphynx.ServerV2.Persistence.User.SphynxSelfInfo;
 
 namespace Sphynx.Server.Auth.Handlers
 {
@@ -67,7 +68,7 @@ namespace Sphynx.Server.Auth.Handlers
                 ArrayPool<byte>.Shared.Return(rentBuffer);
             }
 
-            var registerResult = await _userRepository.InsertUserAsync(dbUser, token);
+            var registerResult = await _userRepository.InsertUserAsync(null!, token);// TODO: Fix
 
             if (registerResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
@@ -77,10 +78,10 @@ namespace Sphynx.Server.Auth.Handlers
 
             Debug.Assert(registerResult.Data is SphynxSelfInfo);
 
-            var selfInfo = (SphynxSelfInfo)registerResult.Data!;
+            var selfInfo = new SphynxSelfInfo(registerResult.Data!);
 
             // TODO: Alert message server
-            await client.SendPacketAsync(new RegisterResponse(selfInfo, Guid.NewGuid()), token).ConfigureAwait(false);
+            await client.SendPacketAsync(new RegisterResponse(null!, Guid.NewGuid()), token).ConfigureAwait(false);// TODO: Fix
 
             if (_logger.IsEnabled(LogLevel.Information))
             {

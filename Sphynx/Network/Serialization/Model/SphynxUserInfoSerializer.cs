@@ -7,15 +7,15 @@ using Sphynx.ModelV2.User;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public class SphynxUserInfoSerializer : TypeSerializer<ISphynxUserInfo>
+    public class SphynxUserInfoSerializer : TypeSerializer<SphynxUserInfo>
     {
-        public override int GetMaxSize(ISphynxUserInfo model)
+        public override int GetMaxSize(SphynxUserInfo model)
         {
             return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(model.UserName) +
                    BinarySerializer.MaxSizeOf<SphynxUserStatus>();
         }
 
-        protected override bool Serialize(ISphynxUserInfo model, ref BinarySerializer serializer)
+        protected override bool Serialize(SphynxUserInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.UserId);
             serializer.WriteString(model.UserName);
@@ -23,7 +23,7 @@ namespace Sphynx.Network.Serialization.Model
             return true;
         }
 
-        protected override ISphynxUserInfo Deserialize(ref BinaryDeserializer deserializer)
+        protected override SphynxUserInfo Deserialize(ref BinaryDeserializer deserializer)
         {
             var userId = deserializer.ReadSnowflakeId();
             string userName = deserializer.ReadString();
@@ -32,20 +32,20 @@ namespace Sphynx.Network.Serialization.Model
             return new DummySphynxUserInfo { UserId = userId, UserName = userName, UserStatus = userStatus };
         }
 
-        private class DummySphynxUserInfo : ISphynxUserInfo
+        private class DummySphynxUserInfo : SphynxUserInfo
         {
             public SnowflakeId UserId { get; set; }
             public string UserName { get; set; } = null!;
             public SphynxUserStatus UserStatus { get; set; }
 
             public override int GetHashCode() => UserId.GetHashCode();
-            public bool Equals(ISphynxUserInfo? other) => other is not null && UserId == other.UserId;
+            public bool Equals(SphynxUserInfo? other) => other is not null && UserId == other.UserId;
         }
     }
 
-    public class SphynxSelfInfoSerializer : TypeSerializer<ISphynxSelfInfo>
+    public class SphynxSelfInfoSerializer : TypeSerializer<SphynxSelfInfo>
     {
-        public override int GetMaxSize(ISphynxSelfInfo model)
+        public override int GetMaxSize(SphynxSelfInfo model)
         {
             int userInfoSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(model.UserName) +
                                BinarySerializer.MaxSizeOf<SphynxUserStatus>();
@@ -58,7 +58,7 @@ namespace Sphynx.Network.Serialization.Model
             return userInfoSize + selfInfoSize;
         }
 
-        protected override bool Serialize(ISphynxSelfInfo model, ref BinarySerializer serializer)
+        protected override bool Serialize(SphynxSelfInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.UserId);
             serializer.WriteString(model.UserName);
@@ -72,7 +72,7 @@ namespace Sphynx.Network.Serialization.Model
             return true;
         }
 
-        protected override ISphynxSelfInfo Deserialize(ref BinaryDeserializer deserializer)
+        protected override SphynxSelfInfo Deserialize(ref BinaryDeserializer deserializer)
         {
             var userId = deserializer.ReadSnowflakeId();
             string userName = deserializer.ReadString();
@@ -82,12 +82,12 @@ namespace Sphynx.Network.Serialization.Model
             var rooms = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
 
             var lastReadMessages = deserializer.ReadDictionary<SnowflakeId, SnowflakeId>();
-            var lastReadMessagesInfo = new DummyLastReadMessageInfo(lastReadMessages);
+            var lastReadMessagesInfo = new LastReadMessageInfo(lastReadMessages);
 
             var outgoingFriendReqs = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
             var incomingFriendReqs = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
 
-            return new DummySphynxSelfInfo
+            return new SphynxSelfInfo
             {
                 UserId = userId,
                 UserName = userName,
@@ -98,75 +98,6 @@ namespace Sphynx.Network.Serialization.Model
                 OutgoingFriendRequests = outgoingFriendReqs,
                 IncomingFriendRequests = incomingFriendReqs
             };
-        }
-
-        private class DummySphynxSelfInfo : ISphynxSelfInfo
-        {
-            public SnowflakeId UserId { get; set; }
-            public string UserName { get; set; } = null!;
-            public SphynxUserStatus UserStatus { get; set; }
-            public ISet<SnowflakeId> Friends { get; set; } = null!;
-            public ISet<SnowflakeId> Rooms { get; set; } = null!;
-            public ILastReadMessageInfo LastReadMessages { get; set; } = null!;
-            public ISet<SnowflakeId> OutgoingFriendRequests { get; set; } = null!;
-            public ISet<SnowflakeId> IncomingFriendRequests { get; set; } = null!;
-
-            public override int GetHashCode() => UserId.GetHashCode();
-            public bool Equals(ISphynxUserInfo? other) => Equals(other as ISphynxSelfInfo);
-            public bool Equals(ISphynxSelfInfo? other) => other is not null && UserId == other.UserId;
-        }
-
-        private class DummyLastReadMessageInfo : ILastReadMessageInfo
-        {
-            private readonly IDictionary<SnowflakeId, SnowflakeId> _lastReadMessages;
-
-            public DummyLastReadMessageInfo() : this(new Dictionary<SnowflakeId, SnowflakeId>())
-            {
-            }
-
-            public DummyLastReadMessageInfo(IDictionary<SnowflakeId, SnowflakeId> lastReadMessages)
-            {
-                _lastReadMessages = lastReadMessages;
-            }
-
-            public IEnumerator<KeyValuePair<SnowflakeId, SnowflakeId>> GetEnumerator() =>
-                _lastReadMessages.GetEnumerator();
-
-            IEnumerator IEnumerable.GetEnumerator() => _lastReadMessages.GetEnumerator();
-
-            public void Add(KeyValuePair<SnowflakeId, SnowflakeId> item) => _lastReadMessages.Add(item);
-
-            public void Clear() => _lastReadMessages.Clear();
-
-            public bool Contains(KeyValuePair<SnowflakeId, SnowflakeId> item) => _lastReadMessages.Contains(item);
-
-            public void CopyTo(KeyValuePair<SnowflakeId, SnowflakeId>[] array, int arrayIndex) =>
-                _lastReadMessages.CopyTo(array, arrayIndex);
-
-            public bool Remove(KeyValuePair<SnowflakeId, SnowflakeId> item) => _lastReadMessages.Remove(item);
-
-            public int Count => _lastReadMessages.Count;
-
-            public bool IsReadOnly => _lastReadMessages.IsReadOnly;
-
-            public void Add(SnowflakeId key, SnowflakeId value) => _lastReadMessages.Add(key, value);
-
-            public bool ContainsKey(SnowflakeId key) => _lastReadMessages.ContainsKey(key);
-
-            public bool Remove(SnowflakeId key) => _lastReadMessages.Remove(key);
-
-            public bool TryGetValue(SnowflakeId key, out SnowflakeId value) =>
-                _lastReadMessages.TryGetValue(key, out value);
-
-            public SnowflakeId this[SnowflakeId key]
-            {
-                get => _lastReadMessages[key];
-                set => _lastReadMessages[key] = value;
-            }
-
-            public ICollection<SnowflakeId> Keys => _lastReadMessages.Keys;
-
-            public ICollection<SnowflakeId> Values => _lastReadMessages.Values;
         }
     }
 }

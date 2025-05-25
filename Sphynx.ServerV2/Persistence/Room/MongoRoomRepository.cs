@@ -14,8 +14,8 @@ namespace Sphynx.ServerV2.Persistence.Room
         private readonly IMongoDatabase _database;
         private readonly IMongoCollection<SphynxSelfInfo> _collection;
 
-        public event Action<IChatRoomInfo>? RoomCreated;
-        public event Action<IChatRoomInfo>? RoomDeleted;
+        public event Action<ChatRoomInfo>? RoomCreated;
+        public event Action<ChatRoomInfo>? RoomDeleted;
 
         public MongoRoomRepository(IMongoClient client, IMongoDatabase database, IMongoCollection<SphynxSelfInfo> collection)
         {
@@ -24,12 +24,12 @@ namespace Sphynx.ServerV2.Persistence.Room
             _collection = collection;
         }
 
-        public Task<SphynxErrorInfo<IChatRoomInfo?>> CreateRoomAsync(IChatRoomInfo roomInfo, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ChatRoomInfo?>> CreateRoomAsync(ChatRoomInfo roomInfo, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorCode> UpdateRoomAsync(IChatRoomInfo updatedRoom, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorCode> UpdateRoomAsync(ChatRoomInfo updatedRoom, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -39,12 +39,12 @@ namespace Sphynx.ServerV2.Persistence.Room
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo<IChatRoomInfo?>> GetRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ChatRoomInfo?>> GetRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo<IChatRoomInfo[]?>> GetRoomsAsync(SnowflakeId[] roomIds, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ChatRoomInfo[]?>> GetRoomsAsync(SnowflakeId[] roomIds, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

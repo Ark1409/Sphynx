@@ -12,8 +12,8 @@ namespace Sphynx.ServerV2.Persistence.User
     {
         private readonly IMongoCollection<SphynxSelfInfo> _collection;
 
-        public event Action<ISphynxUserInfo>? UserCreated;
-        public event Action<ISphynxUserInfo>? UserDeleted;
+        public event Action<ModelV2.User.SphynxUserInfo>? UserCreated;
+        public event Action<ModelV2.User.SphynxUserInfo>? UserDeleted;
 
         public MongoUserRepository(IMongoDatabase db, string collectionName) : this(db.GetCollection<SphynxSelfInfo>(collectionName))
         {
@@ -24,12 +24,12 @@ namespace Sphynx.ServerV2.Persistence.User
             _collection = collection;
         }
 
-        public async Task<SphynxErrorInfo<ISphynxSelfInfo?>> InsertUserAsync(ISphynxSelfInfo user, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>> InsertUserAsync(ModelV2.User.SphynxSelfInfo user, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(user.UserName))
-                return new SphynxErrorInfo<ISphynxSelfInfo?>(SphynxErrorCode.INVALID_USERNAME);
+                return new SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>(SphynxErrorCode.INVALID_USERNAME);
 
-            var dbUser = user as SphynxSelfInfo ?? new SphynxSelfInfo(user);
+            var dbUser = new SphynxSelfInfo(user);
 
             if (dbUser.UserId == default)
                 dbUser.UserId = SnowflakeId.NewId();
@@ -41,15 +41,15 @@ namespace Sphynx.ServerV2.Persistence.User
             // We consider duplicate PKs to be some sort of pseudo-transient error
             catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
             {
-                return new SphynxErrorInfo<ISphynxSelfInfo?>(SphynxErrorCode.INVALID_USER);
+                return new SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>(SphynxErrorCode.INVALID_USER);
             }
 
             UserCreated?.Invoke(dbUser);
 
-            return new SphynxErrorInfo<ISphynxSelfInfo?>(dbUser);
+            return new SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>(null!); // TODO: fix
         }
 
-        public async Task<SphynxErrorCode> UpdateUserAsync(ISphynxSelfInfo updatedUser, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorCode> UpdateUserAsync(ModelV2.User.SphynxSelfInfo updatedUser, CancellationToken cancellationToken = default)
         {
             Debug.Assert(updatedUser is SphynxUserInfo);
 
@@ -115,7 +115,7 @@ namespace Sphynx.ServerV2.Persistence.User
             return result.DeletedCount > 0 ? SphynxErrorCode.SUCCESS : SphynxErrorCode.INVALID_USER;
         }
 
-        public async Task<SphynxErrorInfo<ISphynxUserInfo?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserId, userId);
 
@@ -131,11 +131,11 @@ namespace Sphynx.ServerV2.Persistence.User
                 .ConfigureAwait(false);
 
             return user is null
-                ? new SphynxErrorInfo<ISphynxUserInfo?>(SphynxErrorCode.INVALID_USER)
-                : new SphynxErrorInfo<ISphynxUserInfo?>(user);
+                ? new SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>(SphynxErrorCode.INVALID_USER)
+                : new SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>(user);
         }
 
-        public async Task<SphynxErrorInfo<ISphynxUserInfo?>> GetUserAsync(string userName, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>> GetUserAsync(string userName, CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserName, userName);
 
@@ -151,11 +151,11 @@ namespace Sphynx.ServerV2.Persistence.User
                 .ConfigureAwait(false);
 
             return user is null
-                ? new SphynxErrorInfo<ISphynxUserInfo?>(SphynxErrorCode.INVALID_USER)
-                : new SphynxErrorInfo<ISphynxUserInfo?>(user);
+                ? new SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>(SphynxErrorCode.INVALID_USER)
+                : new SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>(user);
         }
 
-        public async Task<SphynxErrorInfo<ISphynxSelfInfo?>> GetSelfAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>> GetSelfAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserId, userId);
 
@@ -163,11 +163,11 @@ namespace Sphynx.ServerV2.Persistence.User
             var user = await cursor.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
             return user is null
-                ? new SphynxErrorInfo<ISphynxSelfInfo?>(SphynxErrorCode.INVALID_USER)
-                : new SphynxErrorInfo<ISphynxSelfInfo?>(user);
+                ? new SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>(SphynxErrorCode.INVALID_USER)
+                : new SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>(null!); // TODO: fix
         }
 
-        public async Task<SphynxErrorInfo<ISphynxSelfInfo?>> GetSelfAsync(string userName, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>> GetSelfAsync(string userName, CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserName, userName);
 
@@ -175,14 +175,14 @@ namespace Sphynx.ServerV2.Persistence.User
             var user = await cursor.FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
             return user is null
-                ? new SphynxErrorInfo<ISphynxSelfInfo?>(SphynxErrorCode.INVALID_USER)
-                : new SphynxErrorInfo<ISphynxSelfInfo?>(user);
+                ? new SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>(SphynxErrorCode.INVALID_USER)
+                : new SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>(null!); // TODO: fix
         }
 
-        public async Task<SphynxErrorInfo<ISphynxUserInfo[]?>> GetUsersAsync(SnowflakeId[] userIds, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<ModelV2.User.SphynxUserInfo[]?>> GetUsersAsync(SnowflakeId[] userIds, CancellationToken cancellationToken = default)
         {
             if (userIds.Length == 0)
-                return new SphynxErrorInfo<ISphynxUserInfo[]?>(Array.Empty<ISphynxUserInfo>());
+                return new SphynxErrorInfo<ModelV2.User.SphynxUserInfo[]?>(Array.Empty<ModelV2.User.SphynxUserInfo>());
 
             var usersFilter = Builders<SphynxSelfInfo>.Filter.In(user => user.UserId, userIds);
 
@@ -197,13 +197,13 @@ namespace Sphynx.ServerV2.Persistence.User
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return new SphynxErrorInfo<ISphynxUserInfo[]?>(users?.ToArray());
+            return new SphynxErrorInfo<ModelV2.User.SphynxUserInfo[]?>(users?.ToArray());
         }
 
-        public async Task<SphynxErrorInfo<ISphynxUserInfo[]?>> GetUsersAsync(string[] userNames, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<ModelV2.User.SphynxUserInfo[]?>> GetUsersAsync(string[] userNames, CancellationToken cancellationToken = default)
         {
             if (userNames.Length == 0)
-                return new SphynxErrorInfo<ISphynxUserInfo[]?>(Array.Empty<ISphynxUserInfo>());
+                return new SphynxErrorInfo<ModelV2.User.SphynxUserInfo[]?>(Array.Empty<ModelV2.User.SphynxUserInfo>());
 
             var usersFilter = Builders<SphynxSelfInfo>.Filter.In(user => user.UserName, userNames);
 
@@ -218,7 +218,7 @@ namespace Sphynx.ServerV2.Persistence.User
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return new SphynxErrorInfo<ISphynxUserInfo[]?>(users?.ToArray());
+            return new SphynxErrorInfo<ModelV2.User.SphynxUserInfo[]?>(users?.ToArray());
         }
 
         public async Task<SphynxErrorInfo<T?>> GetUserFieldAsync<T>(SnowflakeId userId, string fieldName,

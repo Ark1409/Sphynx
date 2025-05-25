@@ -8,16 +8,16 @@ namespace Sphynx.ServerV2.Persistence.Room
 {
     public interface IRoomRepository
     {
-        event Action<IChatRoomInfo>? RoomCreated;
-        event Action<IChatRoomInfo>? RoomDeleted;
+        event Action<ChatRoomInfo>? RoomCreated;
+        event Action<ChatRoomInfo>? RoomDeleted;
 
-        Task<SphynxErrorInfo<IChatRoomInfo?>> CreateRoomAsync(IChatRoomInfo roomInfo, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> UpdateRoomAsync(IChatRoomInfo updatedRoom, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<ChatRoomInfo?>> CreateRoomAsync(ChatRoomInfo roomInfo, CancellationToken cancellationToken = default);
+        Task<SphynxErrorCode> UpdateRoomAsync(ChatRoomInfo updatedRoom, CancellationToken cancellationToken = default);
         Task<SphynxErrorCode> DeleteRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorInfo<IChatRoomInfo?>> GetRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<ChatRoomInfo?>> GetRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorInfo<IChatRoomInfo[]?>> GetRoomsAsync(SnowflakeId[] roomIds, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<ChatRoomInfo[]?>> GetRoomsAsync(SnowflakeId[] roomIds, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<T?>> GetRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, CancellationToken cancellationToken = default);
         Task<SphynxErrorCode> UpdateRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, T value, CancellationToken cancellationToken = default);

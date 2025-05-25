@@ -7,7 +7,7 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model
 {
-    public class TestChatMessage : IChatMessage
+    public class TestChatMessage : ChatMessage
     {
         public SnowflakeId MessageId { get; set; }
         public SnowflakeId RoomId { get; set; }
@@ -36,7 +36,7 @@ namespace Sphynx.Test.Model
             return chatMessages;
         }
 
-        public bool Equals(IChatMessage? other)
+        public bool Equals(ChatMessage? other)
         {
             return MessageId.Equals(other?.MessageId) && RoomId.Equals(other?.RoomId) &&
                    SenderId.Equals(other?.SenderId) && Content == other?.Content &&

@@ -8,7 +8,7 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.User
 {
-    public class TestLastReadMessagesInfo : ILastReadMessageInfo
+    public class TestLastReadMessagesInfo : LastReadMessageInfo
     {
         private readonly IDictionary<SnowflakeId, SnowflakeId> _lastReadMessages;
 

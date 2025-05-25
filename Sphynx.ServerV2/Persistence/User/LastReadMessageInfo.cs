@@ -9,7 +9,7 @@ using Sphynx.ModelV2.User;
 namespace Sphynx.ServerV2.Persistence.User
 {
     [BsonIgnoreExtraElements]
-    public class LastReadMessageInfo : ILastReadMessageInfo
+    public class LastReadMessageInfo : ModelV2.User.LastReadMessageInfo
     {
         private readonly IDictionary<SnowflakeId, SnowflakeId> _lastReadMessages;
 
@@ -24,8 +24,6 @@ namespace Sphynx.ServerV2.Persistence.User
 
         public IEnumerator<KeyValuePair<SnowflakeId, SnowflakeId>> GetEnumerator() =>
             _lastReadMessages.GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => _lastReadMessages.GetEnumerator();
 
         public void Add(KeyValuePair<SnowflakeId, SnowflakeId> item) => _lastReadMessages.Add(item);
 

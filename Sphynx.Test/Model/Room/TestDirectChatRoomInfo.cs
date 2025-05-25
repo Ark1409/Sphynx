@@ -7,7 +7,7 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.Room
 {
-    public class TestDirectChatRoomInfo : TestChatRoomInfo, IDirectChatRoomInfo
+    public class TestDirectChatRoomInfo : TestChatRoomInfo, DirectChatRoomInfo
     {
         public override ChatRoomType RoomType { get; set; } = ChatRoomType.DIRECT_MSG;
         public SnowflakeId UserOne { get; set; }
@@ -31,7 +31,7 @@ namespace Sphynx.Test.Model.Room
             return users;
         }
 
-        public bool Equals(IDirectChatRoomInfo? other) =>
+        public bool Equals(DirectChatRoomInfo? other) =>
             base.Equals(other) && UserOne == other.UserOne && UserTwo == other.UserTwo;
     }
 }

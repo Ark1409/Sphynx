@@ -13,7 +13,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved rooms' information.
         /// </summary>
-        public IChatRoomInfo[]? Rooms { get; init; }
+        public ChatRoomInfo[]? Rooms { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="FetchRoomsResponse"/>.
@@ -27,7 +27,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// Creates a new <see cref="FetchRoomsResponse"/>.
         /// </summary>
         /// <param name="rooms">The error code for the response packet.</param>
-        public FetchRoomsResponse(params IChatRoomInfo[] rooms) : this(SphynxErrorCode.SUCCESS)
+        public FetchRoomsResponse(params ChatRoomInfo[] rooms) : this(SphynxErrorCode.SUCCESS)
         {
             Rooms = rooms;
         }

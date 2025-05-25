@@ -8,16 +8,16 @@ namespace Sphynx.ServerV2.Persistence.User
 {
     public class NullUserRepository : IUserRepository
     {
-        public event Action<ISphynxUserInfo>? UserCreated;
-        public event Action<ISphynxUserInfo>? UserDeleted;
+        public event Action<ModelV2.User.SphynxUserInfo>? UserCreated;
+        public event Action<ModelV2.User.SphynxUserInfo>? UserDeleted;
 
-        public Task<SphynxErrorInfo<ISphynxSelfInfo?>> InsertUserAsync(ISphynxSelfInfo user, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>> InsertUserAsync(ModelV2.User.SphynxSelfInfo user, CancellationToken cancellationToken = default)
         {
             Console.WriteLine($"Inserted user: {user.UserName}");
-            return Task.FromResult(new SphynxErrorInfo<ISphynxSelfInfo?>(SphynxErrorCode.SERVER_ERROR));
+            return Task.FromResult(new SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>(SphynxErrorCode.SERVER_ERROR));
         }
 
-        public Task<SphynxErrorCode> UpdateUserAsync(ISphynxSelfInfo updatedUser, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorCode> UpdateUserAsync(ModelV2.User.SphynxSelfInfo updatedUser, CancellationToken cancellationToken = default)
         {
             Console.WriteLine($"Updated user : {updatedUser.UserName}");
             return Task.FromResult(SphynxErrorCode.SUCCESS);
@@ -28,35 +28,35 @@ namespace Sphynx.ServerV2.Persistence.User
             return Task.FromResult(SphynxErrorCode.SUCCESS);
         }
 
-        public Task<SphynxErrorInfo<ISphynxUserInfo?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(default(SphynxErrorInfo<ISphynxUserInfo?>));
+            return Task.FromResult(default(SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>));
         }
 
-        public Task<SphynxErrorInfo<ISphynxUserInfo?>> GetUserAsync(string userName, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>> GetUserAsync(string userName, CancellationToken cancellationToken = default)
         {
             Console.WriteLine($"Getting user : {userName}");
-            return Task.FromResult(default(SphynxErrorInfo<ISphynxUserInfo?>));
+            return Task.FromResult(default(SphynxErrorInfo<ModelV2.User.SphynxUserInfo?>));
         }
 
-        public Task<SphynxErrorInfo<ISphynxSelfInfo?>> GetSelfAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>> GetSelfAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
         {
             Console.WriteLine($"Getting self : {userId}");
-            return Task.FromResult(default(SphynxErrorInfo<ISphynxSelfInfo?>));
+            return Task.FromResult(default(SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>));
         }
 
-        public Task<SphynxErrorInfo<ISphynxSelfInfo?>> GetSelfAsync(string userName, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>> GetSelfAsync(string userName, CancellationToken cancellationToken = default)
         {
             Console.WriteLine($"Getting self : {userName}");
-            return Task.FromResult(default(SphynxErrorInfo<ISphynxSelfInfo?>));
+            return Task.FromResult(default(SphynxErrorInfo<ModelV2.User.SphynxSelfInfo?>));
         }
 
-        public Task<SphynxErrorInfo<ISphynxUserInfo[]?>> GetUsersAsync(SnowflakeId[] userIds, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ModelV2.User.SphynxUserInfo[]?>> GetUsersAsync(SnowflakeId[] userIds, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo<ISphynxUserInfo[]?>> GetUsersAsync(string[] userNames, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ModelV2.User.SphynxUserInfo[]?>> GetUsersAsync(string[] userNames, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

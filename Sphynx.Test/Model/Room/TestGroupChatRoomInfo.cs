@@ -7,7 +7,7 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.Room
 {
-    public class TestGroupChatRoomInfo : TestChatRoomInfo, IGroupChatRoomInfo
+    public class TestGroupChatRoomInfo : TestChatRoomInfo, GroupChatRoomInfo
     {
         public override ChatRoomType RoomType { get; set; } = ChatRoomType.GROUP;
         public SnowflakeId OwnerId { get; set; }
@@ -31,7 +31,7 @@ namespace Sphynx.Test.Model.Room
             return users;
         }
 
-        public bool Equals(IGroupChatRoomInfo? other) =>
+        public bool Equals(GroupChatRoomInfo? other) =>
             base.Equals(other) && OwnerId == other.OwnerId && IsPublic == other.IsPublic;
     }
 }

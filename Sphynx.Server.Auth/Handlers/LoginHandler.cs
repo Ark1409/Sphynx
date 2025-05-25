@@ -50,7 +50,7 @@ namespace Sphynx.Server.Auth.Handlers
 
             Debug.Assert(selfResult.Data is SphynxSelfInfo);
 
-            var selfInfo = (SphynxSelfInfo)selfResult.Data!;
+            var selfInfo = new SphynxSelfInfo(selfResult.Data!);
 
             if (_passwordHasher.VerifyPassword(request.Password, selfInfo.PasswordSalt, selfInfo.Password))
             {
@@ -61,7 +61,7 @@ namespace Sphynx.Server.Auth.Handlers
             token.ThrowIfCancellationRequested();
 
             // TODO: Alert message server
-            await client.SendPacketAsync(new LoginResponse(selfInfo, Guid.NewGuid()), token).ConfigureAwait(false);
+            await client.SendPacketAsync(new LoginResponse(null!, Guid.NewGuid()), token).ConfigureAwait(false); // TODO: Fix
 
             if (_logger.IsEnabled(LogLevel.Information))
             {

@@ -13,7 +13,7 @@ namespace Sphynx.ServerV2.Persistence.User
     /// Represents a public view of a <c>Sphynx</c> user.
     /// This representation only holds publicly available information about the user from the database.
     /// </summary>
-    public class SphynxUserInfo : ISphynxUserInfo
+    public class SphynxUserInfo : ModelV2.User.SphynxUserInfo
     {
         public const string ID_FIELD = "_id";
         public const string NAME_FIELD = "name";
@@ -35,7 +35,7 @@ namespace Sphynx.ServerV2.Persistence.User
             UserStatus = userStatus;
         }
 
-        public bool Equals(ISphynxUserInfo? other) => UserId == other?.UserId;
+        public bool Equals(ModelV2.User.SphynxUserInfo? other) => UserId == other?.UserId;
 
         public override int GetHashCode() => UserId.GetHashCode();
     }

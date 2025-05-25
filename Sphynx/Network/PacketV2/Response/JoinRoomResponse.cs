@@ -12,7 +12,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The information for the chat room which was joined.
         /// </summary>
-        public IChatRoomInfo? RoomInfo { get; init; }
+        public ChatRoomInfo? RoomInfo { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="JoinRoomResponse"/>.
@@ -26,7 +26,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// Creates a new <see cref="JoinRoomResponse"/>.
         /// </summary>
         /// <param name="roomInfo">The information for the chat room which was joined.</param>
-        public JoinRoomResponse(IChatRoomInfo roomInfo) : this()
+        public JoinRoomResponse(ChatRoomInfo roomInfo) : this()
         {
             RoomInfo = roomInfo;
         }

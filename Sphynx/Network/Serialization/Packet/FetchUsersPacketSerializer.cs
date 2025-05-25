@@ -31,14 +31,14 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class FetchUsersResponseSerializer : ResponseSerializer<FetchUsersResponse>
     {
-        private readonly ITypeSerializer<ISphynxUserInfo[]> _userSerializer;
+        private readonly ITypeSerializer<SphynxUserInfo[]> _userSerializer;
 
-        public FetchUsersResponseSerializer(ITypeSerializer<ISphynxUserInfo> userSerializer)
-            : this(new ArraySerializer<ISphynxUserInfo>(userSerializer))
+        public FetchUsersResponseSerializer(ITypeSerializer<SphynxUserInfo> userSerializer)
+            : this(new ArraySerializer<SphynxUserInfo>(userSerializer))
         {
         }
 
-        public FetchUsersResponseSerializer(ITypeSerializer<ISphynxUserInfo[]> userSerializer)
+        public FetchUsersResponseSerializer(ITypeSerializer<SphynxUserInfo[]> userSerializer)
         {
             _userSerializer = userSerializer;
         }
