@@ -7,7 +7,7 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.User
 {
-    public class TestSphynxSelfInfo : TestSphynxUserInfo, SphynxSelfInfo
+    public class TestSphynxSelfInfo : SphynxSelfInfo
     {
         public ISet<SnowflakeId> Friends { get; set; }
         public ISet<SnowflakeId> Rooms { get; set; }
@@ -15,8 +15,14 @@ namespace Sphynx.Test.Model.User
         public ISet<SnowflakeId> OutgoingFriendRequests { get; set; }
         public ISet<SnowflakeId> IncomingFriendRequests { get; set; }
 
-        public TestSphynxSelfInfo(string name = "Test") : base(name)
+        public TestSphynxSelfInfo(string name = "Test")
         {
+            UserName = name;
+            UserId = name.AsSnowflakeId();
+
+            var statuses = Enum.GetValues<SphynxUserStatus>();
+            UserStatus = statuses[name.Length % statuses.Length];
+
             Friends = new HashSet<SnowflakeId>
             {
                 $"user1+{name}".AsSnowflakeId(), $"user2+{name}".AsSnowflakeId(), $"user3+{name}".AsSnowflakeId()

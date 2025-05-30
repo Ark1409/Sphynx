@@ -7,14 +7,17 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.Room
 {
-    public class TestGroupChatRoomInfo : TestChatRoomInfo, GroupChatRoomInfo
+    public class TestGroupChatRoomInfo : GroupChatRoomInfo
     {
-        public override ChatRoomType RoomType { get; set; } = ChatRoomType.GROUP;
+        public ChatRoomType RoomType { get; set; } = ChatRoomType.GROUP;
         public SnowflakeId OwnerId { get; set; }
         public bool IsPublic { get; set; }
 
-        public TestGroupChatRoomInfo(string name = "Test-Group-Room") : base(name)
+        public TestGroupChatRoomInfo(string name = "Test-Group-Room")
         {
+            Name = name;
+            RoomId = name.AsSnowflakeId();
+
             OwnerId = $"owner+{name}".AsSnowflakeId();
             IsPublic = name.Length % 2 == 0;
         }
