@@ -24,7 +24,7 @@ namespace Sphynx.ServerV2.Persistence.Room
             _collection = collection;
         }
 
-        public Task<SphynxErrorInfo<ChatRoomInfo?>> CreateRoomAsync(ChatRoomInfo roomInfo, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<ChatRoomInfo?>> InsertRoomAsync(ChatRoomInfo roomInfo, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -54,7 +54,8 @@ namespace Sphynx.ServerV2.Persistence.Room
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorCode> UpdateRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, T value, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorCode> UpdateRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, T value,
+            CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

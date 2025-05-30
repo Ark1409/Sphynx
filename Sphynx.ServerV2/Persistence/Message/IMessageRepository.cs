@@ -15,13 +15,11 @@ namespace Sphynx.ServerV2.Persistence.Message
         event Action<ChatMessage>? MessagePosted;
         event Action<ChatMessage>? MessageDeleted;
 
-        Task<SphynxErrorInfo<ChatMessage?>> PostMessageAsync(ChatMessage message, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<ChatMessage?>> InsertMessageAsync(ChatMessage message, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorCode> UpdateMessageAsync(ChatMessage updatedMessage, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorInfo<ChatMessage?>> GetMessageAsync(SnowflakeId roomId,
-            SnowflakeId messageId,
-            CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<ChatMessage?>> GetMessageAsync(SnowflakeId roomId, SnowflakeId messageId, CancellationToken cancellationToken = default);
 
         //
         Task<SphynxErrorInfo<ChatMessage[]?>> GetMessagesAsync(SnowflakeId roomId,

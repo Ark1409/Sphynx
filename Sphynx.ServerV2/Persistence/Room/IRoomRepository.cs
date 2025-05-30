@@ -11,7 +11,7 @@ namespace Sphynx.ServerV2.Persistence.Room
         event Action<ChatRoomInfo>? RoomCreated;
         event Action<ChatRoomInfo>? RoomDeleted;
 
-        Task<SphynxErrorInfo<ChatRoomInfo?>> CreateRoomAsync(ChatRoomInfo roomInfo, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<ChatRoomInfo?>> InsertRoomAsync(ChatRoomInfo roomInfo, CancellationToken cancellationToken = default);
         Task<SphynxErrorCode> UpdateRoomAsync(ChatRoomInfo updatedRoom, CancellationToken cancellationToken = default);
         Task<SphynxErrorCode> DeleteRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default);
 

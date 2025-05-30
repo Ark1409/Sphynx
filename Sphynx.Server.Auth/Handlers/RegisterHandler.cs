@@ -68,7 +68,7 @@ namespace Sphynx.Server.Auth.Handlers
                 ArrayPool<byte>.Shared.Return(rentBuffer);
             }
 
-            var registerResult = await _userRepository.InsertUserAsync(null!, token);// TODO: Fix
+            var registerResult = await _userRepository.InsertUserAsync(dbUser, token);// TODO: Fix
 
             if (registerResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
@@ -78,15 +78,13 @@ namespace Sphynx.Server.Auth.Handlers
 
             Debug.Assert(registerResult.Data is SphynxSelfInfo);
 
-            var selfInfo = new SphynxSelfInfo(registerResult.Data!);
-
             // TODO: Alert message server
             await client.SendPacketAsync(new RegisterResponse(null!, Guid.NewGuid()), token).ConfigureAwait(false);// TODO: Fix
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
                 _logger.LogInformation("[{ClientId}]: Successfully authenticated with user {UserId} ({UserName})",
-                    client.ClientId, selfInfo.UserId, request.UserName);
+                    client.ClientId, dbUser.UserId, request.UserName);
             }
 
             await client.DisposeAsync().ConfigureAwait(false);
