@@ -115,10 +115,10 @@ namespace Sphynx.Server.Auth
             UserRepository = new NullUserRepository()!;
 
             if (LoginHandler is null)
-                LoginHandler = new LoginHandler(UserRepository, PasswordHasher, Logger);
+                LoginHandler = new LoginHandler(null!, Logger);
 
             if (RegisterHandler is null)
-                RegisterHandler = new RegisterHandler(UserRepository, PasswordHasher, Logger);
+                RegisterHandler = new RegisterHandler(null!, Logger);
         }
 
         /// <summary>
@@ -139,12 +139,12 @@ namespace Sphynx.Server.Auth
             Debug.Assert(_socketPool == null);
             Debug.Assert(_acceptCts == null);
 
-            Logger.LogInformation("Initializing socket pool");
+            Logger.LogDebug("Initializing socket pool");
 
             _socketPool = new WeakObjectPool<Socket>(Backlog);
             _acceptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            Logger.LogInformation("Initializing listening socket");
+            Logger.LogDebug("Initializing listening socket");
 
             _serverSocket = new Socket(EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             _serverSocket.SendBufferSize = _serverSocket.ReceiveBufferSize = BufferSize;
@@ -153,17 +153,16 @@ namespace Sphynx.Server.Auth
 
             Logger.LogInformation("Server started at {DateTime} on {Address}:{Port}", DateTime.Now, EndPoint.Address, EndPoint.Port);
 
-            while (Running)
+            while (Running && !_acceptCts.IsCancellationRequested)
             {
-                if (_acceptCts.IsCancellationRequested)
-                    break;
-
                 try
                 {
                     _socketPool.TryTake(out var socket);
 
                     Logger.LogInformation("Listening for client...");
+
                     socket = await _serverSocket.AcceptAsync(socket, cancellationToken).ConfigureAwait(false);
+
                     Logger.LogInformation("Accepted client on {Address}", socket.RemoteEndPoint);
 
                     StartClient(socket, _acceptCts.Token);

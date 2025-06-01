@@ -1,72 +1,55 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Sphynx.Core;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
+using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Services;
-using Sphynx.ServerV2.Persistence;
-using Sphynx.ServerV2.Persistence.User;
 
 namespace Sphynx.Server.Auth.Handlers
 {
     public class LoginHandler : IPacketHandler<LoginRequest>
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IPasswordHasher _passwordHasher;
+        private readonly IAuthService _authService;
         private readonly ILogger _logger;
 
-        public LoginHandler(IUserRepository userRepository, IPasswordHasher passwordHasher, ILogger logger)
+        public LoginHandler(IAuthService authService, ILogger logger)
         {
-            _userRepository = userRepository;
-            _passwordHasher = passwordHasher;
+            _authService = authService;
             _logger = logger;
         }
 
-        public ValueTask HandlePacketAsync(SphynxClient client, LoginRequest request, CancellationToken token = default)
+        public ValueTask HandlePacketAsync(SphynxClient client, LoginRequest request, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(request.UserName))
-                return client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_USERNAME), token);
+                return client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_USERNAME), cancellationToken);
 
             if (string.IsNullOrWhiteSpace(request.Password))
-                return client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_PASSWORD), token);
+                return client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_PASSWORD), cancellationToken);
 
-            return HandleLoginAsync(client, request, token);
+            return HandleLoginAsync(client, request, cancellationToken);
         }
 
-        private async ValueTask HandleLoginAsync(SphynxClient client, LoginRequest request, CancellationToken token)
+        private async ValueTask HandleLoginAsync(SphynxClient client, LoginRequest request, CancellationToken cancellationToken)
         {
-            token.ThrowIfCancellationRequested();
+            var authResult = await _authService.AuthenticateUserAsync(request.UserName, request.Password, cancellationToken).ConfigureAwait(false);
 
-            var selfResult = await _userRepository.GetSelfAsync(request.UserName, token);
-
-            if (selfResult.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (authResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendPacketAsync(new LoginResponse(selfResult.ErrorCode), token).ConfigureAwait(false);
+                await client.SendPacketAsync(new LoginResponse(authResult.ErrorCode), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            Debug.Assert(selfResult.Data is SphynxSelfInfo);
+            var authInfo = authResult.Data!.Value;
 
-            var selfInfo = new SphynxSelfInfo(selfResult.Data!);
-
-            if (_passwordHasher.VerifyPassword(request.Password, selfInfo.PasswordSalt, selfInfo.Password))
-            {
-                await client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_PASSWORD), token).ConfigureAwait(false);
-                return;
-            }
-
-            token.ThrowIfCancellationRequested();
-
-            // TODO: Alert message server
-            await client.SendPacketAsync(new LoginResponse(null!, Guid.NewGuid()), token).ConfigureAwait(false); // TODO: Fix
+            await client.SendPacketAsync(new LoginResponse(authInfo.User.ToDto(), authInfo.SessionId), cancellationToken).ConfigureAwait(false);
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
-                _logger.LogInformation("[{ClientId}]: Successfully authenticated with user {UserId} ({UserName})",
-                    client.ClientId, selfInfo.UserId, request.UserName);
+                _logger.LogInformation("[{ClientId}]: Successfully authenticated with user {UserId} ({UserName})", client.ClientId, authResult,
+                    authInfo.User.UserName);
             }
 
             await client.DisposeAsync().ConfigureAwait(false);

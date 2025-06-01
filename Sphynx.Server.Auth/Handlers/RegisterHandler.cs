@@ -1,90 +1,55 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Buffers;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
+using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Services;
-using Sphynx.ServerV2.Persistence.User;
-using SphynxSelfInfo = Sphynx.ServerV2.Persistence.User.SphynxSelfInfo;
 
 namespace Sphynx.Server.Auth.Handlers
 {
     public class RegisterHandler : IPacketHandler<RegisterRequest>
     {
-        private const int PASSWORD_HASH_LENGTH = 256;
-        private const int SALT_HASH_LENGTH = PASSWORD_HASH_LENGTH;
-
-        private readonly IUserRepository _userRepository;
-        private readonly IPasswordHasher _passwordHasher;
+        private readonly IAuthService _authService;
         private readonly ILogger _logger;
 
-        public RegisterHandler(IUserRepository userRepository, IPasswordHasher passwordHasher, ILogger logger)
+        public RegisterHandler(IAuthService authService, ILogger logger)
         {
-            _userRepository = userRepository;
-            _passwordHasher = passwordHasher;
+            _authService = authService;
             _logger = logger;
         }
 
-        public ValueTask HandlePacketAsync(SphynxClient client, RegisterRequest request, CancellationToken token = default)
+        public ValueTask HandlePacketAsync(SphynxClient client, RegisterRequest request, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(request.UserName))
-                return client.SendPacketAsync(new RegisterResponse(SphynxErrorCode.INVALID_USERNAME), token);
+                return client.SendPacketAsync(new RegisterResponse(SphynxErrorCode.INVALID_USERNAME), cancellationToken);
 
             if (string.IsNullOrWhiteSpace(request.Password))
-                return client.SendPacketAsync(new RegisterResponse(SphynxErrorCode.INVALID_PASSWORD), token);
+                return client.SendPacketAsync(new RegisterResponse(SphynxErrorCode.INVALID_PASSWORD), cancellationToken);
 
-            return HandleRegisterAsync(client, request, token);
+            return HandleRegisterAsync(client, request, cancellationToken);
         }
 
-        private async ValueTask HandleRegisterAsync(SphynxClient client, RegisterRequest request, CancellationToken token)
+        private async ValueTask HandleRegisterAsync(SphynxClient client, RegisterRequest request, CancellationToken cancellationToken)
         {
-            token.ThrowIfCancellationRequested();
+            var authResult = await _authService.RegisterUserAsync(request.UserName, request.Password, cancellationToken).ConfigureAwait(false);
 
-            byte[] rentBuffer = ArrayPool<byte>.Shared.Rent(SALT_HASH_LENGTH + PASSWORD_HASH_LENGTH);
-            var buffer = rentBuffer.AsMemory();
-            var pwdSalt = buffer[..SALT_HASH_LENGTH];
-            var pwd = buffer.Slice(SALT_HASH_LENGTH, PASSWORD_HASH_LENGTH);
-
-            SphynxSelfInfo dbUser;
-
-            try
+            if (authResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                _passwordHasher.GenerateSalt(pwdSalt.Span);
-                _passwordHasher.HashPassword(request.Password, pwdSalt.Span, pwd.Span);
-
-                dbUser = new SphynxSelfInfo(SnowflakeId.NewId(), request.UserName, SphynxUserStatus.ONLINE)
-                {
-                    Password = Convert.ToBase64String(pwd.Span),
-                    PasswordSalt = Convert.ToBase64String(pwdSalt.Span)
-                };
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(rentBuffer);
-            }
-
-            var registerResult = await _userRepository.InsertUserAsync(dbUser, token);// TODO: Fix
-
-            if (registerResult.ErrorCode != SphynxErrorCode.SUCCESS)
-            {
-                await client.SendPacketAsync(new RegisterResponse(registerResult.ErrorCode), token).ConfigureAwait(false);
+                await client.SendPacketAsync(new RegisterResponse(authResult.ErrorCode), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            Debug.Assert(registerResult.Data is SphynxSelfInfo);
+            var authInfo = authResult.Data!.Value;
 
-            // TODO: Alert message server
-            await client.SendPacketAsync(new RegisterResponse(null!, Guid.NewGuid()), token).ConfigureAwait(false);// TODO: Fix
+            await client.SendPacketAsync(new RegisterResponse(authInfo.User.ToDto(), authInfo.SessionId), cancellationToken).ConfigureAwait(false);
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
                 _logger.LogInformation("[{ClientId}]: Successfully authenticated with user {UserId} ({UserName})",
-                    client.ClientId, dbUser.UserId, request.UserName);
+                    client.ClientId, authInfo.User.UserId, authInfo.User.UserName);
             }
 
             await client.DisposeAsync().ConfigureAwait(false);

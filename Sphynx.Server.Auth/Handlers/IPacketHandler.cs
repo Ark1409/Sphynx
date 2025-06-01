@@ -17,9 +17,9 @@ namespace Sphynx.Server.Auth.Handlers
         /// <param name="client">The client for which the packet should be handled. For example, response information will
         /// be forwarded to this client.</param>
         /// <param name="packet">The packet to handle.</param>
-        /// <param name="token">A cancellation token.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
         /// <returns>The started handling task, returning a bool representing whether the packet could be sent.</returns>
-        public ValueTask HandlePacketAsync(SphynxClient client, TPacket packet, CancellationToken token = default);
+        public ValueTask HandlePacketAsync(SphynxClient client, TPacket packet, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
