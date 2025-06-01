@@ -3,7 +3,7 @@
 
 using Sphynx.Server.Auth.Model;
 
-namespace Sphynx.Server.Auth.Persistence
+namespace Sphynx.Server.Auth.Services
 {
     public record struct SphynxAuthInfo(SphynxAuthUser User, Guid SessionId);
 }
