@@ -3,12 +3,13 @@
 
 using Sphynx.Core;
 using Sphynx.Server.Auth.Model;
+using Sphynx.Server.Auth.Persistence;
 
 namespace Sphynx.Server.Auth.Services
 {
     public interface IAuthService
     {
-        Task<SphynxErrorInfo<SphynxAuthUser?>> AuthenticateUserAsync(string userName, string password, CancellationToken cancellationToken = default);
-        Task<SphynxErrorInfo<SphynxAuthUser?>> RegisterUserAsync(string userName, string password, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<SphynxAuthInfo?>> AuthenticateUserAsync(string userName, string password, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<SphynxAuthInfo?>> RegisterUserAsync(string userName, string password, CancellationToken cancellationToken = default);
     }
 }
