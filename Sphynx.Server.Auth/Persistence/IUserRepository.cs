@@ -17,10 +17,10 @@ namespace Sphynx.Server.Auth.Persistence
         Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(string userName, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorInfo<SphynxPasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
-        Task<SphynxErrorInfo<SphynxPasswordInfo?>> GetUserPasswordAsync(string userName, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(string userName, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorCode> UpdateUserPasswordAsync(SnowflakeId userId, SphynxPasswordInfo password, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> UpdateUserPasswordAsync(string userName, SphynxPasswordInfo password, CancellationToken cancellationToken = default);
+        Task<SphynxErrorCode> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password, CancellationToken cancellationToken = default);
+        Task<SphynxErrorCode> UpdateUserPasswordAsync(string userName, PasswordInfo password, CancellationToken cancellationToken = default);
     }
 }

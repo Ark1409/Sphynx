@@ -3,5 +3,5 @@
 
 namespace Sphynx.Server.Auth.Persistence
 {
-    public record struct SphynxPasswordInfo(string PasswordHash, string PasswordSalt);
+    public record struct PasswordInfo(string PasswordHash, string PasswordSalt);
 }

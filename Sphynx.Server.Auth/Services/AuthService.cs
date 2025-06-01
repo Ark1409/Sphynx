@@ -71,7 +71,7 @@ namespace Sphynx.Server.Auth.Services
             return userResult;
         }
 
-        private async Task<SphynxErrorInfo<SphynxPasswordInfo?>> GetPasswordInfoAsync(string userName, CancellationToken cancellationToken = default)
+        private async Task<SphynxErrorInfo<PasswordInfo?>> GetPasswordInfoAsync(string userName, CancellationToken cancellationToken = default)
         {
             var passwordResult = await _userRepository.GetUserPasswordAsync(userName, cancellationToken).ConfigureAwait(false);
 
@@ -79,10 +79,10 @@ namespace Sphynx.Server.Auth.Services
             {
                 // TODO: Extract
                 if (passwordResult.ErrorCode is SphynxErrorCode.INVALID_USER or SphynxErrorCode.INVALID_USERNAME)
-                    return new SphynxErrorInfo<SphynxPasswordInfo?>(passwordResult.ErrorCode);
+                    return new SphynxErrorInfo<PasswordInfo?>(passwordResult.ErrorCode);
 
                 // Assume then there is an error with the repository
-                return new SphynxErrorInfo<SphynxPasswordInfo?>(SphynxErrorCode.SERVER_ERROR);
+                return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.SERVER_ERROR);
             }
 
             Trace.Assert(passwordResult.Data.HasValue, "Repository should populate password info on success");

@@ -131,7 +131,7 @@ namespace Sphynx.Server.Auth.Persistence
                 : new SphynxErrorInfo<SphynxAuthUser?>(dbUser.ToDomain());
         }
 
-        public async Task<SphynxErrorInfo<SphynxPasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId,
+        public async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserId, userId);
@@ -141,17 +141,17 @@ namespace Sphynx.Server.Auth.Persistence
                 .Include(user => user.PasswordSalt);
 
             using var cursor = await _collection.Find(userFilter)
-                .Project<SphynxPasswordInfo>(passwordProjection)
+                .Project<PasswordInfo>(passwordProjection)
                 .ToCursorAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             if (!await cursor.MoveNextAsync(cancellationToken))
-                return new SphynxErrorInfo<SphynxPasswordInfo?>(SphynxErrorCode.INVALID_USER);
+                return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.INVALID_USER);
 
-            return new SphynxErrorInfo<SphynxPasswordInfo?>(cursor.Current.First());
+            return new SphynxErrorInfo<PasswordInfo?>(cursor.Current.First());
         }
 
-        public async Task<SphynxErrorInfo<SphynxPasswordInfo?>> GetUserPasswordAsync(string userName,
+        public async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(string userName,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserName, userName);
@@ -161,17 +161,17 @@ namespace Sphynx.Server.Auth.Persistence
                 .Include(user => user.PasswordSalt);
 
             using var cursor = await _collection.Find(userFilter)
-                .Project<SphynxPasswordInfo>(passwordProjection)
+                .Project<PasswordInfo>(passwordProjection)
                 .ToCursorAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             if (!await cursor.MoveNextAsync(cancellationToken))
-                return new SphynxErrorInfo<SphynxPasswordInfo?>(SphynxErrorCode.INVALID_USERNAME);
+                return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.INVALID_USERNAME);
 
-            return new SphynxErrorInfo<SphynxPasswordInfo?>(cursor.Current.First());
+            return new SphynxErrorInfo<PasswordInfo?>(cursor.Current.First());
         }
 
-        public async Task<SphynxErrorCode> UpdateUserPasswordAsync(SnowflakeId userId, SphynxPasswordInfo password,
+        public async Task<SphynxErrorCode> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserId, userId);
@@ -192,7 +192,7 @@ namespace Sphynx.Server.Auth.Persistence
             return SphynxErrorCode.SUCCESS;
         }
 
-        public async Task<SphynxErrorCode> UpdateUserPasswordAsync(string userName, SphynxPasswordInfo password,
+        public async Task<SphynxErrorCode> UpdateUserPasswordAsync(string userName, PasswordInfo password,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserName, userName);
