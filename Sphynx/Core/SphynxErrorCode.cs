@@ -21,6 +21,11 @@
         INVALID_PASSWORD,
 
         /// <summary>
+        /// Invalid credentials provided during authentication.
+        /// </summary>
+        INVALID_CREDENTIALS,
+
+        /// <summary>
         /// Invalid session ID for user when performing an action.
         /// </summary>
         INVALID_SESSION,
@@ -74,6 +79,6 @@
         /// <summary>
         /// Attempt to authenticate when already logged in.
         /// </summary>
-        ALREADY_LOGGED_IN
+        ALREADY_LOGGED_IN,
     }
 }
