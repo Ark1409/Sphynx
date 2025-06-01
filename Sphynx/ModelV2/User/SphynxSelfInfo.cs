@@ -13,27 +13,27 @@ namespace Sphynx.ModelV2.User
         /// <summary>
         /// User IDs of friends for this user.
         /// </summary>
-        public ISet<SnowflakeId> Friends { get; set; } = new HashSet<SnowflakeId>();
+        public ISet<SnowflakeId> Friends { get; set; } = null!;
 
         /// <summary>
         /// Room IDs of chat rooms which this user is in (including DMs).
         /// </summary>
-        public ISet<SnowflakeId> Rooms { get; set; } = new HashSet<SnowflakeId>();
+        public ISet<SnowflakeId> Rooms { get; set; } = null!;
 
         /// <summary>
         /// Collection of the last read message IDs for the messages in the rooms that the user is a part of.
         /// </summary>
-        public LastReadMessageInfo LastReadMessages { get; set; } = new();
+        public LastReadMessageInfo LastReadMessages { get; set; } = null!;
 
         /// <summary>
         /// The user IDs of outgoing friend requests sent by this user.
         /// </summary>
-        public ISet<SnowflakeId> OutgoingFriendRequests { get; set; } = new HashSet<SnowflakeId>();
+        public ISet<SnowflakeId> OutgoingFriendRequests { get; set; } = null!;
 
         /// <summary>
         /// The user IDs of incoming friend requests sent to this user.
         /// </summary>
-        public ISet<SnowflakeId> IncomingFriendRequests { get; set; } = new HashSet<SnowflakeId>();
+        public ISet<SnowflakeId> IncomingFriendRequests { get; set; } = null!;
 
         public SphynxSelfInfo()
         {
