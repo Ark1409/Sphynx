@@ -12,13 +12,13 @@ namespace Sphynx.Server.Auth.Persistence
     {
         public event Action<SphynxAuthUser>? UserCreated;
 
-        private readonly IMongoCollection<SphynxSelfInfo> _collection;
+        private readonly IMongoCollection<SphynxDbUser> _collection;
 
-        public MongoUserRepository(IMongoDatabase db, string collectionName) : this(db.GetCollection<SphynxSelfInfo>(collectionName))
+        public MongoUserRepository(IMongoDatabase db, string collectionName) : this(db.GetCollection<SphynxDbUser>(collectionName))
         {
         }
 
-        public MongoUserRepository(IMongoCollection<SphynxSelfInfo> collection)
+        public MongoUserRepository(IMongoCollection<SphynxDbUser> collection)
         {
             _collection = collection;
         }
@@ -53,10 +53,10 @@ namespace Sphynx.Server.Auth.Persistence
             if (updatedUser.UserId == default)
                 return SphynxErrorCode.INVALID_USER;
 
-            var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(s => s.UserId, updatedUser.UserId);
-            var updateBuilder = Builders<SphynxSelfInfo>.Update;
+            var userFilter = Builders<SphynxDbUser>.Filter.Eq(s => s.UserId, updatedUser.UserId);
+            var updateBuilder = Builders<SphynxDbUser>.Update;
 
-            var updates = new List<UpdateDefinition<SphynxSelfInfo>>();
+            var updates = new List<UpdateDefinition<SphynxDbUser>>();
 
             // TODO: Reflect this away. Perhaps the updated fields can be specified by an expression.
 
@@ -97,14 +97,14 @@ namespace Sphynx.Server.Auth.Persistence
 
         public async Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
         {
-            var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserId, userId);
+            var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);
 
-            var userProjection = Builders<SphynxSelfInfo>.Projection
+            var userProjection = Builders<SphynxDbUser>.Projection
                 .Exclude(user => user.Password)
                 .Exclude(user => user.PasswordSalt);
 
             var dbUser = await _collection.Find(userFilter)
-                .Project<SphynxSelfInfo>(userProjection)
+                .Project<SphynxDbUser>(userProjection)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -115,14 +115,14 @@ namespace Sphynx.Server.Auth.Persistence
 
         public async Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(string userName, CancellationToken cancellationToken = default)
         {
-            var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserName, userName);
+            var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserName, userName);
 
-            var userProjection = Builders<SphynxSelfInfo>.Projection
+            var userProjection = Builders<SphynxDbUser>.Projection
                 .Exclude(user => user.Password)
                 .Exclude(user => user.PasswordSalt);
 
             var dbUser = await _collection.Find(userFilter)
-                .Project<SphynxSelfInfo>(userProjection)
+                .Project<SphynxDbUser>(userProjection)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -134,9 +134,9 @@ namespace Sphynx.Server.Auth.Persistence
         public async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId,
             CancellationToken cancellationToken = default)
         {
-            var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserId, userId);
+            var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);
 
-            var passwordProjection = Builders<SphynxSelfInfo>.Projection
+            var passwordProjection = Builders<SphynxDbUser>.Projection
                 .Include(user => user.Password)
                 .Include(user => user.PasswordSalt);
 
@@ -154,9 +154,9 @@ namespace Sphynx.Server.Auth.Persistence
         public async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(string userName,
             CancellationToken cancellationToken = default)
         {
-            var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserName, userName);
+            var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserName, userName);
 
-            var passwordProjection = Builders<SphynxSelfInfo>.Projection
+            var passwordProjection = Builders<SphynxDbUser>.Projection
                 .Include(user => user.Password)
                 .Include(user => user.PasswordSalt);
 
@@ -174,12 +174,12 @@ namespace Sphynx.Server.Auth.Persistence
         public async Task<SphynxErrorCode> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password,
             CancellationToken cancellationToken = default)
         {
-            var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserId, userId);
+            var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);
 
-            var hashUpdate = Builders<SphynxSelfInfo>.Update.Set(user => user.Password, password.PasswordHash);
-            var saltUpdate = Builders<SphynxSelfInfo>.Update.Set(user => user.PasswordSalt, password.PasswordSalt);
+            var hashUpdate = Builders<SphynxDbUser>.Update.Set(user => user.Password, password.PasswordHash);
+            var saltUpdate = Builders<SphynxDbUser>.Update.Set(user => user.PasswordSalt, password.PasswordSalt);
 
-            var passwordUpdate = Builders<SphynxSelfInfo>.Update.Combine(hashUpdate, saltUpdate);
+            var passwordUpdate = Builders<SphynxDbUser>.Update.Combine(hashUpdate, saltUpdate);
 
             var result = await _collection.UpdateOneAsync(userFilter, passwordUpdate, cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -195,12 +195,12 @@ namespace Sphynx.Server.Auth.Persistence
         public async Task<SphynxErrorCode> UpdateUserPasswordAsync(string userName, PasswordInfo password,
             CancellationToken cancellationToken = default)
         {
-            var userFilter = Builders<SphynxSelfInfo>.Filter.Eq(user => user.UserName, userName);
+            var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserName, userName);
 
-            var hashUpdate = Builders<SphynxSelfInfo>.Update.Set(user => user.Password, password.PasswordHash);
-            var saltUpdate = Builders<SphynxSelfInfo>.Update.Set(user => user.PasswordSalt, password.PasswordSalt);
+            var hashUpdate = Builders<SphynxDbUser>.Update.Set(user => user.Password, password.PasswordHash);
+            var saltUpdate = Builders<SphynxDbUser>.Update.Set(user => user.PasswordSalt, password.PasswordSalt);
 
-            var passwordUpdate = Builders<SphynxSelfInfo>.Update.Combine(hashUpdate, saltUpdate);
+            var passwordUpdate = Builders<SphynxDbUser>.Update.Combine(hashUpdate, saltUpdate);
 
             var result = await _collection.UpdateOneAsync(userFilter, passwordUpdate, cancellationToken: cancellationToken).ConfigureAwait(false);
 

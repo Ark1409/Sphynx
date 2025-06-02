@@ -1,9 +1,9 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Collections.Immutable;
 using Sphynx.Core;
 using Sphynx.ModelV2.User;
+using Sphynx.ServerV2.Persistence.User;
 
 namespace Sphynx.Server.Auth.Model
 {
@@ -62,7 +62,7 @@ namespace Sphynx.Server.Auth.Model
             };
         }
 
-        public static SphynxAuthUser ToDomain(this ServerV2.Persistence.User.SphynxSelfInfo dbUser)
+        public static SphynxAuthUser ToDomain(this SphynxDbUser dbUser)
         {
             return new SphynxAuthUser(dbUser.UserId, dbUser.UserName, dbUser.UserStatus)
             {
@@ -76,17 +76,19 @@ namespace Sphynx.Server.Auth.Model
             };
         }
 
-        public static ServerV2.Persistence.User.SphynxSelfInfo ToRecord(this SphynxAuthUser user)
+        public static SphynxDbUser ToRecord(this SphynxAuthUser user)
         {
-            return new ServerV2.Persistence.User.SphynxSelfInfo(user.UserId, user.UserName, user.UserStatus)
+            return new SphynxDbUser(user.UserId, user.UserName, user.UserStatus)
             {
-                Friends = user.Friends ?? ImmutableHashSet<SnowflakeId>.Empty,
-                Rooms = user.Rooms ?? ImmutableHashSet<SnowflakeId>.Empty,
+                Friends = user.Friends as HashSet<SnowflakeId> ?? new HashSet<SnowflakeId>(user.Friends ?? Enumerable.Empty<SnowflakeId>()),
+                Rooms = user.Rooms as HashSet<SnowflakeId> ?? new HashSet<SnowflakeId>(user.Rooms ?? Enumerable.Empty<SnowflakeId>()),
                 Password = user.PasswordHash,
                 PasswordSalt = user.PasswordSalt,
-                LastReadMessages = user.LastReadMessages is null ? new LastReadMessageInfo() : new LastReadMessageInfo(user.LastReadMessages),
-                IncomingFriendRequests = user.IncomingFriendRequests ?? ImmutableHashSet<SnowflakeId>.Empty,
-                OutgoingFriendRequests = user.OutgoingFriendRequests ?? ImmutableHashSet<SnowflakeId>.Empty,
+                LastReadMessages = user.LastReadMessages is null ? new LastReadDbMessages() : new LastReadDbMessages(user.LastReadMessages),
+                IncomingFriendRequests = user.IncomingFriendRequests as HashSet<SnowflakeId> ??
+                                         new HashSet<SnowflakeId>(user.IncomingFriendRequests ?? Enumerable.Empty<SnowflakeId>()),
+                OutgoingFriendRequests = user.OutgoingFriendRequests as HashSet<SnowflakeId> ??
+                                         new HashSet<SnowflakeId>(user.OutgoingFriendRequests ?? Enumerable.Empty<SnowflakeId>()),
             };
         }
 

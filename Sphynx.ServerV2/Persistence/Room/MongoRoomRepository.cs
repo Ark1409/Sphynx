@@ -12,12 +12,12 @@ namespace Sphynx.ServerV2.Persistence.Room
     {
         private readonly IMongoClient _client;
         private readonly IMongoDatabase _database;
-        private readonly IMongoCollection<SphynxSelfInfo> _collection;
+        private readonly IMongoCollection<dynamic> _collection;
 
         public event Action<ChatRoomInfo>? RoomCreated;
         public event Action<ChatRoomInfo>? RoomDeleted;
 
-        public MongoRoomRepository(IMongoClient client, IMongoDatabase database, IMongoCollection<SphynxSelfInfo> collection)
+        public MongoRoomRepository(IMongoClient client, IMongoDatabase database, IMongoCollection<dynamic> collection)
         {
             _client = client;
             _database = database;

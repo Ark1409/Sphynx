@@ -56,7 +56,11 @@ namespace Sphynx.Server.Auth.Services
                 _logger.LogInformation("Successfully authenticated user against account \"{UserName}\"", userName);
 
             var authInfo = new SphynxAuthInfo(userResult.Data!, GenerateSessionId(userResult.Data!));
-            return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, authInfo);
+            var authResult = new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, authInfo);
+
+            // TODO: Alert message server
+
+            return authResult;
         }
 
         private async Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(string userName, CancellationToken cancellationToken = default)
@@ -115,10 +119,12 @@ namespace Sphynx.Server.Auth.Services
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("Successfully created user {UserId} ({UserName}) ", userResult.Data!.UserId, userResult.Data.UserName);
 
+            var authInfo = new SphynxAuthInfo(userResult.Data!, GenerateSessionId(userResult.Data!));
+            var authResult = new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, authInfo);
+
             // TODO: Alert message server
 
-            var authInfo = new SphynxAuthInfo(userResult.Data!, GenerateSessionId(userResult.Data!));
-            return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, authInfo);
+            return authResult;
         }
 
         private SphynxAuthUser CreateUser(string userName, string password)
