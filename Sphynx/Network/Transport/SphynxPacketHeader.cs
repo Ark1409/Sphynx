@@ -67,7 +67,7 @@ namespace Sphynx.Network.Transport
         /// <param name="stream">The stream from which to consume the header.</param>
         /// <param name="cancellationToken">The cancellation token to abort the consumption request.</param>
         /// <returns>The first successfully consumed <see cref="SphynxPacketHeader"/>.</returns>
-        public static async ValueTask<SphynxPacketHeader> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
+        public static async Task<SphynxPacketHeader> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
         {
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable", nameof(stream));

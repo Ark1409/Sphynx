@@ -6,16 +6,13 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson.Serialization;
-using MongoDB.Driver;
-using Sphynx.Core;
+using Microsoft.Extensions.Logging.Console;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.Transport;
 using Sphynx.Server.Auth.Handlers;
+using Sphynx.Server.Auth.Persistence;
 using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2;
-using Sphynx.ServerV2.Persistence;
-using Sphynx.ServerV2.Persistence.User;
 using Sphynx.Storage;
 
 namespace Sphynx.Server.Auth
@@ -66,7 +63,14 @@ namespace Sphynx.Server.Auth
         /// <summary>
         /// Logging instance used by the server and its clients.
         /// </summary>
-        public ILogger Logger { get; set; } = LoggerFactory.Create(builder => builder.AddConsole()).CreateLogger(nameof(SphynxAuthServer));
+        public ILogger Logger { get; set; } = LoggerFactory.Create(builder =>
+        {
+            builder.AddConsole(options =>
+            {
+                options.FormatterName = ConsoleFormatterNames.Simple;
+                options.QueueFullMode = ConsoleLoggerQueueFullMode.DropWrite;
+            });
+        }).CreateLogger(nameof(SphynxAuthServer));
 
         /// <summary>
         /// The packet transporter used by clients.
@@ -74,7 +78,8 @@ namespace Sphynx.Server.Auth
         public IPacketTransporter PacketTransporter { get; init; } = new PacketTransporter();
 
         public IPasswordHasher PasswordHasher { get; init; } = new Pbkdf2PasswordHasher();
-        public IUserRepository UserRepository { get; init; }
+        public IUserRepository UserRepository { get; init; } = new NullUserRepository();
+        public IAuthService AuthService { get; init; }
         public IPacketHandler<LoginRequest> LoginHandler { get; init; }
         public IPacketHandler<RegisterRequest> RegisterHandler { get; init; }
 
@@ -110,15 +115,11 @@ namespace Sphynx.Server.Auth
         public SphynxAuthServer(IPEndPoint serverEndpoint)
         {
             EndPoint = serverEndpoint;
-            Name = $"{GetType().Name}@{EndPoint.Address}:{EndPoint.Port}";
+            Name = $"{GetType().Name}@{EndPoint}";
 
-            UserRepository = new NullUserRepository()!;
-
-            if (LoginHandler is null)
-                LoginHandler = new LoginHandler(null!, Logger);
-
-            if (RegisterHandler is null)
-                RegisterHandler = new RegisterHandler(null!, Logger);
+            AuthService ??= new AuthService(UserRepository, PasswordHasher, Logger);
+            LoginHandler ??= new LoginHandler(AuthService, Logger);
+            RegisterHandler ??= new RegisterHandler(AuthService, Logger);
         }
 
         /// <summary>
@@ -151,15 +152,14 @@ namespace Sphynx.Server.Auth
             _serverSocket.Bind(EndPoint);
             _serverSocket.Listen(Backlog);
 
-            Logger.LogInformation("Server started at {DateTime} on {Address}:{Port}", DateTime.Now, EndPoint.Address, EndPoint.Port);
+            Logger.LogInformation("Server started at {DateTime} on {EndPoint}", DateTime.Now, EndPoint);
 
             while (Running && !_acceptCts.IsCancellationRequested)
             {
                 try
                 {
-                    _socketPool.TryTake(out var socket);
-
-                    Logger.LogInformation("Listening for client...");
+                    if (!_socketPool.TryTake(out var socket))
+                        Logger.LogTrace("Socket pool exhausted, will allocate on demand to handle the next connection");
 
                     socket = await _serverSocket.AcceptAsync(socket, cancellationToken).ConfigureAwait(false);
 
@@ -178,6 +178,9 @@ namespace Sphynx.Server.Auth
 
         private void StartClient(Socket clientSocket, CancellationToken cancellationToken) => ThreadPool.QueueUserWorkItem(async void (ct) =>
         {
+            if (Logger.IsEnabled(LogLevel.Debug))
+                Logger.LogDebug("[{EndPoint}]: Initializing client instance for this connection", clientSocket.RemoteEndPoint);
+
             try
             {
                 var client = new SphynxClient(clientSocket, LoginHandler, RegisterHandler, PacketTransporter, Logger);
@@ -187,7 +190,7 @@ namespace Sphynx.Server.Auth
 
                 client.OnDisconnect += (c, ex) =>
                 {
-                    Logger.LogError(ex, "[{EndPoint}]: Client disconnected", c.Socket.RemoteEndPoint);
+                    Logger.LogInformation(ex, "[{EndPoint}]: Client disconnected", c.Socket.RemoteEndPoint);
                     c.Dispose();
                     _socketPool!.Return(c.Socket);
                 };

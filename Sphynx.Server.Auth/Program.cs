@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Xml.Schema;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
@@ -19,7 +20,7 @@ namespace Sphynx.Server.Auth
 
             await using var server = new SphynxAuthServer(IPAddress.Parse("10.0.0.115"))
             {
-                PacketTransporter = transporter
+                PacketTransporter = transporter,
             };
 
             await server.StartAsync();

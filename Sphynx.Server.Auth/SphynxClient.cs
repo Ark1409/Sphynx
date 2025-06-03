@@ -109,13 +109,30 @@ namespace Sphynx.Server.Auth
             _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var ct = _cts.Token;
 
+            if (_logger.IsEnabled(LogLevel.Debug))
+                _logger.LogDebug("[{EndPoint}]: Client instance is now running", Socket.RemoteEndPoint);
+
             for (int attempt = 1; attempt <= maxRetryAttempts; attempt++)
             {
                 try
                 {
-                    while (!_cts.IsCancellationRequested)
+                    while (true)
                     {
-                        var packet = await _packetTransporter.ReceiveAsync(_stream, ct).ConfigureAwait(false);
+                        SphynxPacket packet;
+
+                        try
+                        {
+                            packet = await _packetTransporter.ReceiveAsync(_stream, ct).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning("[{ClientId} ({EndPoint})]: Could not read from client socket. Disconnecting client...", ClientId,
+                                Socket.RemoteEndPoint);
+
+                            OnDisconnect?.Invoke(this, ex);
+                            await DisposeAsync().ConfigureAwait(false);
+                            return;
+                        }
 
                         // TODO: Rate-limit
                         await HandlePacketAsync(packet, ct, TRANSIENT_RETRY_COUNT).ConfigureAwait(false);
@@ -131,7 +148,7 @@ namespace Sphynx.Server.Auth
                 }
                 catch (TaskCanceledException)
                 {
-                    _logger.LogWarning("[{ClientId} ({EndPoint})]: Packet read aborted", ClientId, Socket.RemoteEndPoint);
+                    _logger.LogWarning("[{ClientId} ({EndPoint})]: Packet read aborted (canceled)", ClientId, Socket.RemoteEndPoint);
                     break;
                 }
                 catch (Exception ex)
@@ -139,6 +156,7 @@ namespace Sphynx.Server.Auth
                     _logger.LogError(ex, "[{ClientId} ({EndPoint})]: Unexpected exception occured while reading packets",
                         ClientId, Socket.RemoteEndPoint);
 
+                    OnDisconnect?.Invoke(this, ex);
                     await DisposeAsync().ConfigureAwait(false);
                     break;
                 }
