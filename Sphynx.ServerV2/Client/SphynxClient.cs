@@ -96,26 +96,26 @@ namespace Sphynx.ServerV2.Client
         /// <returns>true if the packet could be sent; false otherwise.</returns>
         /// <remarks>If this client has not yet authenticated themselves with a user (i.e. <see cref="UserId"/> is null),
         /// the only valid packet that can be sent is one of type <see cref="SphynxPacketType.LOGIN_RES"/>.</remarks>
-        public ValueTask SendPacketAsync(SphynxPacket packet, CancellationToken cancellationToken = default)
+        public Task SendPacketAsync(SphynxPacket packet, CancellationToken cancellationToken = default)
         {
             // TODO: Do we want to throw on the callers (ig its what we do with cancellation, right?)
             ThrowIfDisposed();
 
             // TODO: implement retry functionality when packet cannot be sent (up to 3 times ig)
-            if (SphynxClientManager.IsAnonymous(this) && packet.PacketType != SphynxPacketType.LOGIN_RES)
+            // if (SphynxClientManager.IsAnonymous(this) && packet.PacketType != SphynxPacketType.LOGIN_RES)
             {
                 // Packets may only be sent to respond to a LoginRequest (i.e. LoginResponsePackets must be sent) if
                 // the client has not yet authenticated themselves with a specific user
-                return false;
+                return Task.CompletedTask;
             }
 
             try
             {
                 if (cancellationToken.IsCancellationRequested)
-                    return ValueTask.FromCanceled(cancellationToken);
+                    return Task.FromCanceled(cancellationToken);
 
                 if (_cts != null && _cts.IsCancellationRequested)
-                    return ValueTask.FromCanceled(_cts.Token);
+                    return Task.FromCanceled(_cts.Token);
 
                 // TODO: Test keep-alive message to ensure client is still connected
                 // TODO: Do we require a lock?
@@ -125,6 +125,8 @@ namespace Sphynx.ServerV2.Client
             {
                 OnDisconnect?.Invoke(this, ex);
             }
+
+            throw new Exception();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

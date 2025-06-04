@@ -22,7 +22,7 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// The packet signature to safeguard against corrupted packets.
         /// </summary>
-        public const ushort SIGNATURE = 0x5350;
+        public const ushort SIGNATURE = 0x5053;
 
         /// <summary>
         /// The (exact) serialization size of this header in bytes.

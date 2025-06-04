@@ -12,9 +12,9 @@ using Sphynx.ServerV2.Client;
 namespace Sphynx.ServerV2
 {
     /// <summary>
-    /// Represents the entirety of a functional <c>Sphynx</c> server instance.
+    /// Represents the server instance which accepts clients on a specific endpoint.
     /// </summary>
-    public class SphynxServer : IDisposable
+    public abstract class SphynxServer : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Returns the default IP endpoint for the server.
@@ -35,7 +35,7 @@ namespace Sphynx.ServerV2
         /// Returns buffer size for information exchange.
         /// </summary>
         /// <remarks>This only changes the underlying buffer size if the server is not already <see cref="Running"/>.</remarks>
-        public int BufferSize { get; set; } = ushort.MaxValue;
+        public int BufferSize { get; protected set; } = ushort.MaxValue;
 
         /// <summary>
         /// Retrieves the running state of the server.
@@ -47,7 +47,7 @@ namespace Sphynx.ServerV2
         /// <summary>
         /// Returns the endpoint associated with this socket.
         /// </summary>
-        public IPEndPoint EndPoint { get; private set; }
+        public IPEndPoint EndPoint { get; protected set; }
 
         /// <summary>
         /// The name of this <see cref="SphynxServer"/>.
@@ -64,12 +64,19 @@ namespace Sphynx.ServerV2
         /// </summary>
         public event Action<SphynxServer>? OnStart;
 
-        private Socket? _serverSocket;
+        /// <summary>
+        /// The accept socket for the server.
+        /// </summary>
+        protected Socket? ServerSocket { get; private set; }
+
+        /// <summary>
+        /// The cancellation
+        /// </summary>
+        protected CancellationTokenSource AcceptCts { get; } = new();
+
         private readonly Thread _serverThread;
         private readonly object _mutationLock = new();
         private volatile bool _disposed;
-
-        private readonly CancellationTokenSource _acceptCts = new();
 
         // TODO: Abstract away to inteface (for Redis)
         private readonly ConcurrentDictionary<Guid, SphynxClient> _connectedClients = new();
@@ -90,7 +97,7 @@ namespace Sphynx.ServerV2
             EndPoint = serverEndpoint;
             _serverThread = new Thread(Run);
 
-            Name = $"{nameof(SphynxServer)}@{_serverThread.ManagedThreadId}";
+            Name = $"{GetType().Name}@{_serverThread.ManagedThreadId}";
         }
 
         /// <summary>
@@ -116,21 +123,27 @@ namespace Sphynx.ServerV2
 
         private void Run()
         {
-            Debug.Assert(_serverSocket == null);
+            Debug.Assert(ServerSocket == null);
 
-            _serverSocket = new Socket(EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _serverSocket.SendBufferSize = _serverSocket.ReceiveBufferSize = BufferSize;
-            _serverSocket.Bind(EndPoint);
-            _serverSocket.Listen(Backlog);
+            ServerSocket = new Socket(EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            ServerSocket.SendBufferSize = ServerSocket.ReceiveBufferSize = BufferSize;
+            ServerSocket.Bind(EndPoint);
+            ServerSocket.Listen(Backlog);
 
             OnStart?.Invoke(this);
 
             while (_running)
             {
+                if (AcceptCts.IsCancellationRequested)
+                {
+                    _running = false;
+                    break;
+                }
+
                 try
                 {
                     // TODO: Accept async and reuse sockets
-                    RegisterClient(_serverSocket.Accept(), _acceptCts.Token);
+                    RegisterClient(ServerSocket.Accept(), AcceptCts.Token);
                 }
                 catch (SocketException)
                 {
@@ -159,6 +172,11 @@ namespace Sphynx.ServerV2
         /// <inheritdoc/>
         public void Dispose()
         {
+            Dispose(true);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
             if (_disposed)
                 return;
 
@@ -170,41 +188,28 @@ namespace Sphynx.ServerV2
                 _disposed = true;
                 _running = false;
 
-                DisposeClients();
                 DisposeServer();
-            }
-        }
-
-        private void DisposeClients()
-        {
-            try
-            {
-                _acceptCts.Cancel();
-            }
-            catch
-            {
-                // We're disposing anyway
-            }
-
-            foreach (var (id, _) in _connectedClients)
-            {
-                bool removed = _connectedClients.TryRemove(id, out _);
-                Debug.Assert(removed);
             }
         }
 
         private void DisposeServer()
         {
-            _acceptCts.Cancel();
-            _acceptCts.Dispose();
+            AcceptCts.Cancel();
+            AcceptCts.Dispose();
 
-            _serverSocket?.Dispose();
+            ServerSocket?.Dispose();
 
             if (_serverThread.IsAlive)
             {
                 _serverThread.Join(30_000);
                 throw new TimeoutException($"Accept thread {Name} took too long to terminate");
             }
+        }
+
+        public virtual ValueTask DisposeAsync()
+        {
+            Dispose();
+            return ValueTask.CompletedTask;
         }
     }
 }

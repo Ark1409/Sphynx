@@ -29,7 +29,7 @@ namespace Sphynx.Network.Transport
                 AddSerializer(entry.Key, entry.Value);
         }
 
-        public async ValueTask SendAsync(Stream stream, SphynxPacket packet, CancellationToken cancellationToken = default)
+        public async Task SendAsync(Stream stream, SphynxPacket packet, CancellationToken cancellationToken = default)
         {
             if (!stream.CanWrite)
                 throw new ArgumentException("Stream must be writable", nameof(stream));
@@ -44,9 +44,7 @@ namespace Sphynx.Network.Transport
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                int packetSize = WritePacket(packet, buffer, serializer);
-
-                cancellationToken.ThrowIfCancellationRequested();
+                int packetSize = SerializePacket(packet, buffer, serializer);
 
                 await stream.WriteAsync(buffer[..packetSize], cancellationToken).ConfigureAwait(false);
             }
@@ -56,15 +54,16 @@ namespace Sphynx.Network.Transport
             }
         }
 
-        private int WritePacket(SphynxPacket packet, Memory<byte> buffer, IPacketSerializer<SphynxPacket> serializer)
+        private int SerializePacket(SphynxPacket packet, Memory<byte> buffer, IPacketSerializer<SphynxPacket> serializer)
         {
-            int contentSize = WriteContent(packet, buffer[SphynxPacketHeader.Size..], serializer);
-            WriteHeader(packet, contentSize, buffer[..SphynxPacketHeader.Size]);
+            int contentSize = SerializeContent(packet, buffer[SphynxPacketHeader.Size..], serializer);
+
+            SerializeHeader(packet, contentSize, buffer[..SphynxPacketHeader.Size]);
 
             return SphynxPacketHeader.Size + contentSize;
         }
 
-        private SphynxPacketHeader WriteHeader(SphynxPacket packet, int contentSize, Memory<byte> buffer)
+        private SphynxPacketHeader SerializeHeader(SphynxPacket packet, int contentSize, Memory<byte> buffer)
         {
             Debug.Assert(buffer.Length >= SphynxPacketHeader.Size);
 
@@ -76,7 +75,7 @@ namespace Sphynx.Network.Transport
             return header;
         }
 
-        private int WriteContent(SphynxPacket packet, Memory<byte> buffer, IPacketSerializer<SphynxPacket> serializer)
+        private int SerializeContent(SphynxPacket packet, Memory<byte> buffer, IPacketSerializer<SphynxPacket> serializer)
         {
             Debug.Assert(_serializers[packet.PacketType].Equals(serializer));
             Debug.Assert(serializer.GetMaxSize(packet) >= 0);
@@ -88,7 +87,7 @@ namespace Sphynx.Network.Transport
             return contentSize;
         }
 
-        public async ValueTask<SphynxPacket> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
+        public async Task<SphynxPacket> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
         {
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable", nameof(stream));
@@ -114,7 +113,7 @@ namespace Sphynx.Network.Transport
             }
         }
 
-        private async ValueTask<SphynxPacketHeader> ReceiveHeaderAsync(Stream stream, CancellationToken cancellationToken = default)
+        private async Task<SphynxPacketHeader> ReceiveHeaderAsync(Stream stream, CancellationToken cancellationToken = default)
         {
             var header = await SphynxPacketHeader.ReceiveAsync(stream, cancellationToken).ConfigureAwait(false);
 
