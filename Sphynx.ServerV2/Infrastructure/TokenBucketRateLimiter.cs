@@ -16,9 +16,13 @@ namespace Sphynx.ServerV2.Infrastructure
         private long _lastTime;
         private readonly SemaphoreSlim _semaphore = new(1);
 
+        public TokenBucketRateLimiter(int tokensPerSecond) : this(tokensPerSecond, TimeSpan.FromSeconds(1))
+        {
+        }
+
         public TokenBucketRateLimiter(int maxTokens, TimeSpan timeWindow)
         {
-            MaxOperations = maxTokens;
+            MaxOperations = maxTokens > 0 ? maxTokens : throw new ArgumentOutOfRangeException(nameof(maxTokens), "Max tokens must be positive");
             TimeWindow = timeWindow;
         }
 
@@ -33,14 +37,16 @@ namespace Sphynx.ServerV2.Infrastructure
 
                 _lastTime = now;
 
-                Tokens += (int)(elapsed * RateTicks);
+                double newTokens = Math.Min(elapsed * RateTicks, MaxOperations - Tokens);
+                Tokens += (int)newTokens;
 
                 if (Tokens < count)
                 {
-                    int tokensRequired = Tokens - count;
-                    long timeLeft = (long)(tokensRequired * 1 / RateTicks);
+                    double fracNewTokens = newTokens - (long)newTokens;
+                    double tokensRequired = count - (Tokens + fracNewTokens);
+                    long ticksLeft = (long)(tokensRequired * 1 / RateTicks);
 
-                    return TimeSpan.FromTicks(timeLeft);
+                    return TimeSpan.FromTicks(ticksLeft);
                 }
 
                 Tokens -= count;
