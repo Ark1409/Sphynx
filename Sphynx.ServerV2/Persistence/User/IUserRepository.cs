@@ -3,7 +3,6 @@
 
 using Sphynx.Core;
 using Sphynx.ModelV2.User;
-using Sphynx.ServerV2.Auth;
 
 namespace Sphynx.ServerV2.Persistence.User
 {
