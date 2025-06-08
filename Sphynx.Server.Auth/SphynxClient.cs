@@ -4,11 +4,14 @@
 using System.Diagnostics;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
+using Sphynx.Core;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.PacketV2.Request;
+using Sphynx.Network.PacketV2.Response;
 using Sphynx.Network.Transport;
 using Sphynx.Server.Auth.Extensions;
 using Sphynx.Server.Auth.Handlers;
+using Sphynx.ServerV2.Infrastructure;
 
 namespace Sphynx.Server.Auth
 {
@@ -55,12 +58,14 @@ namespace Sphynx.Server.Auth
         private readonly IPacketHandler<LoginRequest> _loginHandler;
         private readonly IPacketHandler<RegisterRequest> _registerHandler;
         private readonly IPacketTransporter _packetTransporter;
+        private readonly IRateLimiter _rateLimiter = new TokenBucketRateLimiter(1);
 
         private readonly ILogger _logger;
 
         public SphynxClient(Socket socket, IPacketHandler packetHandler, IPacketTransporter packetTransporter, ILogger logger)
             : this(socket, packetHandler, packetHandler, packetTransporter, logger)
         {
+
         }
 
         public SphynxClient(Socket socket, IPacketHandler<LoginRequest> loginHandler, IPacketHandler<RegisterRequest> registerHandler,
@@ -136,6 +141,7 @@ namespace Sphynx.Server.Auth
 
                         // TODO: Rate-limit
                         await HandlePacketAsync(packet, ct, TRANSIENT_RETRY_COUNT).ConfigureAwait(false);
+                        // TODO: Check disposal here
                     }
                 }
                 catch (Exception ex) when (ex.IsTransient())
@@ -194,6 +200,7 @@ namespace Sphynx.Server.Auth
                     _logger.LogError(ex, "[{ClientId} ({EndPoint})]: Unexpected exception occured while handling packet {PacketType}",
                         ClientId, Socket.RemoteEndPoint, packet.PacketType);
 
+                    // TODO: Not sure we necessarily need to dispose just because of this...
                     await DisposeAsync().ConfigureAwait(false);
                     break;
                 }
@@ -211,12 +218,26 @@ namespace Sphynx.Server.Auth
                 {
                     Debug.Assert(packet is LoginRequest);
 
+                    var waitTime = await _rateLimiter.ConsumeTokensAsync(cancellationToken: cancellationToken);
+                    if (waitTime != TimeSpan.Zero)
+                    {
+                        await SendPacketAsync(new LoginResponse(SphynxErrorCode.ENHANCE_YOUR_CALM), cancellationToken);
+                        return;
+                    }
+
                     await _loginHandler.HandlePacketAsync(this, (LoginRequest)packet, cancellationToken).ConfigureAwait(false);
                     break;
                 }
                 case SphynxPacketType.REGISTER_REQ:
                 {
                     Debug.Assert(packet is RegisterRequest);
+
+                    var waitTime = await _rateLimiter.ConsumeTokensAsync(cancellationToken: cancellationToken);
+                    if (waitTime != TimeSpan.Zero)
+                    {
+                        await SendPacketAsync(new RegisterResponse(SphynxErrorCode.ENHANCE_YOUR_CALM), cancellationToken);
+                        return;
+                    }
 
                     await _registerHandler.HandlePacketAsync(this, (RegisterRequest)packet, cancellationToken).ConfigureAwait(false);
                     break;
@@ -312,6 +333,8 @@ namespace Sphynx.Server.Auth
             _cts?.Cancel();
             _cts?.Dispose();
 
+            _rateLimiter.Dispose();
+
             _stream.Dispose();
             Socket.Shutdown(SocketShutdown.Both);
             Socket.Disconnect(true);
@@ -324,6 +347,8 @@ namespace Sphynx.Server.Auth
 
             _cts?.Cancel();
             _cts?.Dispose();
+
+            _rateLimiter.Dispose();
 
             await _stream.DisposeAsync().ConfigureAwait(false);
             Socket.Shutdown(SocketShutdown.Both);

@@ -18,7 +18,7 @@ namespace Sphynx.Server.Auth
             transporter.AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer());
             transporter.AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
 
-            await using var server = new SphynxAuthServer(IPAddress.Parse("10.0.0.115"))
+            await using var server = new SphynxAuthServer(IPAddress.Loopback)
             {
                 PacketTransporter = transporter,
             };
