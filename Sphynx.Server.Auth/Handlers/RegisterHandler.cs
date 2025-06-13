@@ -1,0 +1,58 @@
+// Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
+using Microsoft.Extensions.Logging;
+using Sphynx.Core;
+using Sphynx.Network.PacketV2.Request;
+using Sphynx.Network.PacketV2.Response;
+using Sphynx.Server.Auth.Model;
+using Sphynx.Server.Auth.Services;
+
+namespace Sphynx.Server.Auth.Handlers
+{
+    public class RegisterHandler : IPacketHandler<RegisterRequest>
+    {
+        private readonly IAuthService _authService;
+        private readonly ILogger _logger;
+
+        public RegisterHandler(IAuthService authService, ILogger logger)
+        {
+            _authService = authService;
+            _logger = logger;
+        }
+
+        public ValueTask HandlePacketAsync(SphynxClient client, RegisterRequest request, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.UserName))
+                return client.SendPacketAsync(new RegisterResponse(SphynxErrorCode.INVALID_USERNAME), cancellationToken);
+
+            if (string.IsNullOrWhiteSpace(request.Password))
+                return client.SendPacketAsync(new RegisterResponse(SphynxErrorCode.INVALID_PASSWORD), cancellationToken);
+
+            return HandleRegisterAsync(client, request, cancellationToken);
+        }
+
+        private async ValueTask HandleRegisterAsync(SphynxClient client, RegisterRequest request, CancellationToken cancellationToken)
+        {
+            var authResult = await _authService.RegisterUserAsync(request.UserName, request.Password, cancellationToken).ConfigureAwait(false);
+
+            if (authResult.ErrorCode != SphynxErrorCode.SUCCESS)
+            {
+                await client.SendPacketAsync(new RegisterResponse(authResult.ErrorCode), cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            var authInfo = authResult.Data!.Value;
+
+            await client.SendPacketAsync(new RegisterResponse(authInfo.User.ToDto(), authInfo.SessionId), cancellationToken).ConfigureAwait(false);
+
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation("[{ClientId}]: Successfully authenticated with user {UserId} ({UserName})",
+                    client.ClientId, authInfo.User.UserId, authInfo.User.UserName);
+            }
+
+            await client.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+}

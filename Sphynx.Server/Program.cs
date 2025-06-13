@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Sockets;
+using MongoDB.Bson;
 
 namespace Sphynx.Server
 {
@@ -24,7 +25,7 @@ namespace Sphynx.Server
             // There exists one public chat (like #osu)
             // You can DM someone directly
             // You can see who is online
-            // 
+            //
         }
     }
 }
