@@ -1,7 +1,10 @@
 ﻿namespace Sphynx.Client
 {
-    internal static class Program
+    internal class Program
     {
-        static int Main(string[] args) => SphynxApp.Run(args);
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Hello World!");
+        }
     }
 }
