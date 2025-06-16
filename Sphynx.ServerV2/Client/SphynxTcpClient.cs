@@ -158,13 +158,13 @@ namespace Sphynx.ServerV2.Client
             // This might happen if the client forcibly closes the connection
             catch (Exception ex) when (ex is EndOfStreamException or ObjectDisposedException or ArgumentException)
             {
-                await StopInternalAsync(ex).ConfigureAwait(false);
+                await StopAsync(ex).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Unexpected exception occured while reading packets");
 
-                await StopInternalAsync(ex).ConfigureAwait(false);
+                await StopAsync(ex).ConfigureAwait(false);
             }
 
             return null;
@@ -210,14 +210,14 @@ namespace Sphynx.ServerV2.Client
                 if (Logger.IsEnabled(LogLevel.Warning))
                     Logger.LogWarning("Abandoning packet send request for packet {PacketType}", packet.PacketType);
 
-                await StopInternalAsync(ex).ConfigureAwait(false);
+                await StopAsync(ex).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 if (Logger.IsEnabled(LogLevel.Error))
                     Logger.LogError(ex, "Unexpected exception occured while sending packet {PacketType}", packet.PacketType);
 
-                await StopInternalAsync(ex).ConfigureAwait(false);
+                await StopAsync(ex).ConfigureAwait(false);
             }
         }
 
@@ -239,17 +239,12 @@ namespace Sphynx.ServerV2.Client
         /// <param name="disconnectException">The disconnection exception.</param>
         /// <remarks>Resources are not freed until <see cref="Dispose(bool)"/> or <see cref="DisposeAsync"/>
         /// is called.</remarks>
-        /// <exception cref="ObjectDisposedException">If this client has already been disposed.</exception>
-        protected ValueTask StopAsync(Exception? disconnectException)
+        protected async ValueTask StopAsync(Exception? disconnectException)
         {
+            // We allow clients to be stopped even when disposed. Just makes our lives easier.
             if (Volatile.Read(ref _disposed) != 0)
-                return ValueTask.FromException(new ObjectDisposedException(GetType().FullName));
+                return;
 
-            return StopInternalAsync(disconnectException);
-        }
-
-        private async ValueTask StopInternalAsync(Exception? disconnectException)
-        {
             if (Interlocked.CompareExchange(ref _stopped, 1, 0) != 0)
                 return;
 
@@ -286,7 +281,7 @@ namespace Sphynx.ServerV2.Client
             {
                 // If we are disconnecting the client from Dispose rather than DisconnectAsync (i.e. externally),
                 // make sure to notify the disconnect subscribers, simply passing null as the disconnection error
-                var stopTask = StopInternalAsync(null);
+                var stopTask = StopAsync(null);
 
                 if (!stopTask.IsCompleted)
                     stopTask.AsTask().Wait();

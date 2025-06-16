@@ -161,16 +161,12 @@ namespace Sphynx.ServerV2
         /// complete until the server has terminated; else, it will return after sending a stop signal.</returns>
         /// <remarks>This method does not dispose of the server's resources. <see cref="Dispose"/> or <see cref="DisposeAsync"/>
         /// should be called for that.</remarks>
-        public ValueTask StopAsync(bool waitForFinish = true)
+        public async ValueTask StopAsync(bool waitForFinish = true)
         {
+            // We allow the server to be stopped even when disposed. Just makes our lives easier.
             if (Volatile.Read(ref _disposed) != 0)
-                return ValueTask.FromException(new ObjectDisposedException(GetType().FullName));
+                return;
 
-            return StopInternalAsync(waitForFinish);
-        }
-
-        private async ValueTask StopInternalAsync(bool waitForFinish)
-        {
             // Fast path
             if (ServerCts.IsCancellationRequested && !waitForFinish)
                 return;
@@ -179,7 +175,8 @@ namespace Sphynx.ServerV2
             if (_isInsideServerTask.Value)
                 return;
 
-            ServerCts.Cancel();
+            if (!ServerCts.IsCancellationRequested)
+                ServerCts.Cancel();
 
             if (waitForFinish)
             {
@@ -225,7 +222,7 @@ namespace Sphynx.ServerV2
             {
                 OnStart = null;
 
-                var stopTask = StopInternalAsync(true);
+                var stopTask = StopAsync(waitForFinish: true);
 
                 if (!stopTask.IsCompleted)
                     stopTask.AsTask().Wait();

@@ -195,9 +195,14 @@ namespace Sphynx.ServerV2
 
         private void DisposeClients()
         {
+            // We don't want any extra clients being added in during the dispose process
+            Debug.Assert(ServerCts.IsCancellationRequested);
+            Debug.Assert(!ServerSocket?.Connected ?? true);
+
             try
             {
-                Parallel.ForEach(_connectedClients, kvp => kvp.Value.Dispose());
+                if (!_connectedClients.IsEmpty)
+                    Parallel.ForEach(_connectedClients, kvp => kvp.Value.Dispose());
             }
             catch
             {
