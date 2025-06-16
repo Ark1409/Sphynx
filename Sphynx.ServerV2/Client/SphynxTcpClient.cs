@@ -3,6 +3,7 @@
 
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.Transport;
@@ -66,13 +67,16 @@ namespace Sphynx.ServerV2.Client
         internal Socket Socket { get; }
 
         private readonly NetworkStream _stream;
-        private volatile Task? _clientTask;
 
-        // 0 = not yet disposed, 1 = disposing
+        private volatile Task? _clientTask;
+        private readonly AsyncLocal<bool> _isInsideClientTask = new();
+        private readonly SemaphoreSlim _startStopSemaphore = new(1, 1);
+
+        // 0 = not disposed, 1 = disposing/disposed
         private int _disposed;
 
-        // 0 = not yet disconnected, 1 = disconnected
-        private int _disconnected;
+        // 0 = not stopped, 1 = stopped
+        private int _stopped;
 
         public SphynxTcpClient(Socket socket, SphynxTcpServerProfile serverProfile) : this(socket,
             serverProfile.PacketTransporter, serverProfile.PacketHandler, serverProfile.LoggerFactory.CreateLogger(typeof(SphynxTcpClient)))
@@ -100,20 +104,31 @@ namespace Sphynx.ServerV2.Client
 
         public async ValueTask StartAsync(CancellationToken cancellationToken = default)
         {
-            ThrowIfDisposed();
+            ThrowIfStopped();
 
             if (Interlocked.CompareExchange(ref _started, 1, 0) != 0)
                 return;
 
             ClientCts = CancellationTokenSource.CreateLinkedTokenSource(ClientCts.Token, cancellationToken);
 
-            if (ClientCts.IsCancellationRequested)
+            if (!ClientCts.IsCancellationRequested)
             {
-                await DisconnectAsync(null).ConfigureAwait(false);
-                return;
+                await _startStopSemaphore.WaitAsync(ClientCts.Token).ConfigureAwait(false);
+
+                try
+                {
+                    _isInsideClientTask.Value = true;
+                    await (_clientTask = RunAsync(ClientCts.Token)).ConfigureAwait(false);
+                }
+                // All exceptions should be handled already
+                finally
+                {
+                    _isInsideClientTask.Value = false;
+                    _startStopSemaphore.Release();
+                }
             }
 
-            await (_clientTask = RunAsync(ClientCts.Token)).ConfigureAwait(false);
+            await DisposeAsync().ConfigureAwait(false);
         }
 
         private async Task RunAsync(CancellationToken cancellationToken)
@@ -127,8 +142,6 @@ namespace Sphynx.ServerV2.Client
 
                 await HandlePacketAsync(packet, cancellationToken).ConfigureAwait(false);
             }
-
-            await DisconnectAsync(null).ConfigureAwait(false);
         }
 
         private async ValueTask<SphynxPacket?> ReadPacketAsync(CancellationToken cancellationToken)
@@ -145,13 +158,13 @@ namespace Sphynx.ServerV2.Client
             // This might happen if the client forcibly closes the connection
             catch (Exception ex) when (ex is EndOfStreamException or ObjectDisposedException or ArgumentException)
             {
-                await DisconnectAsync(ex).ConfigureAwait(false);
+                await StopInternalAsync(ex).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Unexpected exception occured while reading packets");
 
-                await DisconnectAsync(ex).ConfigureAwait(false);
+                await StopInternalAsync(ex).ConfigureAwait(false);
             }
 
             return null;
@@ -173,13 +186,14 @@ namespace Sphynx.ServerV2.Client
         /// <inheritdoc/>
         public async ValueTask SendAsync(SphynxPacket packet, CancellationToken cancellationToken = default)
         {
-            ThrowIfDisposed();
+            ThrowIfStopped();
 
             try
             {
                 // TODO: Handle transient errors
+                // TODO: Verify send atomicity (maybe queue packet sends)
 
-                // I don't think creating a CTS for each send operation would be very wise. Simply passing
+                // Don't think creating a CTS for each send operation would be very wise. Simply passing
                 // the provided cancellationToken should be fine; in the worse case, the PacketTransporter
                 // throws when trying to write to the underlying stream if this client has already started
                 // its disposal process.
@@ -196,15 +210,21 @@ namespace Sphynx.ServerV2.Client
                 if (Logger.IsEnabled(LogLevel.Warning))
                     Logger.LogWarning("Abandoning packet send request for packet {PacketType}", packet.PacketType);
 
-                await DisconnectAsync(ex).ConfigureAwait(false);
+                await StopInternalAsync(ex).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 if (Logger.IsEnabled(LogLevel.Error))
                     Logger.LogError(ex, "Unexpected exception occured while sending packet {PacketType}", packet.PacketType);
 
-                await DisconnectAsync(ex).ConfigureAwait(false);
+                await StopInternalAsync(ex).ConfigureAwait(false);
             }
+        }
+
+        private void ThrowIfStopped()
+        {
+            ThrowIfDisposed();
+            ClientCts.Token.ThrowIfCancellationRequested();
         }
 
         private void ThrowIfDisposed()
@@ -214,21 +234,51 @@ namespace Sphynx.ServerV2.Client
         }
 
         /// <summary>
-        /// Disconnects this client from the server, with the given exception.
+        /// Signals a wish to disconnect the client from the server, with the given exception.
         /// </summary>
         /// <param name="disconnectException">The disconnection exception.</param>
-        /// <returns>A (most likely synchronous) disconnection task.</returns>
-        protected ValueTask DisconnectAsync(Exception? disconnectException)
+        /// <remarks>Resources are not freed until <see cref="Dispose(bool)"/> or <see cref="DisposeAsync"/>
+        /// is called.</remarks>
+        /// <exception cref="ObjectDisposedException">If this client has already been disposed.</exception>
+        protected ValueTask StopAsync(Exception? disconnectException)
         {
-            if (Interlocked.CompareExchange(ref _disconnected, 1, 0) != 0)
-                return ValueTask.CompletedTask;
+            if (Volatile.Read(ref _disposed) != 0)
+                return ValueTask.FromException(new ObjectDisposedException(GetType().FullName));
 
-            OnDisconnect?.Invoke(this, disconnectException);
-            return DisposeAsync();
+            return StopInternalAsync(disconnectException);
+        }
+
+        private async ValueTask StopInternalAsync(Exception? disconnectException)
+        {
+            if (Interlocked.CompareExchange(ref _stopped, 1, 0) != 0)
+                return;
+
+            await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
+
+            try
+            {
+                ClientCts.Cancel();
+                OnDisconnect?.Invoke(this, disconnectException);
+            }
+            // If we're disconnecting, we should expect a disposal soon anyway
+            catch
+            {
+                _startStopSemaphore.Release();
+            }
         }
 
         protected virtual void Dispose(bool disposing)
         {
+            // If we are stopping from the run loop, simply return. We don't need to mark our disposal, as
+            // dispose is going to be called anyway.
+            if (_isInsideClientTask.Value)
+            {
+                if (!ClientCts.IsCancellationRequested)
+                    ClientCts.Cancel();
+
+                return;
+            }
+
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
                 return;
 
@@ -236,12 +286,12 @@ namespace Sphynx.ServerV2.Client
             {
                 // If we are disconnecting the client from Dispose rather than DisconnectAsync (i.e. externally),
                 // make sure to notify the disconnect subscribers, simply passing null as the disconnection error
-                if (Interlocked.CompareExchange(ref _disconnected, 1, 0) == 0)
-                    OnDisconnect?.Invoke(this, null);
+                var stopTask = StopInternalAsync(null);
+
+                if (!stopTask.IsCompleted)
+                    stopTask.AsTask().Wait();
 
                 OnDisconnect = null;
-
-                ClientCts.Cancel();
 
                 _stream.Dispose();
 
@@ -250,9 +300,11 @@ namespace Sphynx.ServerV2.Client
 
                 var clientTask = _clientTask;
 
-                // The task isn't private anyway
-                if (clientTask is not null && clientTask.IsCompleted)
-                    clientTask.Dispose();
+                if (clientTask is not null && !clientTask.IsCompleted)
+                    clientTask.Wait();
+
+                ClientCts.Dispose();
+                _startStopSemaphore.Dispose();
             }
         }
 

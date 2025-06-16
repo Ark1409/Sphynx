@@ -43,7 +43,6 @@ namespace Sphynx.ServerV2
 
         private volatile Task? _serverTask;
         private readonly AsyncLocal<bool> _isInsideServerTask = new();
-
         private readonly SemaphoreSlim _startStopSemaphore = new(1, 1);
 
         // 0 = not started; 1 = started
@@ -115,6 +114,7 @@ namespace Sphynx.ServerV2
                 }
                 finally
                 {
+                    _isInsideServerTask.Value = false;
                     _startStopSemaphore.Release();
                 }
             }
@@ -126,8 +126,6 @@ namespace Sphynx.ServerV2
             {
                 Profile.Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
-
-            _isInsideServerTask.Value = false;
 
             Profile.Logger.LogInformation("Stopping server...");
 
@@ -232,6 +230,7 @@ namespace Sphynx.ServerV2
                 if (!stopTask.IsCompleted)
                     stopTask.AsTask().Wait();
 
+                _startStopSemaphore.Dispose();
                 ServerCts.Dispose();
                 Profile.Dispose();
             }
