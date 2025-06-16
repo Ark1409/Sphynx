@@ -11,6 +11,8 @@ namespace Sphynx.Network.Transport
     /// </summary>
     public interface IPacketTransporter
     {
+        // TODO: Provide an exceptionless API? (barring maybe cancellation)
+
         /// <summary>
         /// Sends a <paramref name="packet"/> to the underlying <paramref name="stream"/>.
         /// </summary>

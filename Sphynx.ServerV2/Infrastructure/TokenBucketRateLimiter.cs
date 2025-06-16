@@ -14,7 +14,7 @@ namespace Sphynx.ServerV2.Infrastructure
         public int Tokens { get; private set; }
 
         private long _lastTime;
-        private readonly SemaphoreSlim _semaphore = new(1);
+        private readonly SemaphoreSlim _semaphore = new(1,1);
 
         public TokenBucketRateLimiter(int tokensPerSecond) : this(tokensPerSecond, TimeSpan.FromSeconds(1))
         {
