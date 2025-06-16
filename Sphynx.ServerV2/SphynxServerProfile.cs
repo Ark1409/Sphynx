@@ -27,17 +27,17 @@ namespace Sphynx.ServerV2
         /// <summary>
         /// Returns the endpoint to be associated with the server.
         /// </summary>
-        public IPEndPoint EndPoint { get; init; } = DefaultEndPoint;
+        public IPEndPoint EndPoint { get; set; } = DefaultEndPoint;
 
         /// <summary>
         /// The primary logger factory which will be used by the server.
         /// </summary>
-        public virtual ILoggerFactory LoggerFactory { get; init; } = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
+        public virtual ILoggerFactory LoggerFactory { get; set; } = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
         {
-            builder.AddConsole(options =>
+            builder.AddSimpleConsole(options =>
             {
-                options.FormatterName = ConsoleFormatterNames.Simple;
-                options.QueueFullMode = ConsoleLoggerQueueFullMode.DropWrite;
+                options.IncludeScopes = true;
+                options.TimestampFormat = "[MM-dd-yyyy HH:mm:ss] ";
             });
         });
 
