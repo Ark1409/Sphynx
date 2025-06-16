@@ -29,7 +29,7 @@ namespace Sphynx.Network.Transport
                 AddSerializer(entry.Key, entry.Value);
         }
 
-        public async Task SendAsync(Stream stream, SphynxPacket packet, CancellationToken cancellationToken = default)
+        public async ValueTask SendAsync(Stream stream, SphynxPacket packet, CancellationToken cancellationToken = default)
         {
             if (!stream.CanWrite)
                 throw new ArgumentException("Stream must be writable", nameof(stream));
@@ -87,7 +87,7 @@ namespace Sphynx.Network.Transport
             return contentSize;
         }
 
-        public async Task<SphynxPacket> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
+        public async ValueTask<SphynxPacket> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
         {
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable", nameof(stream));
@@ -113,7 +113,7 @@ namespace Sphynx.Network.Transport
             }
         }
 
-        private async Task<SphynxPacketHeader> ReceiveHeaderAsync(Stream stream, CancellationToken cancellationToken = default)
+        private async ValueTask<SphynxPacketHeader> ReceiveHeaderAsync(Stream stream, CancellationToken cancellationToken = default)
         {
             var header = await SphynxPacketHeader.ReceiveAsync(stream, cancellationToken).ConfigureAwait(false);
 
