@@ -69,7 +69,7 @@ namespace Sphynx.ServerV2
                     if (Profile.Logger.IsEnabled(LogLevel.Information))
                         Profile.Logger.LogInformation("Accepted client on {Address}", socket.RemoteEndPoint);
 
-                    StartClient(socket);
+                    StartClient(socket, cancellationToken);
                 }
                 catch (Exception ex) when (ex.IsCancellationException())
                 {
@@ -83,7 +83,7 @@ namespace Sphynx.ServerV2
         }
 
         // TODO: Fix to be allocation-free
-        private void StartClient(Socket clientSocket) => ThreadPool.QueueUserWorkItem(async void (socket) =>
+        private void StartClient(Socket clientSocket, CancellationToken cancellationToken) => ThreadPool.QueueUserWorkItem(async void (socket) =>
         {
             if (Profile.Logger.IsEnabled(LogLevel.Debug))
                 Profile.Logger.LogDebug("Initializing client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
@@ -104,7 +104,7 @@ namespace Sphynx.ServerV2
             }
 
             // Last-chance check
-            if (ServerCts.IsCancellationRequested)
+            if (cancellationToken.IsCancellationRequested)
             {
                 await DisposeClientAsync(client).ConfigureAwait(false);
                 return;
@@ -112,7 +112,7 @@ namespace Sphynx.ServerV2
 
             try
             {
-                await StartClientAsync(client, ServerCts.Token).ConfigureAwait(false);
+                await StartClientAsync(client, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -189,14 +189,17 @@ namespace Sphynx.ServerV2
 
         private void ShutdownServer()
         {
-            ServerCts.Cancel();
+            var stopTask = StopAsync(waitForFinish: true);
+
+            if (!stopTask.IsCompleted)
+                stopTask.AsTask().Wait();
+
             ServerSocket?.Dispose();
         }
 
         private void DisposeClients()
         {
             // We don't want any extra clients being added in during the dispose process
-            Debug.Assert(ServerCts.IsCancellationRequested);
             Debug.Assert(!ServerSocket?.Connected ?? true);
 
             try

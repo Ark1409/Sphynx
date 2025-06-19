@@ -1,6 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Sphynx.ServerV2
@@ -32,23 +33,23 @@ namespace Sphynx.ServerV2
         public virtual SphynxServerProfile Profile { get; }
 
         /// <summary>
-        /// Cancellation token source for the server running state.
-        /// </summary>
-        protected CancellationTokenSource ServerCts { get; private set; } = new();
-
-        /// <summary>
         /// The start task representing the running state of the server.
         /// </summary>
         protected Task? ServerTask => _serverTask;
 
         private volatile Task? _serverTask;
+
+        private CancellationTokenSource _serverCts = new();
         private readonly AsyncLocal<bool> _isInsideServerTask = new();
-        private readonly SemaphoreSlim _startStopSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _startStopSemaphore = new(1, int.MaxValue);
 
         // 0 = not started; 1 = started
         private int _started;
 
-        // 0 = not disposed; 1 = disposing/disposed
+        private bool IsDisposed => Volatile.Read(ref _disposed) == 2;
+        private bool IsDisposing => Volatile.Read(ref _disposed) == 1;
+
+        // 0 = not disposed; 1 = disposing; 2 = disposed
         private int _disposed;
 
         /// <summary>
@@ -91,43 +92,49 @@ namespace Sphynx.ServerV2
             if (Interlocked.CompareExchange(ref _started, 1, 0) != 0)
                 return;
 
-            ServerCts = CancellationTokenSource.CreateLinkedTokenSource(ServerCts.Token, cancellationToken);
-
-            if (ServerCts.IsCancellationRequested)
-            {
-                await DisposeAsync().ConfigureAwait(false);
-                return;
-            }
-
             OnStart?.Invoke(this);
 
             try
             {
-                Profile.Logger.LogDebug("Starting server...");
+                await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
+                _serverCts = CancellationTokenSource.CreateLinkedTokenSource(_serverCts.Token, cancellationToken);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Someone is already disposing
+                return;
+            }
 
-                await _startStopSemaphore.WaitAsync(ServerCts.Token).ConfigureAwait(false);
+            try
+            {
+                Profile.Logger.LogDebug("Starting {ServerName}...", Name);
 
-                try
+                if (!_serverCts.IsCancellationRequested)
                 {
-                    _isInsideServerTask.Value = true;
-                    await (_serverTask = OnStartAsync(ServerCts.Token)).ConfigureAwait(false);
+                    try
+                    {
+                        _isInsideServerTask.Value = true;
+                        await (_serverTask = OnStartAsync(_serverCts.Token)).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        _isInsideServerTask.Value = false;
+                    }
                 }
-                finally
-                {
-                    _isInsideServerTask.Value = false;
-                    _startStopSemaphore.Release();
-                }
+
+                Profile.Logger.LogDebug("Stopping {ServerName}...", Name);
             }
             catch (OperationCanceledException)
             {
-                // Server stopped
+                // Likely server stopped
             }
             catch (Exception ex)
             {
                 Profile.Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
 
-            Profile.Logger.LogInformation("Stopping server...");
+            // Shouldn't be possible to dispose of the semaphore while we have it acquired
+            _startStopSemaphore.Release();
 
             await StopAsync().ConfigureAwait(false);
         }
@@ -135,12 +142,14 @@ namespace Sphynx.ServerV2
         private void ThrowIfStopped()
         {
             ThrowIfDisposed();
-            ServerCts.Token.ThrowIfCancellationRequested();
+
+            if (_serverCts.IsCancellationRequested)
+                throw new OperationCanceledException("This operation has been cancelled");
         }
 
         private void ThrowIfDisposed()
         {
-            if (Volatile.Read(ref _disposed) != 0)
+            if (IsDisposing || IsDisposed)
                 throw new ObjectDisposedException(GetType().FullName);
         }
 
@@ -161,40 +170,74 @@ namespace Sphynx.ServerV2
         /// complete until the server has terminated; else, it will return after sending a stop signal.</returns>
         /// <remarks>This method does not dispose of the server's resources. <see cref="Dispose"/> or <see cref="DisposeAsync"/>
         /// should be called for that.</remarks>
-        public async ValueTask StopAsync(bool waitForFinish = true)
+        public ValueTask StopAsync(bool waitForFinish = true)
         {
             // We allow the server to be stopped even when disposed. Just makes our lives easier.
-            if (Volatile.Read(ref _disposed) != 0)
-                return;
+            if (IsDisposed)
+                return ValueTask.CompletedTask;
 
             // Fast path
-            if (ServerCts.IsCancellationRequested && !waitForFinish)
-                return;
+            if (_serverCts.IsCancellationRequested && !waitForFinish)
+                return ValueTask.CompletedTask;
 
-            // If we are stopping from the server loop, simply return
-            if (_isInsideServerTask.Value)
-                return;
-
-            if (!ServerCts.IsCancellationRequested)
-                ServerCts.Cancel();
-
-            if (waitForFinish)
+            // Simply signal for stop
+            if (!_serverCts.IsCancellationRequested)
             {
-                // It shouldn't be possible to deadlock through reentrancy here, since we already return early
-                // if we came from the run loop
-                await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
-
                 try
                 {
-                    var serverTask = _serverTask;
-
-                    if (serverTask is not null)
-                        await serverTask;
+                    _serverCts.Cancel();
                 }
-                finally
+                catch (ObjectDisposedException)
                 {
-                    _startStopSemaphore.Release();
+                    // Since we are not acquiring the semaphore before cancelling, it's technically
+                    // possible for a concurrent disposal to sneak in after the previous
+                    // cancellation check. This can technically be guarded against by yet another
+                    // semaphore, but that would potentially make this unlikely path non-synchronous,
+                    // which might confuse the caller when waitForFinish == false.
                 }
+            }
+
+            if (_isInsideServerTask.Value || !waitForFinish)
+                return ValueTask.CompletedTask;
+
+            return WaitAsync();
+        }
+
+        /// <summary>
+        /// Waits for the server to finish execution, or simply returns if it hasn't been started.
+        /// </summary>
+        private async ValueTask WaitAsync()
+        {
+            try
+            {
+                await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
+            }
+            catch (ObjectDisposedException)
+            {
+                // If disposal occured before acquiring the semaphore, then the server task either completed,
+                // or won't start at all, so we can just return.
+                return;
+            }
+
+            try
+            {
+                var serverTask = _serverTask;
+
+                if (serverTask is not null)
+                    await serverTask;
+            }
+            catch
+            {
+                // Ignore execution exceptions. We assume they've already been handled elsewhere.
+            }
+
+            try
+            {
+                _startStopSemaphore.Release();
+            }
+            catch (ObjectDisposedException)
+            {
+                // We don't really care at this point
             }
         }
 
@@ -222,15 +265,35 @@ namespace Sphynx.ServerV2
             {
                 OnStart = null;
 
-                var stopTask = StopAsync(waitForFinish: true);
+                var stopTask = StopAsync();
 
                 if (!stopTask.IsCompleted)
                     stopTask.AsTask().Wait();
 
-                _startStopSemaphore.Dispose();
-                ServerCts.Dispose();
+                DisposeServer();
+            }
+
+            Volatile.Write(ref _disposed, 2);
+        }
+
+        private void DisposeServer()
+        {
+            _startStopSemaphore.Wait();
+
+            try
+            {
+                _serverCts.Cancel();
+                _serverCts.Dispose();
+
                 Profile.Dispose();
             }
+            catch
+            {
+                // We don't really care at this point
+            }
+
+            _startStopSemaphore.Release(int.MaxValue);
+            _startStopSemaphore.Dispose();
         }
 
         /// <inheritdoc/>
