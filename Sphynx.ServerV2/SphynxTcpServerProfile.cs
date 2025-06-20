@@ -21,7 +21,7 @@ namespace Sphynx.ServerV2
         /// <summary>
         /// Returns buffer size for information exchange.
         /// </summary>
-        public int BufferSize { get; protected set; } = ushort.MaxValue;
+        public int BufferSize { get; protected set; } = 8192;
 
         /// <summary>
         /// Retrieves the default server logging instance.

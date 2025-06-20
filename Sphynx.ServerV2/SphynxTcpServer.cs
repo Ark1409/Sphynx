@@ -143,6 +143,7 @@ namespace Sphynx.ServerV2
 
                 client.OnDisconnect += (c, ex) =>
                 {
+                    // TODO: Maybe move into client
                     c.Logger.LogInformation(ex, "Client disconnected");
 
                     c.Dispose();
@@ -150,14 +151,7 @@ namespace Sphynx.ServerV2
                     _socketPool!.Return(c.Socket);
                 };
 
-                try
-                {
-                    await client.StartAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    client.Logger.LogError(ex, "Unhandled exception in client read loop");
-                }
+                await client.StartAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
