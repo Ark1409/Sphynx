@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Sphynx.ServerV2
@@ -45,9 +44,6 @@ namespace Sphynx.ServerV2
 
         // 0 = not started; 1 = started
         private int _started;
-
-        private bool IsDisposed => Volatile.Read(ref _disposed) == 2;
-        private bool IsDisposing => Volatile.Read(ref _disposed) == 1;
 
         // 0 = not disposed; 1 = disposing; 2 = disposed
         private int _disposed;
@@ -101,7 +97,7 @@ namespace Sphynx.ServerV2
             }
             catch (ObjectDisposedException)
             {
-                // Someone is already disposing
+                // Someone is already disposing, no need to release the semaphore
                 return;
             }
 
@@ -133,7 +129,7 @@ namespace Sphynx.ServerV2
                 Profile.Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
 
-            // Shouldn't be possible to dispose of the semaphore while we have it acquired
+            // Shouldn't be possible for the semaphore to be disposed of while we have it acquired
             _startStopSemaphore.Release();
 
             await StopAsync().ConfigureAwait(false);
@@ -144,12 +140,12 @@ namespace Sphynx.ServerV2
             ThrowIfDisposed();
 
             if (_serverCts.IsCancellationRequested)
-                throw new OperationCanceledException("This operation has been cancelled");
+                throw new OperationCanceledException("The operation was canceled.");
         }
 
         private void ThrowIfDisposed()
         {
-            if (IsDisposing || IsDisposed)
+            if (Volatile.Read(ref _disposed) != 0)
                 throw new ObjectDisposedException(GetType().FullName);
         }
 
@@ -173,11 +169,7 @@ namespace Sphynx.ServerV2
         public ValueTask StopAsync(bool waitForFinish = true)
         {
             // We allow the server to be stopped even when disposed. Just makes our lives easier.
-            if (IsDisposed)
-                return ValueTask.CompletedTask;
-
-            // Fast path
-            if (_serverCts.IsCancellationRequested && !waitForFinish)
+            if (Volatile.Read(ref _disposed) == 2)
                 return ValueTask.CompletedTask;
 
             // Simply signal for stop
@@ -217,18 +209,6 @@ namespace Sphynx.ServerV2
                 // If disposal occured before acquiring the semaphore, then the server task either completed,
                 // or won't start at all, so we can just return.
                 return;
-            }
-
-            try
-            {
-                var serverTask = _serverTask;
-
-                if (serverTask is not null)
-                    await serverTask;
-            }
-            catch
-            {
-                // Ignore execution exceptions. We assume they've already been handled elsewhere.
             }
 
             try
@@ -282,9 +262,7 @@ namespace Sphynx.ServerV2
 
             try
             {
-                _serverCts.Cancel();
                 _serverCts.Dispose();
-
                 Profile.Dispose();
             }
             catch
