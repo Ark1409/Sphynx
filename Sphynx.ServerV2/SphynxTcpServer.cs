@@ -144,12 +144,11 @@ namespace Sphynx.ServerV2
 
                 Debug.Assert(insertedClient);
 
-                client.OnDisconnect += (c, ex) =>
+                client.OnDisconnect += async (c, ex) =>
                 {
-                    // TODO: Maybe move into client
-                    c.Logger.LogInformation(ex, "Client disconnected");
+                    c.Logger.LogInformation("Client disconnected");
 
-                    c.Dispose();
+                    await c.DisposeAsync().ConfigureAwait(false);
                     _connectedClients.Remove(c.ClientId, out _);
                     _socketPool!.Return(c.Socket);
                 };

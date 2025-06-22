@@ -91,6 +91,9 @@ namespace Sphynx.ServerV2
                 return;
             }
 
+            if (_serverCts.IsCancellationRequested)
+                return;
+
             OnStart?.Invoke(this);
 
             try
