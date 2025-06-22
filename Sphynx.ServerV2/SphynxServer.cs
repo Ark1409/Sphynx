@@ -8,7 +8,7 @@ namespace Sphynx.ServerV2
     /// <summary>
     /// Represents a generic server instance which accepts clients on a specific endpoint.
     /// </summary>
-    public abstract class SphynxServer : IDisposable, IAsyncDisposable
+    public abstract class SphynxServer : IAsyncDisposable
     {
         /// <summary>
         /// Retrieves the running state of the server.
@@ -40,7 +40,7 @@ namespace Sphynx.ServerV2
 
         private CancellationTokenSource _serverCts = new();
         private readonly AsyncLocal<bool> _isInsideServerTask = new();
-        private readonly SemaphoreSlim _startStopSemaphore = new(1, int.MaxValue);
+        private readonly SemaphoreSlim _startStopSemaphore = new(1, 1);
 
         // 0 = not started; 1 = started
         private int _started;
@@ -90,15 +90,15 @@ namespace Sphynx.ServerV2
 
             OnStart?.Invoke(this);
 
+            await _startStopSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
             try
             {
-                await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
                 _serverCts = CancellationTokenSource.CreateLinkedTokenSource(_serverCts.Token, cancellationToken);
             }
             catch (ObjectDisposedException)
             {
-                // Someone is already disposing, no need to release the semaphore
-                return;
+                // Server has been disposed of. The CTS should be cancelled.
             }
 
             try
@@ -129,7 +129,6 @@ namespace Sphynx.ServerV2
                 Profile.Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
 
-            // Shouldn't be possible for the semaphore to be disposed of while we have it acquired
             _startStopSemaphore.Release();
 
             await StopAsync().ConfigureAwait(false);
@@ -200,25 +199,8 @@ namespace Sphynx.ServerV2
         /// </summary>
         private async ValueTask WaitAsync()
         {
-            try
-            {
-                await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
-            }
-            catch (ObjectDisposedException)
-            {
-                // If disposal occured before acquiring the semaphore, then the server task either completed,
-                // or won't start at all, so we can just return.
-                return;
-            }
-
-            try
-            {
-                _startStopSemaphore.Release();
-            }
-            catch (ObjectDisposedException)
-            {
-                // We don't really care at this point
-            }
+            await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
+            _startStopSemaphore.Release();
         }
 
         /// <summary>
@@ -227,38 +209,9 @@ namespace Sphynx.ServerV2
         /// <returns>The server's name.</returns>
         public override string ToString() => Name;
 
-        /// <summary>
-        /// Disposes of all resources held by this <see cref="SphynxServer"/>.
-        /// </summary>
-        public void Dispose()
+        private async ValueTask DisposeServerAsync()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
-                return;
-
-            if (disposing)
-            {
-                OnStart = null;
-
-                var stopTask = StopAsync();
-
-                if (!stopTask.IsCompleted)
-                    stopTask.AsTask().Wait();
-
-                DisposeServer();
-            }
-
-            Volatile.Write(ref _disposed, 2);
-        }
-
-        private void DisposeServer()
-        {
-            _startStopSemaphore.Wait();
+            await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
 
             try
             {
@@ -270,22 +223,23 @@ namespace Sphynx.ServerV2
                 // We don't really care at this point
             }
 
-            _startStopSemaphore.Release(int.MaxValue);
-            _startStopSemaphore.Dispose();
+            _startStopSemaphore.Release();
         }
 
-        /// <inheritdoc/>
-        public virtual ValueTask DisposeAsync()
+        /// <summary>
+        /// Asynchronously disposes of all resources held by this <see cref="SphynxServer"/>.
+        /// </summary>
+        public async ValueTask DisposeAsync()
         {
-            try
-            {
-                Dispose();
-                return ValueTask.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                return ValueTask.FromException(ex);
-            }
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
+            OnStart = null;
+
+            await StopAsync().ConfigureAwait(false);
+            await DisposeServerAsync().ConfigureAwait(false);
+
+            Volatile.Write(ref _disposed, 2);
         }
     }
 }
