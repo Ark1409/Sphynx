@@ -72,7 +72,7 @@ namespace Sphynx.ServerV2
                     if (Profile.Logger.IsEnabled(LogLevel.Information))
                         Profile.Logger.LogInformation("Accepted client on {Address}", socket.RemoteEndPoint);
 
-                    StartClient(socket, cancellationToken);
+                    QueueStartClient(socket, cancellationToken);
                 }
                 catch (Exception ex) when (ex.IsCancellationException())
                 {
@@ -85,7 +85,7 @@ namespace Sphynx.ServerV2
             }
         }
 
-        private void StartClient(Socket clientSocket, CancellationToken cancellationToken)
+        private void QueueStartClient(Socket clientSocket, CancellationToken cancellationToken)
         {
             var state = new StartClientState
             {
@@ -99,9 +99,6 @@ namespace Sphynx.ServerV2
                 var server = s.Server;
                 var socket = s.Socket;
                 var ct = s.Token;
-
-                if (server.Profile.Logger.IsEnabled(LogLevel.Debug))
-                    server.Profile.Logger.LogDebug("Initializing client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
 
                 SphynxTcpClient? client = null;
 
@@ -118,6 +115,9 @@ namespace Sphynx.ServerV2
                     await server.DisposeClientAsync(client).ConfigureAwait(false);
                     return;
                 }
+
+                if (server.Profile.Logger.IsEnabled(LogLevel.Debug))
+                    server.Profile.Logger.LogDebug("Initialized client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
 
                 // Last-chance check
                 if (ct.IsCancellationRequested)
@@ -148,7 +148,7 @@ namespace Sphynx.ServerV2
         }
 
         /// <summary>
-        /// Called once a client connects to the server. The client may or may not have began they run loop.
+        /// Called once a client connects to the server. This is executed before the client's run loop.
         /// </summary>
         /// <param name="client">The client that connected.</param>
         protected virtual void OnClientConnected(SphynxTcpClient client) { }
@@ -163,21 +163,18 @@ namespace Sphynx.ServerV2
             return new SphynxTcpClient(clientSocket, Profile);
         }
 
-        private async ValueTask StartClientAsync(SphynxTcpClient client, CancellationToken cancellationToken)
+        private async Task StartClientAsync(SphynxTcpClient client, CancellationToken cancellationToken)
         {
+            bool insertedClient = _connectedClients.TryAdd(client.ClientId, client);
+            Debug.Assert(insertedClient);
+
+            OnClientConnected(client);
+
             using (client.Logger.BeginScope(client.EndPoint))
             {
-                bool insertedClient = _connectedClients.TryAdd(client.ClientId, client);
-
-                Debug.Assert(insertedClient);
-
                 try
                 {
-                    var clientTask = client.StartAsync(cancellationToken).AsTask();
-
-                    OnClientConnected(client);
-
-                    await clientTask.ConfigureAwait(false);
+                    await client.StartAsync(cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -200,7 +197,14 @@ namespace Sphynx.ServerV2
                     await client.DisposeAsync(disposeSocket: false).ConfigureAwait(false);
 
                     // Test for disposal or invalid state
-                    await client.Socket.DisconnectAsync(true).ConfigureAwait(false);
+                    try
+                    {
+                        await client.Socket.DisconnectAsync(true).ConfigureAwait(false);
+                    }
+                    catch (SocketException ex) when (ex.SocketErrorCode == SocketError.NotConnected)
+                    {
+                        // TODO: Assume not disposed?
+                    }
 
                     _socketPool!.Return(client.Socket);
                     return true;

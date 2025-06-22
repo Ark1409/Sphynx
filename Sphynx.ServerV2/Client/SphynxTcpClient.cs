@@ -13,7 +13,7 @@ using Sphynx.ServerV2.Handlers;
 namespace Sphynx.ServerV2.Client
 {
     /// <summary>
-    /// Represents a client socket connection to the server.
+    /// Represents a TCP client socket connection to a <see cref="SphynxTcpServer"/>.
     /// </summary>
     public class SphynxTcpClient : ISphynxClient, IAsyncDisposable
     {
@@ -75,10 +75,7 @@ namespace Sphynx.ServerV2.Client
         private readonly SemaphoreSlim _startSemaphore = new(1, 1);
         private readonly SemaphoreSlim _disposeSemaphore = new(0, 1);
 
-        private bool IsDisposed => Volatile.Read(ref _disposed) != 0;
-
-        // 0 = not disposed; 1 = disposed
-        private int _disposed;
+        private volatile bool _disposed;
 
         // 0 = not stopped; 1 = stopping/stopped
         private int _stopped;
@@ -113,15 +110,37 @@ namespace Sphynx.ServerV2.Client
 
             await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            // Propagate exceptions to concurrent callers
-            if (_clientTask is not null)
+            Exception? runtimeException;
+
+            try
             {
-                await _clientTask.ConfigureAwait(false);
-                return;
+                // Propagate exceptions to concurrent callers
+                if (_clientTask is not null)
+                {
+                    await _clientTask.ConfigureAwait(false);
+                    return;
+                }
+
+                if (_clientCts.IsCancellationRequested)
+                    return;
+
+                Logger.LogDebug("Starting client run loop...");
+
+                runtimeException = await StartInternalAsync(cancellationToken).ConfigureAwait(false);
+
+                Logger.LogDebug("Stopping client run loop...");
+            }
+            finally
+            {
+                _startSemaphore.Release();
             }
 
-            if (_clientCts.IsCancellationRequested)
-                return;
+            await StopAsync(runtimeException).ConfigureAwait(false);
+        }
+
+        private async ValueTask<Exception?> StartInternalAsync(CancellationToken cancellationToken)
+        {
+            Debug.Assert(_clientTask == null);
 
             try
             {
@@ -131,8 +150,6 @@ namespace Sphynx.ServerV2.Client
             {
                 // Client has been disposed of. The CTS should be cancelled.
             }
-
-            Exception? runtimeException = null;
 
             try
             {
@@ -155,12 +172,11 @@ namespace Sphynx.ServerV2.Client
             }
             catch (Exception ex)
             {
-                Logger.LogError(runtimeException = ex, "An unhandled exception occured during client execution");
+                Logger.LogError(ex, "An unhandled exception occured during client execution");
+                return ex;
             }
 
-            _startSemaphore.Release();
-
-            await StopAsync(runtimeException).ConfigureAwait(false);
+            return null;
         }
 
         private async Task RunAsync(CancellationToken cancellationToken)
@@ -210,7 +226,11 @@ namespace Sphynx.ServerV2.Client
             {
                 await PacketHandler.HandlePacketAsync(this, packet, cancellationToken).ConfigureAwait(false);
             }
-            // TODO: Check for cancellation
+            catch (OperationCanceledException)
+            {
+                if (Logger.IsEnabled(LogLevel.Warning))
+                    Logger.LogWarning("Packet handling cancelled for packet {PacketType}", packet.PacketType);
+            }
             catch (Exception ex)
             {
                 if (Logger.IsEnabled(LogLevel.Error))
@@ -266,7 +286,7 @@ namespace Sphynx.ServerV2.Client
 
         private void ThrowIfDisposed()
         {
-            if (IsDisposed)
+            if (_disposed)
                 throw new ObjectDisposedException(GetType().FullName);
         }
 
@@ -290,7 +310,7 @@ namespace Sphynx.ServerV2.Client
         public ValueTask StopAsync(Exception? disconnectException = null, bool waitForFinish = true)
         {
             // We allow the client to be stopped even when disposed. Just makes our lives easier.
-            if (IsDisposed)
+            if (_disposed)
                 return ValueTask.CompletedTask;
 
             // Try and reserve ourselves
@@ -339,25 +359,25 @@ namespace Sphynx.ServerV2.Client
 
         private void QueueDisconnect(Exception? disconnectException)
         {
-            var queueState = new DisconnectState
+            var state = new DisconnectState
             {
                 Client = this,
                 DisconnectException = disconnectException
             };
 
-            ThreadPool.QueueUserWorkItem(static async void (state) =>
+            ThreadPool.QueueUserWorkItem(static async void (s) =>
             {
                 try
                 {
-                    await state.Client.WaitAsync().ConfigureAwait(false);
+                    await s.Client.WaitAsync().ConfigureAwait(false);
                 }
                 catch
                 {
                     // Less important
                 }
 
-                await state.Client.PerformDisconnectAsync(state.DisconnectException).ConfigureAwait(false);
-            }, queueState, false);
+                await s.Client.PerformDisconnectAsync(s.DisconnectException).ConfigureAwait(false);
+            }, state, false);
         }
 
         private readonly struct DisconnectState
@@ -420,7 +440,7 @@ namespace Sphynx.ServerV2.Client
         /// </summary>
         private async ValueTask WaitAsync()
         {
-            if (IsDisposed)
+            if (_disposed)
                 return;
 
             if (_clientTask?.IsCompleted ?? false)
@@ -441,7 +461,7 @@ namespace Sphynx.ServerV2.Client
         /// <param name="disposeSocket">Whether to dispose of the socket used by the client.</param>
         public virtual async ValueTask DisposeAsync(bool disposeSocket)
         {
-            if (IsDisposed)
+            if (_disposed)
                 return;
 
             await StopAsync(waitForFinish: true).ConfigureAwait(false);
@@ -452,7 +472,7 @@ namespace Sphynx.ServerV2.Client
         {
             await _disposeSemaphore.WaitAsync().ConfigureAwait(false);
 
-            if (IsDisposed)
+            if (_disposed)
                 return;
 
             try
@@ -467,7 +487,7 @@ namespace Sphynx.ServerV2.Client
             }
             finally
             {
-                Interlocked.Exchange(ref _disposed, 1);
+                _disposed = true;
                 _disposeSemaphore.Release();
             }
         }
