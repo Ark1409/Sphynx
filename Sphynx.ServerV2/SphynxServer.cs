@@ -1,6 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Sphynx.ServerV2
@@ -40,13 +41,9 @@ namespace Sphynx.ServerV2
 
         private CancellationTokenSource _serverCts = new();
         private readonly AsyncLocal<bool> _isInsideServerTask = new();
-        private readonly SemaphoreSlim _startStopSemaphore = new(1, 1);
+        private readonly SemaphoreSlim _startSemaphore = new(1, 1);
 
-        // 0 = not started; 1 = started
-        private int _started;
-
-        // 0 = not disposed; 1 = disposing; 2 = disposed
-        private int _disposed;
+        private volatile bool _disposed;
 
         /// <summary>
         /// Creates (but does not start) a new <see cref="SphynxServer"/> using the specified <paramref name="profile"/>.
@@ -78,19 +75,23 @@ namespace Sphynx.ServerV2
         /// will also stop the server, and it may be stopped manually by calling <see cref="StopAsync"/>.
         /// </summary>
         /// <param name="cancellationToken">A cancellation token to control the running state of the server.</param>
-        /// <returns>The started server task. If the server has already been started, this should return a completed task.</returns>
+        /// <returns>The started server task.</returns>
         /// <exception cref="ObjectDisposedException">If this server has already been disposed.</exception>
         /// <exception cref="OperationCanceledException">If this server has already been stopped.</exception>
         public async ValueTask StartAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfStopped();
 
-            if (Interlocked.CompareExchange(ref _started, 1, 0) != 0)
+            await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+            // Propagate exceptions to concurrent callers
+            if (_serverTask is not null)
+            {
+                await _serverTask.ConfigureAwait(false);
                 return;
+            }
 
             OnStart?.Invoke(this);
-
-            await _startStopSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
@@ -101,10 +102,10 @@ namespace Sphynx.ServerV2
                 // Server has been disposed of. The CTS should be cancelled.
             }
 
+            Profile.Logger.LogDebug("Starting {ServerName}...", Name);
+
             try
             {
-                Profile.Logger.LogDebug("Starting {ServerName}...", Name);
-
                 if (!_serverCts.IsCancellationRequested)
                 {
                     try
@@ -117,8 +118,6 @@ namespace Sphynx.ServerV2
                         _isInsideServerTask.Value = false;
                     }
                 }
-
-                Profile.Logger.LogDebug("Stopping {ServerName}...", Name);
             }
             catch (OperationCanceledException)
             {
@@ -129,8 +128,9 @@ namespace Sphynx.ServerV2
                 Profile.Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
 
-            _startStopSemaphore.Release();
+            _startSemaphore.Release();
 
+            Profile.Logger.LogDebug("Stopping {ServerName}...", Name);
             await StopAsync().ConfigureAwait(false);
         }
 
@@ -144,7 +144,7 @@ namespace Sphynx.ServerV2
 
         private void ThrowIfDisposed()
         {
-            if (Volatile.Read(ref _disposed) != 0)
+            if (_disposed)
                 throw new ObjectDisposedException(GetType().FullName);
         }
 
@@ -154,7 +154,7 @@ namespace Sphynx.ServerV2
         /// </summary>
         /// <param name="cancellationToken">A cancellation token to control the running state of the server. Once cancelled,
         /// it is expected that the server should begin its shutdown process.</param>
-        /// <returns>The server's running task. The task should not complete at least until the server has begun its shutdown process.</returns>
+        /// <returns>The server's running task. The task should not complete until the server has begun its shutdown process.</returns>
         protected abstract Task OnStartAsync(CancellationToken cancellationToken);
 
         /// <summary>
@@ -163,15 +163,15 @@ namespace Sphynx.ServerV2
         /// <param name="waitForFinish">Whether to wait the server to finish.</param>
         /// <returns>A task representing the stop operation. If <paramref name="waitForFinish"/> is true, this task will not
         /// complete until the server has terminated; else, it will return after sending a stop signal.</returns>
-        /// <remarks>This method does not dispose of the server's resources. <see cref="Dispose"/> or <see cref="DisposeAsync"/>
-        /// should be called for that.</remarks>
+        /// <remarks>This method does not dispose of the server's resources. <see cref="DisposeAsync"/> should be called for
+        /// that.</remarks>
         public ValueTask StopAsync(bool waitForFinish = true)
         {
             // We allow the server to be stopped even when disposed. Just makes our lives easier.
-            if (Volatile.Read(ref _disposed) == 2)
+            if (_disposed)
                 return ValueTask.CompletedTask;
 
-            // Simply signal for stop
+            // Signal for stop
             if (!_serverCts.IsCancellationRequested)
             {
                 try
@@ -195,12 +195,18 @@ namespace Sphynx.ServerV2
         }
 
         /// <summary>
-        /// Waits for the server to finish execution, or simply returns if it hasn't been started.
+        /// Waits for the server to finish execution.
         /// </summary>
         private async ValueTask WaitAsync()
         {
-            await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
-            _startStopSemaphore.Release();
+            if (_disposed)
+                return;
+
+            if (_serverTask?.IsCompleted ?? false)
+                return;
+
+            await _startSemaphore.WaitAsync().ConfigureAwait(false);
+            _startSemaphore.Release();
         }
 
         /// <summary>
@@ -211,7 +217,10 @@ namespace Sphynx.ServerV2
 
         private async ValueTask DisposeServerAsync()
         {
-            await _startStopSemaphore.WaitAsync().ConfigureAwait(false);
+            await _startSemaphore.WaitAsync().ConfigureAwait(false);
+
+            if (_disposed)
+                return;
 
             try
             {
@@ -223,23 +232,23 @@ namespace Sphynx.ServerV2
                 // We don't really care at this point
             }
 
-            _startStopSemaphore.Release();
+            _disposed = true;
+            _startSemaphore.Release();
         }
 
         /// <summary>
         /// Asynchronously disposes of all resources held by this <see cref="SphynxServer"/>.
         /// </summary>
-        public async ValueTask DisposeAsync()
+        public virtual async ValueTask DisposeAsync()
         {
-            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+            // Concurrent disposal should be fine
+            if (_disposed)
                 return;
 
             OnStart = null;
 
             await StopAsync().ConfigureAwait(false);
             await DisposeServerAsync().ConfigureAwait(false);
-
-            Volatile.Write(ref _disposed, 2);
         }
     }
 }

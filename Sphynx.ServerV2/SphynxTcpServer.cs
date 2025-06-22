@@ -30,6 +30,9 @@ namespace Sphynx.ServerV2
         private readonly ConcurrentDictionary<Guid, SphynxTcpClient> _connectedClients = new();
         private WeakObjectPool<Socket>? _socketPool;
 
+        private readonly SemaphoreSlim _disposeSemaphore = new(1, 1);
+        private bool _disposed;
+
         public SphynxTcpServer(SphynxTcpServerProfile profile) : this(profile, null)
         {
         }
@@ -170,36 +173,53 @@ namespace Sphynx.ServerV2
             }
         }
 
-        protected override void Dispose(bool disposing)
+        public override async ValueTask DisposeAsync()
         {
-            if (disposing)
-            {
-                ShutdownServer();
-                DisposeClients();
-            }
+            if (_disposed)
+                return;
 
-            base.Dispose(disposing);
-        }
-
-        private void ShutdownServer()
-        {
-            var stopTask = StopAsync(waitForFinish: true);
-
-            if (!stopTask.IsCompleted)
-                stopTask.AsTask().Wait();
-
-            ServerSocket?.Dispose();
-        }
-
-        private void DisposeClients()
-        {
-            // We don't want any extra clients being added in during the dispose process
-            Debug.Assert(!ServerSocket?.Connected ?? true);
+            await _disposeSemaphore.WaitAsync().ConfigureAwait(false);
 
             try
             {
-                if (!_connectedClients.IsEmpty)
-                    Parallel.ForEach(_connectedClients, kvp => kvp.Value.Dispose());
+                await DisposeServerAsync().ConfigureAwait(false);
+                await DisposeClientsAsync().ConfigureAwait(false);
+
+                await base.DisposeAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                _disposeSemaphore.Release();
+                _disposed = true;
+            }
+        }
+
+        private async ValueTask DisposeServerAsync()
+        {
+            await StopAsync(waitForFinish: true).ConfigureAwait(false);
+
+            Debug.Assert(_disposeSemaphore.CurrentCount == 0);
+
+            if (ServerSocket is not null && ServerSocket.Connected)
+            {
+                await ServerSocket.DisconnectAsync(false).ConfigureAwait(false);
+                ServerSocket.Shutdown(SocketShutdown.Both);
+                ServerSocket.Dispose();
+            }
+        }
+
+        private async Task DisposeClientsAsync()
+        {
+            // We don't want any extra clients being added in during the dispose process
+            Debug.Assert(!ServerSocket?.Connected ?? true);
+            Debug.Assert(_disposeSemaphore.CurrentCount == 0);
+
+            if (_connectedClients.IsEmpty)
+                return;
+
+            try
+            {
+                await Parallel.ForEachAsync(_connectedClients, (kvp, _) => kvp.Value.DisposeAsync()).ConfigureAwait(false);
             }
             catch
             {
