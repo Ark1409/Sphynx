@@ -1,6 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
 namespace Sphynx.ServerV2
@@ -83,17 +84,37 @@ namespace Sphynx.ServerV2
 
             await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            // Propagate exceptions to concurrent callers
-            if (_serverTask is not null)
+            try
             {
-                await _serverTask.ConfigureAwait(false);
-                return;
+                // Propagate exceptions to concurrent callers
+                if (_serverTask is not null)
+                {
+                    await _serverTask.ConfigureAwait(false);
+                    return;
+                }
+
+                if (_serverCts.IsCancellationRequested)
+                    return;
+
+                OnStart?.Invoke(this);
+
+                Profile.Logger.LogDebug("Starting {ServerName}...", Name);
+
+                await RunAsync(cancellationToken).ConfigureAwait(false);
+
+                Profile.Logger.LogDebug("Stopping {ServerName}...", Name);
+            }
+            finally
+            {
+                _startSemaphore.Release();
             }
 
-            if (_serverCts.IsCancellationRequested)
-                return;
+            await StopAsync().ConfigureAwait(false);
+        }
 
-            OnStart?.Invoke(this);
+        private async Task RunAsync(CancellationToken cancellationToken)
+        {
+            Debug.Assert(_serverTask == null);
 
             try
             {
@@ -103,8 +124,6 @@ namespace Sphynx.ServerV2
             {
                 // Server has been disposed of. The CTS should be cancelled.
             }
-
-            Profile.Logger.LogDebug("Starting {ServerName}...", Name);
 
             try
             {
@@ -129,11 +148,6 @@ namespace Sphynx.ServerV2
             {
                 Profile.Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
-
-            _startSemaphore.Release();
-
-            Profile.Logger.LogDebug("Stopping {ServerName}...", Name);
-            await StopAsync().ConfigureAwait(false);
         }
 
         private void ThrowIfStopped()
