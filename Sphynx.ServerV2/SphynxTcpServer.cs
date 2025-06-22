@@ -148,6 +148,12 @@ namespace Sphynx.ServerV2
         }
 
         /// <summary>
+        /// Called once a client connects to the server. The client may or may not have began they run loop.
+        /// </summary>
+        /// <param name="client">The client that connected.</param>
+        protected virtual void OnClientConnected(SphynxTcpClient client) { }
+
+        /// <summary>
         /// Creates (but does not start) a suitable <see cref="SphynxTcpClient"/> for the accepted <paramref name="clientSocket"/>.
         /// </summary>
         /// <param name="clientSocket">The accepted client socket.</param>
@@ -167,7 +173,11 @@ namespace Sphynx.ServerV2
 
                 try
                 {
-                    await client.StartAsync(cancellationToken).ConfigureAwait(false);
+                    var clientTask = client.StartAsync(cancellationToken).AsTask();
+
+                    OnClientConnected(client);
+
+                    await clientTask.ConfigureAwait(false);
                 }
                 finally
                 {
