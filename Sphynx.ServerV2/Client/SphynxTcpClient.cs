@@ -24,25 +24,9 @@ namespace Sphynx.ServerV2.Client
         public IPEndPoint EndPoint { get; }
 
         /// <summary>
-        /// Event that is fired when this client disconnects from the server. This may run concurrently
-        /// with <see cref="DisposeAsync()"/>.
+        /// Retrieves the running state of the client.
         /// </summary>
-        public event Func<SphynxTcpClient, Exception?, Task>? OnDisconnect;
-
-        /// <summary>
-        /// The logger created for this client.
-        /// </summary>
-        protected internal ILogger Logger { get; }
-
-        /// <summary>
-        /// The packet transporter which is used to send and receive <see cref="SphynxPacket"/>s.
-        /// </summary>
-        protected IPacketTransporter PacketTransporter { get; }
-
-        /// <summary>
-        /// The packet handler which is used to handle incoming packets.
-        /// </summary>
-        protected IPacketHandler<SphynxPacket> PacketHandler { get; }
+        public bool IsRunning => !_clientTask?.IsCompleted ?? false;
 
         /// <summary>
         /// The read task for the client's read loop.
@@ -62,6 +46,27 @@ namespace Sphynx.ServerV2.Client
         /// A reference to the accepted client socket.
         /// </summary>
         internal Socket Socket { get; private set; }
+
+        /// <summary>
+        /// Event that is fired when this client disconnects from the server. This may run concurrently
+        /// with <see cref="DisposeAsync()"/>.
+        /// </summary>
+        public event Func<SphynxTcpClient, Exception?, Task>? OnDisconnect;
+
+        /// <summary>
+        /// The logger created for this client.
+        /// </summary>
+        protected internal ILogger Logger { get; }
+
+        /// <summary>
+        /// The packet transporter which is used to send and receive <see cref="SphynxPacket"/>s.
+        /// </summary>
+        protected IPacketTransporter PacketTransporter { get; }
+
+        /// <summary>
+        /// The packet handler which is used to handle incoming packets.
+        /// </summary>
+        protected IPacketHandler<SphynxPacket> PacketHandler { get; }
 
         private readonly NetworkStream _stream;
 

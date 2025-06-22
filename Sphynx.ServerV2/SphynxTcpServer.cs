@@ -144,32 +144,54 @@ namespace Sphynx.ServerV2
 
                 Debug.Assert(insertedClient);
 
-                client.OnDisconnect += async (c, ex) =>
+                try
                 {
-                    c.Logger.LogInformation("Client disconnected");
-
-                    await c.DisposeAsync().ConfigureAwait(false);
-                    _connectedClients.Remove(c.ClientId, out _);
-                    _socketPool!.Return(c.Socket);
-                };
-
-                await client.StartAsync(cancellationToken).ConfigureAwait(false);
+                    await client.StartAsync(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await DisposeClientAsync(client, true).ConfigureAwait(false);
+                }
             }
         }
 
-        private async ValueTask DisposeClientAsync(SphynxTcpClient? client)
+        private async ValueTask<bool> DisposeClientAsync(SphynxTcpClient? client, bool tryReuse = false)
         {
             if (client is null)
-                return;
+                return false;
 
-            try
+            if (tryReuse)
             {
-                await client.DisposeAsync().ConfigureAwait(false);
+                _connectedClients.Remove(client.ClientId, out _);
+
+                try
+                {
+                    await client.DisposeAsync(disposeSocket: false).ConfigureAwait(false);
+
+                    // Test for disposal or invalid state
+                    await client.Socket.DisconnectAsync(true).ConfigureAwait(false);
+
+                    _socketPool!.Return(client.Socket);
+                    return true;
+                }
+                catch
+                {
+                    client.Socket.Dispose();
+                }
             }
-            catch
+            else
             {
-                // Ignore disposal exceptions
+                try
+                {
+                    await client.DisposeAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Ignore disposal exceptions
+                }
             }
+
+            return false;
         }
 
         public override async ValueTask DisposeAsync()
