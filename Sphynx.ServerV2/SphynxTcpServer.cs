@@ -85,46 +85,67 @@ namespace Sphynx.ServerV2
             }
         }
 
-        // TODO: Fix to be allocation-free
-        private void StartClient(Socket clientSocket, CancellationToken cancellationToken) => ThreadPool.QueueUserWorkItem(async void (socket) =>
+        private void StartClient(Socket clientSocket, CancellationToken cancellationToken)
         {
-            if (Profile.Logger.IsEnabled(LogLevel.Debug))
-                Profile.Logger.LogDebug("Initializing client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
-
-            SphynxTcpClient? client = null;
-
-            try
+            var state = new StartClientState
             {
-                client = CreateTcpClient(socket);
-            }
-            catch (Exception ex)
-            {
-                if (Profile.Logger.IsEnabled(LogLevel.Error))
-                    Profile.Logger.LogError(ex, "An error occured while initializing client for endpoint {EndPoint}", socket.RemoteEndPoint);
+                Server = this,
+                Socket = clientSocket,
+                Token = cancellationToken,
+            };
 
-                await DisposeClientAsync(client).ConfigureAwait(false);
-                return;
-            }
-
-            // Last-chance check
-            if (cancellationToken.IsCancellationRequested)
+            ThreadPool.QueueUserWorkItem(static async void (s) =>
             {
-                await DisposeClientAsync(client).ConfigureAwait(false);
-                return;
-            }
+                var server = s.Server;
+                var socket = s.Socket;
+                var ct = s.Token;
 
-            try
-            {
-                await StartClientAsync(client, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                if (Profile.Logger.IsEnabled(LogLevel.Error))
-                    Profile.Logger.LogError(ex, "Unhandled exception while starting client for endpoint {EndPoint}", client.EndPoint);
+                if (server.Profile.Logger.IsEnabled(LogLevel.Debug))
+                    server.Profile.Logger.LogDebug("Initializing client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
 
-                await DisposeClientAsync(client).ConfigureAwait(false);
-            }
-        }, clientSocket, false);
+                SphynxTcpClient? client = null;
+
+                try
+                {
+                    client = server.CreateTcpClient(socket);
+                }
+                catch (Exception ex)
+                {
+                    if (server.Profile.Logger.IsEnabled(LogLevel.Error))
+                        server.Profile.Logger.LogError(ex, "An error occured while initializing client for endpoint {EndPoint}",
+                            socket.RemoteEndPoint);
+
+                    await server.DisposeClientAsync(client).ConfigureAwait(false);
+                    return;
+                }
+
+                // Last-chance check
+                if (ct.IsCancellationRequested)
+                {
+                    await server.DisposeClientAsync(client).ConfigureAwait(false);
+                    return;
+                }
+
+                try
+                {
+                    await server.StartClientAsync(client, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    if (server.Profile.Logger.IsEnabled(LogLevel.Error))
+                        server.Profile.Logger.LogError(ex, "Unhandled exception while starting client for endpoint {EndPoint}", client.EndPoint);
+
+                    await server.DisposeClientAsync(client).ConfigureAwait(false);
+                }
+            }, state, false);
+        }
+
+        private readonly struct StartClientState
+        {
+            public SphynxTcpServer Server { get; init; }
+            public Socket Socket { get; init; }
+            public CancellationToken Token { get; init; }
+        }
 
         /// <summary>
         /// Creates (but does not start) a suitable <see cref="SphynxTcpClient"/> for the accepted <paramref name="clientSocket"/>.
