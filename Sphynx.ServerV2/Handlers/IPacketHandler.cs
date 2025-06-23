@@ -20,7 +20,7 @@ namespace Sphynx.ServerV2.Handlers
         /// <param name="packet">The packet to handle.</param>
         /// <param name="cancellationToken">A cancellation token for the handling request.</param>
         /// <returns>The started handling task, returning a bool representing whether the packet could be sent.</returns>
-        public ValueTask HandlePacketAsync(ISphynxClient client, TPacket packet, CancellationToken cancellationToken = default);
+        public Task HandlePacketAsync(ISphynxClient client, TPacket packet, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

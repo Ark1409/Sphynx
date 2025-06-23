@@ -12,9 +12,9 @@ namespace Sphynx.ServerV2.Handlers
     public sealed class NullPacketHandler : IPacketHandler
     {
         /// <inheritdoc/>
-        public ValueTask HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
+        public Task HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
         {
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }

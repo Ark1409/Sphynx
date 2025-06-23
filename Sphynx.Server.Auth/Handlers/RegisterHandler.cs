@@ -23,18 +23,24 @@ namespace Sphynx.Server.Auth.Handlers
             _logger = logger;
         }
 
-        public ValueTask HandlePacketAsync(ISphynxClient client, RegisterRequest request, CancellationToken cancellationToken = default)
+        public async Task HandlePacketAsync(ISphynxClient client, RegisterRequest request, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(request.UserName))
-                return client.SendAsync(new RegisterResponse(SphynxErrorCode.INVALID_USERNAME), cancellationToken);
+            {
+                await client.SendAsync(new RegisterResponse(SphynxErrorCode.INVALID_USERNAME), cancellationToken);
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(request.Password))
-                return client.SendAsync(new RegisterResponse(SphynxErrorCode.INVALID_PASSWORD), cancellationToken);
+            {
+                await client.SendAsync(new RegisterResponse(SphynxErrorCode.INVALID_PASSWORD), cancellationToken).ConfigureAwait(false);
+                return;
+            }
 
-            return HandleRegisterAsync(client, request, cancellationToken);
+            await HandleRegisterAsync(client, request, cancellationToken).ConfigureAwait(false);
         }
 
-        private async ValueTask HandleRegisterAsync(ISphynxClient client, RegisterRequest request, CancellationToken cancellationToken)
+        private async Task HandleRegisterAsync(ISphynxClient client, RegisterRequest request, CancellationToken cancellationToken)
         {
             var authResult = await _authService.RegisterUserAsync(request.UserName, request.Password, cancellationToken).ConfigureAwait(false);
 

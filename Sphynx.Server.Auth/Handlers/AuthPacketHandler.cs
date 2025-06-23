@@ -30,7 +30,7 @@ namespace Sphynx.Server.Auth.Handlers
             _logger = logger;
         }
 
-        public ValueTask HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
+        public Task HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
         {
             if (packet is LoginRequest loginRequest)
                 return _loginHandler.HandlePacketAsync(client, loginRequest, cancellationToken);
@@ -42,7 +42,7 @@ namespace Sphynx.Server.Auth.Handlers
                 _logger.LogWarning("Unregistered packet of type {PacketType} received from {EndPoint} ({ClientId})",
                     packet.PacketType, client.EndPoint, client.ClientId);
 
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }
