@@ -33,6 +33,11 @@ namespace Sphynx.ServerV2
         public virtual SphynxServerProfile Profile { get; }
 
         /// <summary>
+        /// A shorthand to the <see cref="Profile"/>'s <see cref="SphynxServerProfile.Logger"/>.
+        /// </summary>
+        public ILogger Logger => Profile.Logger;
+
+        /// <summary>
         /// The start task representing the running state of the server.
         /// </summary>
         protected Task? ServerTask => _serverTask;
@@ -98,11 +103,11 @@ namespace Sphynx.ServerV2
 
                 OnStart?.Invoke(this);
 
-                Profile.Logger.LogDebug("Starting {ServerName}...", Name);
+                Logger.LogDebug("Starting {ServerName}...", Name);
 
                 await RunAsync(cancellationToken).ConfigureAwait(false);
 
-                Profile.Logger.LogDebug("Stopping {ServerName}...", Name);
+                Logger.LogDebug("Stopping {ServerName}...", Name);
             }
             finally
             {
@@ -146,7 +151,7 @@ namespace Sphynx.ServerV2
             }
             catch (Exception ex)
             {
-                Profile.Logger.LogCritical(ex, "An unhandled exception occured during server execution");
+                Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
         }
 

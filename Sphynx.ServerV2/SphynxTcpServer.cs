@@ -28,7 +28,7 @@ namespace Sphynx.ServerV2
         protected Socket? ServerSocket { get; private set; }
 
         private readonly ConcurrentDictionary<Guid, SphynxTcpClient> _connectedClients = new();
-        private WeakObjectPool<Socket>? _socketPool;
+        private FixedObjectPool<Socket>? _socketPool;
 
         private readonly SemaphoreSlim _disposeSemaphore = new(1, 1);
         private bool _disposed;
@@ -47,30 +47,30 @@ namespace Sphynx.ServerV2
             Debug.Assert(ServerSocket == null);
             Debug.Assert(_socketPool == null);
 
-            Profile.Logger.LogDebug("Initializing socket pool");
+            Logger.LogDebug("Initializing socket pool");
 
-            _socketPool = new WeakObjectPool<Socket>(Profile.Backlog);
+            _socketPool = new FixedObjectPool<Socket>(Profile.Backlog);
 
-            Profile.Logger.LogDebug("Initializing listening socket");
+            Logger.LogDebug("Initializing listening socket");
 
             ServerSocket = new Socket(Profile.EndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             ServerSocket.SendBufferSize = ServerSocket.ReceiveBufferSize = Profile.BufferSize;
             ServerSocket.Bind(Profile.EndPoint);
             ServerSocket.Listen(Profile.Backlog);
 
-            Profile.Logger.LogInformation("Started \"{Name}\" at {DateTime} on {EndPoint}", Name, DateTime.Now, Profile.EndPoint);
+            Logger.LogInformation("Started \"{Name}\" at {DateTime} on {EndPoint}", Name, DateTime.Now, Profile.EndPoint);
 
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
                     if (!_socketPool.TryTake(out var socket))
-                        Profile.Logger.LogTrace("Socket pool exhausted, will allocate on demand to handle the next connection");
+                        Logger.LogTrace("Socket pool exhausted: socket will be allocated on-demand for next connection");
 
                     socket = await ServerSocket.AcceptAsync(socket, cancellationToken).ConfigureAwait(false);
 
-                    if (Profile.Logger.IsEnabled(LogLevel.Information))
-                        Profile.Logger.LogInformation("Accepted client on {Address}", socket.RemoteEndPoint);
+                    if (Logger.IsEnabled(LogLevel.Information))
+                        Logger.LogInformation("Accepted client on {Address}", socket.RemoteEndPoint);
 
                     QueueStartClient(socket, cancellationToken);
                 }
@@ -80,7 +80,7 @@ namespace Sphynx.ServerV2
                 }
                 catch (Exception ex)
                 {
-                    Profile.Logger.LogCritical(ex, "Unexpected error in server accept loop");
+                    Logger.LogCritical(ex, "Unexpected error in server accept loop");
                 }
             }
         }
@@ -108,23 +108,16 @@ namespace Sphynx.ServerV2
                 }
                 catch (Exception ex)
                 {
-                    if (server.Profile.Logger.IsEnabled(LogLevel.Error))
-                        server.Profile.Logger.LogError(ex, "An error occured while initializing client for endpoint {EndPoint}",
+                    if (server.Logger.IsEnabled(LogLevel.Error))
+                        server.Logger.LogError(ex, "An error occured while initializing client for endpoint {EndPoint}",
                             socket.RemoteEndPoint);
 
                     await server.DisposeClientAsync(client).ConfigureAwait(false);
                     return;
                 }
 
-                if (server.Profile.Logger.IsEnabled(LogLevel.Debug))
-                    server.Profile.Logger.LogDebug("Initialized client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
-
-                // Last-chance check
-                if (ct.IsCancellationRequested)
-                {
-                    await server.DisposeClientAsync(client).ConfigureAwait(false);
-                    return;
-                }
+                if (server.Logger.IsEnabled(LogLevel.Debug))
+                    server.Logger.LogDebug("Initialized client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
 
                 try
                 {
@@ -132,8 +125,8 @@ namespace Sphynx.ServerV2
                 }
                 catch (Exception ex)
                 {
-                    if (server.Profile.Logger.IsEnabled(LogLevel.Error))
-                        server.Profile.Logger.LogError(ex, "Unhandled exception while starting client for endpoint {EndPoint}", client.EndPoint);
+                    if (server.Logger.IsEnabled(LogLevel.Error))
+                        server.Logger.LogError(ex, "Unhandled exception while starting client for endpoint {EndPoint}", client.EndPoint);
 
                     await server.DisposeClientAsync(client).ConfigureAwait(false);
                 }
@@ -188,45 +181,41 @@ namespace Sphynx.ServerV2
             if (client is null)
                 return false;
 
-            if (tryReuse)
+            if (!tryReuse)
+            {
+                await client.DisposeAsync().ConfigureAwait(false);
+                return false;
+            }
+
+            try
             {
                 _connectedClients.Remove(client.ClientId, out _);
 
+                await client.DisposeAsync(disposeSocket: false).ConfigureAwait(false);
+
+                // Test for disposal or invalid state
                 try
                 {
-                    await client.DisposeAsync(disposeSocket: false).ConfigureAwait(false);
-
-                    // Test for disposal or invalid state
-                    try
-                    {
-                        await client.Socket.DisconnectAsync(true).ConfigureAwait(false);
-                    }
-                    catch (SocketException ex) when (ex.SocketErrorCode == SocketError.NotConnected)
-                    {
-                        // TODO: Assume not disposed?
-                    }
-
-                    _socketPool!.Return(client.Socket);
-                    return true;
+                    await client.Socket.DisconnectAsync(true).ConfigureAwait(false);
                 }
-                catch
+                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.NotConnected)
+                {
+                    // TODO: Assume not disposed?
+                }
+
+                if (!_socketPool!.Return(client.Socket))
                 {
                     client.Socket.Dispose();
+                    return false;
                 }
-            }
-            else
-            {
-                try
-                {
-                    await client.DisposeAsync().ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Ignore disposal exceptions
-                }
-            }
 
-            return false;
+                return true;
+            }
+            catch
+            {
+                client.Socket.Dispose();
+                return false;
+            }
         }
 
         public override async ValueTask DisposeAsync()
@@ -245,16 +234,16 @@ namespace Sphynx.ServerV2
             }
             finally
             {
-                _disposeSemaphore.Release();
                 _disposed = true;
+                _disposeSemaphore.Release();
             }
         }
 
         private async ValueTask DisposeServerAsync()
         {
-            await StopAsync(waitForFinish: true).ConfigureAwait(false);
-
             Debug.Assert(_disposeSemaphore.CurrentCount == 0);
+
+            await StopAsync(waitForFinish: true).ConfigureAwait(false);
 
             if (ServerSocket is not null && ServerSocket.Connected)
             {

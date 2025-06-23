@@ -142,7 +142,7 @@ namespace Sphynx.Server.Auth
 
             Logger.LogDebug("Initializing socket pool");
 
-            _socketPool = new WeakObjectPool<Socket>(Backlog);
+            _socketPool = new FixedObjectPool<Socket>(Backlog);
             _acceptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
             Logger.LogDebug("Initializing listening socket");
@@ -192,7 +192,9 @@ namespace Sphynx.Server.Auth
                 {
                     Logger.LogInformation(ex, "[{EndPoint}]: Client disconnected", c.Socket.RemoteEndPoint);
                     c.Dispose();
-                    _socketPool!.Return(c.Socket);
+
+                    if (!_socketPool!.Return(c.Socket))
+                        c.Socket.Dispose();
                 };
 
                 await client.StartAsync(ct).ConfigureAwait(false);
