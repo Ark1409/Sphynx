@@ -205,6 +205,12 @@ namespace Sphynx.ServerV2.Client
             {
                 Logger.LogWarning("Aborted packet read (cancelled)");
             }
+            catch (Exception ex) when (ex.IsConnectionResetException())
+            {
+                Logger.LogTrace(ex, "Connection aborted while reading packet");
+
+                await StopAsync(ex).ConfigureAwait(false);
+            }
             // This might happen if the client forcibly closes the connection
             catch (Exception ex) when (ex is EndOfStreamException or ObjectDisposedException or ArgumentException)
             {
@@ -212,7 +218,7 @@ namespace Sphynx.ServerV2.Client
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Unexpected exception occured while reading packets");
+                Logger.LogError(ex, "Unexpected exception occured while reading packet");
 
                 await StopAsync(ex).ConfigureAwait(false);
             }

@@ -65,7 +65,7 @@ namespace Sphynx.ServerV2
                 try
                 {
                     if (!_socketPool.TryTake(out var socket))
-                        Logger.LogTrace("Socket pool exhausted: socket will be allocated on-demand for next connection");
+                        Logger.LogTrace("Socket pool exhausted: socket will be allocated on-demand for the next connection");
 
                     socket = await ServerSocket.AcceptAsync(socket, cancellationToken).ConfigureAwait(false);
 
@@ -163,7 +163,7 @@ namespace Sphynx.ServerV2
 
             OnClientConnected(client);
 
-            using (client.Logger.BeginScope(client.EndPoint))
+            using (client.Logger.BeginScope($"{client.EndPoint} ({client.ClientId})"))
             {
                 try
                 {
@@ -171,7 +171,8 @@ namespace Sphynx.ServerV2
                 }
                 finally
                 {
-                    await DisposeClientAsync(client, true).ConfigureAwait(false);
+                    if(!await DisposeClientAsync(client, true).ConfigureAwait(false))
+                        Logger.LogTrace("Unable to re-use client socket");
                 }
             }
         }
