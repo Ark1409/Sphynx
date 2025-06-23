@@ -81,8 +81,16 @@ namespace Sphynx.ServerV2.Client
         private int _stopped;
 
         public SphynxTcpClient(Socket socket, SphynxTcpServerProfile profile)
-            : this(socket, profile.PacketTransporter, profile.PacketHandler, profile.LoggerFactory.CreateLogger(typeof(SphynxTcpClient)))
         {
+            Socket = socket;
+            EndPoint = (IPEndPoint)Socket.RemoteEndPoint!;
+            _stream = new NetworkStream(Socket, false);
+
+            ClientId = Guid.NewGuid();
+
+            PacketTransporter = profile.PacketTransporter;
+            PacketHandler = profile.PacketHandler;
+            Logger = profile.LoggerFactory.CreateLogger(GetType());
         }
 
         public SphynxTcpClient(Socket socket, IPacketTransporter packetTransporter, IPacketHandler<SphynxPacket> packetHandler, ILogger logger)
@@ -90,7 +98,10 @@ namespace Sphynx.ServerV2.Client
         {
         }
 
-        public SphynxTcpClient(Socket socket, Guid clientId, IPacketTransporter packetTransporter, IPacketHandler<SphynxPacket> packetHandler,
+        public SphynxTcpClient(Socket socket,
+            Guid clientId,
+            IPacketTransporter packetTransporter,
+            IPacketHandler<SphynxPacket> packetHandler,
             ILogger logger)
         {
             Socket = socket;
@@ -373,15 +384,7 @@ namespace Sphynx.ServerV2.Client
 
             ThreadPool.QueueUserWorkItem(static async void (s) =>
             {
-                try
-                {
-                    await s.Client.WaitAsync().ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Less important
-                }
-
+                await s.Client.WaitAsync().ConfigureAwait(false);
                 await s.Client.PerformDisconnectAsync(s.DisconnectException).ConfigureAwait(false);
             }, state, false);
         }

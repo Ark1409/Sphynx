@@ -175,7 +175,7 @@ namespace Sphynx.ServerV2
         /// </summary>
         /// <param name="cancellationToken">A cancellation token to control the running state of the server. Once cancelled,
         /// it is expected that the server should begin its shutdown process.</param>
-        /// <returns>The server's running task. The task should not complete until the server has begun its shutdown process.</returns>
+        /// <returns>The server's running task.</returns>
         protected abstract Task OnStartAsync(CancellationToken cancellationToken);
 
         /// <summary>

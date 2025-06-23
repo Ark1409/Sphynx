@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Sphynx.Network.PacketV2;
@@ -13,7 +14,7 @@ using Sphynx.Storage;
 namespace Sphynx.ServerV2
 {
     /// <summary>
-    /// Represents a TCP-oriented <see cref="SphynxServer"/> which accepts <see cref="SphynxPacket"/>s from clients.
+    /// Represents a TCP-oriented <see cref="SphynxServer"/> which accepts <see cref="SphynxPacket"/>s from <see cref="SphynxTcpClient"/>s.
     /// </summary>
     public class SphynxTcpServer : SphynxServer
     {
@@ -32,6 +33,14 @@ namespace Sphynx.ServerV2
 
         private readonly SemaphoreSlim _disposeSemaphore = new(1, 1);
         private bool _disposed;
+
+        public SphynxTcpServer(IPEndPoint endpoint) : this(endpoint, null)
+        {
+        }
+
+        public SphynxTcpServer(IPEndPoint endpoint, string? name) : this(new SphynxTcpServerProfile { EndPoint = endpoint }, name)
+        {
+        }
 
         public SphynxTcpServer(SphynxTcpServerProfile profile) : this(profile, null)
         {
@@ -72,7 +81,7 @@ namespace Sphynx.ServerV2
                     if (Logger.IsEnabled(LogLevel.Information))
                         Logger.LogInformation("Accepted client on {Address}", socket.RemoteEndPoint);
 
-                    QueueStartClient(socket, cancellationToken);
+                    InitializeClient(socket, cancellationToken);
                 }
                 catch (Exception ex) when (ex.IsCancellationException())
                 {
@@ -85,7 +94,7 @@ namespace Sphynx.ServerV2
             }
         }
 
-        private void QueueStartClient(Socket clientSocket, CancellationToken cancellationToken)
+        private void InitializeClient(Socket clientSocket, CancellationToken cancellationToken)
         {
             var state = new StartClientState
             {
@@ -171,7 +180,7 @@ namespace Sphynx.ServerV2
                 }
                 finally
                 {
-                    if(!await DisposeClientAsync(client, true).ConfigureAwait(false))
+                    if (!await DisposeClientAsync(client, true).ConfigureAwait(false))
                         Logger.LogTrace("Unable to re-use client socket");
                 }
             }

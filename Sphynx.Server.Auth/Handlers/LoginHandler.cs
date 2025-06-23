@@ -7,6 +7,8 @@ using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
 using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Services;
+using Sphynx.ServerV2.Client;
+using Sphynx.ServerV2.Handlers;
 
 namespace Sphynx.Server.Auth.Handlers
 {
@@ -21,30 +23,30 @@ namespace Sphynx.Server.Auth.Handlers
             _logger = logger;
         }
 
-        public ValueTask HandlePacketAsync(SphynxClient client, LoginRequest request, CancellationToken cancellationToken = default)
+        public ValueTask HandlePacketAsync(ISphynxClient client, LoginRequest request, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(request.UserName))
-                return client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_USERNAME), cancellationToken);
+                return client.SendAsync(new LoginResponse(SphynxErrorCode.INVALID_USERNAME), cancellationToken);
 
             if (string.IsNullOrWhiteSpace(request.Password))
-                return client.SendPacketAsync(new LoginResponse(SphynxErrorCode.INVALID_PASSWORD), cancellationToken);
+                return client.SendAsync(new LoginResponse(SphynxErrorCode.INVALID_PASSWORD), cancellationToken);
 
             return HandleLoginAsync(client, request, cancellationToken);
         }
 
-        private async ValueTask HandleLoginAsync(SphynxClient client, LoginRequest request, CancellationToken cancellationToken)
+        private async ValueTask HandleLoginAsync(ISphynxClient client, LoginRequest request, CancellationToken cancellationToken)
         {
             var authResult = await _authService.AuthenticateUserAsync(request.UserName, request.Password, cancellationToken).ConfigureAwait(false);
 
             if (authResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendPacketAsync(new LoginResponse(authResult.ErrorCode), cancellationToken).ConfigureAwait(false);
+                await client.SendAsync(new LoginResponse(authResult.ErrorCode), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
             var authInfo = authResult.Data!.Value;
 
-            await client.SendPacketAsync(new LoginResponse(authInfo.User.ToDto(), authInfo.SessionId), cancellationToken).ConfigureAwait(false);
+            await client.SendAsync(new LoginResponse(authInfo.User.ToDto(), authInfo.SessionId), cancellationToken).ConfigureAwait(false);
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
@@ -52,7 +54,8 @@ namespace Sphynx.Server.Auth.Handlers
                     authInfo.User.UserName);
             }
 
-            await client.DisposeAsync().ConfigureAwait(false);
+            if (client is SphynxTcpClient tcpClient)
+                await tcpClient.StopAsync(waitForFinish: false).ConfigureAwait(false);
         }
     }
 }

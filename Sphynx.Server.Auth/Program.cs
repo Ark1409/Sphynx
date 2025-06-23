@@ -4,6 +4,7 @@ using Sphynx.Network.PacketV2;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Network.Transport;
+using Sphynx.ServerV2;
 
 namespace Sphynx.Server.Auth
 {
@@ -18,11 +19,12 @@ namespace Sphynx.Server.Auth
             transporter.AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer());
             transporter.AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
 
-            await using var server = new SphynxAuthServer(IPAddress.Loopback)
+            var profile = new SphynxTcpServerProfile
             {
                 PacketTransporter = transporter,
             };
 
+            await using var server = new SphynxAuthServer(profile);
             await server.StartAsync();
         }
     }

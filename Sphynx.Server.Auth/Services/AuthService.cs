@@ -21,10 +21,10 @@ namespace Sphynx.Server.Auth.Services
         private readonly IPasswordHasher _passwordHasher;
         private readonly ILogger _logger;
 
-        public AuthService(IUserRepository userRepository, IPasswordHasher passwordHasher, ILogger logger)
+        public AuthService(IPasswordHasher passwordHasher, IUserRepository userRepository, ILogger logger)
         {
-            _userRepository = userRepository;
             _passwordHasher = passwordHasher;
+            _userRepository = userRepository;
             _logger = logger;
         }
 
