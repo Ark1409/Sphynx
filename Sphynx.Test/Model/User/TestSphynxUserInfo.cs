@@ -7,7 +7,7 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.User
 {
-    public class TestSphynxUserInfo : ISphynxUserInfo
+    public class TestSphynxUserInfo : SphynxUserInfo
     {
         public SnowflakeId UserId { get; set; }
         public string UserName { get; set; }
@@ -34,7 +34,7 @@ namespace Sphynx.Test.Model.User
             return users;
         }
 
-        public bool Equals(ISphynxUserInfo? other)
+        public bool Equals(SphynxUserInfo? other)
         {
             return UserId.Equals(other?.UserId) && UserName == other?.UserName && UserStatus == other.UserStatus;
         }

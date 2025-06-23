@@ -8,7 +8,7 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.User
 {
-    public class TestLastReadMessagesInfo : ILastReadMessageInfo
+    public class TestLastReadMessagesInfo : LastReadMessageInfo
     {
         private readonly IDictionary<SnowflakeId, SnowflakeId> _lastReadMessages;
 
@@ -35,8 +35,6 @@ namespace Sphynx.Test.Model.User
 
         public IEnumerator<KeyValuePair<SnowflakeId, SnowflakeId>> GetEnumerator() =>
             _lastReadMessages.GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => _lastReadMessages.GetEnumerator();
 
         public void Add(KeyValuePair<SnowflakeId, SnowflakeId> item) => _lastReadMessages.Add(item);
 

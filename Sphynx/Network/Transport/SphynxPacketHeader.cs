@@ -22,7 +22,7 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// The packet signature to safeguard against corrupted packets.
         /// </summary>
-        public const ushort SIGNATURE = 0x5350;
+        public const ushort SIGNATURE = 0x5053;
 
         /// <summary>
         /// The (exact) serialization size of this header in bytes.
@@ -67,7 +67,7 @@ namespace Sphynx.Network.Transport
         /// <param name="stream">The stream from which to consume the header.</param>
         /// <param name="cancellationToken">The cancellation token to abort the consumption request.</param>
         /// <returns>The first successfully consumed <see cref="SphynxPacketHeader"/>.</returns>
-        public static async ValueTask<SphynxPacketHeader> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
+        public static async Task<SphynxPacketHeader> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default)
         {
             if (!stream.CanRead)
                 throw new ArgumentException("Stream must be readable", nameof(stream));

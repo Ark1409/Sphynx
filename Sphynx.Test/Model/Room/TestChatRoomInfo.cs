@@ -7,7 +7,7 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.Room
 {
-    public abstract class TestChatRoomInfo : IChatRoomInfo
+    public abstract class TestChatRoomInfo : ChatRoomInfo
     {
         public SnowflakeId RoomId { get; set; }
         public abstract ChatRoomType RoomType { get; set; }
@@ -19,6 +19,6 @@ namespace Sphynx.Test.Model.Room
             RoomId = name.AsSnowflakeId();
         }
 
-        public bool Equals(IChatRoomInfo? other) => RoomId == other?.RoomId && Name == other.Name;
+        public bool Equals(ChatRoomInfo? other) => RoomId == other?.RoomId && Name == other.Name;
     }
 }

@@ -18,7 +18,7 @@ namespace Sphynx.Network.PacketV2.Request
         public string Password { get; init; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_REQ;
+        public override SphynxPacketType PacketType => SphynxPacketType.REGISTER_REQ;
 
         /// <summary>
         /// Creates a <see cref="RegisterRequest"/>.

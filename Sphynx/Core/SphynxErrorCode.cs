@@ -21,6 +21,11 @@
         INVALID_PASSWORD,
 
         /// <summary>
+        /// Invalid credentials provided during authentication.
+        /// </summary>
+        INVALID_CREDENTIALS,
+
+        /// <summary>
         /// Invalid session ID for user when performing an action.
         /// </summary>
         INVALID_SESSION,
@@ -29,6 +34,16 @@
         /// Invalid user ID for user when performing an action.
         /// </summary>
         INVALID_USER,
+
+        /// <summary>
+        /// Attempted to query an invalid or unknown field from the database.
+        /// </summary>
+        INVALID_FIELD,
+
+        /// <summary>
+        /// An error occured on the server-side.
+        /// </summary>
+        SERVER_ERROR,
 
         /// <summary>
         /// When the user attempts to complete an action but does not have sufficient permissions.
@@ -64,6 +79,6 @@
         /// <summary>
         /// Attempt to authenticate when already logged in.
         /// </summary>
-        ALREADY_LOGGED_IN
+        ALREADY_LOGGED_IN,
     }
 }

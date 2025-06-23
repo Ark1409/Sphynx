@@ -7,16 +7,22 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.User
 {
-    public class TestSphynxSelfInfo : TestSphynxUserInfo, ISphynxSelfInfo
+    public class TestSphynxSelfInfo : SphynxSelfInfo
     {
         public ISet<SnowflakeId> Friends { get; set; }
         public ISet<SnowflakeId> Rooms { get; set; }
-        public ILastReadMessageInfo LastReadMessages { get; set; }
+        public LastReadMessageInfo LastReadMessages { get; set; }
         public ISet<SnowflakeId> OutgoingFriendRequests { get; set; }
         public ISet<SnowflakeId> IncomingFriendRequests { get; set; }
 
-        public TestSphynxSelfInfo(string name = "Test") : base(name)
+        public TestSphynxSelfInfo(string name = "Test")
         {
+            UserName = name;
+            UserId = name.AsSnowflakeId();
+
+            var statuses = Enum.GetValues<SphynxUserStatus>();
+            UserStatus = statuses[name.Length % statuses.Length];
+
             Friends = new HashSet<SnowflakeId>
             {
                 $"user1+{name}".AsSnowflakeId(), $"user2+{name}".AsSnowflakeId(), $"user3+{name}".AsSnowflakeId()
@@ -52,7 +58,7 @@ namespace Sphynx.Test.Model.User
             return users;
         }
 
-        public bool Equals(ISphynxSelfInfo? other)
+        public bool Equals(SphynxSelfInfo? other)
         {
             return base.Equals(other) &&
                    CollectionUtils.AreEquivalent(Friends, other?.Friends) &&

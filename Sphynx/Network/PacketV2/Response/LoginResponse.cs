@@ -12,7 +12,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Holds the authenticated user's information.
         /// </summary>
-        public ISphynxSelfInfo? UserInfo { get; init; }
+        public SphynxSelfInfo? UserInfo { get; init; }
 
         /// <summary>
         /// The session ID for the client.
@@ -32,7 +32,7 @@ namespace Sphynx.Network.PacketV2.Response
         /// </summary>
         /// <param name="userInfo">Holds the authenticated user's information.</param>
         /// <param name="sessionId">The session ID for the client.</param>
-        public LoginResponse(ISphynxSelfInfo userInfo, Guid sessionId) : base(SphynxErrorCode.SUCCESS)
+        public LoginResponse(SphynxSelfInfo userInfo, Guid sessionId) : base(SphynxErrorCode.SUCCESS)
         {
             UserInfo = userInfo ?? throw new ArgumentNullException(nameof(userInfo));
             SessionId = sessionId;

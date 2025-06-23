@@ -38,9 +38,9 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class RegisterResponseSerializer : ResponseSerializer<RegisterResponse>
     {
-        private readonly ITypeSerializer<ISphynxSelfInfo> _userSerializer;
+        private readonly ITypeSerializer<SphynxSelfInfo> _userSerializer;
 
-        public RegisterResponseSerializer(ITypeSerializer<ISphynxSelfInfo> userSerializer)
+        public RegisterResponseSerializer(ITypeSerializer<SphynxSelfInfo> userSerializer)
         {
             _userSerializer = userSerializer;
         }

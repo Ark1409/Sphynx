@@ -5,7 +5,7 @@ using Sphynx.Utils;
 namespace Sphynx.Network.PacketV2.Response
 {
     /// <inheritdoc cref="SphynxPacketType.MSG_INFO_RES"/>
-    public sealed class GetMessagesResponse : SphynxResponse, IEquatable<GetMessagesResponse>
+    public sealed class FetchMessagesResponse : SphynxResponse, IEquatable<FetchMessagesResponse>
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_INFO_RES;
@@ -13,27 +13,27 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved messages' information. The array is in decreasing order of message creation time.
         /// </summary>
-        public IChatMessage[]? Messages { get; init; }
+        public ChatMessage[]? Messages { get; init; }
 
         /// <summary>
-        /// Creates a new <see cref="GetMessagesResponse"/>.
+        /// Creates a new <see cref="FetchMessagesResponse"/>.
         /// </summary>
         /// <param name="errorCode">Error code for logout attempt.</param>
-        public GetMessagesResponse(SphynxErrorCode errorCode) : base(errorCode)
+        public FetchMessagesResponse(SphynxErrorCode errorCode) : base(errorCode)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="GetMessagesResponse"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// Creates a new <see cref="FetchMessagesResponse"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
         /// <param name="messages">The resolved messages' information.</param>
-        public GetMessagesResponse(params IChatMessage[] messages) : this(SphynxErrorCode.SUCCESS)
+        public FetchMessagesResponse(params ChatMessage[] messages) : this(SphynxErrorCode.SUCCESS)
         {
             Messages = messages;
         }
 
         /// <inheritdoc/>
-        public bool Equals(GetMessagesResponse? other)
+        public bool Equals(FetchMessagesResponse? other)
         {
             if (other is null || !base.Equals(other)) return false;
             if (Messages is null && other.Messages is null) return true;

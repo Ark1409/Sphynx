@@ -5,7 +5,7 @@ using Sphynx.Utils;
 namespace Sphynx.Network.PacketV2.Response
 {
     /// <inheritdoc cref="SphynxPacketType.USER_INFO_RES"/>
-    public sealed class GetUsersResponse : SphynxResponse, IEquatable<GetUsersResponse>
+    public sealed class FetchUsersResponse : SphynxResponse, IEquatable<FetchUsersResponse>
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.USER_INFO_RES;
@@ -13,27 +13,27 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved users' information.
         /// </summary>
-        public ISphynxUserInfo[]? Users { get; init; }
+        public SphynxUserInfo[]? Users { get; init; }
 
         /// <summary>
-        /// Creates a new <see cref="GetUsersResponse"/>.
+        /// Creates a new <see cref="FetchUsersResponse"/>.
         /// </summary>
         /// <param name="errorCode">Error code for logout attempt.</param>
-        public GetUsersResponse(SphynxErrorCode errorCode) : base(errorCode)
+        public FetchUsersResponse(SphynxErrorCode errorCode) : base(errorCode)
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="GetUsersResponse"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// Creates a new <see cref="FetchUsersResponse"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
         /// <param name="users">The resolved users' information.</param>
-        public GetUsersResponse(params ISphynxUserInfo[] users) : this(SphynxErrorCode.SUCCESS)
+        public FetchUsersResponse(params SphynxUserInfo[] users) : this(SphynxErrorCode.SUCCESS)
         {
             Users = users;
         }
 
         /// <inheritdoc/>
-        public bool Equals(GetUsersResponse? other)
+        public bool Equals(FetchUsersResponse? other)
         {
             return base.Equals(other) && MemoryUtils.SequenceEqual(Users, other?.Users);
         }

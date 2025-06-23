@@ -17,8 +17,8 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="$(SolutionName).Client"/>
-        <InternalsVisibleTo Include="$(SolutionName).Server.Auth"/>
         <InternalsVisibleTo Include="$(SolutionName).Server"/>
+        <InternalsVisibleTo Include="$(SolutionName).Server.Auth"/>
         <InternalsVisibleTo Include="$(SolutionName).Test"/>
     </ItemGroup>
 

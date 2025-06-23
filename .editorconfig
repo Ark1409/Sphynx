@@ -243,6 +243,7 @@ dotnet_diagnostic.rs0030.severity = error
 # ReSharper properties
 resharper_keep_existing_declaration_parens_arrangement = false
 resharper_keep_existing_embedded_arrangement = true
+resharper_place_accessorholder_attribute_on_same_line = false
 resharper_place_simple_embedded_statement_on_same_line = false
 resharper_wrap_before_declaration_rpar = false
 resharper_wrap_before_primary_constructor_declaration_lpar = false

@@ -40,9 +40,9 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class LoginResponseSerializer : ResponseSerializer<LoginResponse>
     {
-        private readonly ITypeSerializer<ISphynxSelfInfo> _userSerializer;
+        private readonly ITypeSerializer<SphynxSelfInfo> _userSerializer;
 
-        public LoginResponseSerializer(ITypeSerializer<ISphynxSelfInfo> userSerializer)
+        public LoginResponseSerializer(ITypeSerializer<SphynxSelfInfo> userSerializer)
         {
             _userSerializer = userSerializer;
         }
