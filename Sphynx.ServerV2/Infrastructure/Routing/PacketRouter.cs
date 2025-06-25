@@ -22,7 +22,10 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
             if (!TryGetPipeline(packetType, out var pipeline))
             {
-                pipeline = NonGenericPacketPipeline.Create(packetType, NullPacketHandler.Instance);
+                pipeline = NonGenericPacketPipeline.Create(packetType, TryGetPipeline(packetType, out var parentPipeline, true)
+                    ? parentPipeline.Handler
+                    : NullPacketHandler.Instance);
+
                 AddParentMiddleware(pipeline);
 
                 _pipelines[packetType] = pipeline;
