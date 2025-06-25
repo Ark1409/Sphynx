@@ -399,6 +399,8 @@ namespace Sphynx.ServerV2.Client
         {
             Debug.Assert(_clientTask?.IsCompleted ?? true, "Run loop should complete before disconnecting client");
             Debug.Assert(!_disconnectReserved, "Client should not be disconnected twice");
+            // We should implicitly have hold of this semaphore to ensure there are no race conditions during disconnection.
+            Debug.Assert(_disposeSemaphore.CurrentCount == 0);
 
             _disconnectReserved = true;
 
@@ -414,34 +416,15 @@ namespace Sphynx.ServerV2.Client
 
             try
             {
-                // We should implicitly have hold of this semaphore to ensure there
-                // are no race conditions in the proceeding call.
-                Debug.Assert(_disposeSemaphore.CurrentCount == 0);
-
                 await OnDisconnectAsync(disconnectException).ConfigureAwait(false);
+                _ = OnDisconnect?.Invoke(this, disconnectException);
             }
             catch
             {
-                // Just ignore fow now
+                // Just ignore for now
             }
 
-            var disconnectSubscribers = OnDisconnect;
-
-            // We allow subscribers to be run concurrently with disposals.
-            // This allows them to perform actions such as DisposeAsync() without deadlocking.
             _disposeSemaphore.Release();
-
-            if (disconnectSubscribers is not null)
-            {
-                try
-                {
-                    await disconnectSubscribers.Invoke(this, disconnectException).ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Ignore subscriber exceptions
-                }
-            }
         }
 
         /// <summary>
