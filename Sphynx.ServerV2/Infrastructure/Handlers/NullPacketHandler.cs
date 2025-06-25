@@ -4,7 +4,7 @@
 using Sphynx.Network.PacketV2;
 using Sphynx.ServerV2.Client;
 
-namespace Sphynx.ServerV2.Handlers
+namespace Sphynx.ServerV2.Infrastructure.Handlers
 {
     /// <summary>
     /// An <see cref="IPacketHandler{TPacket}"/> which does nothing.

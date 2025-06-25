@@ -3,8 +3,9 @@
 
 using Microsoft.Extensions.Logging;
 using Sphynx.Network.PacketV2;
+using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.Transport;
-using Sphynx.ServerV2.Handlers;
+using Sphynx.ServerV2.Infrastructure.Handlers;
 
 namespace Sphynx.ServerV2
 {

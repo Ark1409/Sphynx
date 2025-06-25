@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using Sphynx.ServerV2;
 using Sphynx.ServerV2.Client;
 using Sphynx.ServerV2.Infrastructure;
+using Sphynx.ServerV2.Infrastructure.RateLimiting;
 
 namespace Sphynx.Server.Auth
 {

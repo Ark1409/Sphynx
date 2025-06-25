@@ -8,7 +8,7 @@ using Sphynx.Network.PacketV2.Response;
 using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2.Client;
-using Sphynx.ServerV2.Handlers;
+using Sphynx.ServerV2.Infrastructure.Handlers;
 
 namespace Sphynx.Server.Auth.Handlers
 {
