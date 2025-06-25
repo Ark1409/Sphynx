@@ -9,8 +9,13 @@ namespace Sphynx.ServerV2.Infrastructure.Handlers
     /// <summary>
     /// An <see cref="IPacketHandler{TPacket}"/> which does nothing.
     /// </summary>
-    public sealed class NullPacketHandler : IPacketHandler
+    public class NullPacketHandler : IPacketHandler
     {
+        /// <summary>
+        /// A public instance of a <see cref="NullPacketHandler"/>.
+        /// </summary>
+        public static readonly NullPacketHandler Instance = new();
+
         /// <inheritdoc/>
         public Task HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
         {
