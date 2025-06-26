@@ -464,11 +464,11 @@ namespace Sphynx.ServerV2.Client
         {
             await _disposeSemaphore.WaitAsync().ConfigureAwait(false);
 
-            if (_disposed)
-                return;
-
             try
             {
+                if (_disposed)
+                    return;
+
                 OnDisconnect = null;
 
                 await _stream.DisposeAsync().ConfigureAwait(false);

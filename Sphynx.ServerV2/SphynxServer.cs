@@ -240,11 +240,11 @@ namespace Sphynx.ServerV2
         {
             await _startSemaphore.WaitAsync().ConfigureAwait(false);
 
-            if (_disposed)
-                return;
-
             try
             {
+                if (_disposed)
+                    return;
+                
                 _serverCts.Dispose();
                 Profile.Dispose();
             }
@@ -252,9 +252,11 @@ namespace Sphynx.ServerV2
             {
                 // We don't really care at this point
             }
-
-            _disposed = true;
-            _startSemaphore.Release();
+            finally
+            {
+                _disposed = true;
+                _startSemaphore.Release();
+            }
         }
 
         /// <summary>
