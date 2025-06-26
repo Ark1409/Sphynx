@@ -17,7 +17,7 @@ namespace Sphynx.Server.Auth.Handlers
         private readonly IAuthService _authService;
         private readonly ILogger _logger;
 
-        public RegisterHandler(IAuthService authService, ILogger logger)
+        public RegisterHandler(IAuthService authService, ILogger<RegisterHandler> logger)
         {
             _authService = authService;
             _logger = logger;
