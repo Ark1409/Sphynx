@@ -9,6 +9,7 @@ using Sphynx.Network.PacketV2;
 using Sphynx.Network.Transport;
 using Sphynx.ServerV2.Extensions;
 using Sphynx.ServerV2.Infrastructure.Handlers;
+using Sphynx.ServerV2.Infrastructure.Routing;
 
 namespace Sphynx.ServerV2.Client
 {
@@ -64,9 +65,9 @@ namespace Sphynx.ServerV2.Client
         protected IPacketTransporter PacketTransporter { get; }
 
         /// <summary>
-        /// The packet handler which is used to handle incoming packets.
+        /// The packet router which is used to route incoming packets to handlers.
         /// </summary>
-        protected IPacketHandler<SphynxPacket> PacketHandler { get; }
+        protected IPacketRouter PacketRouter { get; }
 
         private readonly NetworkStream _stream;
 
@@ -89,19 +90,19 @@ namespace Sphynx.ServerV2.Client
             ClientId = Guid.NewGuid();
 
             PacketTransporter = profile.PacketTransporter;
-            PacketHandler = profile.PacketHandler;
+            PacketRouter = profile.PacketRouter;
             Logger = profile.LoggerFactory.CreateLogger(GetType());
         }
 
-        public SphynxTcpClient(Socket socket, IPacketTransporter packetTransporter, IPacketHandler<SphynxPacket> packetHandler, ILogger logger)
-            : this(socket, Guid.NewGuid(), packetTransporter, packetHandler, logger)
+        public SphynxTcpClient(Socket socket, IPacketTransporter packetTransporter, IPacketRouter router, ILogger logger)
+            : this(socket, Guid.NewGuid(), packetTransporter, router, logger)
         {
         }
 
         public SphynxTcpClient(Socket socket,
             Guid clientId,
             IPacketTransporter packetTransporter,
-            IPacketHandler<SphynxPacket> packetHandler,
+            IPacketRouter router,
             ILogger logger)
         {
             Socket = socket;
@@ -111,7 +112,7 @@ namespace Sphynx.ServerV2.Client
             ClientId = clientId;
 
             PacketTransporter = packetTransporter;
-            PacketHandler = packetHandler;
+            PacketRouter = router;
             Logger = logger;
         }
 
@@ -241,7 +242,7 @@ namespace Sphynx.ServerV2.Client
         {
             try
             {
-                await PacketHandler.HandlePacketAsync(this, packet, cancellationToken).ConfigureAwait(false);
+                await PacketRouter.ExecuteAsync(this, packet, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

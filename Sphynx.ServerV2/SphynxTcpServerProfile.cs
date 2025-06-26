@@ -2,10 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Microsoft.Extensions.Logging;
-using Sphynx.Network.PacketV2;
-using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.Transport;
-using Sphynx.ServerV2.Infrastructure.Handlers;
+using Sphynx.ServerV2.Infrastructure.Routing;
 
 namespace Sphynx.ServerV2
 {
@@ -37,8 +35,8 @@ namespace Sphynx.ServerV2
         public IPacketTransporter PacketTransporter { get; set; } = new PacketTransporter();
 
         /// <summary>
-        /// The central packet handler which, when invoked, initiates a full packet processing cycle.
+        /// The central packet router which, when invoked, initiates a full packet processing cycle.
         /// </summary>
-        public IPacketHandler<SphynxPacket> PacketHandler { get; set; } = new NullPacketHandler();
+        public IPacketRouter PacketRouter { get; set; } = new PacketRouter();
     }
 }

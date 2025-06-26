@@ -10,10 +10,24 @@ using Sphynx.ServerV2.Infrastructure.Middleware;
 
 namespace Sphynx.ServerV2.Infrastructure.Routing
 {
-    public class PacketRouter
+    /// <summary>
+    /// The default packet router
+    /// </summary>
+    public class PacketRouter : IPacketRouter
     {
+        /// <summary>
+        /// Whether to throw an exception when attempting to <see cref="ExecuteAsync"/> a packet with an
+        /// unregistered handler.
+        /// </summary>
+        public bool ThrowOnUnregistered { get; set; } = true;
+
         private readonly Dictionary<Type, NonGenericPacketPipeline> _pipelines = new();
 
+        /// <summary>
+        /// Applies middleware to the handlers of type <typeparamref name="TPacket"/> and all its children.
+        /// </summary>
+        /// <param name="middleware">The middleware to apply.</param>
+        /// <typeparam name="TPacket">The packet type.</typeparam>
         public PacketRouter UseMiddleware<TPacket>(IMiddleware<TPacket> middleware) where TPacket : SphynxPacket
         {
             ArgumentNullException.ThrowIfNull(middleware, nameof(middleware));
@@ -37,6 +51,9 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
             return this;
         }
 
+        IPacketRouter IPacketRouter.UseHandler<TPacket>(IPacketHandler<TPacket> handler) => UseHandler(handler);
+
+        /// <inheritdoc cref="UseHandler{TPacket}(Sphynx.ServerV2.Infrastructure.Handlers.IPacketHandler{TPacket})"/>
         public PacketRouter UseHandler<TPacket>(IPacketHandler<TPacket> handler) where TPacket : SphynxPacket
         {
             ArgumentNullException.ThrowIfNull(handler, nameof(handler));
@@ -52,14 +69,15 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
             }
 
             pipeline.SetHandler(handler);
+
             return this;
         }
 
-        public Task ExecuteAsync<TPacket>(ISphynxClient client, TPacket packet, CancellationToken cancellationToken = default)
-            where TPacket : SphynxPacket
+        /// <inheritdoc/>
+        public Task ExecuteAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
         {
-            if (!TryGetPipeline(typeof(TPacket), out var pipeline, true))
-                throw new ArgumentException($"No existing pipeline for packet {packet.PacketType}");
+            if (!TryGetPipeline(packet.GetType(), out var pipeline, true))
+                return ThrowOnUnregistered ? throw new ArgumentException($"No existing pipeline for packet {packet.PacketType}") : Task.CompletedTask;
 
             return pipeline.ExecuteAsync(client, packet, cancellationToken);
         }

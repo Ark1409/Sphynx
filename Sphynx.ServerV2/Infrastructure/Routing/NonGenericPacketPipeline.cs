@@ -73,7 +73,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
         {
             ArgumentNullException.ThrowIfNull(handler, nameof(handler));
 
-            if (Handler == handler)
+            if (Handler == handler || (Handler is NonGenericHandlerAdapter<TPacket> nonGeneric && nonGeneric.InnerHandler == handler))
                 return;
 
             if (PacketType != typeof(TPacket))
