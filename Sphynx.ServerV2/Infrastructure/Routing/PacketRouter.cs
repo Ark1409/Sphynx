@@ -11,7 +11,7 @@ using Sphynx.ServerV2.Infrastructure.Middleware;
 namespace Sphynx.ServerV2.Infrastructure.Routing
 {
     /// <summary>
-    /// The default packet router
+    /// The default packet router.
     /// </summary>
     public class PacketRouter : IPacketRouter
     {
@@ -28,7 +28,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
         /// </summary>
         /// <param name="middleware">The middleware to apply.</param>
         /// <typeparam name="TPacket">The packet type.</typeparam>
-        public PacketRouter UseMiddleware<TPacket>(IMiddleware<TPacket> middleware) where TPacket : SphynxPacket
+        public PacketRouter UseMiddleware<TPacket>(IPacketMiddleware<TPacket> middleware) where TPacket : SphynxPacket
         {
             ArgumentNullException.ThrowIfNull(middleware, nameof(middleware));
 
@@ -91,7 +91,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
                 pipeline.AddMiddleware(parentMiddleware);
         }
 
-        private void UpdateChildMiddleware<TPacket>(IMiddleware<TPacket> middleware) where TPacket : SphynxPacket
+        private void UpdateChildMiddleware<TPacket>(IPacketMiddleware<TPacket> middleware) where TPacket : SphynxPacket
         {
             var packetType = typeof(TPacket);
 

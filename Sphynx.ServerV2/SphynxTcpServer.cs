@@ -18,9 +18,7 @@ namespace Sphynx.ServerV2
     /// </summary>
     public class SphynxTcpServer : SphynxServer
     {
-        /// <summary>
-        /// The profile with which to configure the server.
-        /// </summary>
+        /// <inheritdoc/>
         public override SphynxTcpServerProfile Profile { get; }
 
         /// <summary>

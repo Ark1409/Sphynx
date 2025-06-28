@@ -15,7 +15,7 @@ namespace Sphynx.ServerV2
         /// <summary>
         /// The maximum number of clients in server backlog.
         /// </summary>
-        public int Backlog => 64;
+        public int Backlog { get; set; } = 64;
 
         /// <summary>
         /// Returns buffer size for information exchange.
@@ -32,11 +32,11 @@ namespace Sphynx.ServerV2
         /// <summary>
         /// The packet transporter used to send data to and read data from clients.
         /// </summary>
-        public IPacketTransporter PacketTransporter { get; set; } = new PacketTransporter();
+        public virtual IPacketTransporter PacketTransporter { get; set; } = new PacketTransporter();
 
         /// <summary>
         /// The central packet router which, when invoked, initiates a full packet processing cycle.
         /// </summary>
-        public IPacketRouter PacketRouter { get; set; } = new PacketRouter();
+        public virtual IPacketRouter PacketRouter { get; set; } = new PacketRouter();
     }
 }

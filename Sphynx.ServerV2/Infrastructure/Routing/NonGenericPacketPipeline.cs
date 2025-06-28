@@ -7,7 +7,7 @@ using Sphynx.ServerV2.Client;
 using Sphynx.ServerV2.Infrastructure.Handlers;
 using Sphynx.ServerV2.Infrastructure.Middleware;
 using NonGenericHandler = Sphynx.ServerV2.Infrastructure.Handlers.IPacketHandler<Sphynx.Network.PacketV2.SphynxPacket>;
-using NonGenericMiddleware = Sphynx.ServerV2.Infrastructure.Middleware.IMiddleware<Sphynx.Network.PacketV2.SphynxPacket>;
+using NonGenericMiddleware = Sphynx.ServerV2.Infrastructure.Middleware.IPacketMiddleware<Sphynx.Network.PacketV2.SphynxPacket>;
 
 namespace Sphynx.ServerV2.Infrastructure.Routing
 {
@@ -54,7 +54,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
             return _middleware?.Count == 0 ? Handler.HandlePacketAsync(client, packet, token) : Pipeline(client, packet, token);
         }
 
-        public void AddMiddleware<TParent>(IMiddleware<TParent> middleware) where TParent : SphynxPacket
+        public void AddMiddleware<TParent>(IPacketMiddleware<TParent> middleware) where TParent : SphynxPacket
         {
             ArgumentNullException.ThrowIfNull(middleware, nameof(middleware));
 
@@ -120,9 +120,9 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
         private class NonGenericMiddlewareAdapter<TPacket> : NonGenericMiddleware where TPacket : SphynxPacket
         {
-            internal IMiddleware<TPacket> InnerMiddleware { get; set; }
+            internal IPacketMiddleware<TPacket> InnerMiddleware { get; set; }
 
-            public NonGenericMiddlewareAdapter(IMiddleware<TPacket> innerMiddleware) => InnerMiddleware = innerMiddleware;
+            public NonGenericMiddlewareAdapter(IPacketMiddleware<TPacket> innerMiddleware) => InnerMiddleware = innerMiddleware;
 
             public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token) =>
                 InnerMiddleware.InvokeAsync(client, (TPacket)packet, next, token);
