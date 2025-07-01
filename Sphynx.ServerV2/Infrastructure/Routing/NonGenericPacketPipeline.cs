@@ -29,7 +29,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
             Handler = handler;
         }
 
-        internal static NonGenericPacketPipeline Create(Type packetType, NonGenericHandler handler)
+        public static NonGenericPacketPipeline Create(Type packetType, NonGenericHandler handler)
         {
             ArgumentNullException.ThrowIfNull(packetType, nameof(packetType));
             ArgumentNullException.ThrowIfNull(handler, nameof(handler));

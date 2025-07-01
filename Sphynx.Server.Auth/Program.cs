@@ -8,16 +8,12 @@ namespace Sphynx.Server.Auth
         {
             await using var server = new SphynxAuthServer();
 
-            RegisterCleanupHandlers(server);
-
-            await server.StartAsync();
-        }
-
-        private static void RegisterCleanupHandlers(SphynxAuthServer server)
-        {
+            // ReSharper disable DisposeOnUsingVariable, AccessToDisposedClosure
             AppDomain.CurrentDomain.ProcessExit += (_, _) => server.DisposeAsync().AsTask().Wait();
             AssemblyLoadContext.Default.Unloading += (_) => server.DisposeAsync().AsTask().Wait();
             Console.CancelKeyPress += (_, _) => server.DisposeAsync().AsTask().Wait();
+
+            await server.StartAsync();
         }
     }
 }

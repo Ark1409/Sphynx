@@ -33,7 +33,7 @@ namespace Sphynx.Server.Auth
 
         private void ConfigureBase(bool isDevelopment)
         {
-            Backlog = isDevelopment ? 16 : 512;
+            Backlog = isDevelopment ? 16 : 256;
 
             // TODO: Figure out a workaround
             LoggerFactory.Dispose();

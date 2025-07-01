@@ -26,7 +26,7 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
             TimeWindow = timeWindow;
         }
 
-        public async ValueTask<TimeSpan> ConsumeTokensAsync(int count = 1, CancellationToken cancellationToken = default)
+        public async ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default)
         {
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -57,11 +57,6 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
             {
                 _semaphore.Release();
             }
-        }
-
-        public void Dispose()
-        {
-            _semaphore.Dispose();
         }
     }
 }

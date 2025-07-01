@@ -4,7 +4,6 @@
 using System.Net.Sockets;
 using Sphynx.ServerV2;
 using Sphynx.ServerV2.Client;
-using Sphynx.ServerV2.Infrastructure;
 using Sphynx.ServerV2.Infrastructure.RateLimiting;
 
 namespace Sphynx.Server.Auth
@@ -22,7 +21,6 @@ namespace Sphynx.Server.Auth
 
         protected override ValueTask OnDisconnectAsync(Exception? disconnectException)
         {
-            _rateLimiter.Dispose();
             return base.OnDisconnectAsync(disconnectException);
         }
     }

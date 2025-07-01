@@ -3,13 +3,21 @@
 
 namespace Sphynx.ServerV2.Infrastructure.RateLimiting
 {
-    public interface IRateLimiter : IDisposable
+    public interface IRateLimiter
     {
         int MaxOperations { get; }
         TimeSpan TimeWindow { get; }
 
         double RateSeconds => MaxOperations / TimeWindow.TotalSeconds;
 
-        ValueTask<TimeSpan> ConsumeTokensAsync(int count = 1, CancellationToken cancellationToken = default);
+        ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default);
+    }
+
+    public static class RateLimiterExtensions
+    {
+        public static async ValueTask<bool> TryConsumeAsync(this IRateLimiter limiter, int count = 1, CancellationToken cancellationToken = default)
+        {
+            return await limiter.ConsumeAsync(count, cancellationToken) > TimeSpan.Zero;
+        }
     }
 }
