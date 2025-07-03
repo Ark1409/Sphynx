@@ -235,6 +235,9 @@ namespace Sphynx.ServerV2
 
             try
             {
+                if (_disposed)
+                    return;
+
                 await DisposeServerAsync().ConfigureAwait(false);
                 await DisposeClientsAsync().ConfigureAwait(false);
 
@@ -253,7 +256,7 @@ namespace Sphynx.ServerV2
 
             await StopAsync(waitForFinish: true).ConfigureAwait(false);
 
-            if (ServerSocket is not null && ServerSocket.Connected)
+            if (ServerSocket is not null)
             {
                 await ServerSocket.DisconnectAsync(false).ConfigureAwait(false);
                 ServerSocket.Shutdown(SocketShutdown.Both);

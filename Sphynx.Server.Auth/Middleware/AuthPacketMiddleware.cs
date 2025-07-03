@@ -25,8 +25,7 @@ namespace Sphynx.Server.Auth.Middleware
             if (packet is not LoginRequest && packet is not RegisterRequest)
             {
                 if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("Unregistered packet of type {PacketType} received from {EndPoint} ({ClientId})", packet.PacketType,
-                        client.EndPoint, client.ClientId);
+                    _logger.LogWarning("Rejecting packet of type {PacketType} received from {EndPoint}", packet.PacketType, client.EndPoint);
 
                 return Task.CompletedTask;
             }
