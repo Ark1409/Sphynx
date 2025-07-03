@@ -5,10 +5,10 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
 {
     public interface IRateLimiter
     {
-        int MaxOperations { get; }
+        int MaxPermits { get; }
         TimeSpan TimeWindow { get; }
 
-        double RateSeconds => MaxOperations / TimeWindow.TotalSeconds;
+        double RateSeconds { get; }
 
         ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default);
     }

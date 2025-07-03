@@ -1,29 +1,49 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Diagnostics;
+
 namespace Sphynx.ServerV2.Infrastructure.RateLimiting
 {
     public class TokenBucketRateLimiter : IRateLimiter
     {
-        public int MaxOperations { get; }
+        public int MaxPermits { get; }
         public TimeSpan TimeWindow { get; }
 
-        public double RateSeconds => MaxOperations / TimeWindow.TotalSeconds;
-        public double RateTicks => MaxOperations / (double)TimeWindow.Ticks;
+        public double RateSeconds => RateTicks * TimeSpan.TicksPerSecond;
+        public double RateTicks { get; }
 
-        public int Tokens { get; private set; }
+        public int Tokens
+        {
+            get
+            {
+                _semaphore.Wait();
+
+                try
+                {
+                    return ReplenishTokens(out _);
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
+            }
+        }
+
+        private int _tokens;
 
         private long _lastTime;
-        private readonly SemaphoreSlim _semaphore = new(1,1);
+        private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-        public TokenBucketRateLimiter(int tokensPerSecond) : this(tokensPerSecond, TimeSpan.FromSeconds(1))
+        public TokenBucketRateLimiter(int tokensPerSecond, int maxTokens) : this(tokensPerSecond, maxTokens, TimeSpan.FromSeconds(1))
         {
         }
 
-        public TokenBucketRateLimiter(int maxTokens, TimeSpan timeWindow)
+        public TokenBucketRateLimiter(int tokensPerPeriod, int maxTokens, TimeSpan period)
         {
-            MaxOperations = maxTokens > 0 ? maxTokens : throw new ArgumentOutOfRangeException(nameof(maxTokens), "Max tokens must be positive");
-            TimeWindow = timeWindow;
+            MaxPermits = maxTokens > 0 ? maxTokens : throw new ArgumentOutOfRangeException(nameof(maxTokens), "Max tokens must be positive");
+            TimeWindow = ((double)maxTokens / tokensPerPeriod) * period;
+            RateTicks = tokensPerPeriod * period.Ticks;
         }
 
         public async ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default)
@@ -32,24 +52,18 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
 
             try
             {
-                long now = DateTimeOffset.UtcNow.Ticks;
-                long elapsed = now - _lastTime;
+                ReplenishTokens(out double newTokens);
 
-                _lastTime = now;
-
-                double newTokens = Math.Min(elapsed * RateTicks, MaxOperations - Tokens);
-                Tokens += (int)newTokens;
-
-                if (Tokens < count)
+                if (_tokens < count)
                 {
                     double fracNewTokens = newTokens - (long)newTokens;
-                    double tokensRequired = count - (Tokens + fracNewTokens);
+                    double tokensRequired = count - (_tokens + fracNewTokens);
                     long ticksLeft = (long)(tokensRequired * 1 / RateTicks);
 
                     return TimeSpan.FromTicks(ticksLeft);
                 }
 
-                Tokens -= count;
+                _tokens -= count;
 
                 return TimeSpan.Zero;
             }
@@ -57,6 +71,28 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
             {
                 _semaphore.Release();
             }
+        }
+
+        private int ReplenishTokens(out double newTokens)
+        {
+            Debug.Assert(_semaphore.CurrentCount == 0, "Semaphore should be held before replenishing tokens");
+
+            if (_tokens < MaxPermits)
+            {
+                long now = DateTimeOffset.UtcNow.Ticks;
+                long elapsedTicks = now - _lastTime;
+
+                _lastTime = now;
+
+                newTokens = Math.Min(elapsedTicks * RateTicks, MaxPermits - _tokens);
+                _tokens += (int)newTokens;
+            }
+            else
+            {
+                newTokens = 0;
+            }
+
+            return _tokens;
         }
     }
 }
