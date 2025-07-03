@@ -3,6 +3,7 @@
 
 #nullable disable
 
+using System.Net;
 using Microsoft.Extensions.Logging;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.Serialization.Model;
@@ -13,6 +14,8 @@ using Sphynx.Server.Auth.Middleware;
 using Sphynx.Server.Auth.Persistence;
 using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2;
+using Sphynx.ServerV2.Infrastructure.Middleware;
+using Sphynx.ServerV2.Infrastructure.RateLimiting;
 using Sphynx.ServerV2.Infrastructure.Routing;
 
 namespace Sphynx.Server.Auth
@@ -22,6 +25,7 @@ namespace Sphynx.Server.Auth
         public IPasswordHasher PasswordHasher { get; set; }
         public IUserRepository UserRepository { get; set; }
         public IAuthService AuthService { get; set; }
+        public Func<IRateLimiter> RateLimiterFactory { get; set; }
 
         public SphynxAuthServerProfile(bool isDevelopment = true)
         {
@@ -64,19 +68,32 @@ namespace Sphynx.Server.Auth
         private void ConfigureServices(bool isDevelopment)
         {
             PasswordHasher = new Pbkdf2PasswordHasher();
+
             // TODO: Register mongo credentials
             UserRepository = isDevelopment ? new NullUserRepository() : new MongoUserRepository(null!, null!);
             AuthService = new AuthService(PasswordHasher, UserRepository, LoggerFactory.CreateLogger<AuthService>());
+
+            // TODO: Maybe try redis?
+            if (isDevelopment)
+                RateLimiterFactory = () => new TokenBucketRateLimiter(1, 60, TimeSpan.FromMinutes(1));
+            else
+                RateLimiterFactory = () => new TokenBucketRateLimiter(1, 10, TimeSpan.FromMinutes(1));
         }
 
         private void ConfigureRoutes(bool isDevelopment)
         {
             var router = PacketRouter as PacketRouter ?? new PacketRouter();
-            PacketRouter = router;
+
+            if (isDevelopment)
+                router.UseMiddleware(new RateLimitingMiddleware(RateLimiterFactory));
+            else
+                router.UseMiddleware(new RateLimitingMiddleware<IPEndPoint>(RateLimiterFactory, client => client.EndPoint));
 
             router.UseMiddleware(new AuthPacketMiddleware(LoggerFactory.CreateLogger<AuthPacketMiddleware>()))
                 .UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
                 .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()));
+
+            PacketRouter = router;
         }
     }
 }
