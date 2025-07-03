@@ -27,20 +27,20 @@ namespace Sphynx.Server.Auth
         public IAuthService AuthService { get; set; }
         public Func<IRateLimiter> RateLimiterFactory { get; set; }
 
-        public SphynxAuthServerProfile(bool isDevelopment = true)
+        private IDisposable _rateLimitingMiddleware;
+
+        public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
         {
             ConfigureBase(isDevelopment);
             ConfigureTransporter(isDevelopment);
             ConfigureServices(isDevelopment);
+            ConfigureMiddleware(isDevelopment);
             ConfigureRoutes(isDevelopment);
         }
 
         private void ConfigureBase(bool isDevelopment)
         {
             Backlog = isDevelopment ? 16 : 256;
-
-            // TODO: Figure out a workaround
-            LoggerFactory.Dispose();
 
             LoggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
             {
@@ -71,29 +71,49 @@ namespace Sphynx.Server.Auth
 
             // TODO: Register mongo credentials
             UserRepository = isDevelopment ? new NullUserRepository() : new MongoUserRepository(null!, null!);
+
             AuthService = new AuthService(PasswordHasher, UserRepository, LoggerFactory.CreateLogger<AuthService>());
 
-            // TODO: Maybe try redis?
             if (isDevelopment)
                 RateLimiterFactory = () => new TokenBucketRateLimiter(1, 60, TimeSpan.FromMinutes(1));
             else
                 RateLimiterFactory = () => new TokenBucketRateLimiter(1, 10, TimeSpan.FromMinutes(1));
         }
 
+        private void ConfigureMiddleware(bool isDevelopment)
+        {
+            var router = PacketRouter as PacketRouter ?? new PacketRouter();
+
+            // TODO: Maybe add redis
+            if (!isDevelopment)
+            {
+                var rateLimitingMiddleware = new RateLimitingMiddleware<IPEndPoint>(RateLimiterFactory, client => client.EndPoint);
+                _rateLimitingMiddleware = rateLimitingMiddleware;
+
+                router.UseMiddleware(rateLimitingMiddleware);
+            }
+
+            router.UseMiddleware(new AuthPacketMiddleware(LoggerFactory.CreateLogger<AuthPacketMiddleware>()));
+
+            PacketRouter = router;
+        }
+
         private void ConfigureRoutes(bool isDevelopment)
         {
             var router = PacketRouter as PacketRouter ?? new PacketRouter();
 
-            if (isDevelopment)
-                router.UseMiddleware(new RateLimitingMiddleware(RateLimiterFactory));
-            else
-                router.UseMiddleware(new RateLimitingMiddleware<IPEndPoint>(RateLimiterFactory, client => client.EndPoint));
-
-            router.UseMiddleware(new AuthPacketMiddleware(LoggerFactory.CreateLogger<AuthPacketMiddleware>()))
-                .UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
+            router.UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
                 .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()));
 
             PacketRouter = router;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                _rateLimitingMiddleware?.Dispose();
+
+            base.Dispose(disposing);
         }
     }
 }

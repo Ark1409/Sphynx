@@ -1,6 +1,8 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+#nullable disable
+
 using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
@@ -27,31 +29,43 @@ namespace Sphynx.ServerV2
         /// <summary>
         /// Returns the endpoint to be associated with the server.
         /// </summary>
-        public IPEndPoint EndPoint { get; set; } = DefaultEndPoint;
+        public virtual IPEndPoint EndPoint { get; set; }
 
         /// <summary>
         /// The primary logger factory which will be used by the server.
         /// </summary>
-        public virtual ILoggerFactory LoggerFactory { get; set; } = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
-        {
-            builder.AddSimpleConsole(options =>
-            {
-                options.IncludeScopes = true;
-                options.TimestampFormat = "[MM-dd-yyyy HH:mm:ss] ";
-            });
-        });
+        public virtual ILoggerFactory LoggerFactory { get; set; }
 
         /// <summary>
         /// Retrieves the default server logging instance.
         /// </summary>
         public virtual ILogger Logger => _logger ??= LoggerFactory.CreateLogger(typeof(SphynxServer));
 
-        private ILogger? _logger;
+        private ILogger _logger;
 
         /// <summary>
         /// Whether this profile has been disposed. The profile should no longer be used to configure a <see cref="SphynxServer"/> once disposed.
         /// </summary>
         public bool IsDisposed { get; private set; }
+
+        protected SphynxServerProfile(bool configure = false)
+        {
+            if (configure)
+                ConfigureServices();
+        }
+
+        private void ConfigureServices()
+        {
+            EndPoint = DefaultEndPoint;
+            LoggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
+            {
+                builder.AddSimpleConsole(options =>
+                {
+                    options.IncludeScopes = true;
+                    options.TimestampFormat = "[MM-dd-yyyy HH:mm:ss] ";
+                });
+            });
+        }
 
         /// <summary>
         /// Disposes of this server profile.
