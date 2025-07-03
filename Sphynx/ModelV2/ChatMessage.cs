@@ -47,7 +47,7 @@ namespace Sphynx.ModelV2
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatMessage? other) => MessageId.Equals(other?.MessageId);
+        public virtual bool Equals(ChatMessage? other) => MessageId.Equals(other?.MessageId);
 
         /// <inheritdoc/>
         public override int GetHashCode() => MessageId.GetHashCode();
