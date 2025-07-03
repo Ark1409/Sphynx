@@ -18,6 +18,11 @@ namespace Sphynx.Storage
         private readonly T?[] _items;
 
         /// <summary>
+        /// Returns the maximum capacity of this pool.
+        /// </summary>
+        public int Capacity => _items.Length + 1;
+
+        /// <summary>
         /// Creates a new fixed size pool
         /// </summary>
         /// <param name="size">The number of items of <typeparamref name="T"/> which the pool can hold at once.</param>
@@ -41,7 +46,7 @@ namespace Sphynx.Storage
             item = _fastChecks ? _firstItem : Volatile.Read(ref _firstItem);
 
             if (item is null)
-                return false;
+                return TryTakeSlow(out item);
 
             if (Interlocked.CompareExchange(ref _firstItem, null, item) == item)
                 return true;
@@ -80,7 +85,7 @@ namespace Sphynx.Storage
 
             // The first slot is already full.
             if (firstItem is not null)
-                return false;
+                return ReturnSlow(obj);
 
             // Try and reserve the first slot for ourselves.
             if (Interlocked.CompareExchange(ref _firstItem, obj, firstItem) == firstItem)
