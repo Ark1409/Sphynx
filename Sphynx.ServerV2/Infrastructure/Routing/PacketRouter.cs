@@ -53,7 +53,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
         IPacketRouter IPacketRouter.UseHandler<TPacket>(IPacketHandler<TPacket> handler) => UseHandler(handler);
 
-        /// <inheritdoc cref="UseHandler{TPacket}(Sphynx.ServerV2.Infrastructure.Handlers.IPacketHandler{TPacket})"/>
+        /// <inheritdoc cref="IPacketRouter.UseHandler{TPacket}(IPacketHandler{TPacket})"/>
         public PacketRouter UseHandler<TPacket>(IPacketHandler<TPacket> handler) where TPacket : SphynxPacket
         {
             ArgumentNullException.ThrowIfNull(handler, nameof(handler));
@@ -109,7 +109,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
         private bool TryGetPipeline(Type packetType, [NotNullWhen(true)] out NonGenericPacketPipeline? pipeline, bool tryParent = false)
         {
-            Debug.Assert(typeof(SphynxPacket).IsAssignableFrom(packetType), "Attempted to get pipeline for non-packet type?");
+            Debug.Assert(typeof(SphynxPacket).IsAssignableFrom(packetType), $"Attempted to get pipeline for non-{nameof(SphynxPacket)} type?");
 
             if (_pipelines.Count == 0)
             {

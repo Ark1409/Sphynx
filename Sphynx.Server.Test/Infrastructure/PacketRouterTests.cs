@@ -3,6 +3,7 @@
 
 using System.Net;
 using Sphynx.Network.PacketV2;
+using Sphynx.Network.PacketV2.Request;
 using Sphynx.ServerV2;
 using Sphynx.ServerV2.Client;
 using Sphynx.ServerV2.Infrastructure.Handlers;
@@ -30,7 +31,7 @@ namespace Sphynx.Server.Test.Infrastructure
             var orderTrackingPacket = new OrderTrackingPacket();
             await router.ExecuteAsync(new TestClient(), orderTrackingPacket);
 
-            Assert.That(orderTrackingPacket.ExecutionOrder.Count == 4);
+            Assert.That(orderTrackingPacket.ExecutionOrder.Count, Is.EqualTo(4));
             Assert.That(orderTrackingPacket.IsExecutionOrdered);
         }
 
@@ -49,15 +50,21 @@ namespace Sphynx.Server.Test.Infrastructure
         }
 
         [Test]
-        public void UseHandler_ShouldReplaceHandler_WhenInvokedTwiceOnSamePacketType()
+        public async Task UseHandler_ShouldReplaceHandler_WhenInvokedTwiceOnSamePacketType()
         {
             // Arrange
-            var router = new PacketRouter { ThrowOnUnregistered = true };
+            var router = new PacketRouter();
+            router.UseHandler(new OrderedHandler(1));
 
             // Act
+            router.UseHandler(new OrderedHandler(2));
 
             // Assert
-            Assert.Fail();
+            var orderTrackingPacket = new OrderTrackingPacket();
+            await router.ExecuteAsync(new TestClient(), orderTrackingPacket);
+
+            Assert.That(orderTrackingPacket.ExecutionOrder.Count, Is.EqualTo(1));
+            Assert.That(orderTrackingPacket.ExecutionOrder[0], Is.EqualTo(2));
         }
 
         [Test]
@@ -74,74 +81,71 @@ namespace Sphynx.Server.Test.Infrastructure
         }
 
         [Test]
-        public void ExecuteAsync_ShouldInvokeNonGenericHandler_WhenHandlerIsNotRegistered()
+        public async Task ExecuteAsync_ShouldInvokeNonGenericHandler_WhenHandlerIsNotRegistered()
         {
             // Arrange
-            var router = new PacketRouter();
+            var router = new PacketRouter { ThrowOnUnregistered = true };
+            await Assert.ThatAsync(() => router.ExecuteAsync(new TestClient(), new TestPacket()), Throws.Exception);
+
+            var nonGenericHandler = new TestHandler();
+            router.UseHandler(nonGenericHandler);
+
+            Assert.That(nonGenericHandler.IsExecuted, Is.False);
 
             // Act
+            await router.ExecuteAsync(new TestClient(), new TestRequestPacket());
 
             // Assert
-            Assert.Fail();
+            Assert.That(nonGenericHandler.IsExecuted);
         }
 
         [Test]
-        public void ExecuteAsync_ShouldAlwaysInvokeNonGenericMiddleware_WhenExecuted()
+        public async Task ExecuteAsync_ShouldAlwaysInvokeNonGenericMiddleware_WhenExecuted()
         {
             // Arrange
-            var router = new PacketRouter();
+            var router = new PacketRouter { ThrowOnUnregistered = true };
+
+            var nonGenericMiddleware = new TestMiddleware();
+            router.UseMiddleware(nonGenericMiddleware);
+
+            Assert.That(nonGenericMiddleware.IsExecuted, Is.False);
 
             // Act
+            await router.ExecuteAsync(new TestClient(), new TestRequestPacket());
 
             // Assert
-            Assert.Fail();
-        }
-
-        private class NonGenericMiddleware : IPacketMiddleware
-        {
-            public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token = default)
-            {
-                throw new NotImplementedException();
-            }
+            Assert.That(nonGenericMiddleware.IsExecuted);
         }
 
         private class OrderedMiddleware : IPacketMiddleware<OrderTrackingPacket>
         {
-            private readonly int _order;
+            public int Order { get; }
 
             public OrderedMiddleware(int order)
             {
-                _order = order;
+                Order = order;
             }
 
             public Task InvokeAsync(ISphynxClient client, OrderTrackingPacket packet, NextDelegate<OrderTrackingPacket> next,
                 CancellationToken token = default)
             {
-                packet.ExecutionOrder.Add(_order);
-                return next(client, packet, token);
-            }
-        }
-
-        private class TestMiddleware : IPacketMiddleware
-        {
-            public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token = default)
-            {
+                packet.ExecutionOrder.Add(Order);
                 return next(client, packet, token);
             }
         }
 
         private class OrderedHandler : IPacketHandler<OrderTrackingPacket>
         {
-            private readonly int _order;
+            public int Order { get; }
 
             public OrderedHandler(int order)
             {
-                _order = order;
+                Order = order;
             }
 
             public Task HandlePacketAsync(ISphynxClient client, OrderTrackingPacket packet, CancellationToken cancellationToken = default)
             {
-                packet.ExecutionOrder.Add(_order);
+                packet.ExecutionOrder.Add(Order);
                 return Task.CompletedTask;
             }
         }
@@ -169,7 +173,34 @@ namespace Sphynx.Server.Test.Infrastructure
             }
         }
 
+        private class TestHandler : IPacketHandler
+        {
+            public bool IsExecuted { get; private set; }
+
+            public Task HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
+            {
+                IsExecuted = true;
+                return Task.CompletedTask;
+            }
+        }
+
+        private class TestMiddleware : IPacketMiddleware
+        {
+            public bool IsExecuted { get; private set; }
+
+            public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token = default)
+            {
+                IsExecuted = true;
+                return next(client, packet, token);
+            }
+        }
+
         private class TestPacket : SphynxPacket
+        {
+            public override SphynxPacketType PacketType => SphynxPacketType.NOP;
+        }
+
+        private class TestRequestPacket : SphynxRequest
         {
             public override SphynxPacketType PacketType => SphynxPacketType.NOP;
         }
