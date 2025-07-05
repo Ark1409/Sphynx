@@ -38,7 +38,7 @@ namespace Sphynx.ServerV2.Infrastructure.Middleware
                 rateLimiter = _rateLimiterCache.GetOrAdd(partitionKey, (_, factory) =>
                 {
                     var limiter = factory();
-                    return new MemoryCache<TPartition, IRateLimiter>.CacheEntry(limiter, limiter.TimeWindow * 2);
+                    return new MemoryCache<TPartition, IRateLimiter>.CacheEntry(limiter, limiter.Period * 2);
                 }, _rateLimiterFactory);
             }
 

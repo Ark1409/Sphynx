@@ -7,11 +7,12 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
 {
     public class TokenBucketRateLimiter : IRateLimiter
     {
-        public int MaxPermits { get; }
-        public TimeSpan TimeWindow { get; }
+        public int MaxPermits => MaxTokens;
+        public int MaxTokens { get; }
+        public TimeSpan Period { get; }
 
-        public double RateSeconds => RateTicks * TimeSpan.TicksPerSecond;
-        public double RateTicks { get; }
+        public double RateSeconds => _tokensPerPeriod / Period.TotalSeconds;
+        public double RateTicks => _tokensPerPeriod / (double)Period.Ticks;
 
         public int Tokens
         {
@@ -31,8 +32,10 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
         }
 
         private int _tokens;
+        private readonly int _tokensPerPeriod;
 
         private long _lastTime;
+        private long _accumTime;
         private readonly SemaphoreSlim _semaphore = new(1, 1);
 
         public TokenBucketRateLimiter(int tokensPerSecond, int maxTokens) : this(tokensPerSecond, maxTokens, TimeSpan.FromSeconds(1))
@@ -41,26 +44,50 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
 
         public TokenBucketRateLimiter(int tokensPerPeriod, int maxTokens, TimeSpan period)
         {
-            MaxPermits = maxTokens > 0 ? maxTokens : throw new ArgumentOutOfRangeException(nameof(maxTokens), "Max tokens must be positive");
-            TimeWindow = ((double)maxTokens / tokensPerPeriod) * period;
-            RateTicks = tokensPerPeriod * period.Ticks;
+            if (tokensPerPeriod <= 0)
+                throw new ArgumentOutOfRangeException(nameof(tokensPerPeriod), "Tokens per period must be positive");
+
+            if (maxTokens < 0)
+                throw new ArgumentOutOfRangeException(nameof(maxTokens), "Max tokens must be positive");
+
+            if (period <= TimeSpan.Zero)
+                throw new ArgumentException("Period must be greater than zero", nameof(period));
+
+            _tokensPerPeriod = tokensPerPeriod;
+            _tokens = maxTokens;
+            _lastTime = DateTimeOffset.UtcNow.Ticks;
+
+            MaxTokens = maxTokens;
+            Period = period;
         }
 
-        public async ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default)
+        public ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default)
         {
+            if (count < 0)
+                return ValueTask.FromException<TimeSpan>(new ArgumentException("Count must be greater than or equal to 0", nameof(count)));
+
+            if (count == 0 || count > MaxTokens)
+                return ValueTask.FromResult(TimeSpan.Zero);
+
+            return ConsumeInternalAsync(count, cancellationToken);
+        }
+
+        private async ValueTask<TimeSpan> ConsumeInternalAsync(int count, CancellationToken cancellationToken)
+        {
+            Debug.Assert(count <= MaxTokens);
+
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
-                ReplenishTokens(out double newTokens);
+                ReplenishTokens(out _);
 
                 if (_tokens < count)
                 {
-                    double fracNewTokens = newTokens - (long)newTokens;
-                    double tokensRequired = count - (_tokens + fracNewTokens);
-                    long ticksLeft = (long)(tokensRequired * 1 / RateTicks);
+                    int tokensRequired = count - _tokens;
+                    long ticksRequired = (long)(Period.Ticks * Math.Ceiling((double)tokensRequired / _tokensPerPeriod) - _accumTime);
 
-                    return TimeSpan.FromTicks(ticksLeft);
+                    return TimeSpan.FromTicks(ticksRequired);
                 }
 
                 _tokens -= count;
@@ -73,19 +100,31 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
             }
         }
 
-        private int ReplenishTokens(out double newTokens)
+        private int ReplenishTokens(out int newTokens)
         {
             Debug.Assert(_semaphore.CurrentCount == 0, "Semaphore should be held before replenishing tokens");
 
-            if (_tokens < MaxPermits)
+            if (_tokens < MaxTokens)
             {
                 long now = DateTimeOffset.UtcNow.Ticks;
-                long elapsedTicks = now - _lastTime;
+                long elapsed = now - _lastTime;
 
+                _accumTime += elapsed;
                 _lastTime = now;
 
-                newTokens = Math.Min(elapsedTicks * RateTicks, MaxPermits - _tokens);
-                _tokens += (int)newTokens;
+                long periods = _accumTime / Period.Ticks;
+
+                try
+                {
+                    newTokens = (int)Math.Min(checked(periods * _tokensPerPeriod), MaxTokens - _tokens);
+                }
+                catch (OverflowException)
+                {
+                    newTokens = MaxTokens - _tokens;
+                }
+
+                _tokens += newTokens;
+                _accumTime -= periods * Period.Ticks;
             }
             else
             {
