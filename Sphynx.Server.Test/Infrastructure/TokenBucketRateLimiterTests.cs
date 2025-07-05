@@ -47,10 +47,10 @@ namespace Sphynx.Server.Test.Infrastructure
             Assert.That(rateLimiter.TryConsume(10));
 
             // Act
-            bool rateLimited = rateLimiter.TryConsume();
+            bool notRateLimited = rateLimiter.TryConsume();
 
             // Assert
-            Assert.That(rateLimited, Is.False);
+            Assert.That(notRateLimited, Is.False);
         }
 
         [Test]

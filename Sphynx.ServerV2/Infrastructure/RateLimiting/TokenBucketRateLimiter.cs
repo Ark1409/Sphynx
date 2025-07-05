@@ -66,15 +66,18 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
             if (count < 0)
                 return ValueTask.FromException<TimeSpan>(new ArgumentException("Count must be greater than or equal to 0", nameof(count)));
 
-            if (count == 0 || count > MaxTokens)
+            if (count == 0)
                 return ValueTask.FromResult(TimeSpan.Zero);
+
+            if (count > MaxTokens)
+                return ValueTask.FromResult(TimeSpan.MaxValue);
 
             return ConsumeInternalAsync(count, cancellationToken);
         }
 
         private async ValueTask<TimeSpan> ConsumeInternalAsync(int count, CancellationToken cancellationToken)
         {
-            Debug.Assert(count <= MaxTokens);
+            Debug.Assert(count >= 0 && count <= MaxTokens);
 
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
