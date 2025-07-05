@@ -122,7 +122,7 @@ namespace Sphynx.ServerV2.Client
 
             await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            Exception? runtimeException;
+            Exception? runtimeException = null;
 
             try
             {
@@ -133,14 +133,14 @@ namespace Sphynx.ServerV2.Client
                     return;
                 }
 
-                if (_clientCts.IsCancellationRequested)
-                    return;
+                if (!_clientCts.IsCancellationRequested)
+                {
+                    Logger.LogDebug("Starting client run loop...");
 
-                Logger.LogDebug("Starting client run loop...");
+                    runtimeException = await StartInternalAsync(cancellationToken).ConfigureAwait(false);
 
-                runtimeException = await StartInternalAsync(cancellationToken).ConfigureAwait(false);
-
-                Logger.LogDebug("Stopping client run loop...");
+                    Logger.LogDebug("Stopping client run loop...");
+                }
             }
             finally
             {
@@ -152,16 +152,11 @@ namespace Sphynx.ServerV2.Client
 
         private async ValueTask<Exception?> StartInternalAsync(CancellationToken cancellationToken)
         {
+            Debug.Assert(_startSemaphore.CurrentCount == 0);
             Debug.Assert(_clientTask == null);
 
-            try
-            {
+            if (cancellationToken.CanBeCanceled)
                 _clientCts = CancellationTokenSource.CreateLinkedTokenSource(_clientCts.Token, cancellationToken);
-            }
-            catch (ObjectDisposedException)
-            {
-                // Client has been disposed of. The CTS should be cancelled.
-            }
 
             try
             {
@@ -178,9 +173,9 @@ namespace Sphynx.ServerV2.Client
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex) when (ex.CancellationToken == _clientCts.Token)
             {
-                // Likely client stopped
+                // Client stopped
             }
             catch (Exception ex)
             {
@@ -321,10 +316,10 @@ namespace Sphynx.ServerV2.Client
         /// Signals a wish to disconnect the client from the server, with the given exception.
         /// </summary>
         /// <param name="disconnectException">The disconnection exception.</param>
-        /// <param name="waitForFinish">Whether to wait the client to finish.</param>
+        /// <param name="waitForFinish">Whether to wait for the client to finish execution.</param>
         /// <returns>A task representing the stop operation. If <paramref name="waitForFinish"/> is true, this task will not
         /// complete until the client has been disconnected; else, it will return after sending a stop signal.</returns>
-        /// <remarks>Resources are not freed until <see cref="DisposeAsync()"/> is called.</remarks>
+        /// <remarks>Client resources are not freed until <see cref="DisposeAsync()"/> is called.</remarks>
         public ValueTask StopAsync(Exception? disconnectException = null, bool waitForFinish = true)
         {
             // We allow the client to be stopped even when disposed. Just makes our lives easier.

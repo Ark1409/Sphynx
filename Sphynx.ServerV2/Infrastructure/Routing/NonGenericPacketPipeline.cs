@@ -31,8 +31,8 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
         public static NonGenericPacketPipeline Create(Type packetType, NonGenericHandler handler)
         {
-            ArgumentNullException.ThrowIfNull(packetType, nameof(packetType));
-            ArgumentNullException.ThrowIfNull(handler, nameof(handler));
+            ArgumentNullException.ThrowIfNull(packetType);
+            ArgumentNullException.ThrowIfNull(handler);
 
             if (!typeof(SphynxPacket).IsAssignableFrom(packetType))
                 throw new ArgumentException($"Packet type {packetType} does not derive from {typeof(SphynxPacket)}", nameof(packetType));
@@ -42,7 +42,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
         public static NonGenericPacketPipeline Create<TPacket>(IPacketHandler<TPacket> handler) where TPacket : SphynxPacket
         {
-            ArgumentNullException.ThrowIfNull(handler, nameof(handler));
+            ArgumentNullException.ThrowIfNull(handler);
 
             var nonGenericHandler = handler as NonGenericHandler ?? new NonGenericHandlerAdapter<TPacket>(handler);
             return new NonGenericPacketPipeline(typeof(TPacket), nonGenericHandler);
@@ -56,7 +56,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
         public void AddMiddleware<TParent>(IPacketMiddleware<TParent> middleware) where TParent : SphynxPacket
         {
-            ArgumentNullException.ThrowIfNull(middleware, nameof(middleware));
+            ArgumentNullException.ThrowIfNull(middleware);
 
             if (!typeof(TParent).IsAssignableFrom(PacketType))
                 throw new ArgumentException($"Cannot use middleware of {typeof(TParent)} on packet {PacketType}", nameof(middleware));
@@ -71,7 +71,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
         public void SetHandler<TPacket>(IPacketHandler<TPacket> handler) where TPacket : SphynxPacket
         {
-            ArgumentNullException.ThrowIfNull(handler, nameof(handler));
+            ArgumentNullException.ThrowIfNull(handler);
 
             if (Handler == handler || (Handler is NonGenericHandlerAdapter<TPacket> nonGeneric && nonGeneric.InnerHandler == handler))
                 return;

@@ -77,7 +77,9 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
         public Task ExecuteAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
         {
             if (!TryGetPipeline(packet.GetType(), out var pipeline, true))
-                return ThrowOnUnregistered ? throw new ArgumentException($"No existing pipeline for packet {packet.PacketType}") : Task.CompletedTask;
+                return ThrowOnUnregistered
+                    ? Task.FromException(new ArgumentException($"No existing pipeline for packet {packet.PacketType}"))
+                    : Task.CompletedTask;
 
             return pipeline.ExecuteAsync(client, packet, cancellationToken);
         }

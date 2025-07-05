@@ -98,16 +98,16 @@ namespace Sphynx.ServerV2
                     return;
                 }
 
-                if (_serverCts.IsCancellationRequested)
-                    return;
+                if (!_serverCts.IsCancellationRequested)
+                {
+                    OnStart?.Invoke(this);
 
-                OnStart?.Invoke(this);
+                    Logger.LogDebug("Starting {ServerName}...", Name);
 
-                Logger.LogDebug("Starting {ServerName}...", Name);
+                    await RunAsync(cancellationToken).ConfigureAwait(false);
 
-                await RunAsync(cancellationToken).ConfigureAwait(false);
-
-                Logger.LogDebug("Stopping {ServerName}...", Name);
+                    Logger.LogDebug("Stopping {ServerName}...", Name);
+                }
             }
             finally
             {
@@ -119,16 +119,11 @@ namespace Sphynx.ServerV2
 
         private async Task RunAsync(CancellationToken cancellationToken)
         {
+            Debug.Assert(_startSemaphore.CurrentCount == 0);
             Debug.Assert(_serverTask == null);
 
-            try
-            {
+            if (cancellationToken.CanBeCanceled)
                 _serverCts = CancellationTokenSource.CreateLinkedTokenSource(_serverCts.Token, cancellationToken);
-            }
-            catch (ObjectDisposedException)
-            {
-                // Server has been disposed of. The CTS should be cancelled.
-            }
 
             try
             {
@@ -145,9 +140,9 @@ namespace Sphynx.ServerV2
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex) when (ex.CancellationToken == _serverCts.Token)
             {
-                // Likely server stopped
+                // Server stopped
             }
             catch (Exception ex)
             {
@@ -244,7 +239,7 @@ namespace Sphynx.ServerV2
             {
                 if (_disposed)
                     return;
-                
+
                 _serverCts.Dispose();
                 Profile.Dispose();
             }
