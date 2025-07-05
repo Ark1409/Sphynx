@@ -134,5 +134,13 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
                 packetType = packetType.BaseType!;
             }
         }
+
+        /// <summary>
+        /// Removes all registered middlewares and handlers from this router.
+        /// </summary>
+        public void RemoveAll()
+        {
+            _pipelines.Clear();
+        }
     }
 }

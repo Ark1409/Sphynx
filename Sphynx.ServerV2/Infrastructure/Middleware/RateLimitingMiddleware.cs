@@ -42,13 +42,13 @@ namespace Sphynx.ServerV2.Infrastructure.Middleware
                 }, _rateLimiterFactory);
             }
 
-            var timeLeft = await rateLimiter.ConsumeAsync(cancellationToken: token);
+            var waitTime = await rateLimiter.ConsumeAsync(cancellationToken: token);
 
-            if (timeLeft > TimeSpan.Zero)
+            if (waitTime > TimeSpan.Zero)
             {
                 if (OnRateLimited is not null)
                 {
-                    var rateLimitInfo = new RateLimitInfo { Client = client, Packet = packet, TimeLeft = timeLeft };
+                    var rateLimitInfo = new RateLimitInfo { Client = client, Packet = packet, WaitTime = waitTime };
                     await OnRateLimited.Invoke(rateLimitInfo);
                 }
 
@@ -75,6 +75,6 @@ namespace Sphynx.ServerV2.Infrastructure.Middleware
     {
         public ISphynxClient Client { get; init; }
         public SphynxPacket Packet { get; init; }
-        public TimeSpan TimeLeft { get; init; }
+        public TimeSpan WaitTime { get; init; }
     }
 }
