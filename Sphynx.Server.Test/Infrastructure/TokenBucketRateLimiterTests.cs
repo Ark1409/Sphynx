@@ -69,5 +69,18 @@ namespace Sphynx.Server.Test.Infrastructure
             Assert.That(timeLeft.Ticks, Is.GreaterThan(0));
             Assert.That(timeLeft.TotalDays, Is.EqualTo(expectedTimeLeft.TotalDays).Within(0.1));
         }
+
+        [Test]
+        public void Consume_ShouldReturnInfiniteRateLimit_WhenCountExceedsMaxPermits()
+        {
+            // Arrange
+            var rateLimiter = new TokenBucketRateLimiter(10, 10, TimeSpan.FromDays(365));
+
+            // Act
+            var timeLeft = rateLimiter.Consume(100);
+
+            // Assert
+            Assert.That(timeLeft, Is.EqualTo(Timeout.InfiniteTimeSpan));
+        }
     }
 }

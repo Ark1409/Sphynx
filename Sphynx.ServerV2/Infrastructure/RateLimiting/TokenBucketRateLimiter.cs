@@ -61,6 +61,7 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
             Period = period;
         }
 
+        /// <inheritdoc/>
         public ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default)
         {
             if (count < 0)
@@ -70,7 +71,7 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
                 return ValueTask.FromResult(TimeSpan.Zero);
 
             if (count > MaxTokens)
-                return ValueTask.FromResult(TimeSpan.MaxValue);
+                return ValueTask.FromResult(Timeout.InfiniteTimeSpan);
 
             return ConsumeInternalAsync(count, cancellationToken);
         }

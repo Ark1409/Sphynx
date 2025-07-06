@@ -42,14 +42,14 @@ namespace Sphynx.ServerV2.Infrastructure.Middleware
                 }, _rateLimiterFactory);
             }
 
-            var waitTime = await rateLimiter.ConsumeAsync(cancellationToken: token);
+            var waitTime = await rateLimiter.ConsumeAsync(cancellationToken: token).ConfigureAwait(false);
 
             if (waitTime > TimeSpan.Zero)
             {
                 if (OnRateLimited is not null)
                 {
                     var rateLimitInfo = new RateLimitInfo { Client = client, Packet = packet, WaitTime = waitTime };
-                    await OnRateLimited.Invoke(rateLimitInfo);
+                    await OnRateLimited.Invoke(rateLimitInfo).ConfigureAwait(false);
                 }
 
                 return;

@@ -3,13 +3,40 @@
 
 namespace Sphynx.ServerV2.Infrastructure.RateLimiting
 {
+    /// <summary>
+    /// A rate limiter which limits clients based on permits.
+    /// </summary>
     public interface IRateLimiter
     {
+        /// <summary>
+        /// The maximum number of permits.
+        /// </summary>
         int MaxPermits { get; }
+
+        /// <summary>
+        /// The period after which permits are replenished.
+        /// </summary>
         TimeSpan Period { get; }
 
+        /// <summary>
+        /// Average permit replenishment rate in seconds.
+        /// </summary>
         double RateSeconds { get; }
 
+        /// <summary>
+        /// Attempts to consume <paramref name="count"/> permits. If insufficient permits are available,
+        /// returns the estimated wait time required to obtain them.
+        /// </summary>
+        /// <param name="count">The number of permits to consume.</param>
+        /// <param name="cancellationToken">A cancellation token for the consume operation.</param>
+        /// <returns>
+        /// <ul>
+        ///     <li>If <paramref name="count"/> permits are available, <see cref="TimeSpan.Zero"/>.</li>
+        ///     <li>Else if <paramref name="count"/> is positive and less than or equal to <see cref="MaxPermits"/>,
+        ///         the estimated wait time to obtain <paramref name="count"/> permits, assuming no other consumptions occur.</li>
+        ///     <li>Else if <paramref name="count"/> exceeds <see cref="MaxPermits"/>, <see cref="Timeout.InfiniteTimeSpan"/>.</li>
+        /// </ul>
+        /// </returns>
         ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default);
     }
 
