@@ -37,6 +37,6 @@ namespace Sphynx.ModelV2.Room
         }
 
         /// <inheritdoc/>
-        public bool Equals(ChatRoomInfo? other) => RoomId == other?.RoomId;
+        public virtual bool Equals(ChatRoomInfo? other) => RoomId == other?.RoomId;
     }
 }

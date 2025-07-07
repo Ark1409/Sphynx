@@ -100,7 +100,7 @@ namespace Sphynx.Test.Network.Serialization
             var packet = new FetchUsersResponse
             {
                 // ReSharper disable once CoVariantArrayConversion
-                Users = TestSphynxSelfInfo.FromArray("user1", "user2", "user3")!
+                Users = TestSphynxSelfInfo.FromNames("user1", "user2", "user3")!
             };
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 

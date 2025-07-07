@@ -44,7 +44,7 @@ namespace Sphynx.ModelV2.User
         }
 
         /// <inheritdoc/>
-        public bool Equals(SphynxSelfInfo? other) => UserId == other?.UserId;
+        public virtual bool Equals(SphynxSelfInfo? other) => UserId == other?.UserId;
     }
 
     public class LastReadMessageInfo : Dictionary<SnowflakeId, SnowflakeId>

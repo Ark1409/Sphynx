@@ -33,6 +33,11 @@ namespace Sphynx.ServerV2
         public virtual SphynxServerProfile Profile { get; }
 
         /// <summary>
+        /// A shorthand to the <see cref="Profile"/>'s <see cref="SphynxServerProfile.Logger"/>.
+        /// </summary>
+        public ILogger Logger => Profile.Logger;
+
+        /// <summary>
         /// The start task representing the running state of the server.
         /// </summary>
         protected Task? ServerTask => _serverTask;
@@ -93,16 +98,16 @@ namespace Sphynx.ServerV2
                     return;
                 }
 
-                if (_serverCts.IsCancellationRequested)
-                    return;
+                if (!_serverCts.IsCancellationRequested)
+                {
+                    OnStart?.Invoke(this);
 
-                OnStart?.Invoke(this);
+                    Logger.LogDebug("Starting {ServerName}...", Name);
 
-                Profile.Logger.LogDebug("Starting {ServerName}...", Name);
+                    await RunAsync(cancellationToken).ConfigureAwait(false);
 
-                await RunAsync(cancellationToken).ConfigureAwait(false);
-
-                Profile.Logger.LogDebug("Stopping {ServerName}...", Name);
+                    Logger.LogDebug("Stopping {ServerName}...", Name);
+                }
             }
             finally
             {
@@ -114,16 +119,11 @@ namespace Sphynx.ServerV2
 
         private async Task RunAsync(CancellationToken cancellationToken)
         {
+            Debug.Assert(_startSemaphore.CurrentCount == 0);
             Debug.Assert(_serverTask == null);
 
-            try
-            {
+            if (cancellationToken.CanBeCanceled)
                 _serverCts = CancellationTokenSource.CreateLinkedTokenSource(_serverCts.Token, cancellationToken);
-            }
-            catch (ObjectDisposedException)
-            {
-                // Server has been disposed of. The CTS should be cancelled.
-            }
 
             try
             {
@@ -140,13 +140,13 @@ namespace Sphynx.ServerV2
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex) when (ex.CancellationToken == _serverCts.Token)
             {
-                // Likely server stopped
+                // Server stopped
             }
             catch (Exception ex)
             {
-                Profile.Logger.LogCritical(ex, "An unhandled exception occured during server execution");
+                Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
         }
 
@@ -170,7 +170,7 @@ namespace Sphynx.ServerV2
         /// </summary>
         /// <param name="cancellationToken">A cancellation token to control the running state of the server. Once cancelled,
         /// it is expected that the server should begin its shutdown process.</param>
-        /// <returns>The server's running task. The task should not complete until the server has begun its shutdown process.</returns>
+        /// <returns>The server's running task.</returns>
         protected abstract Task OnStartAsync(CancellationToken cancellationToken);
 
         /// <summary>
@@ -235,11 +235,11 @@ namespace Sphynx.ServerV2
         {
             await _startSemaphore.WaitAsync().ConfigureAwait(false);
 
-            if (_disposed)
-                return;
-
             try
             {
+                if (_disposed)
+                    return;
+
                 _serverCts.Dispose();
                 Profile.Dispose();
             }
@@ -247,9 +247,11 @@ namespace Sphynx.ServerV2
             {
                 // We don't really care at this point
             }
-
-            _disposed = true;
-            _startSemaphore.Release();
+            finally
+            {
+                _disposed = true;
+                _startSemaphore.Release();
+            }
         }
 
         /// <summary>

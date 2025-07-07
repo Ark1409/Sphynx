@@ -29,6 +29,6 @@ namespace Sphynx.ModelV2.Room
         }
 
         /// <inheritdoc/>
-        public bool Equals(GroupChatRoomInfo? other) => base.Equals(other);
+        public virtual bool Equals(GroupChatRoomInfo? other) => base.Equals(other);
     }
 }

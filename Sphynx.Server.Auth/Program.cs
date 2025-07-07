@@ -1,9 +1,4 @@
-﻿using System.Net;
-using System.Xml.Schema;
-using Sphynx.Network.PacketV2;
-using Sphynx.Network.Serialization.Model;
-using Sphynx.Network.Serialization.Packet;
-using Sphynx.Network.Transport;
+﻿using System.Runtime.Loader;
 
 namespace Sphynx.Server.Auth
 {
@@ -11,17 +6,12 @@ namespace Sphynx.Server.Auth
     {
         public static async Task Main(string[] args)
         {
-            var transporter = new PacketTransporter();
+            await using var server = new SphynxAuthServer();
 
-            transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer());
-            transporter.AddSerializer(SphynxPacketType.LOGIN_RES, new LoginResponseSerializer(new SphynxSelfInfoSerializer()));
-            transporter.AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer());
-            transporter.AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
-
-            await using var server = new SphynxAuthServer(IPAddress.Loopback)
-            {
-                PacketTransporter = transporter,
-            };
+            // ReSharper disable DisposeOnUsingVariable, AccessToDisposedClosure
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => server.DisposeAsync().AsTask().Wait();
+            AssemblyLoadContext.Default.Unloading += (_) => server.DisposeAsync().AsTask().Wait();
+            Console.CancelKeyPress += (_, _) => server.DisposeAsync().AsTask().Wait();
 
             await server.StartAsync();
         }

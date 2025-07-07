@@ -22,5 +22,12 @@ namespace Sphynx.ServerV2.Extensions
                     return false;
             }
         }
+
+        public static bool IsConnectionResetException(this Exception ex)
+        {
+            SocketException? se = ex as SocketException ?? (ex as IOException)?.InnerException as SocketException;
+
+            return se?.SocketErrorCode == SocketError.ConnectionReset;
+        }
     }
 }

@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Core;
 using Sphynx.ModelV2.User;
 using Sphynx.Test.Utils;
 
@@ -9,11 +8,7 @@ namespace Sphynx.Test.Model.User
 {
     public class TestSphynxUserInfo : SphynxUserInfo
     {
-        public SnowflakeId UserId { get; set; }
-        public string UserName { get; set; }
-        public SphynxUserStatus UserStatus { get; set; }
-
-        public TestSphynxUserInfo(string userName = "Test")
+        public TestSphynxUserInfo(string userName = "test-user")
         {
             UserName = userName;
             UserId = userName.AsSnowflakeId();
@@ -22,7 +17,7 @@ namespace Sphynx.Test.Model.User
             UserStatus = statuses[userName.Length % statuses.Length];
         }
 
-        public static TestSphynxUserInfo[] FromArray(params string[] names)
+        public static TestSphynxUserInfo[] FromNames(params string[] names)
         {
             var users = new TestSphynxUserInfo[names.Length];
 
@@ -34,7 +29,7 @@ namespace Sphynx.Test.Model.User
             return users;
         }
 
-        public bool Equals(SphynxUserInfo? other)
+        public override bool Equals(SphynxUserInfo? other)
         {
             return UserId.Equals(other?.UserId) && UserName == other?.UserName && UserStatus == other.UserStatus;
         }

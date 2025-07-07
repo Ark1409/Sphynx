@@ -8,7 +8,8 @@ using Microsoft.Extensions.Logging;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.Transport;
 using Sphynx.ServerV2.Extensions;
-using Sphynx.ServerV2.Handlers;
+using Sphynx.ServerV2.Infrastructure.Handlers;
+using Sphynx.ServerV2.Infrastructure.Routing;
 
 namespace Sphynx.ServerV2.Client
 {
@@ -64,9 +65,9 @@ namespace Sphynx.ServerV2.Client
         protected IPacketTransporter PacketTransporter { get; }
 
         /// <summary>
-        /// The packet handler which is used to handle incoming packets.
+        /// The packet router which is used to route incoming packets to handlers.
         /// </summary>
-        protected IPacketHandler<SphynxPacket> PacketHandler { get; }
+        protected IPacketRouter PacketRouter { get; }
 
         private readonly NetworkStream _stream;
 
@@ -81,16 +82,27 @@ namespace Sphynx.ServerV2.Client
         private int _stopped;
 
         public SphynxTcpClient(Socket socket, SphynxTcpServerProfile profile)
-            : this(socket, profile.PacketTransporter, profile.PacketHandler, profile.LoggerFactory.CreateLogger(typeof(SphynxTcpClient)))
+        {
+            Socket = socket;
+            EndPoint = (IPEndPoint)Socket.RemoteEndPoint!;
+            _stream = new NetworkStream(Socket, false);
+
+            ClientId = Guid.NewGuid();
+
+            PacketTransporter = profile.PacketTransporter;
+            PacketRouter = profile.PacketRouter;
+            Logger = profile.LoggerFactory.CreateLogger(GetType());
+        }
+
+        public SphynxTcpClient(Socket socket, IPacketTransporter packetTransporter, IPacketRouter router, ILogger logger)
+            : this(socket, Guid.NewGuid(), packetTransporter, router, logger)
         {
         }
 
-        public SphynxTcpClient(Socket socket, IPacketTransporter packetTransporter, IPacketHandler<SphynxPacket> packetHandler, ILogger logger)
-            : this(socket, Guid.NewGuid(), packetTransporter, packetHandler, logger)
-        {
-        }
-
-        public SphynxTcpClient(Socket socket, Guid clientId, IPacketTransporter packetTransporter, IPacketHandler<SphynxPacket> packetHandler,
+        public SphynxTcpClient(Socket socket,
+            Guid clientId,
+            IPacketTransporter packetTransporter,
+            IPacketRouter router,
             ILogger logger)
         {
             Socket = socket;
@@ -100,7 +112,7 @@ namespace Sphynx.ServerV2.Client
             ClientId = clientId;
 
             PacketTransporter = packetTransporter;
-            PacketHandler = packetHandler;
+            PacketRouter = router;
             Logger = logger;
         }
 
@@ -110,7 +122,7 @@ namespace Sphynx.ServerV2.Client
 
             await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            Exception? runtimeException;
+            Exception? runtimeException = null;
 
             try
             {
@@ -121,14 +133,14 @@ namespace Sphynx.ServerV2.Client
                     return;
                 }
 
-                if (_clientCts.IsCancellationRequested)
-                    return;
+                if (!_clientCts.IsCancellationRequested)
+                {
+                    Logger.LogDebug("Starting client run loop...");
 
-                Logger.LogDebug("Starting client run loop...");
+                    runtimeException = await StartInternalAsync(cancellationToken).ConfigureAwait(false);
 
-                runtimeException = await StartInternalAsync(cancellationToken).ConfigureAwait(false);
-
-                Logger.LogDebug("Stopping client run loop...");
+                    Logger.LogDebug("Stopping client run loop...");
+                }
             }
             finally
             {
@@ -140,16 +152,11 @@ namespace Sphynx.ServerV2.Client
 
         private async ValueTask<Exception?> StartInternalAsync(CancellationToken cancellationToken)
         {
+            Debug.Assert(_startSemaphore.CurrentCount == 0);
             Debug.Assert(_clientTask == null);
 
-            try
-            {
+            if (cancellationToken.CanBeCanceled)
                 _clientCts = CancellationTokenSource.CreateLinkedTokenSource(_clientCts.Token, cancellationToken);
-            }
-            catch (ObjectDisposedException)
-            {
-                // Client has been disposed of. The CTS should be cancelled.
-            }
 
             try
             {
@@ -166,9 +173,9 @@ namespace Sphynx.ServerV2.Client
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex) when (ex.CancellationToken == _clientCts.Token)
             {
-                // Likely client stopped
+                // Client stopped
             }
             catch (Exception ex)
             {
@@ -205,6 +212,12 @@ namespace Sphynx.ServerV2.Client
             {
                 Logger.LogWarning("Aborted packet read (cancelled)");
             }
+            catch (Exception ex) when (ex.IsConnectionResetException())
+            {
+                Logger.LogTrace(ex, "Connection aborted while reading packet");
+
+                await StopAsync(ex).ConfigureAwait(false);
+            }
             // This might happen if the client forcibly closes the connection
             catch (Exception ex) when (ex is EndOfStreamException or ObjectDisposedException or ArgumentException)
             {
@@ -212,7 +225,7 @@ namespace Sphynx.ServerV2.Client
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Unexpected exception occured while reading packets");
+                Logger.LogError(ex, "Unexpected exception occured while reading packet");
 
                 await StopAsync(ex).ConfigureAwait(false);
             }
@@ -224,7 +237,7 @@ namespace Sphynx.ServerV2.Client
         {
             try
             {
-                await PacketHandler.HandlePacketAsync(this, packet, cancellationToken).ConfigureAwait(false);
+                await PacketRouter.ExecuteAsync(this, packet, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -303,10 +316,10 @@ namespace Sphynx.ServerV2.Client
         /// Signals a wish to disconnect the client from the server, with the given exception.
         /// </summary>
         /// <param name="disconnectException">The disconnection exception.</param>
-        /// <param name="waitForFinish">Whether to wait the client to finish.</param>
+        /// <param name="waitForFinish">Whether to wait for the client to finish execution.</param>
         /// <returns>A task representing the stop operation. If <paramref name="waitForFinish"/> is true, this task will not
         /// complete until the client has been disconnected; else, it will return after sending a stop signal.</returns>
-        /// <remarks>Resources are not freed until <see cref="DisposeAsync()"/> is called.</remarks>
+        /// <remarks>Client resources are not freed until <see cref="DisposeAsync()"/> is called.</remarks>
         public ValueTask StopAsync(Exception? disconnectException = null, bool waitForFinish = true)
         {
             // We allow the client to be stopped even when disposed. Just makes our lives easier.
@@ -367,15 +380,7 @@ namespace Sphynx.ServerV2.Client
 
             ThreadPool.QueueUserWorkItem(static async void (s) =>
             {
-                try
-                {
-                    await s.Client.WaitAsync().ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Less important
-                }
-
+                await s.Client.WaitAsync().ConfigureAwait(false);
                 await s.Client.PerformDisconnectAsync(s.DisconnectException).ConfigureAwait(false);
             }, state, false);
         }
@@ -390,6 +395,8 @@ namespace Sphynx.ServerV2.Client
         {
             Debug.Assert(_clientTask?.IsCompleted ?? true, "Run loop should complete before disconnecting client");
             Debug.Assert(!_disconnectReserved, "Client should not be disconnected twice");
+            // We should implicitly have hold of this semaphore to ensure there are no race conditions during disconnection.
+            Debug.Assert(_disposeSemaphore.CurrentCount == 0);
 
             _disconnectReserved = true;
 
@@ -405,34 +412,15 @@ namespace Sphynx.ServerV2.Client
 
             try
             {
-                // We should implicitly have hold of this semaphore to ensure there
-                // are no race conditions in the proceeding call.
-                Debug.Assert(_disposeSemaphore.CurrentCount == 0);
-
                 await OnDisconnectAsync(disconnectException).ConfigureAwait(false);
+                _ = OnDisconnect?.Invoke(this, disconnectException);
             }
             catch
             {
-                // Just ignore fow now
+                // Just ignore for now
             }
 
-            var disconnectSubscribers = OnDisconnect;
-
-            // We allow subscribers to be run concurrently with disposals.
-            // This allows them to perform actions such as DisposeAsync() without deadlocking.
             _disposeSemaphore.Release();
-
-            if (disconnectSubscribers is not null)
-            {
-                try
-                {
-                    await disconnectSubscribers.Invoke(this, disconnectException).ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Ignore subscriber exceptions
-                }
-            }
         }
 
         /// <summary>
@@ -472,11 +460,11 @@ namespace Sphynx.ServerV2.Client
         {
             await _disposeSemaphore.WaitAsync().ConfigureAwait(false);
 
-            if (_disposed)
-                return;
-
             try
             {
+                if (_disposed)
+                    return;
+
                 OnDisconnect = null;
 
                 await _stream.DisposeAsync().ConfigureAwait(false);

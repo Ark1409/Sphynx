@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.ServerV2", "Sphynx.S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Server.Auth", "Sphynx.Server.Auth\Sphynx.Server.Auth.csproj", "{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Server.Test", "Sphynx.Server.Test\Sphynx.Server.Test.csproj", "{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -49,6 +51,10 @@ Global
 		{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
