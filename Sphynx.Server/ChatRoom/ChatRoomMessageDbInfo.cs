@@ -1,7 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.IdGenerators;
-using Sphynx.ChatRoom;
+using Sphynx.Model.ChatRoom;
 using Sphynx.Server.Storage;
 
 namespace Sphynx.Server.ChatRoom

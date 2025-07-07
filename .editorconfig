@@ -1,5 +1,5 @@
-# EditorConfig is awesome: http://editorconfig.org
 root = true
+# EditorConfig is awesome: http://editorconfig.org
 
 [*.{csproj,props,targets}]
 charset = utf-8-bom
@@ -178,64 +178,77 @@ csharp_style_prefer_primary_constructors = false
 # IDE styles reference: https://docs.microsoft.com/dotnet/fundamentals/code-analysis/style-rules/
 
 # IDE0001: Simplify names
-dotnet_diagnostic.IDE0001.severity = warning
+dotnet_diagnostic.ide0001.severity = warning
 
 # IDE0002: Simplify member access
-dotnet_diagnostic.IDE0002.severity = warning
+dotnet_diagnostic.ide0002.severity = warning
 
 # IDE0003: Remove qualification
-dotnet_diagnostic.IDE0003.severity = warning
+dotnet_diagnostic.ide0003.severity = warning
 
 # IDE0004: Remove unnecessary cast
-dotnet_diagnostic.IDE0004.severity = warning
+dotnet_diagnostic.ide0004.severity = warning
 
 # IDE0005: Remove unnecessary imports
-dotnet_diagnostic.IDE0005.severity = warning
+dotnet_diagnostic.ide0005.severity = warning
 
 # IDE0034: Simplify default literal
-dotnet_diagnostic.IDE0034.severity = warning
+dotnet_diagnostic.ide0034.severity = warning
 
 # IDE0036: Sort modifiers
-dotnet_diagnostic.IDE0036.severity = warning
+dotnet_diagnostic.ide0036.severity = warning
 
 # IDE0040: Add accessibility modifier
-dotnet_diagnostic.IDE0040.severity = warning
+dotnet_diagnostic.ide0040.severity = warning
 
 # IDE0049: Use keyword for type name
-dotnet_diagnostic.IDE0040.severity = warning
+dotnet_diagnostic.ide0040.severity = warning
 
 # IDE0055: Fix formatting
-dotnet_diagnostic.IDE0055.severity = warning
+dotnet_diagnostic.ide0055.severity = warning
 
 # IDE0051: Private method is unused
-dotnet_diagnostic.IDE0051.severity = silent
+dotnet_diagnostic.ide0051.severity = silent
 
 # IDE0052: Private member is unused
-dotnet_diagnostic.IDE0052.severity = silent
+dotnet_diagnostic.ide0052.severity = silent
 
 # IDE0073: File header
-dotnet_diagnostic.IDE0073.severity = warning
+dotnet_diagnostic.ide0073.severity = warning
 
 # IDE0130: Namespace mismatch with folder
-dotnet_diagnostic.IDE0130.severity = warning
+dotnet_diagnostic.ide0130.severity = warning
 
 # IDE1006: Naming style
-dotnet_diagnostic.IDE1006.severity = warning
+dotnet_diagnostic.ide1006.severity = warning
 
 # CS1573: No matching documentation for parameter
-dotnet_diagnostic.CS1573.severity = suggestion
+dotnet_diagnostic.cs1573.severity = suggestion
+
+# CS1591: Missing XML comment for publicly visible type or member
+dotnet_diagnostic.cs1591.severity = none
 
 # Resharper: Non-readonly property as hash-code 
 resharper_non_readonly_member_in_get_hash_code_highlighting = suggestion
 
 # ReSharper: Virtual member call in constructor
-resharper_virtual_member_call_in_constructor_highlighting = suggestion
+resharper_virtual_member_call_in_constructor_highlighting = none
 
 #Disable operator overloads requiring alternate named methods
-dotnet_diagnostic.CA2225.severity = none
+dotnet_diagnostic.ca2225.severity = none
 
 # Banned APIs
-dotnet_diagnostic.RS0030.severity = error
+dotnet_diagnostic.rs0030.severity = error
+
+# ReSharper properties
+resharper_keep_existing_declaration_parens_arrangement = false
+resharper_keep_existing_embedded_arrangement = true
+resharper_place_accessorholder_attribute_on_same_line = false
+resharper_place_simple_embedded_statement_on_same_line = false
+resharper_wrap_before_declaration_rpar = false
+resharper_wrap_before_primary_constructor_declaration_lpar = false
+resharper_wrap_switch_expression = chop_if_long
+resharper_condition_is_always_true_or_false_according_to_nullable_api_contract_highlighting = suggestion
 
 [*.{yaml,yml}]
 insert_final_newline = true

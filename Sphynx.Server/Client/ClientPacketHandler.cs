@@ -1,10 +1,11 @@
 ﻿using System.Buffers;
 using System.Diagnostics;
-using Sphynx.ChatRoom;
-using Sphynx.Packet;
-using Sphynx.Packet.Broadcast;
-using Sphynx.Packet.Request;
-using Sphynx.Packet.Response;
+using Sphynx.Core;
+using Sphynx.Model.ChatRoom;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Server.ChatRoom;
 using Sphynx.Server.User;
 using Sphynx.Server.Utils;

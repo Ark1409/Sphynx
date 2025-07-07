@@ -3,7 +3,8 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using MongoDB.Driver;
 using MongoDB.Bson.Serialization.Attributes;
-using Sphynx.Packet;
+using Sphynx.Core;
+using Sphynx.Network.Packet;
 using Sphynx.Utils;
 
 namespace Sphynx.Server.Storage
