@@ -217,6 +217,7 @@ namespace Sphynx.Core
         public override string ToString()
         {
             // Each byte requires two chars in hex
+            // TODO: Trim to 20 chars (DateTimeOffset.MaxValue)
             const int CHARS_PER_BYTE = 2;
 
             string hex = string.Create(SIZE * CHARS_PER_BYTE, this, static (span, inst) =>
