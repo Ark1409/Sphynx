@@ -56,7 +56,7 @@ namespace Sphynx.ServerV2
 
             Logger.LogDebug("Initializing socket pool");
 
-            _socketPool = new FixedObjectPool<Socket>(Profile.Backlog);
+            _socketPool = new FixedObjectPool<Socket>(Profile.Backlog, fastChecks: false);
 
             Logger.LogDebug("Initializing listening socket");
 
@@ -189,6 +189,8 @@ namespace Sphynx.ServerV2
             if (client is null)
                 return false;
 
+            _connectedClients.TryRemove(client.ClientId, out _);
+
             if (!tryReuse)
             {
                 await client.DisposeAsync().ConfigureAwait(false);
@@ -197,8 +199,6 @@ namespace Sphynx.ServerV2
 
             try
             {
-                _connectedClients.Remove(client.ClientId, out _);
-
                 await client.DisposeAsync(disposeSocket: false).ConfigureAwait(false);
 
                 // Test for disposal or invalid state
@@ -262,6 +262,9 @@ namespace Sphynx.ServerV2
                 ServerSocket.Shutdown(SocketShutdown.Both);
                 ServerSocket.Dispose();
             }
+
+            while (_socketPool?.TryTake(out var socket) ?? false)
+                socket.Dispose();
         }
 
         private async Task DisposeClientsAsync()
