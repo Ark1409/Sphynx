@@ -1,12 +1,11 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Diagnostics;
-using System.Xml;
 using LitJWT;
 using LitJWT.Algorithms;
 using Sphynx.Core;
 using Sphynx.ServerV2.Auth;
+using Sphynx.ServerV2.Persistence.Auth;
 
 namespace Sphynx.ServerV2.Infrastructure.Services
 {
@@ -16,11 +15,13 @@ namespace Sphynx.ServerV2.Infrastructure.Services
         private readonly JwtDecoder _jwtDecoder;
         private readonly JwtOptions _jwtOptions;
 
-        public JwtService() : this(JwtOptions.Default)
+        private readonly IRefreshTokenRepository _refreshRepository;
+
+        public JwtService(IRefreshTokenRepository refreshRepository) : this(refreshRepository, JwtOptions.Default)
         {
         }
 
-        public JwtService(JwtOptions options)
+        public JwtService(IRefreshTokenRepository refreshRepository, JwtOptions options)
         {
             if (options.Secret is null || options.Secret.Length == 0)
                 options.Secret = HS256Algorithm.GenerateRandomRecommendedKey();
@@ -30,41 +31,71 @@ namespace Sphynx.ServerV2.Infrastructure.Services
             _jwtEncoder = new JwtEncoder(algorithm);
             _jwtDecoder = new JwtDecoder(algorithm);
             _jwtOptions = options;
+
+            _refreshRepository = refreshRepository;
         }
 
-        public Task<SphynxJwtInfo> GenerateTokenAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxJwtInfo?>> CreateTokenAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
         {
+            var now = DateTimeOffset.UtcNow;
+
             var payload = new SphynxJwtPayload
             {
                 Issuer = _jwtOptions.Issuer,
                 Audience = _jwtOptions.Audience,
                 Subject = userId,
-                IssuedAt = DateTimeOffset.UtcNow,
-                ExpiresAt = DateTimeOffset.UtcNow + _jwtOptions.ExpiryTime,
+                IssuedAt = now,
+                ExpiresAt = now + _jwtOptions.ExpiryTime,
             };
 
-            string encodedPayload = _jwtEncoder.Encode(payload, null);
+            string accessToken = _jwtEncoder.Encode(payload, null);
             var refreshToken = Guid.NewGuid();
 
-            // TODO: Insert refresh token into database
-
-            return Task.FromResult(new SphynxJwtInfo
+            var jwtInfo = new SphynxJwtInfo
             {
-                Jwt = encodedPayload,
-                RefreshToken = refreshToken,
-            });
+                AccessToken = accessToken,
+                RefreshToken = new SphynxRefreshTokenInfo
+                {
+                    RefreshToken = refreshToken,
+                    AccessToken = accessToken,
+                    User = userId,
+                    ExpiryTime = now + _jwtOptions.RefreshTokenExpiryTime,
+                    CreatedAt = now,
+                },
+                ExpiryTime = payload.ExpiresAt
+            };
+
+            var errorCode = await _refreshRepository.InsertAsync(jwtInfo.RefreshToken, cancellationToken).ConfigureAwait(false);
+
+            if (errorCode != SphynxErrorCode.SUCCESS)
+                return new SphynxErrorInfo<SphynxJwtInfo?>(errorCode.MaskServerError());
+
+            return new SphynxErrorInfo<SphynxJwtInfo?>(jwtInfo);
         }
 
-        public Task<SnowflakeId?> VerifyTokenAsync(SphynxJwtInfo jwt, CancellationToken cancellationToken = default)
+        public ValueTask<SphynxErrorInfo<SphynxJwtPayload?>> ReadTokenAsync(string jwt, CancellationToken cancellationToken = default)
         {
-            var startTime = DateTimeOffset.UtcNow;
+            if (cancellationToken.IsCancellationRequested)
+                return ValueTask.FromCanceled<SphynxErrorInfo<SphynxJwtPayload?>>(cancellationToken);
 
-            if (_jwtDecoder.TryDecode(jwt.Jwt, out SphynxJwtPayload payload) != DecodeResult.Success)
-                return Task.FromResult<SnowflakeId?>(null);
+            if (_jwtDecoder.TryDecode(jwt, out SphynxJwtPayload payload) != DecodeResult.Success)
+                return ValueTask.FromResult(new SphynxErrorInfo<SphynxJwtPayload?>(SphynxErrorCode.INVALID_TOKEN));
 
-            Debug.Assert(payload.ExpiresAt >= startTime);
+            return ValueTask.FromResult(new SphynxErrorInfo<SphynxJwtPayload?>(payload));
+        }
 
-            return Task.FromResult<SnowflakeId?>(payload.Subject);
+        public ValueTask<bool> VerifyTokenAsync(string jwt, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return ValueTask.FromCanceled<bool>(cancellationToken);
+
+            if (_jwtDecoder.TryDecode(jwt, out SphynxJwtPayload payload) != DecodeResult.Success)
+                return ValueTask.FromResult(false);
+
+            if (payload.Issuer != _jwtOptions.Issuer || payload.Audience != _jwtOptions.Audience)
+                return ValueTask.FromResult(false);
+
+            return ValueTask.FromResult(true);
         }
     }
 }

@@ -8,7 +8,8 @@ namespace Sphynx.ServerV2.Infrastructure.Services
 {
     public interface IJwtService
     {
-        Task<SphynxJwtInfo> GenerateTokenAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
-        Task<SnowflakeId?> VerifyTokenAsync(SphynxJwtInfo jwt, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<SphynxJwtInfo?>> CreateTokenAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
+        ValueTask<SphynxErrorInfo<SphynxJwtPayload?>> ReadTokenAsync(string jwt, CancellationToken cancellationToken = default);
+        ValueTask<bool> VerifyTokenAsync(string jwt, CancellationToken cancellationToken = default);
     }
 }

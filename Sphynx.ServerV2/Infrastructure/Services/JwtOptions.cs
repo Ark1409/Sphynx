@@ -18,5 +18,6 @@ namespace Sphynx.ServerV2.Infrastructure.Services
         public string Audience { get; set; }
         public byte[] Secret { get; set; }
         public TimeSpan ExpiryTime { get; set; }
+        public TimeSpan RefreshTokenExpiryTime { get; set; }
     }
 }
