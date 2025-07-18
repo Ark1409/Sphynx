@@ -61,6 +61,14 @@ namespace Sphynx.ServerV2.Persistence.Auth
                 : new SphynxErrorInfo<SphynxRefreshTokenInfo?>(dbToken.ToDomain());
         }
 
+        public async Task<SphynxErrorInfo<bool>> ExistsAsync(Guid refreshToken, CancellationToken cancellationToken = default)
+        {
+            var tokenFilter = Builders<SphynxDbRefreshToken>.Filter.Eq(token => token.RefreshToken, refreshToken);
+            bool exists = await _collection.Find(tokenFilter).Limit(1).CountDocumentsAsync(cancellationToken).ConfigureAwait(false) >= 1;
+
+            return new SphynxErrorInfo<bool>(exists);
+        }
+
         public async Task<SphynxErrorInfo<SphynxRefreshTokenInfo?>> DeleteAsync(Guid refreshToken, CancellationToken cancellationToken = default)
         {
             var tokenFilter = Builders<SphynxDbRefreshToken>.Filter.Eq(token => token.RefreshToken, refreshToken);

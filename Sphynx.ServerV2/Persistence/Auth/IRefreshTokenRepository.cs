@@ -11,6 +11,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
         Task<SphynxErrorCode> InsertAsync(SphynxRefreshTokenInfo refreshToken, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<SphynxRefreshTokenInfo?>> GetAsync(Guid refreshToken, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<bool>> ExistsAsync(Guid refreshToken, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<SphynxRefreshTokenInfo?>> DeleteAsync(Guid refreshToken, CancellationToken cancellationToken = default);
     }

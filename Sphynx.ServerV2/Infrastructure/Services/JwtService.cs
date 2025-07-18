@@ -73,29 +73,53 @@ namespace Sphynx.ServerV2.Infrastructure.Services
             return new SphynxErrorInfo<SphynxJwtInfo?>(jwtInfo);
         }
 
-        public ValueTask<SphynxErrorInfo<SphynxJwtPayload?>> ReadTokenAsync(string jwt, CancellationToken cancellationToken = default)
+        public SphynxErrorInfo<SphynxJwtPayload?> ReadToken(string jwt)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return ValueTask.FromCanceled<SphynxErrorInfo<SphynxJwtPayload?>>(cancellationToken);
-
             if (_jwtDecoder.TryDecode(jwt, out SphynxJwtPayload payload) != DecodeResult.Success)
-                return ValueTask.FromResult(new SphynxErrorInfo<SphynxJwtPayload?>(SphynxErrorCode.INVALID_TOKEN));
+                return new SphynxErrorInfo<SphynxJwtPayload?>(SphynxErrorCode.INVALID_TOKEN);
 
-            return ValueTask.FromResult(new SphynxErrorInfo<SphynxJwtPayload?>(payload));
+            return new SphynxErrorInfo<SphynxJwtPayload?>(payload);
         }
 
-        public ValueTask<bool> VerifyTokenAsync(string jwt, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxRefreshTokenInfo?>> ReadTokenAsync(Guid refreshToken, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return ValueTask.FromCanceled<bool>(cancellationToken);
+            var refreshTokenInfo = await _refreshRepository.GetAsync(refreshToken, cancellationToken).ConfigureAwait(false);
 
+            if (refreshTokenInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+                return new SphynxErrorInfo<SphynxRefreshTokenInfo?>(refreshTokenInfo.ErrorCode.MaskServerError());
+
+            return refreshTokenInfo;
+        }
+
+        public bool VerifyToken(string jwt)
+        {
             if (_jwtDecoder.TryDecode(jwt, out SphynxJwtPayload payload) != DecodeResult.Success)
-                return ValueTask.FromResult(false);
+                return false;
 
             if (payload.Issuer != _jwtOptions.Issuer || payload.Audience != _jwtOptions.Audience)
-                return ValueTask.FromResult(false);
+                return false;
 
-            return ValueTask.FromResult(true);
+            return true;
+        }
+
+        public async Task<bool> VerifyTokenAsync(Guid refreshToken, CancellationToken cancellationToken = default)
+        {
+            var refreshTokenInfo = await _refreshRepository.ExistsAsync(refreshToken, cancellationToken).ConfigureAwait(false);
+
+            if (refreshTokenInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+                return false;
+
+            return refreshTokenInfo.Data;
+        }
+
+        public async Task<SphynxErrorInfo<SphynxRefreshTokenInfo?>> DeleteTokenAsync(Guid refreshToken, CancellationToken cancellationToken = default)
+        {
+            var deletedTokenInfo = await _refreshRepository.DeleteAsync(refreshToken, cancellationToken).ConfigureAwait(false);
+
+            if (deletedTokenInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+                return new SphynxErrorInfo<SphynxRefreshTokenInfo?>(deletedTokenInfo.ErrorCode.MaskServerError());
+
+            return deletedTokenInfo;
         }
     }
 }
