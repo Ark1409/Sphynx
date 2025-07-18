@@ -20,10 +20,10 @@ using Sphynx.ServerV2.Infrastructure.Routing;
 
 namespace Sphynx.Server.Auth
 {
-    public class SphynxAuthServerProfile : SphynxTcpServerProfile
+    public sealed class SphynxAuthServerProfile : SphynxTcpServerProfile
     {
         public IPasswordHasher PasswordHasher { get; set; }
-        public IUserRepository UserRepository { get; set; }
+        public IAuthUserRepository UserRepository { get; set; }
         public IAuthService AuthService { get; set; }
         public Func<IRateLimiter> RateLimiterFactory { get; set; }
 
@@ -101,6 +101,8 @@ namespace Sphynx.Server.Auth
         private void ConfigureRoutes(bool isDevelopment)
         {
             var router = PacketRouter as PacketRouter ?? new PacketRouter();
+
+            router.ThrowOnUnregistered = isDevelopment;
 
             router.UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
                 .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()));

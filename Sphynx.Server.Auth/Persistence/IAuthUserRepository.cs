@@ -6,10 +6,8 @@ using Sphynx.Server.Auth.Model;
 
 namespace Sphynx.Server.Auth.Persistence
 {
-    public interface IUserRepository
+    public interface IAuthUserRepository
     {
-        event Action<SphynxAuthUser>? UserCreated;
-
         Task<SphynxErrorInfo<SphynxAuthUser?>> InsertUserAsync(SphynxAuthUser user, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorCode> UpdateUserAsync(SphynxAuthUser updatedUser, CancellationToken cancellationToken = default);

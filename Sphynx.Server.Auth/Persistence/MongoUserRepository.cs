@@ -8,7 +8,7 @@ using Sphynx.ServerV2.Persistence.User;
 
 namespace Sphynx.Server.Auth.Persistence
 {
-    public class MongoUserRepository : IUserRepository
+    public class MongoUserRepository : IAuthUserRepository
     {
         public event Action<SphynxAuthUser>? UserCreated;
 

@@ -8,7 +8,6 @@ using Sphynx.Core;
 using Sphynx.ModelV2.User;
 using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Persistence;
-using IUserRepository = Sphynx.Server.Auth.Persistence.IUserRepository;
 
 namespace Sphynx.Server.Auth.Services
 {
@@ -17,11 +16,11 @@ namespace Sphynx.Server.Auth.Services
         private const int PASSWORD_HASH_LENGTH = 256;
         private const int PASSWORD_SALT_LENGTH = PASSWORD_HASH_LENGTH;
 
-        private readonly IUserRepository _userRepository;
+        private readonly IAuthUserRepository _userRepository;
         private readonly IPasswordHasher _passwordHasher;
         private readonly ILogger _logger;
 
-        public AuthService(IPasswordHasher passwordHasher, IUserRepository userRepository, ILogger<AuthService> logger)
+        public AuthService(IPasswordHasher passwordHasher, IAuthUserRepository userRepository, ILogger<AuthService> logger)
         {
             _passwordHasher = passwordHasher;
             _userRepository = userRepository;

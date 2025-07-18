@@ -21,6 +21,11 @@
         INVALID_PASSWORD,
 
         /// <summary>
+        /// Invalid JWT or refresh token for user authorization.
+        /// </summary>
+        INVALID_TOKEN,
+
+        /// <summary>
         /// Invalid credentials provided during authentication.
         /// </summary>
         INVALID_CREDENTIALS,
@@ -46,7 +51,7 @@
         SERVER_ERROR,
 
         /// <summary>
-        /// When the user attempts to complete an action but does not have sufficient permissions.
+        /// When the user attempts to complete an action but does not have sufficient permissions (i.e. is unauthorized).
         /// </summary>
         INSUFFICIENT_PERMS,
 
@@ -80,5 +85,29 @@
         /// Attempt to authenticate when already logged in.
         /// </summary>
         ALREADY_LOGGED_IN,
+    }
+
+    public static class SphynxErrorCodeExtensions
+    {
+        public static bool IsServerError(this SphynxErrorCode errorCode)
+        {
+            switch (errorCode)
+            {
+                case SphynxErrorCode.SERVER_ERROR:
+                case SphynxErrorCode.DB_READ_ERROR:
+                case SphynxErrorCode.DB_WRITE_ERROR:
+                case SphynxErrorCode.INVALID_PASSWORD:
+                case SphynxErrorCode.INVALID_FIELD:
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        public static SphynxErrorCode MaskServerError(this SphynxErrorCode errorCode)
+        {
+            return errorCode.IsServerError() ? SphynxErrorCode.SERVER_ERROR : errorCode;
+        }
     }
 }
