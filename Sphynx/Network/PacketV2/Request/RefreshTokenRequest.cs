@@ -8,7 +8,6 @@ namespace Sphynx.Network.PacketV2.Request
     {
         public override SphynxPacketType PacketType => SphynxPacketType.REFRESH_TOKEN_REQ;
 
-        public string AccessToken { get; init; } = string.Empty;
         public Guid RefreshToken { get; init; }
     }
 }

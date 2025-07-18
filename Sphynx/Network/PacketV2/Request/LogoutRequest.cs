@@ -11,9 +11,8 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="LogoutRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public LogoutRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public LogoutRequest(string accessToken) : base(accessToken)
         {
         }
 

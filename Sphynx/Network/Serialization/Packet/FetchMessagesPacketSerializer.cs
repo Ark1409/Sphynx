@@ -33,8 +33,7 @@ namespace Sphynx.Network.Serialization.Packet
             int count = deserializer.ReadInt32();
             bool inclusive = deserializer.ReadBool();
 
-            return new FetchMessagesRequest(requestInfo.UserId, requestInfo.SessionId,
-                sinceId, roomId, count, inclusive);
+            return new FetchMessagesRequest(requestInfo.AccessToken, sinceId, roomId, count, inclusive);
         }
     }
 

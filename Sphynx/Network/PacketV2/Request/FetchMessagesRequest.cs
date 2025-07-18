@@ -43,24 +43,22 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="FetchMessagesRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public FetchMessagesRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public FetchMessagesRequest(string accessToken) : base(accessToken)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="FetchMessagesRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
+        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="beforeId">The message from which older messages should be retrieved.</param>
         /// <param name="roomId">The room ID from which the message belongs.</param>
         /// <param name="count">The number of messages to retrieve, starting from <see cref="BeforeId"/>.</param>
         /// <param name="inclusive">Whether to include the message with id <see cref="BeforeId"/> (if it exists) in the
         /// response.</param>
-        public FetchMessagesRequest(SnowflakeId userId, Guid sessionId, SnowflakeId beforeId, SnowflakeId roomId, int count, bool inclusive = false)
-            : base(userId, sessionId)
+        public FetchMessagesRequest(string accessToken, SnowflakeId beforeId, SnowflakeId roomId, int count, bool inclusive = false)
+            : base(accessToken)
         {
             BeforeId = beforeId;
             Count = count;

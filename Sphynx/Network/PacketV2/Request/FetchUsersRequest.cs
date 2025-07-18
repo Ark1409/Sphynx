@@ -42,20 +42,17 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="FetchUsersRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public FetchUsersRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public FetchUsersRequest(string accessToken) : base(accessToken)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="FetchUsersRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
+        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="userIds">The user IDs of the users for which to retrieve information.</param>
-        public FetchUsersRequest(SnowflakeId userId, Guid sessionId, params SnowflakeId[] userIds) : base(userId,
-            sessionId)
+        public FetchUsersRequest(string accessToken, params SnowflakeId[] userIds) : base(accessToken)
         {
             UserIds = userIds;
         }

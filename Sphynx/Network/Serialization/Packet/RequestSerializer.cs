@@ -18,8 +18,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected sealed override bool Serialize(T packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.UserId);
-            serializer.WriteGuid(packet.SessionId);
+            serializer.WriteString(packet.AccessToken);
 
             return SerializeInternal(packet, ref serializer);
         }
@@ -28,9 +27,8 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected sealed override T? Deserialize(ref BinaryDeserializer deserializer)
         {
-            var userId = deserializer.ReadSnowflakeId();
-            var sessionId = deserializer.ReadGuid();
-            var requestInfo = new RequestInfo { UserId = userId, SessionId = sessionId };
+            var accessToken = deserializer.ReadString();
+            var requestInfo = new RequestInfo { AccessToken = accessToken };
 
             return DeserializeInternal(ref deserializer, requestInfo);
         }
@@ -40,7 +38,6 @@ namespace Sphynx.Network.Serialization.Packet
 
     public readonly struct RequestInfo
     {
-        public SnowflakeId UserId { get; init; }
-        public Guid SessionId { get; init; }
+        public string AccessToken { get; init; }
     }
 }

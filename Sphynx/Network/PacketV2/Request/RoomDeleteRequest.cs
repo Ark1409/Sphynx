@@ -27,36 +27,31 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="roomId">The ID of the room to delete.</param>
         /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
-        public RoomDeleteRequest(SnowflakeId roomId, string? password)
-            : this(SnowflakeId.Empty, Guid.Empty, roomId, password)
+        public RoomDeleteRequest(SnowflakeId roomId, string? password) : this(null!, roomId, password)
         {
         }
 
         /// <summary>
         /// Creates new <see cref="RoomDeleteRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public RoomDeleteRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public RoomDeleteRequest(string accessToken) : base(accessToken)
         {
         }
 
         /// <summary>
         /// Creates new <see cref="RoomDeleteRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
+        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="roomId">The ID of the room to delete. Only rooms of type <see cref="ChatRoomType.GROUP"/> can be deleted.</param>
         /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
-        public RoomDeleteRequest(SnowflakeId userId, Guid sessionId, SnowflakeId roomId, string? password)
-            : base(userId, sessionId)
+        public RoomDeleteRequest(string accessToken, SnowflakeId roomId, string? password) : base(accessToken)
         {
             RoomId = roomId;
             Password = password;
         }
 
         /// <inheritdoc/>
-        public bool Equals(RoomDeleteRequest? other) =>
-            base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
+        public bool Equals(RoomDeleteRequest? other) => base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
     }
 }

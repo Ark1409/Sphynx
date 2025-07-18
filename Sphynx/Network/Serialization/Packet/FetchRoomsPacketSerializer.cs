@@ -25,7 +25,7 @@ namespace Sphynx.Network.Serialization.Packet
         protected override FetchRoomsRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
         {
             var roomIds = deserializer.ReadArray<SnowflakeId>();
-            return new FetchRoomsRequest(requestInfo.UserId, requestInfo.SessionId, roomIds);
+            return new FetchRoomsRequest(requestInfo.AccessToken, roomIds);
         }
     }
 

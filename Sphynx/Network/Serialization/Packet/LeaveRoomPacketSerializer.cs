@@ -25,7 +25,7 @@ namespace Sphynx.Network.Serialization.Packet
         {
             var roomId = deserializer.ReadSnowflakeId();
 
-            return new LeaveRoomRequest(requestInfo.UserId, requestInfo.SessionId, roomId);
+            return new LeaveRoomRequest(requestInfo.AccessToken, roomId);
         }
     }
 

@@ -27,7 +27,7 @@ namespace Sphynx.Network.Serialization.Packet
             var roomId = deserializer.ReadSnowflakeId();
             string password = deserializer.ReadString();
 
-            return new RoomDeleteRequest(requestInfo.UserId, requestInfo.SessionId, roomId,
+            return new RoomDeleteRequest(requestInfo.AccessToken, roomId,
                 string.IsNullOrEmpty(password) ? null : password);
         }
     }

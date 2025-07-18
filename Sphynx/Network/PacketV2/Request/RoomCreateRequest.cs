@@ -17,9 +17,8 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="RoomCreateRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public RoomCreateRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public RoomCreateRequest(string accessToken) : base(accessToken)
         {
         }
 
@@ -43,26 +42,24 @@ namespace Sphynx.Network.PacketV2.Request
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
             /// <param name="otherId">The user ID of the other user to create the DM with.</param>
-            public Direct(SnowflakeId otherId) : this(SnowflakeId.Empty, Guid.Empty, otherId)
+            public Direct(SnowflakeId otherId) : this(null!, otherId)
             {
             }
 
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="userId">The user ID of the requesting user.</param>
-            /// <param name="sessionId">The session ID for the requesting user.</param>
-            public Direct(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+            /// <param name="accessToken">The JWT access token for this request.</param>
+            public Direct(string accessToken) : base(accessToken)
             {
             }
 
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="userId">The user ID of the requesting user.</param>
-            /// <param name="sessionId">The session ID for the requesting user.</param>
+            /// <param name="accessToken">The JWT access token for this request.</param>
             /// <param name="otherId">The user ID of the other user to create the DM with.</param>
-            public Direct(SnowflakeId userId, Guid sessionId, SnowflakeId otherId) : base(userId, sessionId)
+            public Direct(string accessToken, SnowflakeId otherId) : base(accessToken)
             {
                 OtherId = otherId;
             }
@@ -97,9 +94,8 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="userId">The user ID of the requesting user.</param>
-            /// <param name="sessionId">The session ID for the requesting user.</param>
-            public Group(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+            /// <param name="accessToken">The JWT access token for this request.</param>
+            public Group(string accessToken) : base(accessToken)
             {
             }
 
@@ -109,25 +105,19 @@ namespace Sphynx.Network.PacketV2.Request
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
             /// <param name="isPublic">Whether this room is public.</param>
-            public Group(string name, string? password = null, bool isPublic = true) : this(SnowflakeId.Empty,
-                Guid.Empty, name, password, isPublic)
+            public Group(string name, string? password = null, bool isPublic = true) : this(null!,
+                name, password, isPublic)
             {
             }
 
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="userId">The user ID of the requesting user.</param>
-            /// <param name="sessionId">The session ID for the requesting user.</param>
+            /// <param name="accessToken">The JWT access token for this request.</param>
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
             /// <param name="isPublic">Whether this room is public.</param>
-            public Group(
-                SnowflakeId userId,
-                Guid sessionId,
-                string name,
-                string? password = null,
-                bool isPublic = true) : base(userId, sessionId)
+            public Group(string accessToken, string name, string? password = null, bool isPublic = true) : base(accessToken)
             {
                 Name = name ?? throw new ArgumentNullException(nameof(name));
                 Password = password;
@@ -135,8 +125,7 @@ namespace Sphynx.Network.PacketV2.Request
             }
 
             /// <inheritdoc/>
-            public bool Equals(Group? other) =>
-                base.Equals(other) && Name == other?.Name && Password == other?.Password;
+            public bool Equals(Group? other) => base.Equals(other) && Name == other?.Name && Password == other?.Password;
         }
     }
 }

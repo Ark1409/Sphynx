@@ -1,6 +1,4 @@
-﻿using Sphynx.Core;
-
-namespace Sphynx.Network.PacketV2.Request
+﻿namespace Sphynx.Network.PacketV2.Request
 {
     /// <summary>
     /// Represents a request packet.
@@ -8,31 +6,24 @@ namespace Sphynx.Network.PacketV2.Request
     public abstract class SphynxRequest : SphynxPacket
     {
         /// <summary>
-        /// The user ID of the requesting user.
+        /// The JWT access token with which this request should be authorized.
         /// </summary>
-        public SnowflakeId UserId { get; init; }
-
-        /// <summary>
-        /// The session ID for the requesting user.
-        /// </summary>s
-        public Guid SessionId { get; init; }
+        public string AccessToken { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        public SphynxRequest() : this(SnowflakeId.Empty, Guid.Empty)
+        public SphynxRequest() : this(null!)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public SphynxRequest(SnowflakeId userId, Guid sessionId)
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public SphynxRequest(string accessToken)
         {
-            UserId = userId;
-            SessionId = sessionId;
+            AccessToken = accessToken;
         }
 
         /// <summary>
@@ -40,7 +31,6 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="other">A request packet to compare with this request packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxRequest? other) =>
-            base.Equals(other) && UserId == other?.UserId && SessionId == other?.SessionId;
+        protected bool Equals(SphynxRequest? other) => base.Equals(other) && AccessToken == other?.AccessToken;
     }
 }

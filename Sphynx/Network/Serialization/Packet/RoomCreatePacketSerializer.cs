@@ -156,7 +156,7 @@ namespace Sphynx.Network.Serialization.Packet
             {
                 var otherId = deserializer.ReadSnowflakeId();
 
-                return new RoomCreateRequest.Direct(requestInfo.Base.UserId, requestInfo.Base.SessionId, otherId);
+                return new RoomCreateRequest.Direct(requestInfo.Base.AccessToken, otherId);
             }
         }
 
@@ -184,7 +184,7 @@ namespace Sphynx.Network.Serialization.Packet
                 string password = deserializer.ReadString();
                 bool isPublic = deserializer.ReadBool();
 
-                return new RoomCreateRequest.Group(requestInfo.Base.UserId, requestInfo.Base.SessionId,
+                return new RoomCreateRequest.Group(requestInfo.Base.AccessToken,
                     name, password, isPublic);
             }
         }

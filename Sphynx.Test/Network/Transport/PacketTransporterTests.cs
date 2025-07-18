@@ -36,8 +36,8 @@ namespace Sphynx.Test.Network.Transport
             var packets = new SphynxPacket[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("user-id".AsSnowflakeId(), "session-id".AsGuid()),
-                new MessagePostRequest("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
+                new LogoutRequest("access-token"),
+                new MessagePostRequest("access-token",  "room-id".AsSnowflakeId(), "Test message")
             };
 
             using var stream = new MemoryStream();
@@ -76,8 +76,8 @@ namespace Sphynx.Test.Network.Transport
             var packets = new SphynxPacket[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("user-id".AsSnowflakeId(), "session-id".AsGuid()),
-                new MessagePostRequest("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
+                new LogoutRequest("access-token"),
+                new MessagePostRequest("access-token", "room-id".AsSnowflakeId(), "Test message")
             };
 
             using var stream = new MemoryStream();
@@ -104,8 +104,8 @@ namespace Sphynx.Test.Network.Transport
             var packets = new SphynxPacket[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("user-id".AsSnowflakeId(), "session-id".AsGuid()),
-                new MessagePostRequest("user-id".AsSnowflakeId(), "session-id".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
+                new LogoutRequest("access-token"),
+                new MessagePostRequest("access-token", "room-id".AsSnowflakeId(), "Test message")
             };
 
             using var stream = new MemoryStream();

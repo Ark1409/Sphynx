@@ -29,7 +29,7 @@ namespace Sphynx.Network.Serialization.Packet
             var roomId = deserializer.ReadSnowflakeId();
             var kickId = deserializer.ReadSnowflakeId();
 
-            return new KickUserRequest(requestInfo.UserId, requestInfo.SessionId, roomId, kickId);
+            return new KickUserRequest(requestInfo.AccessToken, roomId, kickId);
         }
     }
 

@@ -22,7 +22,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override LogoutRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
         {
-            return new LogoutRequest(requestInfo.UserId, requestInfo.SessionId);
+            return new LogoutRequest(requestInfo.AccessToken);
         }
     }
 

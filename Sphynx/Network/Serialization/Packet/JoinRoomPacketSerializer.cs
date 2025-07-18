@@ -29,7 +29,7 @@ namespace Sphynx.Network.Serialization.Packet
             var roomId = deserializer.ReadSnowflakeId();
             string password = deserializer.ReadString();
 
-            return new JoinRoomRequest(requestInfo.UserId, requestInfo.SessionId, roomId,
+            return new JoinRoomRequest(requestInfo.AccessToken, roomId,
                 string.IsNullOrEmpty(password) ? null : password);
         }
     }

@@ -62,12 +62,6 @@ namespace Sphynx.Server.Auth.Handlers
             //    - think carefully about how ur gonna be able to use this/use BinarySerializer with this
             //    -  x
 
-            if (accessTokenUser != request.UserId)
-            {
-                await client.SendAsync(new RefreshTokenResponse(SphynxErrorCode.INVALID_TOKEN), cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
             await _jwtService.DeleteTokenAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
 
             var newTokenInfo = await _jwtService.CreateTokenAsync(accessTokenUser, cancellationToken).ConfigureAwait(false);
