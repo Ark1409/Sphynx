@@ -22,7 +22,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
             _collection = collection;
         }
 
-        public async Task<SphynxErrorCode> InsertAsync(SphynxRefreshTokenInfo refreshToken, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo> InsertAsync(SphynxRefreshTokenInfo refreshToken, CancellationToken cancellationToken = default)
         {
             if (refreshToken.RefreshToken == default || refreshToken.User == default)
                 return SphynxErrorCode.INVALID_TOKEN;
@@ -40,7 +40,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
             // We consider duplicate PKs to be some sort of pseudo-transient error
             catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
             {
-                return SphynxErrorCode.INVALID_TOKEN;
+                return new SphynxErrorInfo(SphynxErrorCode.INVALID_TOKEN, "Token already exists");
             }
 
             TokenCreated?.Invoke(refreshToken);
@@ -57,7 +57,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
                 .ConfigureAwait(false);
 
             return dbToken is null
-                ? new SphynxErrorInfo<SphynxRefreshTokenInfo?>(SphynxErrorCode.INVALID_TOKEN)
+                ? new SphynxErrorInfo<SphynxRefreshTokenInfo?>(SphynxErrorCode.INVALID_TOKEN, "Refresh token not found")
                 : new SphynxErrorInfo<SphynxRefreshTokenInfo?>(dbToken.ToDomain());
         }
 
@@ -76,7 +76,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
             var dbToken = await _collection.FindOneAndDeleteAsync(tokenFilter, cancellationToken: cancellationToken).ConfigureAwait(false);
 
             return dbToken is null
-                ? new SphynxErrorInfo<SphynxRefreshTokenInfo?>(SphynxErrorCode.INVALID_TOKEN)
+                ? new SphynxErrorInfo<SphynxRefreshTokenInfo?>(SphynxErrorCode.INVALID_TOKEN, "Refresh token not found")
                 : new SphynxErrorInfo<SphynxRefreshTokenInfo?>(dbToken.ToDomain());
         }
     }

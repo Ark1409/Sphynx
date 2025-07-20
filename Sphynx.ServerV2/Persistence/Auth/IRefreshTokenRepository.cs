@@ -8,7 +8,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
 {
     public interface IRefreshTokenRepository
     {
-        Task<SphynxErrorCode> InsertAsync(SphynxRefreshTokenInfo refreshToken, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> InsertAsync(SphynxRefreshTokenInfo refreshToken, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<SphynxRefreshTokenInfo?>> GetAsync(Guid refreshToken, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<bool>> ExistsAsync(Guid refreshToken, CancellationToken cancellationToken = default);

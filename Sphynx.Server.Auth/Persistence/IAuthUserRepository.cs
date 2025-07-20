@@ -10,7 +10,7 @@ namespace Sphynx.Server.Auth.Persistence
     {
         Task<SphynxErrorInfo<SphynxAuthUser?>> InsertUserAsync(SphynxAuthUser user, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorCode> UpdateUserAsync(SphynxAuthUser updatedUser, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> UpdateUserAsync(SphynxAuthUser updatedUser, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(string userName, CancellationToken cancellationToken = default);
@@ -18,7 +18,7 @@ namespace Sphynx.Server.Auth.Persistence
         Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(string userName, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorCode> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> UpdateUserPasswordAsync(string userName, PasswordInfo password, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> UpdateUserPasswordAsync(string userName, PasswordInfo password, CancellationToken cancellationToken = default);
     }
 }

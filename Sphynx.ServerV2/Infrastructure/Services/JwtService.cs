@@ -65,10 +65,18 @@ namespace Sphynx.ServerV2.Infrastructure.Services
                 ExpiryTime = payload.ExpiresAt
             };
 
-            var errorCode = await _refreshRepository.InsertAsync(jwtInfo.RefreshToken, cancellationToken).ConfigureAwait(false);
+            var errorInfo = await _refreshRepository.InsertAsync(jwtInfo.RefreshToken, cancellationToken).ConfigureAwait(false);
 
-            if (errorCode != SphynxErrorCode.SUCCESS)
-                return new SphynxErrorInfo<SphynxJwtInfo?>(errorCode.MaskServerError());
+            if (errorInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+            {
+                bool isNonSendableError = (errorInfo.ErrorCode.IsServerError() && errorInfo.ErrorCode != SphynxErrorCode.SERVER_ERROR) ||
+                                          errorInfo.ErrorCode == SphynxErrorCode.INVALID_TOKEN;
+
+                if (isNonSendableError)
+                    return SphynxErrorCode.SERVER_ERROR;
+
+                return new SphynxErrorInfo<SphynxJwtInfo?>(errorInfo.ErrorCode.MaskServerError(), errorInfo.Message);
+            }
 
             return new SphynxErrorInfo<SphynxJwtInfo?>(jwtInfo);
         }
@@ -86,7 +94,12 @@ namespace Sphynx.ServerV2.Infrastructure.Services
             var refreshTokenInfo = await _refreshRepository.GetAsync(refreshToken, cancellationToken).ConfigureAwait(false);
 
             if (refreshTokenInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+            {
+                if (refreshTokenInfo.ErrorCode == SphynxErrorCode.INVALID_TOKEN)
+                    return refreshTokenInfo;
+
                 return new SphynxErrorInfo<SphynxRefreshTokenInfo?>(refreshTokenInfo.ErrorCode.MaskServerError());
+            }
 
             return refreshTokenInfo;
         }
@@ -104,12 +117,17 @@ namespace Sphynx.ServerV2.Infrastructure.Services
 
         public async Task<bool> VerifyTokenAsync(Guid refreshToken, CancellationToken cancellationToken = default)
         {
-            var refreshTokenInfo = await _refreshRepository.ExistsAsync(refreshToken, cancellationToken).ConfigureAwait(false);
+            var refreshTokenInfo = await _refreshRepository.GetAsync(refreshToken, cancellationToken).ConfigureAwait(false);
 
             if (refreshTokenInfo.ErrorCode != SphynxErrorCode.SUCCESS)
                 return false;
 
-            return refreshTokenInfo.Data;
+            if (!refreshTokenInfo.Data.HasValue)
+                return false;
+
+            var dbToken = refreshTokenInfo.Data.Value;
+
+            return dbToken.ExpiryTime > DateTimeOffset.UtcNow;
         }
 
         public async Task<SphynxErrorInfo<SphynxRefreshTokenInfo?>> DeleteTokenAsync(Guid refreshToken, CancellationToken cancellationToken = default)
@@ -117,7 +135,12 @@ namespace Sphynx.ServerV2.Infrastructure.Services
             var deletedTokenInfo = await _refreshRepository.DeleteAsync(refreshToken, cancellationToken).ConfigureAwait(false);
 
             if (deletedTokenInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+            {
+                if (deletedTokenInfo.ErrorCode == SphynxErrorCode.INVALID_TOKEN)
+                    return deletedTokenInfo;
+
                 return new SphynxErrorInfo<SphynxRefreshTokenInfo?>(deletedTokenInfo.ErrorCode.MaskServerError());
+            }
 
             return deletedTokenInfo;
         }

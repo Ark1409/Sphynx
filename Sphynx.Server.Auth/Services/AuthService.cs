@@ -33,7 +33,7 @@ namespace Sphynx.Server.Auth.Services
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("Authenticating user against account \"{UserName}\"", userName);
 
-            var passwordResult = await GetPasswordAsync(userName, cancellationToken).ConfigureAwait(false);
+            var passwordResult = await GetUserPasswordAsync(userName, cancellationToken).ConfigureAwait(false);
 
             if (passwordResult.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new SphynxErrorInfo<SphynxAuthInfo?>(passwordResult.ErrorCode);
@@ -45,7 +45,7 @@ namespace Sphynx.Server.Auth.Services
                 if (_logger.IsEnabled(LogLevel.Trace))
                     _logger.LogTrace("Invalid credentials supplied for account \"{UserName}\"", userName);
 
-                return new SphynxErrorInfo<SphynxAuthInfo?>(SphynxErrorCode.INVALID_CREDENTIALS);
+                return new SphynxErrorInfo<SphynxAuthInfo?>(SphynxErrorCode.INVALID_CREDENTIALS, "Invalid username or password");
             }
 
             var userResult = await GetUserAsync(userName, cancellationToken).ConfigureAwait(false);
@@ -54,7 +54,7 @@ namespace Sphynx.Server.Auth.Services
                 _logger.LogInformation("Successfully authenticated user against account \"{UserName}\"", userName);
 
             var authInfo = new SphynxAuthInfo(userResult.Data!, GenerateSessionId(userResult.Data!));
-            var authResult = new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, authInfo);
+            var authResult = new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, Data: authInfo);
 
             // TODO: Alert message server
 
@@ -66,22 +66,26 @@ namespace Sphynx.Server.Auth.Services
             var userResult = await _userRepository.GetUserAsync(userName, cancellationToken).ConfigureAwait(false);
 
             if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
+            {
+                if (userResult.ErrorCode is SphynxErrorCode.INVALID_USER or SphynxErrorCode.INVALID_USERNAME)
+                    return userResult;
+
                 return new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.SERVER_ERROR);
+            }
 
             Trace.Assert(userResult.Data is not null, "Repository should populate user info on success");
 
             return userResult;
         }
 
-        private async Task<SphynxErrorInfo<PasswordInfo?>> GetPasswordAsync(string userName, CancellationToken cancellationToken = default)
+        private async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(string userName, CancellationToken cancellationToken = default)
         {
             var passwordResult = await _userRepository.GetUserPasswordAsync(userName, cancellationToken).ConfigureAwait(false);
 
             if (passwordResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                // TODO: Extract
                 if (passwordResult.ErrorCode is SphynxErrorCode.INVALID_USER or SphynxErrorCode.INVALID_USERNAME)
-                    return new SphynxErrorInfo<PasswordInfo?>(passwordResult.ErrorCode);
+                    return passwordResult;
 
                 // Assume then there is an error with the repository
                 return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.SERVER_ERROR);
@@ -104,10 +108,10 @@ namespace Sphynx.Server.Auth.Services
             if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
                 if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("Account creation for user \"{UserName}\" failed", userName);
+                    _logger.LogWarning("Account creation for user \"{UserName}\" failed. Error: {Error}", userName, userResult);
 
                 if (userResult.ErrorCode == SphynxErrorCode.INVALID_USERNAME)
-                    return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode);
+                    return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, "User with matching name already exists");
 
                 return new SphynxErrorInfo<SphynxAuthInfo?>(SphynxErrorCode.SERVER_ERROR);
             }
@@ -118,7 +122,7 @@ namespace Sphynx.Server.Auth.Services
                 _logger.LogInformation("Successfully created user {UserId} ({UserName}) ", userResult.Data!.UserId, userResult.Data.UserName);
 
             var authInfo = new SphynxAuthInfo(userResult.Data!, GenerateSessionId(userResult.Data!));
-            var authResult = new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, authInfo);
+            var authResult = new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, Data: authInfo);
 
             // TODO: Alert message server
 
@@ -127,26 +131,29 @@ namespace Sphynx.Server.Auth.Services
 
         private SphynxAuthUser CreateNewUser(string userName, string password)
         {
-            byte[] rentBuffer = ArrayPool<byte>.Shared.Rent(PASSWORD_HASH_LENGTH + PASSWORD_SALT_LENGTH);
-            var buffer = rentBuffer.AsMemory();
+            const int BUFFER_SIZE = PASSWORD_HASH_LENGTH + PASSWORD_SALT_LENGTH;
+
+            byte[]? rentBuffer = null;
+            var buffer = BUFFER_SIZE <= 256 * 2 ? stackalloc byte[BUFFER_SIZE] : (rentBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE));
 
             var pwdHash = buffer[..PASSWORD_HASH_LENGTH];
             var pwdSalt = buffer.Slice(PASSWORD_HASH_LENGTH, PASSWORD_SALT_LENGTH);
 
             try
             {
-                _passwordHasher.GenerateSalt(pwdSalt.Span);
-                _passwordHasher.HashPassword(password, pwdSalt.Span, pwdHash.Span);
+                _passwordHasher.GenerateSalt(pwdSalt);
+                _passwordHasher.HashPassword(password, pwdSalt, pwdHash);
 
                 return new SphynxAuthUser(SnowflakeId.NewId(), userName, SphynxUserStatus.ONLINE)
                 {
-                    PasswordHash = Convert.ToBase64String(pwdHash.Span),
-                    PasswordSalt = Convert.ToBase64String(pwdSalt.Span)
+                    PasswordHash = Convert.ToBase64String(pwdHash),
+                    PasswordSalt = Convert.ToBase64String(pwdSalt)
                 };
             }
             finally
             {
-                ArrayPool<byte>.Shared.Return(rentBuffer);
+                if (rentBuffer != null)
+                    ArrayPool<byte>.Shared.Return(rentBuffer);
             }
         }
 

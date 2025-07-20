@@ -8,17 +8,17 @@ using Sphynx.ServerV2.Persistence.User;
 
 namespace Sphynx.Server.Auth.Persistence
 {
-    public class MongoUserRepository : IAuthUserRepository
+    public class MongoAuthUserRepository : IAuthUserRepository
     {
         public event Action<SphynxAuthUser>? UserCreated;
 
         private readonly IMongoCollection<SphynxDbUser> _collection;
 
-        public MongoUserRepository(IMongoDatabase db, string collectionName) : this(db.GetCollection<SphynxDbUser>(collectionName))
+        public MongoAuthUserRepository(IMongoDatabase db, string collectionName) : this(db.GetCollection<SphynxDbUser>(collectionName))
         {
         }
 
-        public MongoUserRepository(IMongoCollection<SphynxDbUser> collection)
+        public MongoAuthUserRepository(IMongoCollection<SphynxDbUser> collection)
         {
             _collection = collection;
         }
@@ -40,7 +40,7 @@ namespace Sphynx.Server.Auth.Persistence
             // We consider duplicate PKs to be some sort of pseudo-transient error
             catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
             {
-                return new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USER);
+                return new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USER, "User with matching ID already exists");
             }
 
             UserCreated?.Invoke(user);
@@ -48,7 +48,7 @@ namespace Sphynx.Server.Auth.Persistence
             return new SphynxErrorInfo<SphynxAuthUser?>(user);
         }
 
-        public async Task<SphynxErrorCode> UpdateUserAsync(SphynxAuthUser updatedUser, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo> UpdateUserAsync(SphynxAuthUser updatedUser, CancellationToken cancellationToken = default)
         {
             if (updatedUser.UserId == default)
                 return SphynxErrorCode.INVALID_USER;
@@ -90,7 +90,7 @@ namespace Sphynx.Server.Auth.Persistence
                 return SphynxErrorCode.DB_WRITE_ERROR;
 
             if (result.IsModifiedCountAvailable && (result.MatchedCount <= 0 || result.ModifiedCount <= 0))
-                return SphynxErrorCode.INVALID_USER;
+                return new SphynxErrorInfo(SphynxErrorCode.INVALID_USER, "User not found");
 
             return SphynxErrorCode.SUCCESS;
         }
@@ -109,7 +109,7 @@ namespace Sphynx.Server.Auth.Persistence
                 .ConfigureAwait(false);
 
             return dbUser is null
-                ? new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USER)
+                ? new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USER, "User not found")
                 : new SphynxErrorInfo<SphynxAuthUser?>(dbUser.ToDomain());
         }
 
@@ -127,7 +127,7 @@ namespace Sphynx.Server.Auth.Persistence
                 .ConfigureAwait(false);
 
             return dbUser is null
-                ? new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USER)
+                ? new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USER, "User not found")
                 : new SphynxErrorInfo<SphynxAuthUser?>(dbUser.ToDomain());
         }
 
@@ -146,7 +146,7 @@ namespace Sphynx.Server.Auth.Persistence
                 .ConfigureAwait(false);
 
             if (!await cursor.MoveNextAsync(cancellationToken))
-                return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.INVALID_USER);
+                return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.INVALID_USER, "User not found");
 
             return new SphynxErrorInfo<PasswordInfo?>(cursor.Current.First());
         }
@@ -166,12 +166,12 @@ namespace Sphynx.Server.Auth.Persistence
                 .ConfigureAwait(false);
 
             if (!await cursor.MoveNextAsync(cancellationToken))
-                return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.INVALID_USERNAME);
+                return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.INVALID_USERNAME, "User not found");
 
             return new SphynxErrorInfo<PasswordInfo?>(cursor.Current.First());
         }
 
-        public async Task<SphynxErrorCode> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password,
+        public async Task<SphynxErrorInfo> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);
@@ -187,12 +187,12 @@ namespace Sphynx.Server.Auth.Persistence
                 return SphynxErrorCode.DB_WRITE_ERROR;
 
             if (result.IsModifiedCountAvailable && (result.MatchedCount <= 0 || result.ModifiedCount <= 0))
-                return SphynxErrorCode.INVALID_USER;
+                return new SphynxErrorInfo(SphynxErrorCode.INVALID_USER, "User not found");
 
             return SphynxErrorCode.SUCCESS;
         }
 
-        public async Task<SphynxErrorCode> UpdateUserPasswordAsync(string userName, PasswordInfo password,
+        public async Task<SphynxErrorInfo> UpdateUserPasswordAsync(string userName, PasswordInfo password,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserName, userName);
@@ -208,7 +208,7 @@ namespace Sphynx.Server.Auth.Persistence
                 return SphynxErrorCode.DB_WRITE_ERROR;
 
             if (result.IsModifiedCountAvailable && (result.MatchedCount <= 0 || result.ModifiedCount <= 0))
-                return SphynxErrorCode.INVALID_USERNAME;
+                return new SphynxErrorInfo(SphynxErrorCode.INVALID_USERNAME, "User not found");
 
             return SphynxErrorCode.SUCCESS;
         }

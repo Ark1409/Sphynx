@@ -11,10 +11,11 @@ namespace Sphynx.Server.Auth.Persistence
         public event Action<SphynxAuthUser>? UserCreated;
         public Task<SphynxErrorInfo<SphynxAuthUser?>> InsertUserAsync(SphynxAuthUser user, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            Console.WriteLine($"Insernting user: {user.UserName}");
+            return Task.FromResult(new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.DB_WRITE_ERROR));
         }
 
-        public Task<SphynxErrorCode> UpdateUserAsync(SphynxAuthUser updatedUser, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo> UpdateUserAsync(SphynxAuthUser updatedUser, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -39,12 +40,12 @@ namespace Sphynx.Server.Auth.Persistence
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorCode> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorCode> UpdateUserPasswordAsync(string userName, PasswordInfo password, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo> UpdateUserPasswordAsync(string userName, PasswordInfo password, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

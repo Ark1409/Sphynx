@@ -13,8 +13,8 @@ namespace Sphynx.ServerV2.Persistence.User
 
         Task<SphynxErrorInfo<SphynxDbUser?>> InsertUserAsync(SphynxDbUser user, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorCode> UpdateUserAsync(SphynxDbUser updatedUser, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> DeleteUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> UpdateUserAsync(SphynxDbUser updatedUser, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> DeleteUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<SphynxDbUser?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<SphynxDbUser?>> GetUserAsync(string userName, CancellationToken cancellationToken = default);
@@ -25,6 +25,6 @@ namespace Sphynx.ServerV2.Persistence.User
         Task<SphynxErrorInfo<SphynxDbUser[]?>> GetUsersAsync(string[] userNames, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<T?>> GetUserFieldAsync<T>(SnowflakeId userId, string fieldName, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> UpdateUserFieldAsync<T>(SnowflakeId userId, string fieldName, T value, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> UpdateUserFieldAsync<T>(SnowflakeId userId, string fieldName, T value, CancellationToken cancellationToken = default);
     }
 }

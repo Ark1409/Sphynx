@@ -1,18 +1,30 @@
 namespace Sphynx.Core
 {
+    public readonly record struct SphynxErrorInfo(SphynxErrorCode ErrorCode, string? Message = null)
+    {
+        /// <summary>
+        /// Returns a new <see cref="SphynxErrorInfo"/> with <see langword="default"/>.
+        /// </summary>
+        /// <param name="error">The error code for this <see cref="SphynxErrorInfo"/>.</param>
+        /// <returns>The data for this <see cref="SphynxErrorInfo"/>.</returns>
+        public static implicit operator SphynxErrorInfo(SphynxErrorCode error) => new SphynxErrorInfo(error);
+    };
+
     /// <summary>
     /// A type representing a wrapping for a TryXXX-style method mainly purposed for asynchronous code.
     /// </summary>
     /// <param name="ErrorCode">The error code for the operation.</param>
+    /// <param name="Message">A descriptive message for the error.</param>
     /// <param name="Data">The return data.</param>
     /// <typeparam name="TData">The data held by this info type.</typeparam>
-    public record struct SphynxErrorInfo<TData>(SphynxErrorCode ErrorCode, TData? Data = default) : IEquatable<TData?>
+    public readonly record struct SphynxErrorInfo<TData>(SphynxErrorCode ErrorCode, string? Message = null, TData? Data = default)
+        : IEquatable<TData?>
     {
         /// <summary>
         /// Creates a new <see cref="SphynxErrorInfo{TData}"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
         /// <param name="data">The data to store.</param>
-        public SphynxErrorInfo(TData? data) : this(SphynxErrorCode.SUCCESS, data)
+        public SphynxErrorInfo(TData? data) : this(SphynxErrorCode.SUCCESS, null, data)
         {
         }
 
@@ -35,7 +47,7 @@ namespace Sphynx.Core
         /// </summary>
         /// <param name="error">The error code for this <see cref="SphynxErrorInfo{TData}"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo{TData}"/>.</returns>
-        public static implicit operator SphynxErrorInfo<TData>?(SphynxErrorCode error) => new SphynxErrorInfo<TData>(error);
+        public static implicit operator SphynxErrorInfo<TData>(SphynxErrorCode error) => new SphynxErrorInfo<TData>(error);
 
         /// <inheritdoc/>
         public bool Equals(TData? other)
