@@ -97,7 +97,7 @@ namespace Sphynx.Server.Auth.Services
         {
             var userResult = await CreateUserAsync(userName, password, cancellationToken).ConfigureAwait(false);
 
-            if (userResult.ErrorCode == SphynxErrorCode.SUCCESS)
+            if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, userResult.Message);
 
             var user = userResult.Data!;

@@ -50,8 +50,10 @@ namespace Sphynx.Server.Auth
                     options.IncludeScopes = true;
                     options.TimestampFormat = "[MM-dd-yyyy HH:mm:ss] ";
                 });
-                builder.SetMinimumLevel(isDevelopment ? LogLevel.Trace : LogLevel.Information);
+                builder.SetMinimumLevel(isDevelopment ? LogLevel.Debug : LogLevel.Information);
             });
+
+            EndPoint = DefaultEndPoint;
         }
 
         private void ConfigureTransporter(bool isDevelopment)

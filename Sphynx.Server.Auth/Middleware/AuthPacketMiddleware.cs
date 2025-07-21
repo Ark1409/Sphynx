@@ -20,7 +20,8 @@ namespace Sphynx.Server.Auth.Middleware
 
         public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token = default)
         {
-            token.ThrowIfCancellationRequested();
+            if (token.IsCancellationRequested)
+                return Task.FromCanceled(token);
 
             if (packet is not LoginRequest && packet is not RegisterRequest && packet is not RefreshTokenRequest)
             {
