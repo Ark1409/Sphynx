@@ -13,7 +13,7 @@ namespace Sphynx.Network.PacketV2.Response
         public Guid? RefreshToken { get; init; }
         public DateTimeOffset? ExpiresAt { get; init; }
 
-        public RefreshTokenResponse(SphynxErrorCode errorCode) : base(errorCode)
+        public RefreshTokenResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 

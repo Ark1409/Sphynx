@@ -45,7 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override int GetMaxSizeInternal(FetchUsersResponse packet)
         {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return 0;
 
             return _userSerializer.GetMaxSize(packet.Users!);
@@ -54,7 +54,7 @@ namespace Sphynx.Network.Serialization.Packet
         protected override bool SerializeInternal(FetchUsersResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize users on success
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return true;
 
             return _userSerializer.TrySerializeUnsafe(packet.Users!, ref serializer);
@@ -62,8 +62,8 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override FetchUsersResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
-            if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new FetchUsersResponse(responseInfo.ErrorCode);
+            if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return new FetchUsersResponse(responseInfo.ErrorInfo);
 
             return _userSerializer.TryDeserialize(ref deserializer, out var users)
                 ? new FetchUsersResponse(users)

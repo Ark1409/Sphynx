@@ -54,7 +54,7 @@ namespace Sphynx.ServerV2.Infrastructure.Services
             var jwtInfo = new SphynxJwtInfo
             {
                 AccessToken = accessToken,
-                RefreshToken = new SphynxRefreshTokenInfo
+                RefreshTokenInfo = new SphynxRefreshTokenInfo
                 {
                     RefreshToken = refreshToken,
                     AccessToken = accessToken,
@@ -65,7 +65,7 @@ namespace Sphynx.ServerV2.Infrastructure.Services
                 ExpiryTime = payload.ExpiresAt
             };
 
-            var errorInfo = await _refreshRepository.InsertAsync(jwtInfo.RefreshToken, cancellationToken).ConfigureAwait(false);
+            var errorInfo = await _refreshRepository.InsertAsync(jwtInfo.RefreshTokenInfo, cancellationToken).ConfigureAwait(false);
 
             if (errorInfo.ErrorCode != SphynxErrorCode.SUCCESS)
             {

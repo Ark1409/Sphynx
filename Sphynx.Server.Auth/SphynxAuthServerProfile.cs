@@ -17,6 +17,7 @@ using Sphynx.ServerV2;
 using Sphynx.ServerV2.Infrastructure.Middleware;
 using Sphynx.ServerV2.Infrastructure.RateLimiting;
 using Sphynx.ServerV2.Infrastructure.Routing;
+using Sphynx.ServerV2.Infrastructure.Services;
 
 namespace Sphynx.Server.Auth
 {
@@ -70,9 +71,11 @@ namespace Sphynx.Server.Auth
             PasswordHasher = new Pbkdf2PasswordHasher();
 
             // TODO: Register mongo credentials
-            UserRepository = isDevelopment ? new NullUserRepository() : new MongoUserRepository(null!, null!);
+            UserRepository = isDevelopment ? new NullUserRepository() : new MongoAuthUserRepository(null!, null!);
 
-            AuthService = new AuthService(PasswordHasher, UserRepository, LoggerFactory.CreateLogger<AuthService>());
+            // TODO: Register mongo credentials
+            var jwtService = new JwtService(null!);
+            AuthService = new AuthService(PasswordHasher, UserRepository, jwtService, LoggerFactory.CreateLogger<AuthService>());
 
             if (isDevelopment)
                 RateLimiterFactory = () => new TokenBucketRateLimiter(1, 60, TimeSpan.FromMinutes(1));
@@ -88,6 +91,12 @@ namespace Sphynx.Server.Auth
             if (!isDevelopment)
             {
                 var rateLimitingMiddleware = new RateLimitingMiddleware<IPEndPoint>(RateLimiterFactory, client => client.EndPoint);
+                rateLimitingMiddleware.OnRateLimited += (info) =>
+                {
+                    // TODO: Send rate limit time left as response if request
+                    return Task.CompletedTask;
+                };
+
                 _rateLimitingMiddleware = rateLimitingMiddleware;
 
                 router.UseMiddleware(rateLimitingMiddleware);

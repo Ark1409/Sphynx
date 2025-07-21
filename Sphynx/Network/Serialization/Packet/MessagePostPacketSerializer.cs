@@ -45,7 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override MessagePostResponse DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
-            return new MessagePostResponse(responseInfo.ErrorCode);
+            return new MessagePostResponse(responseInfo.ErrorInfo);
         }
     }
 

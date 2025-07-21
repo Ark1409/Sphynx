@@ -45,7 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            return new LeaveRoomResponse(responseInfo.ErrorCode);
+            return new LeaveRoomResponse(responseInfo.ErrorInfo);
         }
     }
 

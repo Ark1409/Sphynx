@@ -53,7 +53,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override int GetMaxSizeInternal(FetchMessagesResponse packet)
         {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return 0;
 
             return _chatMessageSerializer.GetMaxSize(packet.Messages!);
@@ -62,7 +62,7 @@ namespace Sphynx.Network.Serialization.Packet
         protected override bool SerializeInternal(FetchMessagesResponse packet, ref BinarySerializer serializer)
         {
             // Only send data on success
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return true;
 
             return _chatMessageSerializer.TrySerializeUnsafe(packet.Messages!, ref serializer);
@@ -70,8 +70,8 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override FetchMessagesResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
-            if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new FetchMessagesResponse(responseInfo.ErrorCode);
+            if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return new FetchMessagesResponse(responseInfo.ErrorInfo);
 
             return _chatMessageSerializer.TryDeserialize(ref deserializer, out var messages)
                 ? new FetchMessagesResponse(messages)

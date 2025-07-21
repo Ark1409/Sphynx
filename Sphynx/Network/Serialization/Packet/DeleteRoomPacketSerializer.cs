@@ -46,7 +46,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override RoomDeleteResponse DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
-            return new RoomDeleteResponse(responseInfo.ErrorCode);
+            return new RoomDeleteResponse(responseInfo.ErrorInfo);
         }
     }
 

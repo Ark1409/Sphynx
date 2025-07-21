@@ -11,8 +11,16 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="MessagePostResponse"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for message attempt.</param>
-        public MessagePostResponse(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
+        /// <param name="errorInfo">Error code for message attempt.</param>
+        public MessagePostResponse(SphynxErrorCode errorInfo = SphynxErrorCode.SUCCESS) : base(errorInfo)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="MessagePostResponse"/>.
+        /// </summary>
+        /// <param name="errorInfo">Error code for message attempt.</param>
+        public MessagePostResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 

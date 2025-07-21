@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Sphynx.Core
 {
     public readonly record struct SphynxErrorInfo(SphynxErrorCode ErrorCode, string? Message = null)
@@ -24,7 +26,7 @@ namespace Sphynx.Core
         /// Creates a new <see cref="SphynxErrorInfo{TData}"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
         /// <param name="data">The data to store.</param>
-        public SphynxErrorInfo(TData? data) : this(SphynxErrorCode.SUCCESS, null, data)
+        public SphynxErrorInfo(TData data) : this(SphynxErrorCode.SUCCESS, null, data)
         {
         }
 
@@ -40,7 +42,14 @@ namespace Sphynx.Core
         /// </summary>
         /// <param name="other">The object from which to retrieve the <see cref="Data"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo{TData}"/>.</returns>
-        public static implicit operator TData?(SphynxErrorInfo<TData> other) => other.Data;
+        public static implicit operator TData?(SphynxErrorInfo<TData?> other) => other.Data;
+
+        /// <summary>
+        /// Returns a <see cref="SphynxErrorInfo{TData}"/> for the <paramref cref="data"/>.
+        /// </summary>
+        /// <param name="data">The data to encapsulate.</param>
+        /// <returns>A new <see cref="SphynxErrorInfo{TData}"/> with the underlying <paramref name="data"/>.</returns>
+        public static implicit operator SphynxErrorInfo<TData>(TData data) => new SphynxErrorInfo<TData>(data);
 
         /// <summary>
         /// Returns a new <see cref="SphynxErrorInfo{TData}"/> with <see langword="default"/> <see cref="Data"/>.

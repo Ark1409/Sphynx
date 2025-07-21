@@ -42,7 +42,7 @@ namespace Sphynx.Network.Serialization.Packet
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            return new LogoutResponse(responseInfo.ErrorCode);
+            return new LogoutResponse(responseInfo.ErrorInfo);
         }
     }
 

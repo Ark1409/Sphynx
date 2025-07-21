@@ -45,7 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override int GetMaxSizeInternal(FetchRoomsResponse packet)
         {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return 0;
 
             return _roomSerializer.GetMaxSize(packet.Rooms!);
@@ -54,7 +54,7 @@ namespace Sphynx.Network.Serialization.Packet
         protected override bool SerializeInternal(FetchRoomsResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize Rooms on success
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return true;
 
             return _roomSerializer.TrySerializeUnsafe(packet.Rooms!, ref serializer);
@@ -62,8 +62,8 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override FetchRoomsResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
         {
-            if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new FetchRoomsResponse(responseInfo.ErrorCode);
+            if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return new FetchRoomsResponse(responseInfo.ErrorInfo);
 
             return _roomSerializer.TryDeserialize(ref deserializer, out var rooms)
                 ? new FetchRoomsResponse(rooms)

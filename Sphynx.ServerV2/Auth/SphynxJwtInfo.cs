@@ -3,5 +3,5 @@
 
 namespace Sphynx.ServerV2.Auth
 {
-    public readonly record struct SphynxJwtInfo(string AccessToken, SphynxRefreshTokenInfo RefreshToken, DateTimeOffset ExpiryTime);
+    public readonly record struct SphynxJwtInfo(string AccessToken, SphynxRefreshTokenInfo RefreshTokenInfo, DateTimeOffset ExpiryTime);
 }

@@ -8,6 +8,8 @@ using Sphynx.Core;
 using Sphynx.ModelV2.User;
 using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Persistence;
+using Sphynx.ServerV2.Auth;
+using Sphynx.ServerV2.Infrastructure.Services;
 
 namespace Sphynx.Server.Auth.Services
 {
@@ -17,13 +19,15 @@ namespace Sphynx.Server.Auth.Services
         private const int PASSWORD_SALT_LENGTH = PASSWORD_HASH_LENGTH;
 
         private readonly IAuthUserRepository _userRepository;
+        private readonly IJwtService _jwtService;
         private readonly IPasswordHasher _passwordHasher;
         private readonly ILogger _logger;
 
-        public AuthService(IPasswordHasher passwordHasher, IAuthUserRepository userRepository, ILogger<AuthService> logger)
+        public AuthService(IPasswordHasher passwordHasher, IAuthUserRepository userRepository, IJwtService jwtService, ILogger<AuthService> logger)
         {
             _passwordHasher = passwordHasher;
             _userRepository = userRepository;
+            _jwtService = jwtService;
             _logger = logger;
         }
 
@@ -33,10 +37,30 @@ namespace Sphynx.Server.Auth.Services
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("Authenticating user against account \"{UserName}\"", userName);
 
-            var passwordResult = await GetUserPasswordAsync(userName, cancellationToken).ConfigureAwait(false);
+            var verifiedCredentials = await VerifyUserCredentialsAsync(userName, password, cancellationToken).ConfigureAwait(false);
+
+            if (verifiedCredentials.ErrorCode != SphynxErrorCode.SUCCESS)
+                return new SphynxErrorInfo<SphynxAuthInfo?>(verifiedCredentials.ErrorCode, verifiedCredentials.Message);
+
+            var userResult = await GetUserAsync(userName, cancellationToken).ConfigureAwait(false);
+
+            if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
+                return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, userResult.Message);
+
+            var user = userResult.Data!;
+            var jwtInfo = await CreateUserTokenAsync(user, cancellationToken).ConfigureAwait(false);
+
+            return new SphynxAuthInfo(user, jwtInfo.Data!.Value);
+        }
+
+        private async Task<SphynxErrorInfo<bool>> VerifyUserCredentialsAsync(string userName, string password, CancellationToken cancellationToken)
+        {
+            var passwordResult = await _userRepository.GetUserPasswordAsync(userName, cancellationToken).ConfigureAwait(false);
 
             if (passwordResult.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new SphynxErrorInfo<SphynxAuthInfo?>(passwordResult.ErrorCode);
+                return SphynxErrorCode.SERVER_ERROR;
+
+            Trace.Assert(passwordResult.Data is not null, "Repository should populate password info on success");
 
             var passwordInfo = passwordResult.Data!.Value;
 
@@ -45,20 +69,10 @@ namespace Sphynx.Server.Auth.Services
                 if (_logger.IsEnabled(LogLevel.Trace))
                     _logger.LogTrace("Invalid credentials supplied for account \"{UserName}\"", userName);
 
-                return new SphynxErrorInfo<SphynxAuthInfo?>(SphynxErrorCode.INVALID_CREDENTIALS, "Invalid username or password");
+                return false;
             }
 
-            var userResult = await GetUserAsync(userName, cancellationToken).ConfigureAwait(false);
-
-            if (_logger.IsEnabled(LogLevel.Information) && userResult.ErrorCode == SphynxErrorCode.SUCCESS)
-                _logger.LogInformation("Successfully authenticated user against account \"{UserName}\"", userName);
-
-            var authInfo = new SphynxAuthInfo(userResult.Data!, GenerateSessionId(userResult.Data!));
-            var authResult = new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, Data: authInfo);
-
-            // TODO: Alert message server
-
-            return authResult;
+            return true;
         }
 
         private async Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(string userName, CancellationToken cancellationToken = default)
@@ -67,8 +81,8 @@ namespace Sphynx.Server.Auth.Services
 
             if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                if (userResult.ErrorCode is SphynxErrorCode.INVALID_USER or SphynxErrorCode.INVALID_USERNAME)
-                    return userResult;
+                if (_logger.IsEnabled(LogLevel.Warning))
+                    _logger.LogWarning("Unable to retrieve user info for user \"{UserName}\"", userName);
 
                 return new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.SERVER_ERROR);
             }
@@ -78,32 +92,27 @@ namespace Sphynx.Server.Auth.Services
             return userResult;
         }
 
-        private async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(string userName, CancellationToken cancellationToken = default)
-        {
-            var passwordResult = await _userRepository.GetUserPasswordAsync(userName, cancellationToken).ConfigureAwait(false);
-
-            if (passwordResult.ErrorCode != SphynxErrorCode.SUCCESS)
-            {
-                if (passwordResult.ErrorCode is SphynxErrorCode.INVALID_USER or SphynxErrorCode.INVALID_USERNAME)
-                    return passwordResult;
-
-                // Assume then there is an error with the repository
-                return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.SERVER_ERROR);
-            }
-
-            Trace.Assert(passwordResult.Data.HasValue, "Repository should populate password info on success");
-
-            return passwordResult;
-        }
-
         public async Task<SphynxErrorInfo<SphynxAuthInfo?>> RegisterUserAsync(string userName, string password,
             CancellationToken cancellationToken = default)
+        {
+            var userResult = await CreateUserAsync(userName, password, cancellationToken).ConfigureAwait(false);
+
+            if (userResult.ErrorCode == SphynxErrorCode.SUCCESS)
+                return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, userResult.Message);
+
+            var user = userResult.Data!;
+            var jwtInfo = await CreateUserTokenAsync(user, cancellationToken).ConfigureAwait(false);
+
+            return new SphynxAuthInfo(user, jwtInfo.Data!.Value);
+        }
+
+        private async Task<SphynxErrorInfo<SphynxAuthUser?>> CreateUserAsync(string userName, string password, CancellationToken cancellationToken)
         {
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("Creating account for user \"{UserName}\"", userName);
 
             var createdUser = CreateNewUser(userName, password);
-            var userResult = await _userRepository.InsertUserAsync(createdUser, cancellationToken);
+            var userResult = await _userRepository.InsertUserAsync(createdUser, cancellationToken).ConfigureAwait(false);
 
             if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
@@ -111,22 +120,29 @@ namespace Sphynx.Server.Auth.Services
                     _logger.LogWarning("Account creation for user \"{UserName}\" failed. Error: {Error}", userName, userResult);
 
                 if (userResult.ErrorCode == SphynxErrorCode.INVALID_USERNAME)
-                    return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, "User with matching name already exists");
+                    return userResult;
 
-                return new SphynxErrorInfo<SphynxAuthInfo?>(SphynxErrorCode.SERVER_ERROR);
+                return new SphynxErrorInfo<SphynxAuthUser?>(userResult.ErrorCode.MaskServerError());
             }
 
             Trace.Assert(userResult.Data is not null, "Repository should populate user info on success");
 
+            return userResult;
+        }
+
+        private async Task<SphynxErrorInfo<SphynxJwtInfo?>> CreateUserTokenAsync(SphynxAuthUser user, CancellationToken cancellationToken)
+        {
+            var jwtInfo = await _jwtService.CreateTokenAsync(user.UserId, cancellationToken).ConfigureAwait(false);
+
+            if (jwtInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+                return jwtInfo;
+
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("Successfully created user {UserId} ({UserName}) ", userResult.Data!.UserId, userResult.Data.UserName);
+                _logger.LogInformation("Successfully authenticated user against account \"{UserName}\"", user.UserName);
 
-            var authInfo = new SphynxAuthInfo(userResult.Data!, GenerateSessionId(userResult.Data!));
-            var authResult = new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, Data: authInfo);
+            Trace.Assert(jwtInfo.Data is not null);
 
-            // TODO: Alert message server
-
-            return authResult;
+            return jwtInfo;
         }
 
         private SphynxAuthUser CreateNewUser(string userName, string password)
@@ -134,7 +150,7 @@ namespace Sphynx.Server.Auth.Services
             const int BUFFER_SIZE = PASSWORD_HASH_LENGTH + PASSWORD_SALT_LENGTH;
 
             byte[]? rentBuffer = null;
-            var buffer = BUFFER_SIZE <= 256 * 2 ? stackalloc byte[BUFFER_SIZE] : (rentBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE));
+            var buffer = BUFFER_SIZE <= 512 ? stackalloc byte[BUFFER_SIZE] : (rentBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE));
 
             var pwdHash = buffer[..PASSWORD_HASH_LENGTH];
             var pwdSalt = buffer.Slice(PASSWORD_HASH_LENGTH, PASSWORD_SALT_LENGTH);
@@ -156,7 +172,5 @@ namespace Sphynx.Server.Auth.Services
                     ArrayPool<byte>.Shared.Return(rentBuffer);
             }
         }
-
-        protected virtual Guid GenerateSessionId(SphynxAuthUser user) => Guid.NewGuid();
     }
 }

@@ -49,7 +49,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override int GetMaxSizeInternal(LoginResponse packet)
         {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return 0;
 
             return BinarySerializer.MaxSizeOf<Guid>() + _userSerializer.GetMaxSize(packet.UserInfo!);
@@ -58,25 +58,29 @@ namespace Sphynx.Network.Serialization.Packet
         protected override bool SerializeInternal(LoginResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize user info when authentication is successful
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return true;
 
-            serializer.WriteGuid(packet.SessionId!.Value);
+            // TODO: Default?
+            serializer.WriteString(packet.AccessToken);
+            serializer.WriteGuid(packet.RefreshToken.GetValueOrDefault());
+            serializer.WriteDateTimeOffset(packet.AccessTokenExpiry.GetValueOrDefault());
 
             return _userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer);
         }
 
-        protected override LoginResponse? DeserializeInternal(
-            ref BinaryDeserializer deserializer,
+        protected override LoginResponse? DeserializeInternal(ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new LoginResponse(responseInfo.ErrorCode);
+            if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return new LoginResponse(responseInfo.ErrorInfo);
 
-            var sessionId = deserializer.ReadGuid();
+            string accessToken = deserializer.ReadString();
+            var refreshToken = deserializer.ReadGuid();
+            var accessTokenExpiry = deserializer.ReadDateTimeOffset();
 
             return _userSerializer.TryDeserialize(ref deserializer, out var userInfo)
-                ? new LoginResponse(userInfo, sessionId)
+                ? new LoginResponse(userInfo, accessToken, refreshToken, accessTokenExpiry)
                 : null;
         }
     }

@@ -73,7 +73,7 @@ namespace Sphynx.Server.Auth.Handlers
             }
 
             var newToken = newTokenInfo.Data!.Value;
-            var response = new RefreshTokenResponse(newToken.AccessToken, newToken.RefreshToken.RefreshToken, newToken.ExpiryTime);
+            var response = new RefreshTokenResponse(newToken.AccessToken, newToken.RefreshTokenInfo.RefreshToken, newToken.ExpiryTime);
 
             await client.SendAsync(response, cancellationToken).ConfigureAwait(false);
 

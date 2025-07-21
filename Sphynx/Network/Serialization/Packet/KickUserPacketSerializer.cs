@@ -49,7 +49,7 @@ namespace Sphynx.Network.Serialization.Packet
             ref BinaryDeserializer deserializer,
             ResponseInfo responseInfo)
         {
-            return new KickUserResponse(responseInfo.ErrorCode);
+            return new KickUserResponse(responseInfo.ErrorInfo);
         }
     }
 

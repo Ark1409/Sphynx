@@ -17,7 +17,8 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected sealed override bool Serialize(T packet, ref BinarySerializer serializer)
         {
-            serializer.WriteEnum(packet.ErrorCode);
+            serializer.WriteEnum(packet.ErrorInfo.ErrorCode);
+            serializer.WriteString(packet.ErrorInfo.Message);
 
             return SerializeInternal(packet, ref serializer);
         }
@@ -27,7 +28,9 @@ namespace Sphynx.Network.Serialization.Packet
         protected sealed override T? Deserialize(ref BinaryDeserializer deserializer)
         {
             var errorCode = deserializer.ReadEnum<SphynxErrorCode>();
-            var responseInfo = new ResponseInfo { ErrorCode = errorCode };
+            string errorMessage = deserializer.ReadString();
+
+            var responseInfo = new ResponseInfo { ErrorInfo = new SphynxErrorInfo(errorCode, errorMessage) };
 
             return DeserializeInternal(ref deserializer, responseInfo);
         }
@@ -37,6 +40,6 @@ namespace Sphynx.Network.Serialization.Packet
 
     public readonly struct ResponseInfo
     {
-        public SphynxErrorCode ErrorCode { get; init; }
+        public SphynxErrorInfo ErrorInfo { get; init; }
     }
 }
