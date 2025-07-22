@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -41,5 +42,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <inheritdoc/>
         public bool Equals(MessagePostRequest? other) =>
             base.Equals(other) && RoomId == other?.RoomId && Message == other?.Message;
+
+        public override MessagePostResponse CreateResponse(SphynxErrorInfo errorInfo) => new MessagePostResponse(errorInfo);
     }
 }

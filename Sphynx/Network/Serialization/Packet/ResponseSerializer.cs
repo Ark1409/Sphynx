@@ -10,7 +10,7 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public sealed override int GetMaxSize(T packet)
         {
-            return BinarySerializer.MaxSizeOf<SphynxErrorCode>() + GetMaxSizeInternal(packet);
+            return BinarySerializer.MaxSizeOf<SphynxErrorCode>() + BinarySerializer.MaxSizeOf(packet.ErrorInfo.Message) + GetMaxSizeInternal(packet);
         }
 
         protected abstract int GetMaxSizeInternal(T packet);

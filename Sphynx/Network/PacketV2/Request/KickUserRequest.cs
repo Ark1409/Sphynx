@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -50,5 +51,7 @@ namespace Sphynx.Network.PacketV2.Request
 
         /// <inheritdoc/>
         public bool Equals(KickUserRequest? other) => base.Equals(other) && RoomId == other?.RoomId && KickId == other?.KickId;
+
+        public override KickUserResponse CreateResponse(SphynxErrorInfo errorInfo) => new KickUserResponse(errorInfo);
     }
 }

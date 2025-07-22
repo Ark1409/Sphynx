@@ -1,5 +1,6 @@
 ﻿using Sphynx.Core;
 using Sphynx.Model.ChatRoom;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -53,5 +54,7 @@ namespace Sphynx.Network.PacketV2.Request
 
         /// <inheritdoc/>
         public bool Equals(RoomDeleteRequest? other) => base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
+
+        public override RoomDeleteResponse CreateResponse(SphynxErrorInfo errorInfo) => new RoomDeleteResponse(errorInfo);
     }
 }

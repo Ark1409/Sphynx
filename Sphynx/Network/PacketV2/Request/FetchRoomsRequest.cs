@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.PacketV2.Request
@@ -59,5 +60,7 @@ namespace Sphynx.Network.PacketV2.Request
 
         /// <inheritdoc/>
         public bool Equals(FetchRoomsRequest? other) => base.Equals(other) && MemoryUtils.SequenceEqual(RoomIds, other?.RoomIds);
+
+        public override FetchRoomsResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchRoomsResponse(errorInfo);
     }
 }

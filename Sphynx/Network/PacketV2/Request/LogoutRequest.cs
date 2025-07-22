@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -18,5 +19,7 @@ namespace Sphynx.Network.PacketV2.Request
 
         /// <inheritdoc/>
         public bool Equals(LogoutRequest? other) => base.Equals(other);
+
+        public override LogoutResponse CreateResponse(SphynxErrorInfo errorInfo) => new LogoutResponse(errorInfo);
     }
 }

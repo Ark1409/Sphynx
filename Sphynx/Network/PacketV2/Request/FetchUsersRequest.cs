@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.PacketV2.Request
@@ -60,5 +61,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <inheritdoc/>
         public bool Equals(FetchUsersRequest? other) =>
             base.Equals(other) && MemoryUtils.SequenceEqual(UserIds, other?.UserIds);
+
+        public override FetchUsersResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchUsersResponse(errorInfo);
     }
 }

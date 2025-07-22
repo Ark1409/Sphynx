@@ -5,7 +5,9 @@
 
 using System.Net;
 using Microsoft.Extensions.Logging;
+using Sphynx.Core;
 using Sphynx.Network.PacketV2;
+using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Network.Transport;
@@ -28,7 +30,7 @@ namespace Sphynx.Server.Auth
         public IAuthService AuthService { get; set; }
         public Func<IRateLimiter> RateLimiterFactory { get; set; }
 
-        private IDisposable _rateLimitingMiddleware;
+        private RateLimitingMiddleware<IPEndPoint> _rateLimitingMiddleware;
 
         public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
         {
@@ -80,7 +82,7 @@ namespace Sphynx.Server.Auth
             AuthService = new AuthService(PasswordHasher, UserRepository, jwtService, LoggerFactory.CreateLogger<AuthService>());
 
             if (isDevelopment)
-                RateLimiterFactory = () => new TokenBucketRateLimiter(1, 60, TimeSpan.FromMinutes(1));
+                RateLimiterFactory = () => new TokenBucketRateLimiter(int.MaxValue, int.MaxValue, TimeSpan.FromTicks(1));
             else
                 RateLimiterFactory = () => new TokenBucketRateLimiter(1, 10, TimeSpan.FromMinutes(1));
         }
@@ -93,15 +95,19 @@ namespace Sphynx.Server.Auth
             if (!isDevelopment)
             {
                 var rateLimitingMiddleware = new RateLimitingMiddleware<IPEndPoint>(RateLimiterFactory, client => client.EndPoint);
-                rateLimitingMiddleware.OnRateLimited += (info) =>
+
+                rateLimitingMiddleware.OnRateLimited += async (info) =>
                 {
-                    // TODO: Send rate limit time left as response if request
-                    return Task.CompletedTask;
+                    if (info.Packet is SphynxRequest request)
+                    {
+                        var errorInfo = new SphynxErrorInfo(SphynxErrorCode.ENHANCE_YOUR_CALM,
+                            $"Too many requests. Please wait {Math.Ceiling(info.WaitTime.TotalMinutes)} minute(s).");
+
+                        await info.Client.SendAsync(request.CreateResponse(errorInfo)).ConfigureAwait(false);
+                    }
                 };
 
-                _rateLimitingMiddleware = rateLimitingMiddleware;
-
-                router.UseMiddleware(rateLimitingMiddleware);
+                router.UseMiddleware(_rateLimitingMiddleware = rateLimitingMiddleware);
             }
 
             router.UseMiddleware(new AuthPacketMiddleware(LoggerFactory.CreateLogger<AuthPacketMiddleware>()));

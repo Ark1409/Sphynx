@@ -77,8 +77,6 @@ namespace Sphynx.Network.Transport
 
             try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-
                 await stream.FillAsync(buffer, cancellationToken).ConfigureAwait(false);
                 SphynxPacketHeader? header;
 

@@ -1,5 +1,6 @@
 ﻿using Sphynx.Core;
 using Sphynx.Network.Packet.Response;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -51,5 +52,7 @@ namespace Sphynx.Network.PacketV2.Request
 
         /// <inheritdoc/>
         public bool Equals(JoinRoomRequest? other) => base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
+
+        public override JoinRoomResponse CreateResponse(SphynxErrorInfo errorInfo) => new JoinRoomResponse(errorInfo);
     }
 }

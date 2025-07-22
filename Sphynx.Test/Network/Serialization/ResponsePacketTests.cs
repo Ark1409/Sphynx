@@ -21,7 +21,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LoginResponseSerializer(new SphynxSelfInfoSerializer());
-            var packet = new LoginResponse(new TestSphynxSelfInfo(), "test".AsGuid());
+            var packet = new LoginResponse(new TestSphynxSelfInfo(), "access-token", Guid.NewGuid(), DateTimeOffset.UtcNow);
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
@@ -57,7 +57,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new RegisterResponseSerializer(new SphynxSelfInfoSerializer());
-            var packet = new RegisterResponse(new TestSphynxSelfInfo(), "test".AsGuid());
+            var packet = new RegisterResponse(new TestSphynxSelfInfo(), "access-token", Guid.NewGuid(), DateTimeOffset.UtcNow);
             Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act

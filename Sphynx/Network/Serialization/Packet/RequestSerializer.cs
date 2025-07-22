@@ -10,8 +10,7 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public sealed override int GetMaxSize(T packet)
         {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<Guid>() +
-                   GetMaxSizeInternal(packet);
+            return BinarySerializer.MaxSizeOf(packet.AccessToken) + GetMaxSizeInternal(packet);
         }
 
         protected abstract int GetMaxSizeInternal(T packet);

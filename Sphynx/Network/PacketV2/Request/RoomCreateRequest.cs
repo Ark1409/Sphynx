@@ -1,5 +1,6 @@
 ﻿using Sphynx.Core;
 using Sphynx.ModelV2.Room;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -66,6 +67,8 @@ namespace Sphynx.Network.PacketV2.Request
 
             /// <inheritdoc/>
             public bool Equals(Direct? other) => base.Equals(other) && OtherId == other?.OtherId;
+
+            public override RoomCreateResponse CreateResponse(SphynxErrorInfo errorInfo) => new RoomCreateResponse(errorInfo);
         }
 
         /// <summary>
@@ -126,6 +129,8 @@ namespace Sphynx.Network.PacketV2.Request
 
             /// <inheritdoc/>
             public bool Equals(Group? other) => base.Equals(other) && Name == other?.Name && Password == other?.Password;
+
+            public override RoomCreateResponse CreateResponse(SphynxErrorInfo errorInfo) => new RoomCreateResponse(errorInfo);
         }
     }
 }

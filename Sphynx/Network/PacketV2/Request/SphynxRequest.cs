@@ -1,4 +1,7 @@
-﻿namespace Sphynx.Network.PacketV2.Request
+﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
+
+namespace Sphynx.Network.PacketV2.Request
 {
     /// <summary>
     /// Represents a request packet.
@@ -32,5 +35,7 @@
         /// <param name="other">A request packet to compare with this request packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
         protected bool Equals(SphynxRequest? other) => base.Equals(other) && AccessToken == other?.AccessToken;
+
+        public abstract SphynxResponse CreateResponse(SphynxErrorInfo errorInfo);
     }
 }

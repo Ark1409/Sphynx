@@ -34,7 +34,7 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
         ///     <li>If <paramref name="count"/> permits are available, <see cref="TimeSpan.Zero"/>.</li>
         ///     <li>Else if <paramref name="count"/> is positive and less than or equal to <see cref="MaxPermits"/>,
         ///         the estimated wait time to obtain <paramref name="count"/> permits, assuming no other consumptions occur.</li>
-        ///     <li>Else if <paramref name="count"/> exceeds <see cref="MaxPermits"/>, <see cref="Timeout.InfiniteTimeSpan"/>.</li>
+        ///     <li>Else if <paramref name="count"/> exceeds <see cref="MaxPermits"/>, <see cref="TimeSpan.MaxValue"/>.</li>
         /// </ul>
         /// </returns>
         ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default);

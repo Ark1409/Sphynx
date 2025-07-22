@@ -1,7 +1,10 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace Sphynx.Core
 {
+    /// <summary>
+    /// A result type holding solely error information.
+    /// </summary>
+    /// <param name="ErrorCode">The error code for the operation.</param>
+    /// <param name="Message">A descriptive message for the error.</param>
     public readonly record struct SphynxErrorInfo(SphynxErrorCode ErrorCode, string? Message = null)
     {
         /// <summary>
@@ -13,12 +16,12 @@ namespace Sphynx.Core
     };
 
     /// <summary>
-    /// A type representing a wrapping for a TryXXX-style method mainly purposed for asynchronous code.
+    /// A result type holding error information and the underlying data.
     /// </summary>
     /// <param name="ErrorCode">The error code for the operation.</param>
     /// <param name="Message">A descriptive message for the error.</param>
     /// <param name="Data">The return data.</param>
-    /// <typeparam name="TData">The data held by this info type.</typeparam>
+    /// <typeparam name="TData">The type data held by this result on success.</typeparam>
     public readonly record struct SphynxErrorInfo<TData>(SphynxErrorCode ErrorCode, string? Message = null, TData? Data = default)
         : IEquatable<TData?>
     {

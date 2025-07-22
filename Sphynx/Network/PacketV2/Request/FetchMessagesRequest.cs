@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -72,5 +73,7 @@ namespace Sphynx.Network.PacketV2.Request
                                                            && RoomId == other?.RoomId
                                                            && Count == other.Count
                                                            && Inclusive == other.Inclusive;
+
+        public override FetchMessagesResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchMessagesResponse(errorInfo);
     }
 }

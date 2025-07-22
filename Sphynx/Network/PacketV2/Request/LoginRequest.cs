@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -34,5 +35,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <inheritdoc/>
         public bool Equals(LoginRequest? other) =>
             PacketType == other?.PacketType && UserName == other?.UserName && Password == other?.Password;
+
+        public override LoginResponse CreateResponse(SphynxErrorInfo errorInfo) => new LoginResponse(errorInfo);
     }
 }
