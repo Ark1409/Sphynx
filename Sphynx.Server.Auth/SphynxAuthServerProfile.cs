@@ -31,6 +31,7 @@ namespace Sphynx.Server.Auth
         public Func<IRateLimiter> RateLimiterFactory { get; set; }
 
         private RateLimitingMiddleware<IPEndPoint> _rateLimitingMiddleware;
+        private IJwtService _jwtService;
 
         public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
         {
@@ -78,8 +79,8 @@ namespace Sphynx.Server.Auth
             UserRepository = isDevelopment ? new NullUserRepository() : new MongoAuthUserRepository(null!, null!);
 
             // TODO: Register mongo credentials
-            var jwtService = new JwtService(null!);
-            AuthService = new AuthService(PasswordHasher, UserRepository, jwtService, LoggerFactory.CreateLogger<AuthService>());
+            _jwtService = new JwtService(null!);
+            AuthService = new AuthService(PasswordHasher, UserRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
 
             if (isDevelopment)
                 RateLimiterFactory = () => new TokenBucketRateLimiter(int.MaxValue, int.MaxValue, TimeSpan.FromTicks(1));
@@ -122,7 +123,8 @@ namespace Sphynx.Server.Auth
             router.ThrowOnUnregistered = isDevelopment;
 
             router.UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
-                .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()));
+                .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()))
+                .UseHandler(new RefreshHandler(_jwtService, LoggerFactory.CreateLogger<RefreshHandler>()));
 
             PacketRouter = router;
         }
