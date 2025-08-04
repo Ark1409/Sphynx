@@ -338,7 +338,7 @@ namespace Sphynx.ServerV2.Client
             return DisconnectAsync(disconnectException, waitForFinish);
         }
 
-        private async ValueTask DisconnectAsync(Exception? disconnectException, bool waitForFinish)
+        private ValueTask DisconnectAsync(Exception? disconnectException, bool waitForFinish)
         {
             Debug.Assert(Volatile.Read(ref _stopped) != 0);
 
@@ -362,11 +362,15 @@ namespace Sphynx.ServerV2.Client
             if (!waitForFinish || _isInsideClientTask.Value)
             {
                 QueueDisconnect(disconnectException);
+                return ValueTask.CompletedTask;
             }
-            else
+
+            return DoDisconnect(disconnectException);
+
+            async ValueTask DoDisconnect(Exception? exception)
             {
                 await WaitAsync().ConfigureAwait(false);
-                await PerformDisconnectAsync(disconnectException).ConfigureAwait(false);
+                await PerformDisconnectAsync(exception).ConfigureAwait(false);
             }
         }
 
@@ -394,11 +398,8 @@ namespace Sphynx.ServerV2.Client
         private async ValueTask PerformDisconnectAsync(Exception? disconnectException = null)
         {
             Debug.Assert(_clientTask?.IsCompleted ?? true, "Run loop should complete before disconnecting client");
-            Debug.Assert(!_disconnectReserved, "Client should not be disconnected twice");
             // We should implicitly have hold of this semaphore to ensure there are no race conditions during disconnection.
             Debug.Assert(_disposeSemaphore.CurrentCount == 0);
-
-            _disconnectReserved = true;
 
             try
             {
@@ -458,6 +459,8 @@ namespace Sphynx.ServerV2.Client
 
         private async ValueTask DisposeClientAsync(bool disposeSocket)
         {
+            Debug.Assert(Volatile.Read(ref _stopped) != 0, "Client should have been stopped before disposing");
+
             await _disposeSemaphore.WaitAsync().ConfigureAwait(false);
 
             try

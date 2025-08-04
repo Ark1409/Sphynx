@@ -155,8 +155,7 @@ namespace Sphynx.Utils
             return bytesRead;
         }
 
-        public static unsafe int ReadGuidCollection<TCollection>(
-            this ReadOnlySpan<byte> guidBytes,
+        public static unsafe int ReadGuidCollection<TCollection>(this ReadOnlySpan<byte> guidBytes,
             int guidCount,
             TCollection output)
             where TCollection : ICollection<Guid>
@@ -182,10 +181,18 @@ namespace Sphynx.Utils
                 return span;
 
             if (amount < 0)
+            {
+                if (amount == int.MinValue)
+                {
+                    span.Clear();
+                    return span;
+                }
+
                 return ShiftRight(span, -amount);
+            }
 
             span[amount..].CopyTo(span);
-            span[..(span.Length - amount)].Clear();
+            span[(span.Length - amount)..].Clear();
 
             return span;
         }
@@ -200,7 +207,15 @@ namespace Sphynx.Utils
                 return span;
 
             if (amount < 0)
+            {
+                if (amount == int.MinValue)
+                {
+                    span.Clear();
+                    return span;
+                }
+
                 return ShiftLeft(span, -amount);
+            }
 
             span[(span.Length - amount)..].CopyTo(span[amount..]);
             span[..amount].Clear();
