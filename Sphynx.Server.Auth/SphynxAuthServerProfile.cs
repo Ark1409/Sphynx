@@ -30,7 +30,7 @@ namespace Sphynx.Server.Auth
         public IAuthService AuthService { get; set; }
         public Func<IRateLimiter> RateLimiterFactory { get; set; }
 
-        private RateLimitingMiddleware<IPEndPoint> _rateLimitingMiddleware;
+        private RateLimitingMiddleware<IPAddress> _rateLimitingMiddleware;
         private IJwtService _jwtService;
 
         public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
@@ -95,9 +95,9 @@ namespace Sphynx.Server.Auth
             // TODO: Maybe add redis
             if (!isDevelopment)
             {
-                var rateLimitingMiddleware = new RateLimitingMiddleware<IPEndPoint>(RateLimiterFactory, client => client.EndPoint);
+                _rateLimitingMiddleware = new RateLimitingMiddleware<IPAddress>(RateLimiterFactory, client => client.EndPoint.Address);
 
-                rateLimitingMiddleware.OnRateLimited += async (info) =>
+                _rateLimitingMiddleware.OnRateLimited += async (info) =>
                 {
                     if (info.Packet is SphynxRequest request)
                     {
@@ -108,7 +108,7 @@ namespace Sphynx.Server.Auth
                     }
                 };
 
-                router.UseMiddleware(_rateLimitingMiddleware = rateLimitingMiddleware);
+                router.UseMiddleware(_rateLimitingMiddleware);
             }
 
             router.UseMiddleware(new AuthPacketMiddleware(LoggerFactory.CreateLogger<AuthPacketMiddleware>()));
