@@ -11,18 +11,12 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class FetchRoomsRequestSerializer : RequestSerializer<FetchRoomsRequest>
     {
-        protected override int GetMaxSizeInternal(FetchRoomsRequest packet)
-        {
-            return BinarySerializer.MaxSizeOf(packet.RoomIds);
-        }
-
-        protected override bool SerializeInternal(FetchRoomsRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(FetchRoomsRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteCollection(packet.RoomIds);
-            return true;
         }
 
-        protected override FetchRoomsRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
+        protected override FetchRoomsRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var roomIds = deserializer.ReadArray<SnowflakeId>();
             return new FetchRoomsRequest(requestInfo.AccessToken, roomIds);
@@ -43,31 +37,23 @@ namespace Sphynx.Network.Serialization.Packet
             _roomSerializer = roomSerializer;
         }
 
-        protected override int GetMaxSizeInternal(FetchRoomsResponse packet)
-        {
-            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
-                return 0;
-
-            return _roomSerializer.GetMaxSize(packet.Rooms!);
-        }
-
-        protected override bool SerializeInternal(FetchRoomsResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(FetchRoomsResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize Rooms on success
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
-                return true;
+                return;
 
-            return _roomSerializer.TrySerializeUnsafe(packet.Rooms!, ref serializer);
+            _roomSerializer.Serialize(packet.Rooms!, ref serializer);
         }
 
-        protected override FetchRoomsResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
+        protected override FetchRoomsResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new FetchRoomsResponse(responseInfo.ErrorInfo);
 
-            return _roomSerializer.TryDeserialize(ref deserializer, out var rooms)
-                ? new FetchRoomsResponse(rooms)
-                : null;
+            var rooms = _roomSerializer.Deserialize(ref deserializer)!;
+
+            return new FetchRoomsResponse(rooms);
         }
     }
 }

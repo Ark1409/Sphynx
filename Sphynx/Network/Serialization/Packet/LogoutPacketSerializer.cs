@@ -10,17 +10,11 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class LogoutRequestSerializer : RequestSerializer<LogoutRequest>
     {
-        protected override int GetMaxSizeInternal(LogoutRequest packet)
+        protected override void SerializeInternal(LogoutRequest packet, ref BinarySerializer serializer)
         {
-            return 0;
         }
 
-        protected override bool SerializeInternal(LogoutRequest packet, ref BinarySerializer serializer)
-        {
-            return true;
-        }
-
-        protected override LogoutRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
+        protected override LogoutRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             return new LogoutRequest(requestInfo.AccessToken);
         }
@@ -28,19 +22,11 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class LogoutResponseSerializer : ResponseSerializer<LogoutResponse>
     {
-        protected override int GetMaxSizeInternal(LogoutResponse packet)
+        protected override void SerializeInternal(LogoutResponse packet, ref BinarySerializer serializer)
         {
-            return 0;
         }
 
-        protected override bool SerializeInternal(LogoutResponse packet, ref BinarySerializer serializer)
-        {
-            return true;
-        }
-
-        protected override LogoutResponse DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            ResponseInfo responseInfo)
+        protected override LogoutResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             return new LogoutResponse(responseInfo.ErrorInfo);
         }
@@ -48,18 +34,12 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class LogoutBroadcastSerializer : PacketSerializer<LogoutBroadcast>
     {
-        public override int GetMaxSize(LogoutBroadcast packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>();
-        }
-
-        protected override bool Serialize(LogoutBroadcast packet, ref BinarySerializer serializer)
+        public override void Serialize(LogoutBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.UserId);
-            return true;
         }
 
-        protected override LogoutBroadcast Deserialize(ref BinaryDeserializer deserializer)
+        public override LogoutBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var userId = deserializer.ReadSnowflakeId();
             return new LogoutBroadcast(userId);

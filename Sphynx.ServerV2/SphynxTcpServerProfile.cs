@@ -64,7 +64,7 @@ namespace Sphynx.ServerV2
         private void ConfigureServices()
         {
             PacketRouter = new PacketRouter();
-            PacketTransporter = new PacketTransporter();
+            PacketTransporter = new PacketTransporter(null!);
             BufferSize = DEFAULT_BUFFER_SIZE;
             Backlog = DEFAULT_BACKLOG_SIZE;
         }

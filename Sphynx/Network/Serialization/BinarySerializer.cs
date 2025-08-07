@@ -1,12 +1,17 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using System.Text;
 using Sphynx.Core;
+using Sphynx.Storage;
 using Version = Sphynx.Core.Version;
 
 namespace Sphynx.Network.Serialization
@@ -18,45 +23,52 @@ namespace Sphynx.Network.Serialization
     public ref struct BinarySerializer
     {
         // Store "local" reference to default text encoding
-        internal static readonly Encoding StringEncoding = Encoding.UTF8;
+        internal static readonly Encoding StringEncoding = new UTF8Encoding(false);
+
+        private readonly IBufferWriter<byte> _buffer;
 
         private readonly Span<byte> _span;
+        private long _bytesWritten;
 
-        /// <summary>
-        /// Returns the write offset into the underlying span.
-        /// </summary>
-        public int Offset { get; internal set; }
-
-        /// <summary>
-        /// Returns the underlying span.
-        /// </summary>
-        public Span<byte> Span
+        public readonly long BytesWritten
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _span;
+            get => _bytesWritten;
+        }
+
+        public readonly bool HasSpan
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _buffer == null;
+        }
+
+        public readonly bool HasBuffer
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _buffer != null;
         }
 
         /// <summary>
-        /// Returns the underlying span, starting from the <see cref="Offset"/>.
+        /// Returns the underlying <see cref="IBufferWriter{T}"/>, if it exists.
         /// </summary>
-        public Span<byte> CurrentSpan
+        public readonly IBufferWriter<byte>? Buffer
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _span[Offset..];
+            get => _buffer;
         }
 
-        public BinarySerializer(Memory<byte> memory) : this(memory.Span)
+        public BinarySerializer(IBufferWriter<byte> buffer) : this()
         {
+            _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BinarySerializer(Span<byte> span)
+        public BinarySerializer(Span<byte> span) : this()
         {
+            _buffer = null!;
             _span = span;
-            Offset = 0;
         }
 
-        #region Maximum and Exact sizes
+        #region Sizing
 
         /// <summary>
         /// Returns the exact serialization size (in bytes) of the specified unmanaged <typeparamref name="T"/>.
@@ -79,10 +91,6 @@ namespace Sphynx.Network.Serialization
                 case TypeCode.UInt64:
                 case TypeCode.Single:
                 case TypeCode.Double:
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
                     return Unsafe.SizeOf<T>();
                 case TypeCode.DateTime:
                     return SizeOf<long>();
@@ -95,15 +103,13 @@ namespace Sphynx.Network.Serialization
                 case TypeCode.Object when typeof(T) == typeof(Version):
                     return SizeOf<int>();
 
-                case TypeCode.Object when BitConverter.IsLittleEndian:
-                    return Unsafe.SizeOf<T>();
-
-                case TypeCode.Object:
-                    throw new ArgumentException(
-                        $"The retrieval of the size of {typeof(T)} is unsupported on this machine");
-
                 default:
+                {
+                    if (Unsafe.SizeOf<T>() == sizeof(byte))
+                        goto case TypeCode.Byte;
+
                     throw new ArgumentException($"The retrieval of the size of {typeof(T)} is unsupported");
+                }
             }
         }
 
@@ -294,31 +300,8 @@ namespace Sphynx.Network.Serialization
 
         #endregion
 
-        #region Dictionaries
+        #region Collections
 
-        public bool TryWriteDictionary(IDictionary<string, string?> dictionary)
-        {
-            if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
-                return false;
-
-            int fallbackOffset = Offset;
-
-            // Guaranteed to succeed due to size check
-            WriteInt32(dictionary.Count);
-
-            foreach (var kvp in dictionary)
-            {
-                if (!TryWriteString(kvp.Key) || !TryWriteString(kvp.Value))
-                {
-                    Offset = fallbackOffset;
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDictionary(IDictionary<string, string?> dictionary)
         {
             WriteInt32(dictionary.Count);
@@ -330,30 +313,6 @@ namespace Sphynx.Network.Serialization
             }
         }
 
-        public bool TryWriteDictionary<TKey>(IDictionary<TKey, string?> dictionary)
-            where TKey : unmanaged
-        {
-            if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
-                return false;
-
-            int fallbackOffset = Offset;
-
-            // Guaranteed to succeed due to size check
-            WriteInt32(dictionary.Count);
-
-            foreach (var kvp in dictionary)
-            {
-                if (!TryWriteUnmanaged(kvp.Key) || !TryWriteString(kvp.Value))
-                {
-                    Offset = fallbackOffset;
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDictionary<TKey>(IDictionary<TKey, string?> dictionary)
             where TKey : unmanaged
         {
@@ -366,30 +325,6 @@ namespace Sphynx.Network.Serialization
             }
         }
 
-        public bool TryWriteDictionary<TValue>(IDictionary<string, TValue> dictionary)
-            where TValue : unmanaged
-        {
-            if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
-                return false;
-
-            int fallbackOffset = Offset;
-
-            // Guaranteed to succeed due to size check
-            WriteInt32(dictionary.Count);
-
-            foreach (var kvp in dictionary)
-            {
-                if (!TryWriteString(kvp.Key) || !TryWriteUnmanaged(kvp.Value))
-                {
-                    Offset = fallbackOffset;
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDictionary<TValue>(IDictionary<string, TValue> dictionary)
             where TValue : unmanaged
         {
@@ -402,31 +337,6 @@ namespace Sphynx.Network.Serialization
             }
         }
 
-        public bool TryWriteDictionary<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
-            where TKey : unmanaged
-            where TValue : unmanaged
-        {
-            if (!CanWrite(MaxSizeOf(dictionary)) && !CanWrite(SizeOf(dictionary)))
-                return false;
-
-            int fallbackOffset = Offset;
-
-            // Guaranteed to succeed due to size check
-            WriteInt32(dictionary.Count);
-
-            foreach (var kvp in dictionary)
-            {
-                if (!TryWriteUnmanaged(kvp.Key) || !TryWriteUnmanaged(kvp.Value))
-                {
-                    Offset = fallbackOffset;
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDictionary<TKey, TValue>(IDictionary<TKey, TValue> dictionary)
             where TKey : unmanaged
             where TValue : unmanaged
@@ -440,28 +350,24 @@ namespace Sphynx.Network.Serialization
             }
         }
 
-        #endregion
-
-        #region Collections
-
-        public bool TryWriteCollection(ICollection<string?> collection)
-        {
-            if (!CanWrite(MaxSizeOf(collection)) && !CanWrite(SizeOf(collection)))
-                return false;
-
-            WriteCollection(collection);
-            return true;
-        }
-
         public void WriteCollection(ICollection<string?> collection)
         {
             WriteInt32(collection.Count);
 
-            // Avoid unnecessary allocation
-            if (collection is IList<string?> list)
+            if (collection is string?[] array)
             {
-                for (int i = 0; i < list.Count; i++)
-                    WriteString(list[i]);
+                foreach (string? item in array.AsSpan())
+                    WriteString(item);
+            }
+            else if (collection is List<string?> list)
+            {
+                foreach (string? str in CollectionsMarshal.AsSpan(list))
+                    WriteString(str);
+            }
+            else if (collection is IList<string?> iList)
+            {
+                for (int i = 0; i < iList.Count; i++)
+                    WriteString(iList[i]);
             }
             else
             {
@@ -470,68 +376,24 @@ namespace Sphynx.Network.Serialization
             }
         }
 
-        public bool TryWriteCollection<T>(ICollection<T> collection) where T : unmanaged
-        {
-            if (!CanWrite(MaxSizeOf(collection)) && !CanWrite(SizeOf(collection)))
-                return false;
-
-            int fallbackOffset = Offset;
-
-            // Guaranteed to succeed due to size check
-            WriteInt32(collection.Count);
-
-            // Avoid unnecessary allocation
-            if (collection is T[] array)
-            {
-                for (int i = 0; i < array.Length; i++)
-                {
-                    if (!TryWriteUnmanaged(array[i]))
-                    {
-                        Offset = fallbackOffset;
-                        return false;
-                    }
-                }
-            }
-            else if (collection is IList<T> list)
-            {
-                for (int i = 0; i < list.Count; i++)
-                {
-                    if (!TryWriteUnmanaged(list[i]))
-                    {
-                        Offset = fallbackOffset;
-                        return false;
-                    }
-                }
-            }
-            else
-            {
-                foreach (var item in collection)
-                {
-                    if (!TryWriteUnmanaged(item))
-                    {
-                        Offset = fallbackOffset;
-                        return false;
-                    }
-                }
-            }
-
-            return true;
-        }
-
         public void WriteCollection<T>(ICollection<T> collection) where T : unmanaged
         {
             WriteInt32(collection.Count);
 
-            // Avoid unnecessary allocation
             if (collection is T[] array)
             {
-                for (int i = 0; i < array.Length; i++)
-                    WriteUnmanaged(array[i]);
+                foreach (var item in array.AsSpan())
+                    WriteUnmanaged(item);
             }
-            else if (collection is IList<T> list)
+            else if (collection is List<T> list)
             {
-                for (int i = 0; i < list.Count; i++)
-                    WriteUnmanaged(list[i]);
+                foreach (var item in CollectionsMarshal.AsSpan(list))
+                    WriteUnmanaged(item);
+            }
+            else if (collection is IList<T> iList)
+            {
+                for (int i = 0; i < iList.Count; i++)
+                    WriteUnmanaged(iList[i]);
             }
             else
             {
@@ -544,104 +406,60 @@ namespace Sphynx.Network.Serialization
 
         #region Common Types
 
-        public bool TryWriteVersion(Version id)
-        {
-            if (!CanWrite(SizeOf<Version>()))
-                return false;
-
-            WriteVersion(id);
-            return true;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteVersion(Version id)
         {
             WriteInt32(id.ToInt32());
         }
 
-        public bool TryWriteSnowflakeId(SnowflakeId id)
-        {
-            if (!CanWrite(SizeOf<SnowflakeId>()))
-                return false;
-
-            WriteSnowflakeId(id);
-            return true;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteSnowflakeId(SnowflakeId id)
         {
-            bool written = id.TryWriteBytes(_span[Offset..]);
+            var span = HasBuffer ? _buffer.GetSpan(SnowflakeId.SIZE) : _span[(int)_bytesWritten..];
+
+            bool written = id.TryWriteBytes(span);
             Debug.Assert(written);
 
-            Offset += SnowflakeId.SIZE;
-        }
-
-        public bool TryWriteGuid(Guid id)
-        {
-            if (!CanWrite(SizeOf<Guid>()))
-                return false;
-
-            WriteGuid(id);
-            return true;
+            _buffer?.Advance(SnowflakeId.SIZE);
+            _bytesWritten += SnowflakeId.SIZE;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteGuid(Guid id)
         {
-            bool written = id.TryWriteBytes(_span[Offset..]);
+            int size = Unsafe.SizeOf<Guid>();
+            var span = HasBuffer ? _buffer.GetSpan(size) : _span[(int)_bytesWritten..];
+
+            bool written = id.TryWriteBytes(span);
             Debug.Assert(written);
 
-            Offset += Unsafe.SizeOf<Guid>();
-        }
-
-        public bool TryWriteString(ReadOnlySpan<char> str)
-        {
-            if (!CanWrite(str.Length))
-                return false;
-
-            if (!CanWrite(MaxSizeOf(str)) && !CanWrite(SizeOf(str)))
-                return false;
-
-            WriteString(str);
-            return true;
+            _buffer?.Advance(size);
+            _bytesWritten += size;
         }
 
         public void WriteString(ReadOnlySpan<char> str)
         {
-            int size = StringEncoding.GetBytes(str, _span[(Offset + SizeOf<int>())..]);
-            WriteInt32(size);
+            var span = HasBuffer ? _buffer.GetSpan(sizeof(int) + StringEncoding.GetMaxByteCount(str.Length)) : _span[(int)_bytesWritten..];
 
-            Offset += size;
+            int stringSize = StringEncoding.GetBytes(str, span[sizeof(int)..]);
+            BinaryPrimitives.WriteInt32LittleEndian(span[..sizeof(int)], stringSize);
+
+            int bytesWritten = sizeof(int) + stringSize;
+
+            _buffer?.Advance(bytesWritten);
+            _bytesWritten += bytesWritten;
         }
 
-        public bool TryWriteString(string? str)
-        {
-            if (!CanWrite(str?.Length ?? 0))
-                return false;
-
-            if (!CanWrite(MaxSizeOf(str)) && !CanWrite(SizeOf(str)))
-                return false;
-
-            WriteString(str);
-            return true;
-        }
-
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteString(string? str)
         {
-            int size = StringEncoding.GetBytes(str ?? string.Empty, _span[(Offset + SizeOf<int>())..]);
-            WriteInt32(size);
+            if (str is null)
+            {
+                WriteInt32(-1);
+                return;
+            }
 
-            Offset += size;
-        }
-
-        public bool TryWriteDateTimeOffset(DateTimeOffset dto)
-        {
-            if (!CanWrite(SizeOf<DateTimeOffset>()))
-                return false;
-
-            WriteDateTimeOffset(dto);
-            return true;
+            WriteString(str.AsSpan());
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -649,15 +467,6 @@ namespace Sphynx.Network.Serialization
         {
             WriteInt64(dto.Ticks);
             WriteInt64(dto.Offset.Ticks);
-        }
-
-        public bool TryWriteDateTime(DateTime dateTime)
-        {
-            if (!CanWrite(SizeOf<DateTime>()))
-                return false;
-
-            WriteDateTime(dateTime);
-            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -670,71 +479,41 @@ namespace Sphynx.Network.Serialization
 
         #region Primitives
 
-        /// <summary>
-        /// Attempts to serialize unmanaged types into bytes.
-        /// </summary>
-        /// <param name="value">The unmanaged type to serialize.</param>
-        /// <typeparam name="T">The type of unmanaged type.</typeparam>
-        /// <returns>true if the <paramref name="value"/> could be serialized; false otherwise.</returns>
-        public bool TryWriteUnmanaged<T>(T value) where T : unmanaged
+        internal void WriteRaw(in ReadOnlySequence<byte> raw)
         {
-            var typeCode = Type.GetTypeCode(typeof(T));
+            if (raw.IsSingleSegment && raw.Length <= int.MaxValue - sizeof(int))
+                WriteRaw(raw.FirstSpan);
+            else
+                WriteRawSlow(in raw);
+        }
 
-            switch (typeCode)
+        private void WriteRawSlow(in ReadOnlySequence<byte> raw)
+        {
+            int count = 0;
+
+            foreach (var _ in raw)
+                count++;
+
+            WriteInt32(count);
+
+            foreach (var segment in raw)
+                WriteRaw(segment.Span);
+        }
+
+        internal void WriteRaw(ReadOnlySpan<byte> raw)
+        {
+            if (HasBuffer)
             {
-                case TypeCode.Boolean:
-                    return TryWriteBool(Unsafe.As<T, bool>(ref value));
-                case TypeCode.Byte:
-                    return TryWriteByte(Unsafe.As<T, byte>(ref value));
-                case TypeCode.Int16:
-                    return TryWriteInt16(Unsafe.As<T, short>(ref value));
-                case TypeCode.UInt16:
-                    return TryWriteUInt16(Unsafe.As<T, ushort>(ref value));
-                case TypeCode.Int32:
-                    return TryWriteInt32(Unsafe.As<T, int>(ref value));
-                case TypeCode.UInt32:
-                    return TryWriteUInt32(Unsafe.As<T, uint>(ref value));
-                case TypeCode.Int64:
-                    return TryWriteInt64(Unsafe.As<T, long>(ref value));
-                case TypeCode.UInt64:
-                    return TryWriteUInt64(Unsafe.As<T, ulong>(ref value));
-                case TypeCode.Single:
-                    return TryWriteFloat(Unsafe.As<T, float>(ref value));
-                case TypeCode.Double:
-                    return TryWriteDouble(Unsafe.As<T, double>(ref value));
-                case TypeCode.DateTime:
-                    return TryWriteDateTime(Unsafe.As<T, DateTime>(ref value));
-                case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
-                    return TryWriteSnowflakeId(Unsafe.As<T, SnowflakeId>(ref value));
-                case TypeCode.Object when typeof(T) == typeof(Version):
-                    return TryWriteVersion(Unsafe.As<T, Version>(ref value));
-                case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
-                    return TryWriteDateTimeOffset(Unsafe.As<T, DateTimeOffset>(ref value));
-                case TypeCode.Object when typeof(T) == typeof(Guid):
-                    return TryWriteGuid(Unsafe.As<T, Guid>(ref value));
-
-                // For any other user-defined struct, we will try and marshal it directly. This should always
-                // be possible if the struct is of blittable size, but we can also add in support for writing
-                // arbitrarily-sized ones if we are in little endian.
-                case TypeCode.Object when BitConverter.IsLittleEndian:
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
-                {
-                    if (MemoryMarshal.TryWrite(_span[Offset..], ref value))
-                    {
-                        Offset += Unsafe.SizeOf<T>();
-                        return true;
-                    }
-
-                    return false;
-                }
-
-                case TypeCode.Object:
-                default:
-                    return false;
+                var span = _buffer.GetSpan(raw.Length);
+                raw.CopyTo(span);
+                _buffer.Advance(raw.Length);
             }
+            else
+            {
+                raw.CopyTo(_span[(int)_bytesWritten..]);
+            }
+
+            _bytesWritten += raw.Length;
         }
 
         /// <summary>
@@ -742,9 +521,7 @@ namespace Sphynx.Network.Serialization
         /// </summary>
         /// <param name="value">The unmanaged type to serialize.</param>
         /// <typeparam name="T">The type of unmanaged type.</typeparam>
-        /// <exception cref="ArgumentException">If <typeparamref name="T"/> is a user-defined struct
-        /// which is not of blittable size, or we are on a big-endian machine and <typeparamref name="T"/>
-        /// is not a type for which serialization is already supported.</exception>
+        /// <exception cref="ArgumentException">If <typeparamref name="T"/> is a user-defined struct of size greater than 1 byte.</exception>
         public void WriteUnmanaged<T>(T value) where T : unmanaged
         {
             var typeCode = Type.GetTypeCode(typeof(T));
@@ -755,7 +532,7 @@ namespace Sphynx.Network.Serialization
                     WriteBool(Unsafe.As<T, bool>(ref value));
                     break;
                 case TypeCode.Byte:
-                    WriteByte(Unsafe.As<T, byte>(ref value));
+                    WriteUInt8(Unsafe.As<T, byte>(ref value));
                     break;
                 case TypeCode.Int16:
                     WriteInt16(Unsafe.As<T, short>(ref value));
@@ -776,7 +553,7 @@ namespace Sphynx.Network.Serialization
                     WriteUInt64(Unsafe.As<T, ulong>(ref value));
                     break;
                 case TypeCode.Single:
-                    WriteFloat(Unsafe.As<T, float>(ref value));
+                    WriteSingle(Unsafe.As<T, float>(ref value));
                     break;
                 case TypeCode.Double:
                     WriteDouble(Unsafe.As<T, double>(ref value));
@@ -797,35 +574,14 @@ namespace Sphynx.Network.Serialization
                     WriteGuid(Unsafe.As<T, Guid>(ref value));
                     break;
 
-                // For any other user-defined struct, we will try and marshal it directly. This should always
-                // be possible if the struct is of blittable size, but we can also add in support for writing
-                // arbitrarily-sized ones if we are in little endian.
-                case TypeCode.Object when BitConverter.IsLittleEndian:
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
-                {
-                    MemoryMarshal.Write(_span[Offset..], ref value);
-                    Offset += Unsafe.SizeOf<T>();
-                    break;
-                }
-
-                case TypeCode.Object:
-                    throw new ArgumentException($"Serialization of {typeof(T)} type is unsupported on this machine");
-
                 default:
+                {
+                    if (Unsafe.SizeOf<T>() == sizeof(byte))
+                        goto case TypeCode.Byte;
+
                     throw new ArgumentException($"Serialization of {typeof(T)} type is unsupported");
+                }
             }
-        }
-
-        public bool TryWriteEnum<T>(T value) where T : unmanaged, Enum
-        {
-            if (!CanWrite(SizeOf<T>()))
-                return false;
-
-            WriteEnum(value);
-            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -834,170 +590,162 @@ namespace Sphynx.Network.Serialization
             WriteUnmanaged(value);
         }
 
-        public bool TryWriteBool(bool value)
-        {
-            if (!CanWrite(SizeOf<bool>()))
-                return false;
-
-            WriteBool(value);
-            return true;
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteBool(bool value)
         {
-            WriteByte(value ? (byte)1 : (byte)0);
-        }
-
-        public bool TryWriteByte(byte value)
-        {
-            if (!CanWrite(SizeOf<byte>()))
-                return false;
-
-            WriteByte(value);
-            return true;
+            WriteUInt8(value ? (byte)1 : (byte)0);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteByte(byte value)
+        public void WriteInt8(sbyte value)
         {
-            _span[Offset++] = value;
+            WriteUInt8(Unsafe.As<sbyte, byte>(ref value));
         }
 
-        public bool TryWriteUInt16(ushort value)
+        public void WriteUInt8(byte value)
         {
-            if (!CanWrite(SizeOf<ushort>()))
-                return false;
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(byte));
+                span[0] = value;
+                _buffer.Advance(sizeof(byte));
+            }
+            else
+            {
+                _span[(int)_bytesWritten] = value;
+            }
 
-            WriteUInt16(value);
-            return true;
+            _bytesWritten += sizeof(byte);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt16(ushort value)
         {
-            BinaryPrimitives.WriteUInt16LittleEndian(_span[Offset..], value);
-            Offset += sizeof(ushort);
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(ushort));
+                BinaryPrimitives.WriteUInt16LittleEndian(span, value);
+                _buffer.Advance(sizeof(ushort));
+            }
+            else
+            {
+                BinaryPrimitives.WriteUInt16LittleEndian(_span[(int)_bytesWritten..], value);
+            }
+
+            _bytesWritten += sizeof(ushort);
         }
 
-        public bool TryWriteInt16(short value)
-        {
-            if (!CanWrite(SizeOf<short>()))
-                return false;
-
-            WriteInt16(value);
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void WriteInt16(short value)
         {
-            BinaryPrimitives.WriteInt16LittleEndian(_span[Offset..], value);
-            Offset += sizeof(short);
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(short));
+                BinaryPrimitives.WriteInt16LittleEndian(span, value);
+                _buffer.Advance(sizeof(short));
+            }
+            else
+            {
+                BinaryPrimitives.WriteInt16LittleEndian(_span[(int)_bytesWritten..], value);
+            }
+
+            _bytesWritten += sizeof(short);
         }
 
-        public bool TryWriteUInt32(uint value)
-        {
-            if (!CanWrite(SizeOf<uint>()))
-                return false;
-
-            WriteUInt32(value);
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt32(uint value)
         {
-            BinaryPrimitives.WriteUInt32LittleEndian(_span[Offset..], value);
-            Offset += sizeof(uint);
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(uint));
+                BinaryPrimitives.WriteUInt32LittleEndian(span, value);
+                _buffer.Advance(sizeof(uint));
+            }
+            else
+            {
+                BinaryPrimitives.WriteUInt32LittleEndian(_span[(int)_bytesWritten..], value);
+            }
+
+            _bytesWritten += sizeof(uint);
         }
 
-        public bool TryWriteInt32(int value)
-        {
-            if (!CanWrite(SizeOf<int>()))
-                return false;
-
-            WriteInt32(value);
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt32(int value)
         {
-            BinaryPrimitives.WriteInt32LittleEndian(_span[Offset..], value);
-            Offset += sizeof(int);
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(int));
+                BinaryPrimitives.WriteInt32LittleEndian(span, value);
+                _buffer.Advance(sizeof(int));
+            }
+            else
+            {
+                BinaryPrimitives.WriteInt32LittleEndian(_span[(int)_bytesWritten..], value);
+            }
+
+            _bytesWritten += sizeof(int);
         }
 
-        public bool TryWriteUInt64(ulong value)
-        {
-            if (!CanWrite(SizeOf<ulong>()))
-                return false;
-
-            WriteUInt64(value);
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt64(ulong value)
         {
-            BinaryPrimitives.WriteUInt64LittleEndian(_span[Offset..], value);
-            Offset += sizeof(ulong);
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(ulong));
+                BinaryPrimitives.WriteUInt64LittleEndian(span, value);
+                _buffer.Advance(sizeof(ulong));
+            }
+            else
+            {
+                BinaryPrimitives.WriteUInt64LittleEndian(_span[(int)_bytesWritten..], value);
+            }
+
+            _bytesWritten += sizeof(ulong);
         }
 
-        public bool TryWriteInt64(long value)
-        {
-            if (!CanWrite(SizeOf<long>()))
-                return false;
-
-            WriteInt64(value);
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt64(long value)
         {
-            BinaryPrimitives.WriteInt64LittleEndian(_span[Offset..], value);
-            Offset += sizeof(long);
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(long));
+                BinaryPrimitives.WriteInt64LittleEndian(span, value);
+                _buffer.Advance(sizeof(long));
+            }
+            else
+            {
+                BinaryPrimitives.WriteInt64LittleEndian(_span[(int)_bytesWritten..], value);
+            }
+
+            _bytesWritten += sizeof(long);
         }
 
-        public bool TryWriteFloat(float value)
+        public void WriteSingle(float value)
         {
-            if (!CanWrite(SizeOf<float>()))
-                return false;
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(float));
+                BinaryPrimitives.WriteSingleLittleEndian(span, value);
+                _buffer.Advance(sizeof(float));
+            }
+            else
+            {
+                BinaryPrimitives.WriteSingleLittleEndian(_span[(int)_bytesWritten..], value);
+            }
 
-            WriteFloat(value);
-            return true;
+            _bytesWritten += sizeof(float);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteFloat(float value)
-        {
-            BinaryPrimitives.WriteSingleLittleEndian(_span[Offset..], value);
-            Offset += sizeof(float);
-        }
-
-        public bool TryWriteDouble(double value)
-        {
-            if (!CanWrite(SizeOf<double>()))
-                return false;
-
-            WriteDouble(value);
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDouble(double value)
         {
-            BinaryPrimitives.WriteDoubleLittleEndian(_span[Offset..], value);
-            Offset += sizeof(double);
+            if (HasBuffer)
+            {
+                var span = _buffer.GetSpan(sizeof(double));
+                BinaryPrimitives.WriteDoubleLittleEndian(span, value);
+                _buffer.Advance(sizeof(double));
+            }
+            else
+            {
+                BinaryPrimitives.WriteDoubleLittleEndian(_span[(int)_bytesWritten..], value);
+            }
+
+            _bytesWritten += sizeof(double);
         }
 
         #endregion
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool CanWrite(int size)
-        {
-            return size >= 0 && Offset <= _span.Length - size;
-        }
     }
 }

@@ -61,12 +61,12 @@ namespace Sphynx.Server.Auth
 
         private void ConfigureTransporter(bool isDevelopment)
         {
-            var transporter = new PacketTransporter();
+            var transporter = new PacketTransporter(null!);
 
-            transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer())
-                .AddSerializer(SphynxPacketType.LOGIN_RES, new LoginResponseSerializer(new SphynxSelfInfoSerializer()))
-                .AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer())
-                .AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
+            // transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer())
+            //     .AddSerializer(SphynxPacketType.LOGIN_RES, new LoginResponseSerializer(new SphynxSelfInfoSerializer()))
+            //     .AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer())
+            //     .AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
 
             PacketTransporter = transporter;
         }

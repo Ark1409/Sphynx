@@ -2,11 +2,12 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.Serialization;
 using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization
 {
-    public sealed class ArraySerializer<T> : ITypeSerializer<T[]> where T : notnull
+    public sealed class ArraySerializer<T> : TypeSerializer<T[]>
     {
         private readonly ITypeSerializer<T> _innerSerializer;
 
@@ -15,55 +16,33 @@ namespace Sphynx.Network.Serialization
             _innerSerializer = innerSerializer;
         }
 
-        public int GetMaxSize(T[] instance)
+        public override void Serialize(T[] model, ref BinarySerializer serializer)
         {
-            int size = BinarySerializer.MaxSizeOf<int>();
+            serializer.WriteInt32(model.Length);
 
-            foreach (var item in instance)
-                size += _innerSerializer.GetMaxSize(item);
-
-            return size;
+            foreach (var item in model.AsSpan())
+                _innerSerializer.Serialize(item, ref serializer);
         }
 
-        public bool TrySerializeUnsafe(T[] instance, Span<byte> buffer, out int bytesWritten)
+#pragma warning disable CS8609 // Nullability of reference types in return type doesn't match overridden member.
+        public override T?[] Deserialize(ref BinaryDeserializer deserializer)
+#pragma warning restore CS8609 // Nullability of reference types in return type doesn't match overridden member.
         {
-            var serializer = new BinarySerializer(buffer);
-            serializer.WriteInt32(instance.Length);
-
-            foreach (var item in instance)
-            {
-                if (!_innerSerializer.TrySerializeUnsafe(item, ref serializer))
-                {
-                    bytesWritten = serializer.Offset;
-                    return false;
-                }
-            }
-
-            bytesWritten = serializer.Offset;
-            return true;
-        }
-
-        public bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T[]? instance, out int bytesRead)
-        {
-            var deserializer = new BinaryDeserializer(buffer);
             int size = deserializer.ReadInt32();
 
-            instance = size == 0 ? Array.Empty<T>() : new T[size];
+            if (size < 0)
+                throw new SerializationException($"Cannot deserialize array of size {size}");
 
-            for (int i = 0; i < size; i++)
-            {
-                if (!_innerSerializer.TryDeserialize(ref deserializer, out var item))
-                {
-                    bytesRead = deserializer.Offset;
-                    instance = null;
-                    return false;
-                }
+            if (size == 0)
+                return Array.Empty<T>();
 
-                instance[i] = item;
-            }
+            var array = new T?[size];
+            var span = array.AsSpan();
 
-            bytesRead = deserializer.Offset;
-            return true;
+            for (int i = 0; i < span.Length; i++)
+                span[i] = _innerSerializer.Deserialize(ref deserializer);
+
+            return array;
         }
     }
 }

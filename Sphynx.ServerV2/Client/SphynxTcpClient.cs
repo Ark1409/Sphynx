@@ -37,13 +37,6 @@ namespace Sphynx.ServerV2.Client
         private volatile Task? _clientTask;
 
         /// <summary>
-        /// Whether the client has been disconnected.
-        /// </summary>
-        public bool Disconnected => _disconnectReserved;
-
-        private volatile bool _disconnectReserved;
-
-        /// <summary>
         /// A reference to the accepted client socket.
         /// </summary>
         internal Socket Socket { get; private set; }
@@ -255,6 +248,8 @@ namespace Sphynx.ServerV2.Client
         public async ValueTask SendAsync(SphynxPacket packet, CancellationToken cancellationToken = default)
         {
             ThrowIfStopped();
+
+            // TODO: PoolingAsyncValueTaskMethodBuilder
 
             try
             {

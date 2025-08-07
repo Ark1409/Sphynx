@@ -10,21 +10,13 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class KickUserRequestSerializer : RequestSerializer<KickUserRequest>
     {
-        protected override int GetMaxSizeInternal(KickUserRequest packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
-        }
-
-        protected override bool SerializeInternal(KickUserRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(KickUserRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.KickId);
-            return true;
         }
 
-        protected override KickUserRequest DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            RequestInfo requestInfo)
+        protected override KickUserRequest DeserializeInternal( ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var kickId = deserializer.ReadSnowflakeId();
@@ -35,19 +27,11 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class KickUserResponseSerializer : ResponseSerializer<KickUserResponse>
     {
-        protected override int GetMaxSizeInternal(KickUserResponse packet)
+        protected override void SerializeInternal(KickUserResponse packet, ref BinarySerializer serializer)
         {
-            return 0;
         }
 
-        protected override bool SerializeInternal(KickUserResponse packet, ref BinarySerializer serializer)
-        {
-            return true;
-        }
-
-        protected override KickUserResponse DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            ResponseInfo responseInfo)
+        protected override KickUserResponse DeserializeInternal( ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             return new KickUserResponse(responseInfo.ErrorInfo);
         }
@@ -55,19 +39,13 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class UserKickedBroadcastSerializer : PacketSerializer<UserKickedBroadcast>
     {
-        public override int GetMaxSize(UserKickedBroadcast packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
-        }
-
-        protected override bool Serialize(UserKickedBroadcast packet, ref BinarySerializer serializer)
+        public override void Serialize(UserKickedBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.KickId);
-            return true;
         }
 
-        protected override UserKickedBroadcast Deserialize(ref BinaryDeserializer deserializer)
+        public override UserKickedBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var kickId = deserializer.ReadSnowflakeId();
