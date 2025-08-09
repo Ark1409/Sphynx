@@ -1,22 +1,30 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Runtime.CompilerServices;
+
 namespace Sphynx.Utils
 {
     internal static class StreamExtensions
     {
-        public static async ValueTask FillAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
+        public static ValueTask FillAsync(this Stream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
-            int readCount = 0;
+            return Core(stream, buffer, cancellationToken);
 
-            while (readCount < buffer.Length)
+            [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+            static async ValueTask Core(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
             {
-                int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                int readCount = 0;
 
-                if (bytesRead <= 0)
-                    throw new EndOfStreamException();
+                while (readCount < buffer.Length)
+                {
+                    int bytesRead = await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
 
-                readCount += bytesRead;
+                    if (bytesRead <= 0)
+                        throw new EndOfStreamException();
+
+                    readCount += bytesRead;
+                }
             }
         }
     }

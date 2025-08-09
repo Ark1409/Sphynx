@@ -5,7 +5,9 @@
 
 using System.Net;
 using Microsoft.Extensions.Logging;
+using Sphynx.Core;
 using Sphynx.Network.PacketV2;
+using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Network.Transport;
@@ -17,17 +19,19 @@ using Sphynx.ServerV2;
 using Sphynx.ServerV2.Infrastructure.Middleware;
 using Sphynx.ServerV2.Infrastructure.RateLimiting;
 using Sphynx.ServerV2.Infrastructure.Routing;
+using Sphynx.ServerV2.Infrastructure.Services;
 
 namespace Sphynx.Server.Auth
 {
-    public class SphynxAuthServerProfile : SphynxTcpServerProfile
+    public sealed class SphynxAuthServerProfile : SphynxTcpServerProfile
     {
         public IPasswordHasher PasswordHasher { get; set; }
-        public IUserRepository UserRepository { get; set; }
+        public IAuthUserRepository UserRepository { get; set; }
         public IAuthService AuthService { get; set; }
         public Func<IRateLimiter> RateLimiterFactory { get; set; }
 
-        private IDisposable _rateLimitingMiddleware;
+        private RateLimitingMiddleware<IPAddress> _rateLimitingMiddleware;
+        private IJwtService _jwtService;
 
         public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
         {
@@ -49,18 +53,20 @@ namespace Sphynx.Server.Auth
                     options.IncludeScopes = true;
                     options.TimestampFormat = "[MM-dd-yyyy HH:mm:ss] ";
                 });
-                builder.SetMinimumLevel(isDevelopment ? LogLevel.Trace : LogLevel.Information);
+                builder.SetMinimumLevel(isDevelopment ? LogLevel.Debug : LogLevel.Information);
             });
+
+            EndPoint = DefaultEndPoint;
         }
 
         private void ConfigureTransporter(bool isDevelopment)
         {
-            var transporter = new PacketTransporter();
+            var transporter = new PacketTransporter(null!);
 
-            transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer())
-                .AddSerializer(SphynxPacketType.LOGIN_RES, new LoginResponseSerializer(new SphynxSelfInfoSerializer()))
-                .AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer())
-                .AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
+            // transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer())
+            //     .AddSerializer(SphynxPacketType.LOGIN_RES, new LoginResponseSerializer(new SphynxSelfInfoSerializer()))
+            //     .AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer())
+            //     .AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
 
             PacketTransporter = transporter;
         }
@@ -70,12 +76,14 @@ namespace Sphynx.Server.Auth
             PasswordHasher = new Pbkdf2PasswordHasher();
 
             // TODO: Register mongo credentials
-            UserRepository = isDevelopment ? new NullUserRepository() : new MongoUserRepository(null!, null!);
+            UserRepository = isDevelopment ? new NullUserRepository() : new MongoAuthUserRepository(null!, null!);
 
-            AuthService = new AuthService(PasswordHasher, UserRepository, LoggerFactory.CreateLogger<AuthService>());
+            // TODO: Register mongo credentials
+            _jwtService = new JwtService(null!);
+            AuthService = new AuthService(PasswordHasher, UserRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
 
             if (isDevelopment)
-                RateLimiterFactory = () => new TokenBucketRateLimiter(1, 60, TimeSpan.FromMinutes(1));
+                RateLimiterFactory = () => new TokenBucketRateLimiter(int.MaxValue, int.MaxValue, TimeSpan.FromTicks(1));
             else
                 RateLimiterFactory = () => new TokenBucketRateLimiter(1, 10, TimeSpan.FromMinutes(1));
         }
@@ -87,10 +95,20 @@ namespace Sphynx.Server.Auth
             // TODO: Maybe add redis
             if (!isDevelopment)
             {
-                var rateLimitingMiddleware = new RateLimitingMiddleware<IPEndPoint>(RateLimiterFactory, client => client.EndPoint);
-                _rateLimitingMiddleware = rateLimitingMiddleware;
+                _rateLimitingMiddleware = new RateLimitingMiddleware<IPAddress>(RateLimiterFactory, client => client.EndPoint.Address);
 
-                router.UseMiddleware(rateLimitingMiddleware);
+                _rateLimitingMiddleware.OnRateLimited += async (info) =>
+                {
+                    if (info.Packet is SphynxRequest request)
+                    {
+                        var errorInfo = new SphynxErrorInfo(SphynxErrorCode.ENHANCE_YOUR_CALM,
+                            $"Too many requests. Please wait {Math.Ceiling(info.WaitTime.TotalMinutes)} minute(s).");
+
+                        await info.Client.SendAsync(request.CreateResponse(errorInfo)).ConfigureAwait(false);
+                    }
+                };
+
+                router.UseMiddleware(_rateLimitingMiddleware);
             }
 
             router.UseMiddleware(new AuthPacketMiddleware(LoggerFactory.CreateLogger<AuthPacketMiddleware>()));
@@ -102,8 +120,11 @@ namespace Sphynx.Server.Auth
         {
             var router = PacketRouter as PacketRouter ?? new PacketRouter();
 
+            router.ThrowOnUnregistered = isDevelopment;
+
             router.UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
-                .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()));
+                .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()))
+                .UseHandler(new RefreshHandler(_jwtService, LoggerFactory.CreateLogger<RefreshHandler>()));
 
             PacketRouter = router;
         }

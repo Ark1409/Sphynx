@@ -14,23 +14,21 @@ using Sphynx.Test.Utils;
 namespace Sphynx.Test.Network.Serialization
 {
     [TestFixture]
-    public class ResponsePacketTests
+    public class ResponsePacketTests : SerializerTest
     {
         [Test]
         public void LoginResponsePacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new LoginResponseSerializer(new SphynxSelfInfoSerializer());
-            var packet = new LoginResponse(new TestSphynxSelfInfo(), "test".AsGuid());
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+            var packet = new LoginResponse(new TestSphynxSelfInfo(), "access-token", Guid.NewGuid(), DateTimeOffset.UtcNow);
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -40,15 +38,13 @@ namespace Sphynx.Test.Network.Serialization
             // Arrange
             var serializer = new LogoutResponseSerializer();
             var packet = new LogoutResponse();
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -57,16 +53,14 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new RegisterResponseSerializer(new SphynxSelfInfoSerializer());
-            var packet = new RegisterResponse(new TestSphynxSelfInfo(), "test".AsGuid());
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
+            var packet = new RegisterResponse(new TestSphynxSelfInfo(), "access-token", Guid.NewGuid(), DateTimeOffset.UtcNow);
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -80,16 +74,14 @@ namespace Sphynx.Test.Network.Serialization
                 // ReSharper disable once CoVariantArrayConversion
                 Messages = TestChatMessage.FromArray("Hello World", "Test message", "Crème glacée")
             };
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
-            Assert.That(newPacket!, Is.EqualTo(packet).UsingPropertiesComparer());
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
+            Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
         [Test]
@@ -102,15 +94,13 @@ namespace Sphynx.Test.Network.Serialization
                 // ReSharper disable once CoVariantArrayConversion
                 Users = TestSphynxSelfInfo.FromNames("user1", "user2", "user3")!
             };
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -120,15 +110,13 @@ namespace Sphynx.Test.Network.Serialization
             // Arrange
             var serializer = new MessagePostResponseSerializer();
             var packet = new MessagePostResponse();
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -138,15 +126,13 @@ namespace Sphynx.Test.Network.Serialization
             // Arrange
             var serializer = new RoomCreateResponseSerializer();
             var packet = new RoomCreateResponse("room1".AsSnowflakeId());
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -156,15 +142,13 @@ namespace Sphynx.Test.Network.Serialization
             // Arrange
             var serializer = new RoomDeleteResponseSerializer();
             var packet = new RoomDeleteResponse();
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -174,15 +158,13 @@ namespace Sphynx.Test.Network.Serialization
             // Arrange
             var serializer = new JoinRoomResponseSerializer(new ChatRoomInfoSerializer());
             var packet = new JoinRoomResponse { RoomInfo = new TestDirectChatRoomInfo() };
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -192,15 +174,13 @@ namespace Sphynx.Test.Network.Serialization
             // Arrange
             var serializer = new KickUserResponseSerializer();
             var packet = new KickUserResponse();
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -210,15 +190,13 @@ namespace Sphynx.Test.Network.Serialization
             // Arrange
             var serializer = new LeaveRoomResponseSerializer();
             var packet = new LeaveRoomResponse();
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
 
@@ -228,15 +206,13 @@ namespace Sphynx.Test.Network.Serialization
             // Arrange
             var serializer = new FetchRoomsResponseSerializer(new ChatRoomInfoSerializer());
             var packet = new FetchRoomsResponse { Rooms = new ChatRoomInfo[] { new TestDirectChatRoomInfo(), new TestGroupChatRoomInfo() } };
-            Span<byte> buffer = stackalloc byte[serializer.GetMaxSize(packet)];
 
             // Act
-            bool serialized = serializer.TrySerialize(packet, buffer, out int bytesWritten);
+            serializer.Serialize(packet, Sequence);
+            var newPacket = serializer.Deserialize(Sequence.AsReadOnlySequence, out long bytesRead);
 
             // Assert
-            Assert.That(serialized, "Could not perform serialization.");
-            Assert.That(serializer.TryDeserialize(buffer, out var newPacket, out int bytesRead), "Could not perform deserialization.");
-            Assert.That(bytesWritten, Is.EqualTo(bytesRead));
+            Assert.That(Sequence.Length, Is.EqualTo(bytesRead));
             Assert.That(newPacket, Is.EqualTo(packet).UsingPropertiesComparer());
         }
     }

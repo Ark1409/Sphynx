@@ -8,17 +8,17 @@ namespace Sphynx.Network.PacketV2.Response
     public abstract class SphynxResponse : SphynxPacket
     {
         /// <summary>
-        /// <inheritdoc cref="SphynxErrorCode"/>
+        /// <inheritdoc cref="SphynxErrorInfo"/>
         /// </summary>
-        public SphynxErrorCode ErrorCode { get; init; }
+        public SphynxErrorInfo ErrorInfo { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="SphynxResponse"/>.
         /// </summary>
-        /// <param name="errorCode">The error code for the response packet.</param>
-        public SphynxResponse(SphynxErrorCode errorCode)
+        /// <param name="errorInfo">The error code for the response packet.</param>
+        public SphynxResponse(SphynxErrorInfo errorInfo)
         {
-            ErrorCode = errorCode;
+            ErrorInfo = errorInfo;
         }
 
         /// <summary>
@@ -27,13 +27,13 @@ namespace Sphynx.Network.PacketV2.Response
         /// <param name="packet">The packet to check.</param>
         /// <returns>true if this packet is a <see cref="SphynxErrorCode.SUCCESS"/>, false otherwise.</returns>
         public static implicit operator bool(SphynxResponse packet) =>
-            packet.ErrorCode == SphynxErrorCode.SUCCESS;
+            packet.ErrorInfo == SphynxErrorCode.SUCCESS;
 
         /// <summary>
         /// Indicates whether the current packet has the same user and session ID as another request packet.
         /// </summary>
         /// <param name="other">A request packet to compare with this request packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxResponse? other) => base.Equals(other) && ErrorCode == other?.ErrorCode;
+        protected bool Equals(SphynxResponse? other) => base.Equals(other) && ErrorInfo == other?.ErrorInfo;
     }
 }

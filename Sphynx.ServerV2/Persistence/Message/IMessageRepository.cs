@@ -17,7 +17,7 @@ namespace Sphynx.ServerV2.Persistence.Message
 
         Task<SphynxErrorInfo<ChatMessage?>> InsertMessageAsync(ChatMessage message, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorCode> UpdateMessageAsync(ChatMessage updatedMessage, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> UpdateMessageAsync(ChatMessage updatedMessage, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<ChatMessage?>> GetMessageAsync(SnowflakeId roomId, SnowflakeId messageId, CancellationToken cancellationToken = default);
 

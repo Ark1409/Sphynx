@@ -10,60 +10,40 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class LeaveRoomRequestSerializer : RequestSerializer<LeaveRoomRequest>
     {
-        protected override int GetMaxSizeInternal(LeaveRoomRequest packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>();
-        }
-
-        protected override bool SerializeInternal(LeaveRoomRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(LeaveRoomRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
-            return true;
         }
 
-        protected override LeaveRoomRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
+        protected override LeaveRoomRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
 
-            return new LeaveRoomRequest(requestInfo.UserId, requestInfo.SessionId, roomId);
+            return new LeaveRoomRequest(requestInfo.AccessToken, roomId);
         }
     }
 
     public class LeaveRoomResponseSerializer : ResponseSerializer<LeaveRoomResponse>
     {
-        protected override int GetMaxSizeInternal(LeaveRoomResponse packet)
+        protected override void SerializeInternal(LeaveRoomResponse packet, ref BinarySerializer serializer)
         {
-            return 0;
         }
 
-        protected override bool SerializeInternal(LeaveRoomResponse packet, ref BinarySerializer serializer)
+        protected override LeaveRoomResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            return true;
-        }
-
-        protected override LeaveRoomResponse DeserializeInternal(
-            ref BinaryDeserializer deserializer,
-            ResponseInfo responseInfo)
-        {
-            return new LeaveRoomResponse(responseInfo.ErrorCode);
+            return new LeaveRoomResponse(responseInfo.ErrorInfo);
         }
     }
 
     public class LeftRoomBroadcastSerializer : PacketSerializer<LeftRoomBroadcast>
     {
-        public override int GetMaxSize(LeftRoomBroadcast packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
-        }
-
-        protected override bool Serialize(LeftRoomBroadcast packet, ref BinarySerializer serializer)
+        public override void Serialize(LeftRoomBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.LeaverId);
-            return true;
         }
 
-        protected override LeftRoomBroadcast Deserialize(ref BinaryDeserializer deserializer)
+        public override LeftRoomBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var leaverId = deserializer.ReadSnowflakeId();

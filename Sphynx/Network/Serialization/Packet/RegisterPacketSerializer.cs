@@ -15,22 +15,16 @@ namespace Sphynx.Network.Serialization.Packet
     /// </remarks>
     public class RegisterRequestSerializer : PacketSerializer<RegisterRequest>
     {
-        public override int GetMaxSize(RegisterRequest packet)
-        {
-            return BinarySerializer.MaxSizeOf(packet.UserName) + BinarySerializer.MaxSizeOf(packet.Password);
-        }
-
-        protected override bool Serialize(RegisterRequest packet, ref BinarySerializer serializer)
+        public override void Serialize(RegisterRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteString(packet.UserName);
             serializer.WriteString(packet.Password);
-            return true;
         }
 
-        protected override RegisterRequest Deserialize(ref BinaryDeserializer deserializer)
+        public override RegisterRequest Deserialize(ref BinaryDeserializer deserializer)
         {
-            string userName = deserializer.ReadString();
-            string password = deserializer.ReadString();
+            string userName = deserializer.ReadString()!;
+            string password = deserializer.ReadString()!;
 
             return new RegisterRequest(userName, password);
         }
@@ -45,34 +39,30 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer = userSerializer;
         }
 
-        protected override int GetMaxSizeInternal(RegisterResponse packet)
-        {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return 0;
-
-            return BinarySerializer.MaxSizeOf<Guid>() + _userSerializer.GetMaxSize(packet.UserInfo!);
-        }
-
-        protected override bool SerializeInternal(RegisterResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(RegisterResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize user info when authentication is successful
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return true;
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return;
 
-            serializer.WriteGuid(packet.SessionId!.Value);
-            return _userSerializer.TrySerializeUnsafe(packet.UserInfo!, ref serializer);
+            serializer.WriteString(packet.AccessToken);
+            serializer.WriteGuid(packet.RefreshToken.GetValueOrDefault());
+            serializer.WriteDateTimeOffset(packet.AccessTokenExpiry.GetValueOrDefault());
+
+            _userSerializer.Serialize(packet.UserInfo!, ref serializer);
         }
 
-        protected override RegisterResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
+        protected override RegisterResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new RegisterResponse(responseInfo.ErrorCode);
+            if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return new RegisterResponse(responseInfo.ErrorInfo);
 
-            var sessionId = deserializer.ReadGuid();
+            string accessToken = deserializer.ReadString()!;
+            var refreshToken = deserializer.ReadGuid();
+            var accessTokenExpiry = deserializer.ReadDateTimeOffset();
+            var userInfo = _userSerializer.Deserialize(ref deserializer)!;
 
-            return _userSerializer.TryDeserialize(ref deserializer, out var userInfo)
-                ? new RegisterResponse(userInfo, sessionId)
-                : null;
+            return new RegisterResponse(userInfo, accessToken, refreshToken, accessTokenExpiry);
         }
     }
 }
