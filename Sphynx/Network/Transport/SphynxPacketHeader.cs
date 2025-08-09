@@ -19,6 +19,18 @@ namespace Sphynx.Network.Transport
     public readonly struct SphynxPacketHeader : IEquatable<SphynxPacketHeader>, IEquatable<SphynxPacketHeader?>
     {
         /// <summary>
+        /// Array pool to be used when sending the header over the network.
+        /// </summary>
+        /// <seealso cref="SendAsync"/>
+        /// <seealso cref="ReceiveAsync"/>
+        private static readonly ArrayPool<byte> _networkArrayPool;
+
+        static SphynxPacketHeader()
+        {
+            _networkArrayPool = ArrayPool<byte>.Create(Size, 50);
+        }
+
+        /// <summary>
         /// The (exact) Serialization size of <see cref="SIGNATURE"/> in bytes.
         /// </summary>
         public static readonly int SignatureSize = BinarySerializer.SizeOf<ushort>();
@@ -64,8 +76,6 @@ namespace Sphynx.Network.Transport
             ContentSize = contentSize;
         }
 
-        [ThreadStatic] private static byte[]? _scratchReceiveArray;
-
         /// <summary>
         /// Continuously reads from the <paramref name="stream"/> until a valid <see cref="SphynxPacketHeader"/> has
         /// been successfully consumed, or cancellation is requested.
@@ -81,25 +91,74 @@ namespace Sphynx.Network.Transport
             if (!stream.CanRead)
                 return ValueTask.FromException<SphynxPacketHeader>(new ArgumentException("Stream must be readable", nameof(stream)));
 
-            return ReceiveAsyncCore(stream, cancellationToken, _scratchReceiveArray ??= new byte[Size]);
+            return ReceiveAsyncCore(stream, _networkArrayPool.Rent(Size), cancellationToken);
 
             [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-            static async ValueTask<SphynxPacketHeader> ReceiveAsyncCore(Stream stream, CancellationToken token, Memory<byte> receiveBuffer)
+            static async ValueTask<SphynxPacketHeader> ReceiveAsyncCore(Stream stream, byte[] rentArray, CancellationToken token)
             {
-                await stream.FillAsync(receiveBuffer, cancellationToken: token).ConfigureAwait(false);
-
-                SphynxPacketHeader? header;
-
-                while (!TryDeserialize(receiveBuffer.Span, out header))
+                try
                 {
-                    token.ThrowIfCancellationRequested();
+                    var rentBuffer = rentArray.AsMemory()[..Size];
 
-                    receiveBuffer.ShiftLeft(1);
+                    await stream.FillAsync(rentBuffer, cancellationToken: token).ConfigureAwait(false);
 
-                    await stream.FillAsync(receiveBuffer[^1..], cancellationToken: token).ConfigureAwait(false);
+                    SphynxPacketHeader? header;
+
+                    while (!TryDeserialize(rentBuffer.Span, out header))
+                    {
+                        token.ThrowIfCancellationRequested();
+
+                        rentBuffer.ShiftLeft(1);
+
+                        await stream.FillAsync(rentBuffer[^1..], cancellationToken: token).ConfigureAwait(false);
+                    }
+
+                    return header.Value;
                 }
+                finally
+                {
+                    _networkArrayPool.Return(rentArray);
+                }
+            }
+        }
 
-                return header.Value;
+        public static ValueTask SendAsync(in SphynxPacketHeader header, Stream stream, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return ValueTask.FromCanceled(cancellationToken);
+
+            if (!stream.CanWrite)
+                return ValueTask.FromException(new ArgumentException("Stream must be writable", nameof(stream)));
+
+            byte[] rentArray = _networkArrayPool.Rent(Size);
+
+            bool successfullySerialized = false;
+            try
+            {
+                if (!header.TrySerialize(rentArray.AsSpan()[..Size]))
+                    return ValueTask.FromException(new SerializationException($"Could not serialize header for packet of type {header.PacketType}"));
+
+                successfullySerialized = true;
+            }
+            finally
+            {
+                if (!successfullySerialized)
+                    _networkArrayPool.Return(rentArray);
+            }
+
+            return SendAsyncCore(stream, rentArray, cancellationToken);
+
+            [AsyncMethodBuilder(typeof(AsyncValueTaskMethodBuilder))]
+            static async ValueTask SendAsyncCore(Stream stream, byte[] rentArray, CancellationToken token)
+            {
+                try
+                {
+                    await stream.WriteAsync(rentArray.AsMemory()[..Size], cancellationToken: token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _networkArrayPool.Return(rentArray);
+                }
             }
         }
 
@@ -211,5 +270,8 @@ namespace Sphynx.Network.Transport
         /// <inheritdoc cref="Equals(SphynxPacketHeader)"/>
         public bool Equals(in SphynxPacketHeader other) =>
             Version == other.Version && PacketType == other.PacketType && ContentSize == other.ContentSize;
+
+        public override string ToString() =>
+            $"{{ {nameof(Version)} = {Version}, {nameof(PacketType)} = {PacketType}, {nameof(ContentSize)} = {ContentSize} }}";
     }
 }

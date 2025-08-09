@@ -2,7 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using Sphynx.Storage;
 
 namespace Sphynx.Network.Serialization
@@ -46,29 +46,39 @@ namespace Sphynx.Network.Serialization
             if (!stream.CanWrite)
                 return ValueTask.FromException(new ArgumentException("Stream must be writable", nameof(stream)));
 
-            using (var rental = SequencePool.Shared.Rent())
-            {
-                var sequence = rental.Value;
+            var sequenceRental = SequencePool.Shared.Rent();
+            var sequence = sequenceRental.Value;
 
+            bool successfullySerialized = false;
+            try
+            {
                 serializer.Serialize(instance, sequence);
 
                 if (token.IsCancellationRequested)
                     return ValueTask.FromCanceled(token);
 
-                var readOnlySequence = sequence.AsReadOnlySequence;
-
-                return readOnlySequence.IsSingleSegment
-                    ? stream.WriteAsync(readOnlySequence.First, cancellationToken: token)
-                    : SerializeAsyncSlow(stream, readOnlySequence, token);
+                successfullySerialized = true;
             }
-        }
-
-        private static async ValueTask SerializeAsyncSlow(Stream stream, ReadOnlySequence<byte> readOnlySequence, CancellationToken token)
-        {
-            foreach (ReadOnlyMemory<byte> segment in readOnlySequence)
+            finally
             {
-                token.ThrowIfCancellationRequested();
-                await stream.WriteAsync(segment, cancellationToken: token).ConfigureAwait(false);
+                if (!successfullySerialized)
+                    sequenceRental.Dispose();
+            }
+
+            return SerializeAsyncCore(stream, sequenceRental, token);
+
+            [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+            static async ValueTask SerializeAsyncCore(Stream stream, SequencePool.Rental sequenceRental, CancellationToken token)
+            {
+                try
+                {
+                    foreach (ReadOnlyMemory<byte> segment in sequenceRental.Value.AsReadOnlySequence)
+                        await stream.WriteAsync(segment, cancellationToken: token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    sequenceRental.Dispose();
+                }
             }
         }
 
