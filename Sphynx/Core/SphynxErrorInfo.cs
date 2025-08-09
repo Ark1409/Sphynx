@@ -8,7 +8,7 @@ namespace Sphynx.Core
     public readonly record struct SphynxErrorInfo(SphynxErrorCode ErrorCode, string? Message = null)
     {
         /// <summary>
-        /// Returns a new <see cref="SphynxErrorInfo"/> with <see langword="default"/>.
+        /// Returns a new <see cref="SphynxErrorInfo"/> with the specified error code.
         /// </summary>
         /// <param name="error">The error code for this <see cref="SphynxErrorInfo"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo"/>.</returns>
@@ -60,6 +60,14 @@ namespace Sphynx.Core
         /// <param name="error">The error code for this <see cref="SphynxErrorInfo{TData}"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo{TData}"/>.</returns>
         public static implicit operator SphynxErrorInfo<TData>(SphynxErrorCode error) => new SphynxErrorInfo<TData>(error);
+
+        /// <summary>
+        /// Returns a new <see cref="SphynxErrorInfo"/> with the same <see cref="ErrorCode"/> and <see cref="Message"/>
+        /// as this <see cref="SphynxErrorInfo{T}"/>.
+        /// </summary>
+        /// <param name="error">The error code for this <see cref="SphynxErrorInfo"/>.</param>
+        /// <returns>The data for this <see cref="SphynxErrorInfo"/>.</returns>
+        public static explicit operator SphynxErrorInfo(SphynxErrorInfo<TData> error) => new(error.ErrorCode, error.Message);
 
         /// <inheritdoc/>
         public bool Equals(TData? other)

@@ -109,7 +109,7 @@ namespace Sphynx.ServerV2.Client
             Logger = logger;
         }
 
-        public async ValueTask StartAsync(CancellationToken cancellationToken = default)
+        public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfStopped();
 

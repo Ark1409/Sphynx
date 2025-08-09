@@ -178,7 +178,7 @@ namespace Sphynx.ServerV2
                 }
                 finally
                 {
-                    if (!await DisposeClientAsync(client, true).ConfigureAwait(false))
+                    if (!await DisposeClientAsync(client, tryReuse: true).ConfigureAwait(false))
                         Logger.LogTrace("Unable to re-use client socket");
                 }
             }

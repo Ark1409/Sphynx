@@ -46,7 +46,7 @@ namespace Sphynx.Server.Auth.Handlers
 
             if (authResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendAsync(new LoginResponse(authResult.ErrorCode), cancellationToken).ConfigureAwait(false);
+                await client.SendAsync(new LoginResponse((SphynxErrorInfo)authResult), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
