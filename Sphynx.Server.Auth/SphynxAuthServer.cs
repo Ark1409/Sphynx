@@ -29,6 +29,7 @@ namespace Sphynx.Server.Auth
         public SphynxAuthServer(SphynxAuthServerProfile profile) : base(profile)
         {
             Profile = profile;
+            Name = GetType().Name;
         }
 
         protected override SphynxTcpClient CreateTcpClient(Socket clientSocket) => new SphynxClient(clientSocket, Profile);

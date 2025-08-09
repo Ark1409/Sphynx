@@ -11,8 +11,16 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="RoomDeleteResponse"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for delete attempt.</param>
-        public RoomDeleteResponse(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
+        /// <param name="errorInfo">Error code for delete attempt.</param>
+        public RoomDeleteResponse(SphynxErrorCode errorInfo = SphynxErrorCode.SUCCESS) : base(errorInfo)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="RoomDeleteResponse"/>.
+        /// </summary>
+        /// <param name="errorInfo">Error code for delete attempt.</param>
+        public RoomDeleteResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 

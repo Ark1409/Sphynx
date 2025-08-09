@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -21,21 +22,25 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="MessagePostRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public MessagePostRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        public MessagePostRequest() : base()
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="MessagePostRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public MessagePostRequest(string accessToken) : base(accessToken)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="MessagePostRequest"/>.
+        /// </summary>
+        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessagePostRequest(SnowflakeId userId, Guid sessionId, SnowflakeId roomId, string message)
-            : base(userId, sessionId)
+        public MessagePostRequest(string accessToken, SnowflakeId roomId, string message) : base(accessToken)
         {
             RoomId = roomId;
             Message = message ?? throw new ArgumentNullException(nameof(message));
@@ -44,5 +49,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <inheritdoc/>
         public bool Equals(MessagePostRequest? other) =>
             base.Equals(other) && RoomId == other?.RoomId && Message == other?.Message;
+
+        public override MessagePostResponse CreateResponse(SphynxErrorInfo errorInfo) => new MessagePostResponse(errorInfo);
     }
 }

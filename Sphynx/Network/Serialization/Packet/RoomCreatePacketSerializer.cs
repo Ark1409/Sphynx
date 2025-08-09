@@ -2,8 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 using Sphynx.Core;
 using Sphynx.ModelV2.Room;
+using Sphynx.Network.PacketV2;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
 
@@ -12,31 +14,24 @@ namespace Sphynx.Network.Serialization.Packet
     public abstract class RoomCreateRequestSerializer<TRequest> : RequestSerializer<TRequest>
         where TRequest : RoomCreateRequest
     {
-        protected sealed override int GetMaxSizeInternal(TRequest packet)
-        {
-            return BinarySerializer.MaxSizeOf<ChatRoomType>() + GetMaxRoomSize(packet);
-        }
-
-        protected internal abstract int GetMaxRoomSize(TRequest packet);
-
-        protected sealed override bool SerializeInternal(TRequest packet, ref BinarySerializer serializer)
+        protected sealed override void SerializeInternal(TRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteEnum(packet.RoomType);
 
-            return SerializeRoom(packet, ref serializer);
+            SerializeRoom(packet, ref serializer);
         }
 
-        protected internal abstract bool SerializeRoom(TRequest packet, ref BinarySerializer serializer);
+        protected internal abstract void SerializeRoom(TRequest packet, ref BinarySerializer serializer);
 
-        protected sealed override TRequest? DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
+        protected sealed override TRequest? DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var roomType = deserializer.ReadEnum<ChatRoomType>();
             var roomInfo = new RoomCreateRequestInfo { Base = requestInfo, RoomType = roomType };
 
-            return DeserializeRoom(ref deserializer, roomInfo);
+            return DeserializeRoom(ref deserializer, in roomInfo);
         }
 
-        protected internal abstract TRequest? DeserializeRoom(ref BinaryDeserializer deserializer, RoomCreateRequestInfo requestInfo);
+        protected internal abstract TRequest? DeserializeRoom(ref BinaryDeserializer deserializer, in RoomCreateRequestInfo requestInfo);
     }
 
     public readonly struct RoomCreateRequestInfo
@@ -56,32 +51,20 @@ namespace Sphynx.Network.Serialization.Packet
             WithSerializer(ChatRoomType.GROUP, new Group());
         }
 
-        protected internal override int GetMaxRoomSize(RoomCreateRequest packet)
+        protected internal override void SerializeRoom(RoomCreateRequest packet, ref BinarySerializer serializer)
         {
-            return _serializers.TryGetValue(packet.RoomType, out var serializer)
-                ? serializer.GetMaxRoomSize(packet)
-                : 0;
+            if (!_serializers.TryGetValue(packet.RoomType, out var roomSerializer))
+                throw new SerializationException($"No serializer for {packet.PacketType} with room {packet} found");
+
+            roomSerializer.SerializeRoom(packet, ref serializer);
         }
 
-        protected internal override bool SerializeRoom(RoomCreateRequest packet, ref BinarySerializer serializer)
-        {
-            if (_serializers.TryGetValue(packet.RoomType, out var roomSerializer))
-            {
-                return roomSerializer.SerializeRoom(packet, ref serializer);
-            }
-
-            // We can allow it, but deserialization may not work
-            return true;
-        }
-
-        protected internal override RoomCreateRequest? DeserializeRoom(ref BinaryDeserializer deserializer, RoomCreateRequestInfo requestInfo)
+        protected internal override RoomCreateRequest? DeserializeRoom(ref BinaryDeserializer deserializer, in RoomCreateRequestInfo requestInfo)
         {
             if (_serializers.TryGetValue(requestInfo.RoomType, out var roomDeserializer))
-            {
-                return roomDeserializer.DeserializeRoom(ref deserializer, requestInfo);
-            }
+                return roomDeserializer.DeserializeRoom(ref deserializer, in requestInfo);
 
-            return null;
+            throw new SerializationException($"No deserializer for room type {requestInfo.RoomType} found");
         }
 
         public RoomCreateRequestSerializer WithSerializer<T>(ChatRoomType roomType, RoomCreateRequestSerializer<T> serializer)
@@ -119,19 +102,14 @@ namespace Sphynx.Network.Serialization.Packet
                 InnerSerializer = innerSerializer;
             }
 
-            protected internal override int GetMaxRoomSize(RoomCreateRequest packet)
+            protected internal override void SerializeRoom(RoomCreateRequest packet, ref BinarySerializer serializer)
             {
-                return InnerSerializer.GetMaxRoomSize((T)packet);
+                InnerSerializer.SerializeRoom((T)packet, ref serializer);
             }
 
-            protected internal override bool SerializeRoom(RoomCreateRequest packet, ref BinarySerializer serializer)
+            protected internal override RoomCreateRequest? DeserializeRoom(ref BinaryDeserializer deserializer, in RoomCreateRequestInfo requestInfo)
             {
-                return InnerSerializer.SerializeRoom((T)packet, ref serializer);
-            }
-
-            protected internal override RoomCreateRequest? DeserializeRoom(ref BinaryDeserializer deserializer, RoomCreateRequestInfo requestInfo)
-            {
-                return InnerSerializer.DeserializeRoom(ref deserializer, requestInfo);
+                return InnerSerializer.DeserializeRoom(ref deserializer, in requestInfo);
             }
         }
 
@@ -139,53 +117,37 @@ namespace Sphynx.Network.Serialization.Packet
 
         public class Direct : RoomCreateRequestSerializer<RoomCreateRequest.Direct>
         {
-            protected internal override int GetMaxRoomSize(RoomCreateRequest.Direct packet)
-            {
-                return BinarySerializer.MaxSizeOf<SnowflakeId>();
-            }
-
-            protected internal override bool SerializeRoom(RoomCreateRequest.Direct packet, ref BinarySerializer serializer)
+            protected internal override void SerializeRoom(RoomCreateRequest.Direct packet, ref BinarySerializer serializer)
             {
                 serializer.WriteSnowflakeId(packet.OtherId);
-                return true;
             }
 
-            protected internal override RoomCreateRequest.Direct DeserializeRoom(
-                ref BinaryDeserializer deserializer,
-                RoomCreateRequestInfo requestInfo)
+            protected internal override RoomCreateRequest.Direct DeserializeRoom(ref BinaryDeserializer deserializer,
+                in RoomCreateRequestInfo requestInfo)
             {
                 var otherId = deserializer.ReadSnowflakeId();
 
-                return new RoomCreateRequest.Direct(requestInfo.Base.UserId, requestInfo.Base.SessionId, otherId);
+                return new RoomCreateRequest.Direct(requestInfo.Base.AccessToken, otherId);
             }
         }
 
         public class Group : RoomCreateRequestSerializer<RoomCreateRequest.Group>
         {
-            protected internal override int GetMaxRoomSize(RoomCreateRequest.Group packet)
-            {
-                return BinarySerializer.MaxSizeOf(packet.Name) + BinarySerializer.MaxSizeOf(packet.Password) +
-                       BinarySerializer.MaxSizeOf<bool>();
-            }
-
-            protected internal override bool SerializeRoom(RoomCreateRequest.Group packet, ref BinarySerializer serializer)
+            protected internal override void SerializeRoom(RoomCreateRequest.Group packet, ref BinarySerializer serializer)
             {
                 serializer.WriteString(packet.Name);
                 serializer.WriteString(packet.Password);
                 serializer.WriteBool(packet.Public);
-                return true;
             }
 
-            protected internal override RoomCreateRequest.Group DeserializeRoom(
-                ref BinaryDeserializer deserializer,
-                RoomCreateRequestInfo requestInfo)
+            protected internal override RoomCreateRequest.Group DeserializeRoom(ref BinaryDeserializer deserializer,
+                in RoomCreateRequestInfo requestInfo)
             {
-                string name = deserializer.ReadString();
-                string password = deserializer.ReadString();
+                string name = deserializer.ReadString()!;
+                string? password = deserializer.ReadString();
                 bool isPublic = deserializer.ReadBool();
 
-                return new RoomCreateRequest.Group(requestInfo.Base.UserId, requestInfo.Base.SessionId,
-                    name, password, isPublic);
+                return new RoomCreateRequest.Group(requestInfo.Base.AccessToken, name, password, isPublic);
             }
         }
 
@@ -194,27 +156,18 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class RoomCreateResponseSerializer : ResponseSerializer<RoomCreateResponse>
     {
-        protected override int GetMaxSizeInternal(RoomCreateResponse packet)
+        protected override void SerializeInternal(RoomCreateResponse packet, ref BinarySerializer serializer)
         {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return 0;
-
-            return BinarySerializer.MaxSizeOf<SnowflakeId>();
-        }
-
-        protected override bool SerializeInternal(RoomCreateResponse packet, ref BinarySerializer serializer)
-        {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return true;
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return;
 
             serializer.WriteSnowflakeId(packet.RoomId!.Value);
-            return true;
         }
 
-        protected override RoomCreateResponse DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
+        protected override RoomCreateResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new RoomCreateResponse(responseInfo.ErrorCode);
+            if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return new RoomCreateResponse(responseInfo.ErrorInfo);
 
             var roomId = deserializer.ReadSnowflakeId();
             return new RoomCreateResponse(roomId);

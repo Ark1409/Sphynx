@@ -14,16 +14,15 @@ namespace Sphynx.Network.PacketV2.Response
         /// </summary>
         public SphynxSelfInfo? UserInfo { get; init; }
 
-        /// <summary>
-        /// The session ID for the client.
-        /// </summary>
-        public Guid? SessionId { get; init; }
+        public string? AccessToken { get; init; }
+        public Guid? RefreshToken { get; init; }
+        public DateTimeOffset? AccessTokenExpiry { get; init; }
 
         /// <summary>
         /// Creates a new <see cref="LoginResponse"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for login attempt.</param>
-        public RegisterResponse(SphynxErrorCode errorCode) : base(errorCode)
+        /// <param name="errorInfo">Error code for login attempt.</param>
+        public RegisterResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 
@@ -31,15 +30,34 @@ namespace Sphynx.Network.PacketV2.Response
         /// Creates a new <see cref="LoginResponse"/>.
         /// </summary>
         /// <param name="userInfo">Holds the authenticated user's information.</param>
-        /// <param name="sessionId">The session ID for the client.</param>
-        public RegisterResponse(SphynxSelfInfo userInfo, Guid sessionId) : this(SphynxErrorCode.SUCCESS)
+        /// <param name="accessToken">The JWT access token.</param>
+        /// <param name="refreshToken">The refresh token for the access token.</param>
+        /// <param name="accessTokenExpiry">The expiry time of the access token.</param>
+        public RegisterResponse(SphynxSelfInfo userInfo, string accessToken, Guid refreshToken, DateTimeOffset accessTokenExpiry)
+            : this(SphynxErrorCode.SUCCESS)
         {
             UserInfo = userInfo;
-            SessionId = sessionId;
+            AccessToken = string.IsNullOrEmpty(accessToken) ? throw new ArgumentException(accessToken) : accessToken;
+            RefreshToken = refreshToken;
+            AccessTokenExpiry = accessTokenExpiry;
         }
 
         /// <inheritdoc/>
-        public bool Equals(RegisterResponse? other) =>
-            base.Equals(other) && SessionId == other?.SessionId && (UserInfo?.Equals(other?.UserInfo) ?? true);
+        public bool Equals(RegisterResponse? other)
+        {
+            if (other is null || !base.Equals(other))
+                return false;
+
+            if (AccessToken != other.AccessToken || RefreshToken != other.RefreshToken || AccessTokenExpiry != other.AccessTokenExpiry)
+                return false;
+
+            if (UserInfo is null && other.UserInfo is null)
+                return true;
+
+            if (UserInfo is null || other.UserInfo is null)
+                return false;
+
+            return UserInfo.Equals(other.UserInfo);
+        }
     }
 }

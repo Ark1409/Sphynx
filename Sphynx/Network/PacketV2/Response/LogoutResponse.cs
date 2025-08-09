@@ -11,8 +11,16 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="LogoutResponse"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for logout attempt.</param>
-        public LogoutResponse(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
+        /// <param name="errorInfo">Error code for logout attempt.</param>
+        public LogoutResponse(SphynxErrorCode errorInfo = SphynxErrorCode.SUCCESS) : base(errorInfo)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="LogoutResponse"/>.
+        /// </summary>
+        /// <param name="errorInfo">Error code for logout attempt.</param>
+        public LogoutResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 

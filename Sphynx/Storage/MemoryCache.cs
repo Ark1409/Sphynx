@@ -313,7 +313,7 @@ namespace Sphynx.Storage
                 get => _startTime;
                 internal set
                 {
-                    Debug.Assert(value > _startTime);
+                    Debug.Assert(value >= _startTime);
 
                     _version++;
                     _startTime = value;

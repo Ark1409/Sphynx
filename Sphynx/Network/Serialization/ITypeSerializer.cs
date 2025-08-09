@@ -2,7 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers;
-using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using Sphynx.Storage;
 
 namespace Sphynx.Network.Serialization
 {
@@ -13,120 +14,75 @@ namespace Sphynx.Network.Serialization
     public interface ITypeSerializer<T>
     {
         /// <summary>
-        /// Returns the maximum serialization size (in bytes) of the specified <paramref name="instance"/>.
-        /// </summary>
-        /// <param name="instance">The instance for which the maximum serialization size should be checked.</param>
-        int GetMaxSize(T instance);
-
-        /// <summary>
-        /// Attempts to serialize this <paramref name="instance"/> into the provided <paramref name="buffer"/>.
+        /// Serializes this <paramref name="instance"/> into the provided <paramref name="buffer"/>.
         /// </summary>
         /// <param name="instance">The instance to serialize.</param>
-        /// <param name="buffer">This buffer to serialize this instance into.</param>
-        bool TrySerialize(T instance, Span<byte> buffer) => TrySerialize(instance, buffer, out _);
+        /// <param name="buffer">The buffer to serialize this instance into.</param>
+        void Serialize(T instance, IBufferWriter<byte> buffer);
 
         /// <summary>
-        /// Attempts to serialize this <paramref name="instance"/> into the provided <paramref name="buffer"/>.
-        /// </summary>
-        /// <param name="instance">The instance to serialize.</param>
-        /// <param name="buffer">This buffer to serialize this instance into.</param>
-        /// <param name="bytesWritten">Number of bytes written into the buffer.</param>
-        bool TrySerialize(T instance, Span<byte> buffer, out int bytesWritten)
-        {
-            int tempBufferSize = GetMaxSize(instance);
-            byte[] rentTempBuffer = ArrayPool<byte>.Shared.Rent(tempBufferSize);
-            var tempBuffer = rentTempBuffer.AsMemory()[..tempBufferSize];
-
-            try
-            {
-                var tempSpan = tempBuffer.Span;
-
-                if (TrySerializeUnsafe(instance, tempSpan, out bytesWritten) && tempSpan[..bytesWritten].TryCopyTo(buffer))
-                    return true;
-            }
-            catch
-            {
-                bytesWritten = 0;
-                return false;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(rentTempBuffer);
-            }
-
-            bytesWritten = 0;
-            return false;
-        }
-
-        /// <summary>
-        /// Serializes this <paramref name="instance"/> directly into the <paramref name="buffer"/>, without resetting its contents
-        /// on failure.
-        /// </summary>
-        /// <param name="instance">The instance to serialize.</param>
-        /// <param name="buffer">The output buffer.</param>
-        /// <returns>true if serialization succeeded; false otherwise.</returns>
-        bool TrySerializeUnsafe(T instance, Span<byte> buffer) => TrySerializeUnsafe(instance, buffer, out _);
-
-        /// <summary>
-        /// Serializes this <paramref name="instance"/> directly into the <paramref name="buffer"/>, without resetting its contents
-        /// on failure.
-        /// </summary>
-        /// <param name="instance">The instance to serialize.</param>
-        /// <param name="buffer">The output buffer.</param>
-        /// <param name="bytesWritten">Number of bytes written to the buffer.</param>
-        /// <returns>true if serialization succeeded; false otherwise.</returns>
-        bool TrySerializeUnsafe(T instance, Span<byte> buffer, out int bytesWritten);
-
-        /// <summary>
-        /// Attempts to deserialize a <see cref="T"/>.
+        /// Deserialize a <see cref="T"/>.
         /// </summary>
         /// <param name="buffer">The serialized <see cref="T"/> bytes.</param>
-        /// <param name="instance">The deserialized instance.</param>
-        bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? instance) => TryDeserialize(buffer, out instance, out _);
-
-        /// <summary>
-        /// Attempts to deserialize a <see cref="T"/>.
-        /// </summary>
-        /// <param name="buffer">The serialized <see cref="T"/> bytes.</param>
-        /// <param name="instance">The deserialized instance.</param>
-        /// <param name="bytesRead">Number of bytes read from the buffer.</param>
-        bool TryDeserialize(ReadOnlySpan<byte> buffer, [NotNullWhen(true)] out T? instance, out int bytesRead);
+        /// <param name="bytesRead">The number of bytes read of <paramref cref="buffer"/> in order to
+        /// deserialize <typeparamref name="T"/>.</param>
+        /// <returns>The deserialized instance.</returns>
+        T? Deserialize(in ReadOnlySequence<byte> buffer, out long bytesRead);
     }
 
     public static partial class TypeSerializerExtensions
     {
-        public static bool TrySerialize<TSerializer, T>(this TSerializer serializer, T instance, Span<byte> buffer)
-            where TSerializer : ITypeSerializer<T>
+        /// <summary>
+        /// Serializes this <paramref name="instance"/> into the provided <paramref name="stream"/>.
+        /// </summary>
+        /// <param name="instance">The instance to serialize.</param>
+        /// <param name="stream">The stream to serialize this instance into.</param>
+        /// <param name="token">A cancellation token for the serialization operation.</param>
+        public static ValueTask SerializeAsync<T>(this ITypeSerializer<T> serializer, T instance, Stream stream, CancellationToken token = default)
         {
-            return serializer.TrySerialize(instance, buffer);
+            if (token.IsCancellationRequested)
+                return ValueTask.FromCanceled(token);
+
+            if (!stream.CanWrite)
+                return ValueTask.FromException(new ArgumentException("Stream must be writable", nameof(stream)));
+
+            var sequenceRental = SequencePool.Shared.Rent();
+            var sequence = sequenceRental.Value;
+
+            bool successfullySerialized = false;
+            try
+            {
+                serializer.Serialize(instance, sequence);
+
+                if (token.IsCancellationRequested)
+                    return ValueTask.FromCanceled(token);
+
+                successfullySerialized = true;
+            }
+            finally
+            {
+                if (!successfullySerialized)
+                    sequenceRental.Dispose();
+            }
+
+            return SerializeAsyncCore(stream, sequenceRental, token);
+
+            [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+            static async ValueTask SerializeAsyncCore(Stream stream, SequencePool.Rental sequenceRental, CancellationToken token)
+            {
+                try
+                {
+                    foreach (ReadOnlyMemory<byte> segment in sequenceRental.Value.AsReadOnlySequence)
+                        await stream.WriteAsync(segment, cancellationToken: token).ConfigureAwait(false);
+                }
+                finally
+                {
+                    sequenceRental.Dispose();
+                }
+            }
         }
 
-        public static bool TrySerialize<TSerializer, T>(this TSerializer serializer, T instance, Span<byte> buffer, out int bytesWritten)
-            where TSerializer : ITypeSerializer<T>
-        {
-            return serializer.TrySerialize(instance, buffer, out bytesWritten);
-        }
-
-        public static bool TryDeserialize<TSerializer, T>(
-            this TSerializer serializer,
-            ReadOnlySpan<byte> buffer,
-            [NotNullWhen(true)] out T? instance,
-            out int bytesRead)
-            where TSerializer : ITypeSerializer<T>
-        {
-            return serializer.TryDeserialize(buffer, out instance, out bytesRead);
-        }
-
-        internal static bool TryDeserialize<T>(
-            this ITypeSerializer<T> serializer,
-            ref BinaryDeserializer deserializer,
-            [NotNullWhen(true)] out T? instance)
-        {
-            if (!serializer.TryDeserialize(deserializer.CurrentSpan, out instance, out int bytesRead))
-                return false;
-
-            deserializer.Offset += bytesRead;
-            return true;
-        }
+        public static T? Deserialize<T>(this ITypeSerializer<T> serializer, in ReadOnlySequence<byte> buffer) =>
+            serializer.Deserialize(in buffer, out _);
     }
 }

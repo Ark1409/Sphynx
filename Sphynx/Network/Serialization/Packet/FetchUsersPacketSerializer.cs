@@ -11,21 +11,15 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class FetchUsersRequestSerializer : RequestSerializer<FetchUsersRequest>
     {
-        protected override int GetMaxSizeInternal(FetchUsersRequest packet)
-        {
-            return BinarySerializer.MaxSizeOf(packet.UserIds);
-        }
-
-        protected override bool SerializeInternal(FetchUsersRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(FetchUsersRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteCollection(packet.UserIds);
-            return true;
         }
 
-        protected override FetchUsersRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
+        protected override FetchUsersRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var userIds = deserializer.ReadArray<SnowflakeId>();
-            return new FetchUsersRequest(requestInfo.UserId, requestInfo.SessionId, userIds);
+            return new FetchUsersRequest(requestInfo.AccessToken, userIds);
         }
     }
 
@@ -43,31 +37,23 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer = userSerializer;
         }
 
-        protected override int GetMaxSizeInternal(FetchUsersResponse packet)
-        {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return 0;
-
-            return _userSerializer.GetMaxSize(packet.Users!);
-        }
-
-        protected override bool SerializeInternal(FetchUsersResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(FetchUsersResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize users on success
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return true;
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return;
 
-            return _userSerializer.TrySerializeUnsafe(packet.Users!, ref serializer);
+            _userSerializer.Serialize(packet.Users!, ref serializer);
         }
 
-        protected override FetchUsersResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
+        protected override FetchUsersResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new FetchUsersResponse(responseInfo.ErrorCode);
+            if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return new FetchUsersResponse(responseInfo.ErrorInfo);
 
-            return _userSerializer.TryDeserialize(ref deserializer, out var users)
-                ? new FetchUsersResponse(users)
-                : null;
+            var users = _userSerializer.Deserialize(ref deserializer)!;
+
+            return new FetchUsersResponse(users);
         }
     }
 }

@@ -25,6 +25,14 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="JoinRoomResponse"/>.
         /// </summary>
+        /// <param name="errorInfo">Error code for login attempt.</param>
+        public JoinRoomResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="JoinRoomResponse"/>.
+        /// </summary>
         /// <param name="roomInfo">The information for the chat room which was joined.</param>
         public JoinRoomResponse(ChatRoomInfo roomInfo) : this()
         {

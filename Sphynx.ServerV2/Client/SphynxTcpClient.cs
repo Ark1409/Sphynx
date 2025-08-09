@@ -37,13 +37,6 @@ namespace Sphynx.ServerV2.Client
         private volatile Task? _clientTask;
 
         /// <summary>
-        /// Whether the client has been disconnected.
-        /// </summary>
-        public bool Disconnected => _disconnectReserved;
-
-        private volatile bool _disconnectReserved;
-
-        /// <summary>
         /// A reference to the accepted client socket.
         /// </summary>
         internal Socket Socket { get; private set; }
@@ -116,7 +109,7 @@ namespace Sphynx.ServerV2.Client
             Logger = logger;
         }
 
-        public async ValueTask StartAsync(CancellationToken cancellationToken = default)
+        public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfStopped();
 
@@ -256,6 +249,8 @@ namespace Sphynx.ServerV2.Client
         {
             ThrowIfStopped();
 
+            // TODO: PoolingAsyncValueTaskMethodBuilder
+
             try
             {
                 // TODO: Handle transient errors
@@ -338,7 +333,7 @@ namespace Sphynx.ServerV2.Client
             return DisconnectAsync(disconnectException, waitForFinish);
         }
 
-        private async ValueTask DisconnectAsync(Exception? disconnectException, bool waitForFinish)
+        private ValueTask DisconnectAsync(Exception? disconnectException, bool waitForFinish)
         {
             Debug.Assert(Volatile.Read(ref _stopped) != 0);
 
@@ -362,11 +357,15 @@ namespace Sphynx.ServerV2.Client
             if (!waitForFinish || _isInsideClientTask.Value)
             {
                 QueueDisconnect(disconnectException);
+                return ValueTask.CompletedTask;
             }
-            else
+
+            return DoDisconnect(disconnectException);
+
+            async ValueTask DoDisconnect(Exception? exception)
             {
                 await WaitAsync().ConfigureAwait(false);
-                await PerformDisconnectAsync(disconnectException).ConfigureAwait(false);
+                await PerformDisconnectAsync(exception).ConfigureAwait(false);
             }
         }
 
@@ -394,11 +393,8 @@ namespace Sphynx.ServerV2.Client
         private async ValueTask PerformDisconnectAsync(Exception? disconnectException = null)
         {
             Debug.Assert(_clientTask?.IsCompleted ?? true, "Run loop should complete before disconnecting client");
-            Debug.Assert(!_disconnectReserved, "Client should not be disconnected twice");
             // We should implicitly have hold of this semaphore to ensure there are no race conditions during disconnection.
             Debug.Assert(_disposeSemaphore.CurrentCount == 0);
-
-            _disconnectReserved = true;
 
             try
             {
@@ -458,6 +454,8 @@ namespace Sphynx.ServerV2.Client
 
         private async ValueTask DisposeClientAsync(bool disposeSocket)
         {
+            Debug.Assert(Volatile.Read(ref _stopped) != 0, "Client should have been stopped before disposing");
+
             await _disposeSemaphore.WaitAsync().ConfigureAwait(false);
 
             try

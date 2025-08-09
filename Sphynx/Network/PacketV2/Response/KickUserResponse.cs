@@ -11,8 +11,16 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="KickUserResponse"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for kick attempt.</param>
-        public KickUserResponse(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
+        /// <param name="errorInfo">Error code for kick attempt.</param>
+        public KickUserResponse(SphynxErrorCode errorInfo = SphynxErrorCode.SUCCESS) : base(errorInfo)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="KickUserResponse"/>.
+        /// </summary>
+        /// <param name="errorInfo">Error code for kick attempt.</param>
+        public KickUserResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 

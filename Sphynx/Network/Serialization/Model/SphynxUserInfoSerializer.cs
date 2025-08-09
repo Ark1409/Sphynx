@@ -9,56 +9,26 @@ namespace Sphynx.Network.Serialization.Model
 {
     public class SphynxUserInfoSerializer : TypeSerializer<SphynxUserInfo>
     {
-        public override int GetMaxSize(SphynxUserInfo model)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(model.UserName) +
-                   BinarySerializer.MaxSizeOf<SphynxUserStatus>();
-        }
-
-        protected override bool Serialize(SphynxUserInfo model, ref BinarySerializer serializer)
+        public override void Serialize(SphynxUserInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.UserId);
             serializer.WriteString(model.UserName);
             serializer.WriteEnum(model.UserStatus);
-            return true;
         }
 
-        protected override SphynxUserInfo Deserialize(ref BinaryDeserializer deserializer)
+        public override SphynxUserInfo Deserialize(ref BinaryDeserializer deserializer)
         {
             var userId = deserializer.ReadSnowflakeId();
-            string userName = deserializer.ReadString();
+            string userName = deserializer.ReadString()!;
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
 
-            return new DummySphynxUserInfo { UserId = userId, UserName = userName, UserStatus = userStatus };
-        }
-
-        private class DummySphynxUserInfo : SphynxUserInfo
-        {
-            public SnowflakeId UserId { get; set; }
-            public string UserName { get; set; } = null!;
-            public SphynxUserStatus UserStatus { get; set; }
-
-            public override int GetHashCode() => UserId.GetHashCode();
-            public bool Equals(SphynxUserInfo? other) => other is not null && UserId == other.UserId;
+            return new SphynxUserInfo { UserId = userId, UserName = userName, UserStatus = userStatus };
         }
     }
 
     public class SphynxSelfInfoSerializer : TypeSerializer<SphynxSelfInfo>
     {
-        public override int GetMaxSize(SphynxSelfInfo model)
-        {
-            int userInfoSize = BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(model.UserName) +
-                               BinarySerializer.MaxSizeOf<SphynxUserStatus>();
-
-            int selfInfoSize = BinarySerializer.MaxSizeOf(model.Friends) + BinarySerializer.MaxSizeOf(model.Rooms) +
-                               BinarySerializer.MaxSizeOf(model.LastReadMessages) +
-                               BinarySerializer.MaxSizeOf(model.OutgoingFriendRequests) +
-                               BinarySerializer.MaxSizeOf(model.IncomingFriendRequests);
-
-            return userInfoSize + selfInfoSize;
-        }
-
-        protected override bool Serialize(SphynxSelfInfo model, ref BinarySerializer serializer)
+        public override void Serialize(SphynxSelfInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.UserId);
             serializer.WriteString(model.UserName);
@@ -69,13 +39,12 @@ namespace Sphynx.Network.Serialization.Model
             serializer.WriteDictionary(model.LastReadMessages);
             serializer.WriteCollection(model.OutgoingFriendRequests);
             serializer.WriteCollection(model.IncomingFriendRequests);
-            return true;
         }
 
-        protected override SphynxSelfInfo Deserialize(ref BinaryDeserializer deserializer)
+        public override SphynxSelfInfo Deserialize(ref BinaryDeserializer deserializer)
         {
             var userId = deserializer.ReadSnowflakeId();
-            string userName = deserializer.ReadString();
+            string userName = deserializer.ReadString()!;
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
 
             var friends = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();

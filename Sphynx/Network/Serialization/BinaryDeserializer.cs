@@ -1,12 +1,12 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using System.Text;
 using Sphynx.Core;
 using Version = Sphynx.Core.Version;
 
@@ -18,128 +18,235 @@ namespace Sphynx.Network.Serialization
     /// </summary>
     public ref struct BinaryDeserializer
     {
+        // Ensure this is `readonly` so the JIT has a chance at optimizing call paths
+        private readonly bool _useSequence;
+
+        // For single-segment sequences, we want to use _span, but still need to provide a <see cref="Sequence"/>
+        private readonly bool _hasSequence;
+        private SequenceReader<byte> _sequence;
+
         private readonly ReadOnlySpan<byte> _span;
+        private int _spanOffset;
 
         /// <summary>
-        /// Returns the read offset into the underlying span.
+        /// Returns the read offset into the underlying sequence or span.
         /// </summary>
-        public int Offset { get; internal set; }
-
-        /// <summary>
-        /// Returns the underlying span.
-        /// </summary>
-        public ReadOnlySpan<byte> Span
+        public long Offset
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _span;
+            readonly get => _useSequence ? _sequence.Consumed : _spanOffset;
+            set
+            {
+                if (_useSequence)
+                {
+                    long offset = Offset;
+
+                    if (offset == value)
+                        return;
+
+                    if (value > offset)
+                        _sequence.Advance(value - offset);
+                    else
+                        _sequence.Rewind(offset - value);
+
+                    Debug.Assert(_sequence.Consumed == value);
+                }
+                else
+                {
+                    if (value < 0 || value > _span.Length)
+                        throw new ArgumentOutOfRangeException(nameof(value));
+
+                    _spanOffset = (int)value;
+                }
+            }
         }
 
         /// <summary>
-        /// Returns the underlying span, starting from the <see cref="Offset"/>.
+        /// Returns the total number of bytes which can be read from either the
+        /// underlying span or the underlying <see cref="Sequence"/>;
+        /// the maximum value of <see cref="Offset"/>.
         /// </summary>
-        public ReadOnlySpan<byte> CurrentSpan
+        public long Length
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _span[Offset..];
+            get => _useSequence ? _sequence.Length : _span.Length;
         }
 
-        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this(memory.Span)
+        /// <summary>
+        /// Returns the underlying span, if it exists; else the span that contains
+        /// the current segment in the <see cref="Sequence"/>.
+        /// </summary>
+        public readonly ReadOnlySpan<byte> CurrentSpan
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _useSequence ? _sequence.CurrentSpan : _span;
+        }
+
+        /// <summary>
+        /// Returns the underlying span, starting from the <see cref="Offset"/>, if it exists; else the
+        /// unread portion of the span that contains the current segment in the <see cref="Sequence"/>.
+        /// </summary>
+        public readonly ReadOnlySpan<byte> UnreadSpan
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _useSequence ? _sequence.UnreadSpan : _span[_spanOffset..];
+        }
+
+        /// <summary>
+        /// Returns the underlying sequence, if it exists.
+        /// </summary>
+        public readonly ReadOnlySequence<byte> Sequence
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _sequence.Sequence;
+        }
+
+        /// <summary>
+        /// Returns the unread portion of the underlying sequence, if it exists.
+        /// </summary>
+        public readonly ReadOnlySequence<byte> UnreadSequence
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _sequence.UnreadSequence;
+        }
+
+        /// <summary>
+        /// Whether an underlying <see cref="Sequence"/> exists for this reader.
+        /// </summary>
+        public readonly bool HasSequence
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _hasSequence;
+        }
+
+        public BinaryDeserializer(in ReadOnlySequence<byte> sequence) : this()
+        {
+            // For all intents and purposes, reading directly from a span is currently faster than parsing
+            // a single-segment sequence
+            if (sequence.IsSingleSegment)
+            {
+                _useSequence = false;
+                _span = sequence.FirstSpan;
+                _spanOffset = 0;
+            }
+            else
+            {
+                _useSequence = true;
+            }
+
+            // In both cases, we'll still store a refence to the passed sequence
+            _sequence = new SequenceReader<byte>(sequence);
+            _hasSequence = true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this(new ReadOnlySequence<byte>(memory))
         {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BinaryDeserializer(ReadOnlySpan<byte> span)
+        public BinaryDeserializer(ReadOnlySpan<byte> span) : this()
         {
+            _useSequence = false;
             _span = span;
-            Offset = 0;
+            _spanOffset = 0;
         }
 
         #region Dictionaries
 
-        public bool TryReadDictionary([NotNullWhen(true)] out Dictionary<string, string>? dictionary)
+        public bool TryReadDictionary([NotNullWhen(true)] out Dictionary<string, string?>? dictionary)
         {
-            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<string, string?>.Empty)) &&
-                !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<string, string?>.Empty)))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
-                dictionary = null;
+                dictionary = default;
                 return false;
             }
 
-            int fallbackOffset = Offset;
+            // Try and catch it early
+            if (!CanRead(size * (BinarySerializer.SizeOf(string.Empty) * 2)))
+            {
+                Offset = oldOffset;
+                dictionary = default;
+                return false;
+            }
 
-            // Guaranteed to succeed due to size check
-            int size = ReadInt32();
-            dictionary = CreateDictionary<string, string>(size);
+            dictionary = CreateDictionary<string, string?>(size);
 
             for (int i = 0; i < size; i++)
             {
                 if (!TryReadString(out string? key) || !TryReadString(out string? value))
                 {
-                    Offset = fallbackOffset;
+                    Offset = oldOffset;
                     dictionary = null;
                     return false;
                 }
 
-                dictionary.Add(key, value);
+                dictionary.Add(key!, value);
             }
 
             return true;
         }
 
-        public void ReadDictionary(out Dictionary<string, string> dictionary)
+        public void ReadDictionary(out Dictionary<string, string?> dictionary)
         {
             int size = ReadInt32();
-            dictionary = CreateDictionary<string, string>(size);
+            dictionary = CreateDictionary<string, string?>(size);
 
             for (int i = 0; i < size; i++)
             {
-                string key = ReadString();
-                string value = ReadString();
-                dictionary.Add(key, value);
+                string? key = ReadString();
+                string? value = ReadString();
+                dictionary.Add(key!, value);
             }
         }
 
-        public bool TryReadDictionary<TKey>([NotNullWhen(true)] out Dictionary<TKey, string>? dictionary)
+        public bool TryReadDictionary<TKey>([NotNullWhen(true)] out Dictionary<TKey, string?>? dictionary)
             where TKey : unmanaged
         {
-            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<TKey, string?>.Empty)) &&
-                !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<TKey, string?>.Empty)))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
-                dictionary = null;
+                dictionary = default;
                 return false;
             }
 
-            int fallbackOffset = Offset;
+            // Try and catch it early
+            if (!CanRead(size * (BinarySerializer.SizeOf<TKey>() + BinarySerializer.SizeOf(string.Empty))))
+            {
+                Offset = oldOffset;
+                dictionary = default;
+                return false;
+            }
 
-            // Guaranteed to succeed due to size check
-            int size = ReadInt32();
-            dictionary = CreateDictionary<TKey, string>(size);
+            dictionary = CreateDictionary<TKey, string?>(size);
 
             for (int i = 0; i < size; i++)
             {
                 if (!TryReadUnmanaged<TKey>(out var key) || !TryReadString(out string? value))
                 {
-                    Offset = fallbackOffset;
+                    Offset = oldOffset;
                     dictionary = null;
                     return false;
                 }
 
-                dictionary.Add(key.Value, value);
+                dictionary.Add(key, value);
             }
 
             return true;
         }
 
-        public void ReadDictionary<TKey>(out Dictionary<TKey, string> dictionary)
+        public void ReadDictionary<TKey>(out Dictionary<TKey, string?> dictionary)
             where TKey : unmanaged
         {
             int size = ReadInt32();
-            dictionary = CreateDictionary<TKey, string>(size);
+            dictionary = CreateDictionary<TKey, string?>(size);
 
             for (int i = 0; i < size; i++)
             {
                 var key = ReadUnmanaged<TKey>();
-                string value = ReadString();
+                string? value = ReadString();
                 dictionary.Add(key, value);
             }
         }
@@ -147,29 +254,34 @@ namespace Sphynx.Network.Serialization
         public bool TryReadDictionary<TValue>([NotNullWhen(true)] out Dictionary<string, TValue>? dictionary)
             where TValue : unmanaged
         {
-            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<string, TValue>.Empty)) &&
-                !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<string, TValue>.Empty)))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
-                dictionary = null;
+                dictionary = default;
                 return false;
             }
 
-            int fallbackOffset = Offset;
+            // Try and catch it early
+            if (!CanRead(size * (BinarySerializer.SizeOf(string.Empty) + BinarySerializer.SizeOf<TValue>())))
+            {
+                Offset = oldOffset;
+                dictionary = default;
+                return false;
+            }
 
-            // Guaranteed to succeed due to size check
-            int size = ReadInt32();
             dictionary = CreateDictionary<string, TValue>(size);
 
             for (int i = 0; i < size; i++)
             {
                 if (!TryReadString(out string? key) || !TryReadUnmanaged<TValue>(out var value))
                 {
-                    Offset = fallbackOffset;
+                    Offset = oldOffset;
                     dictionary = null;
                     return false;
                 }
 
-                dictionary.Add(key, value.Value);
+                dictionary.Add(key!, value);
             }
 
             return true;
@@ -183,9 +295,9 @@ namespace Sphynx.Network.Serialization
 
             for (int i = 0; i < size; i++)
             {
-                string key = ReadString();
+                string? key = ReadString();
                 var value = ReadUnmanaged<TValue>();
-                dictionary.Add(key, value);
+                dictionary.Add(key!, value);
             }
         }
 
@@ -202,29 +314,34 @@ namespace Sphynx.Network.Serialization
             where TValue : unmanaged
             where TDictionary : IDictionary<TKey, TValue>, new()
         {
-            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableDictionary<TKey, TValue>.Empty)) &&
-                !CanRead(BinarySerializer.SizeOf(ImmutableDictionary<TKey, TValue>.Empty)))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
                 dictionary = default;
                 return false;
             }
 
-            int fallbackOffset = Offset;
+            // Try and catch it early
+            if (!CanRead(size * (BinarySerializer.SizeOf<TKey>() + BinarySerializer.SizeOf<TValue>())))
+            {
+                Offset = oldOffset;
+                dictionary = default;
+                return false;
+            }
 
-            // Guaranteed to succeed due to size check
-            int size = ReadInt32();
             dictionary = CreateDictionary<TKey, TValue, TDictionary>(size);
 
             for (int i = 0; i < size; i++)
             {
                 if (!TryReadUnmanaged<TKey>(out var key) || !TryReadUnmanaged<TValue>(out var value))
                 {
-                    Offset = fallbackOffset;
+                    Offset = oldOffset;
                     dictionary = default;
                     return false;
                 }
 
-                dictionary.Add(key.Value, value.Value);
+                dictionary.Add(key, value);
             }
 
             return true;
@@ -283,36 +400,37 @@ namespace Sphynx.Network.Serialization
 
         #region Arrays
 
-        public bool TryReadArray(out string[]? array)
+        public bool TryReadArray(out string?[]? array)
         {
-            if (!TryReadInt32(out int? size))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
                 array = null;
                 return false;
             }
 
-            array = size.Value == 0 ? Array.Empty<string>() : new string[size.Value];
+            array = size == 0 ? Array.Empty<string>() : new string?[size];
 
-            for (int i = 0; i < size.Value; i++)
+            for (int i = 0; i < size; i++)
             {
-                if (TryReadString(out string? str))
+                if (!TryReadString(out string? str))
                 {
-                    array[i] = str;
-                }
-                else
-                {
+                    Offset = oldOffset;
                     array = null;
                     return false;
                 }
+
+                array[i] = str;
             }
 
             return true;
         }
 
-        public string[] ReadArray()
+        public string?[] ReadArray()
         {
             int size = ReadInt32();
-            string[] array = size == 0 ? Array.Empty<string>() : new string[size];
+            string?[] array = size == 0 ? Array.Empty<string>() : new string?[size];
 
             for (int i = 0; i < size; i++)
             {
@@ -324,25 +442,34 @@ namespace Sphynx.Network.Serialization
 
         public bool TryReadArray<T>([NotNullWhen(true)] out T[]? array) where T : unmanaged
         {
-            if (!TryReadInt32(out int? size))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
                 array = null;
                 return false;
             }
 
             // Try and catch it early
-            if (!CanRead(size.Value * Unsafe.SizeOf<T>()))
+            if (!CanRead(size * BinarySerializer.SizeOf<T>()))
             {
-                Offset -= sizeof(int);
+                Offset = oldOffset;
                 array = null;
                 return false;
             }
 
-            array = size.Value == 0 ? Array.Empty<T>() : new T[size.Value];
+            array = size == 0 ? Array.Empty<T>() : new T[size];
 
-            for (int i = 0; i < size.Value; i++)
+            for (int i = 0; i < size; i++)
             {
-                array[i] = ReadUnmanaged<T>();
+                if (!TryReadUnmanaged<T>(out var item))
+                {
+                    Offset = oldOffset;
+                    array = null;
+                    return false;
+                }
+
+                array[i] = item;
             }
 
             return true;
@@ -366,55 +493,50 @@ namespace Sphynx.Network.Serialization
         #region Collections
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryReadStringList([NotNullWhen(true)] out List<string>? list)
+        public bool TryReadStringList([NotNullWhen(true)] out List<string?>? list)
         {
             return TryReadCollection(out list);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public List<string> ReadStringList()
+        public List<string?> ReadStringList()
         {
-            return ReadCollection<List<string>>();
+            return ReadCollection<List<string?>>();
         }
 
         public bool TryReadCollection<TCollection>([NotNullWhen(true)] out TCollection? collection)
-            where TCollection : ICollection<string>, new()
+            where TCollection : ICollection<string?>, new()
         {
-            if (!CanRead(BinarySerializer.MaxSizeOf(ImmutableList<string?>.Empty)) &&
-                !CanRead(BinarySerializer.SizeOf(ImmutableList<string?>.Empty)))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
                 collection = default;
                 return false;
             }
 
-            int fallbackOffset = Offset;
-
-            // Guaranteed to succeed due to size check
-            int size = ReadInt32();
-
-            collection = CreateCollection<string, TCollection>(size);
+            collection = CreateCollection<string?, TCollection>(size);
 
             for (int i = 0; i < size; i++)
             {
-                if (TryReadString(out string? str))
+                if (!TryReadString(out string? str))
                 {
-                    collection.Add(str);
-                }
-                else
-                {
-                    Offset = fallbackOffset;
+                    Offset = oldOffset;
                     collection = default;
                     return false;
                 }
+
+                collection.Add(str);
             }
 
             return true;
         }
 
-        public TCollection ReadCollection<TCollection>() where TCollection : ICollection<string>, new()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public TCollection ReadCollection<TCollection>() where TCollection : ICollection<string?>, new()
         {
             int size = ReadInt32();
-            var collection = CreateCollection<string, TCollection>(size);
+            var collection = CreateCollection<string?, TCollection>(size);
 
             for (int i = 0; i < size; i++)
                 collection.Add(ReadString());
@@ -426,20 +548,18 @@ namespace Sphynx.Network.Serialization
             where T : unmanaged
             where TCollection : ICollection<T>, new()
         {
-            if (!CanRead(BinarySerializer.MaxSizeOf(Array.Empty<T>())) &&
-                !CanRead(BinarySerializer.SizeOf(Array.Empty<T>())))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
                 collection = default;
                 return false;
             }
 
-            // Guaranteed to succeed due to size check
-            int size = ReadInt32();
-
             // Try and catch it early
-            if (!CanRead(size * Unsafe.SizeOf<T>()))
+            if (!CanRead(size * BinarySerializer.SizeOf<T>()))
             {
-                Offset -= sizeof(int);
+                Offset = oldOffset;
                 collection = default;
                 return false;
             }
@@ -447,7 +567,16 @@ namespace Sphynx.Network.Serialization
             collection = CreateCollection<T, TCollection>(size);
 
             for (int i = 0; i < size; i++)
-                collection.Add(ReadUnmanaged<T>());
+            {
+                if (!TryReadUnmanaged<T>(out var item))
+                {
+                    Offset = oldOffset;
+                    collection = default;
+                    return false;
+                }
+
+                collection.Add(item);
+            }
 
             return true;
         }
@@ -464,6 +593,7 @@ namespace Sphynx.Network.Serialization
             return ReadCollection<T, List<T>>();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public TCollection ReadCollection<T, TCollection>()
             where T : unmanaged
             where TCollection : ICollection<T>, new()
@@ -503,15 +633,18 @@ namespace Sphynx.Network.Serialization
 
         #region Common Types
 
-        public bool TryReadVersion([NotNullWhen(true)] out Version? version)
+        // ReSharper disable once InconsistentNaming
+        private static readonly int GuidSize = Unsafe.SizeOf<Guid>();
+
+        public bool TryReadVersion(out Version version)
         {
-            if (!CanRead(BinarySerializer.SizeOf<Version>()))
+            if (!TryReadInt32(out int value))
             {
-                version = null;
+                version = default;
                 return false;
             }
 
-            version = ReadVersion();
+            version = Version.FromInt32(value);
             return true;
         }
 
@@ -521,96 +654,209 @@ namespace Sphynx.Network.Serialization
             return Version.FromInt32(ReadInt32());
         }
 
-        public bool TryReadSnowflakeId([NotNullWhen(true)] out SnowflakeId? id)
+        public bool TryReadSnowflakeId(out SnowflakeId id)
         {
-            if (!CanRead(BinarySerializer.SizeOf<SnowflakeId>()))
+            if (!CanRead(SnowflakeId.SIZE))
             {
-                id = null;
+                id = default;
                 return false;
             }
 
-            id = ReadSnowflakeId();
+            if (_useSequence)
+            {
+                Span<byte> bytes = stackalloc byte[SnowflakeId.SIZE];
+                _sequence.TryCopyTo(bytes);
+
+                id = new SnowflakeId(_span.Slice(_spanOffset, SnowflakeId.SIZE));
+                _sequence.Advance(SnowflakeId.SIZE);
+            }
+            else
+            {
+                id = new SnowflakeId(_span.Slice(_spanOffset, SnowflakeId.SIZE));
+                _spanOffset += SnowflakeId.SIZE;
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SnowflakeId ReadSnowflakeId()
         {
-            var id = new SnowflakeId(_span.Slice(Offset, SnowflakeId.SIZE));
-            Offset += SnowflakeId.SIZE;
+            if (!TryReadSnowflakeId(out var id))
+                throw ThrowReadException(typeof(SnowflakeId));
+
             return id;
         }
 
-        public bool TryReadGuid([NotNullWhen(true)] out Guid? id)
+        public bool TryReadGuid(out Guid guid)
         {
-            if (!CanRead(BinarySerializer.SizeOf<Guid>()))
+            if (!CanRead(GuidSize))
             {
-                id = null;
+                guid = default;
                 return false;
             }
 
-            id = ReadGuid();
+            if (_useSequence)
+            {
+                Debug.Assert(GuidSize <= 16);
+
+                Span<byte> bytes = stackalloc byte[GuidSize];
+                _sequence.TryCopyTo(bytes);
+
+                guid = new Guid(bytes.Slice(_spanOffset, GuidSize));
+                _sequence.Advance(GuidSize);
+            }
+            else
+            {
+                guid = new Guid(_span.Slice(_spanOffset, GuidSize));
+                _spanOffset += GuidSize;
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Guid ReadGuid()
         {
-            var id = new Guid(_span.Slice(Offset, Unsafe.SizeOf<Guid>()));
-            Offset += Unsafe.SizeOf<Guid>();
-            return id;
+            if (!TryReadGuid(out var guid))
+                throw ThrowReadException(typeof(Guid));
+
+            return guid;
         }
 
         public bool TryReadString(Span<char> dest)
         {
-            if (!TryReadInt32(out int? size))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
                 return false;
 
+            if (size == -1)
+            {
+                if (!dest.IsEmpty)
+                {
+                    Offset = oldOffset;
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Sanity check
+            if (size < -1 || !CanRead(size))
+            {
+                Offset = oldOffset;
+                return false;
+            }
+
+            // dest size check
             if (size > BinarySerializer.StringEncoding.GetMaxByteCount(dest.Length))
+            {
+                Offset = oldOffset;
                 return false;
+            }
 
-            int decoded = BinarySerializer.StringEncoding.GetChars(_span.Slice(Offset, size.Value), dest);
+            try
+            {
+                if (_useSequence)
+                {
+                    var start = _sequence.Position;
 
-            Debug.Assert(decoded == size);
+                    int decoded = BinarySerializer.StringEncoding.GetChars(_sequence.Sequence.Slice(start, size), dest);
+                    Debug.Assert(decoded == size);
+
+                    _sequence.Advance(size);
+                }
+                else
+                {
+                    int decoded = BinarySerializer.StringEncoding.GetChars(_span.Slice(_spanOffset, size), dest);
+                    Debug.Assert(decoded == size);
+
+                    _spanOffset += size;
+                }
+            }
+            // Ugly but we can't really do anything else at this point
+            catch
+            {
+                // TODO: Leave dest modified?
+                Offset = oldOffset;
+                return false;
+            }
+
             return true;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void ReadString(Span<char> dest)
         {
-            int size = ReadInt32();
-            int decoded = BinarySerializer.StringEncoding.GetChars(_span.Slice(Offset, size), dest);
-
-            Debug.Assert(size == decoded);
-
-            Offset += size;
+            if (!TryReadString(dest))
+                throw ThrowReadException(typeof(Span<char>));
         }
 
-        public bool TryReadString([NotNullWhen(true)] out string? str)
+        public bool TryReadString(out string? str)
         {
-            if (!CanRead(BinarySerializer.MaxSizeOf(string.Empty)) && !CanRead(BinarySerializer.SizeOf(string.Empty)))
+            long oldOffset = Offset;
+
+            if (!TryReadInt32(out int size))
             {
                 str = null;
                 return false;
             }
 
-            str = ReadString();
+            // Indication of null string
+            if (size == -1)
+            {
+                str = null;
+                return true;
+            }
+
+            // Sanity check
+            if (size < -1 || !CanRead(size))
+            {
+                str = null;
+                Offset = oldOffset;
+                return false;
+            }
+
+            try
+            {
+                if (_useSequence)
+                {
+                    var start = _sequence.Position;
+                    str = BinarySerializer.StringEncoding.GetString(_sequence.Sequence.Slice(start, size));
+                    _sequence.Advance(size);
+                }
+                else
+                {
+                    str = BinarySerializer.StringEncoding.GetString(_span.Slice(_spanOffset, size));
+                    _spanOffset += size;
+                }
+            }
+            // Ugly but we can't really do anything else at this point
+            catch
+            {
+                Offset = oldOffset;
+                str = null;
+                return false;
+            }
+
             return true;
         }
 
-        public string ReadString()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public string? ReadString()
         {
-            int size = ReadInt32();
-            string str = BinarySerializer.StringEncoding.GetString(_span.Slice(Offset, size));
-            Offset += size;
+            if (!TryReadString(out string? str))
+                throw ThrowReadException(typeof(string));
 
             return str;
         }
 
-        public bool TryReadEnum<T>([NotNullWhen(true)] out T? value) where T : unmanaged, Enum
+        public bool TryReadEnum<T>(out T value) where T : unmanaged, Enum
         {
             if (!CanRead(BinarySerializer.SizeOf<T>()))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
@@ -624,11 +870,11 @@ namespace Sphynx.Network.Serialization
             return ReadUnmanaged<T>();
         }
 
-        public bool TryReadDateTimeOffset([NotNullWhen(true)] out DateTimeOffset? dto)
+        public bool TryReadDateTimeOffset(out DateTimeOffset dto)
         {
             if (!CanRead(BinarySerializer.SizeOf<DateTimeOffset>()))
             {
-                dto = null;
+                dto = default;
                 return false;
             }
 
@@ -642,11 +888,11 @@ namespace Sphynx.Network.Serialization
             return new DateTimeOffset(ReadInt64(), TimeSpan.FromTicks(ReadInt64()));
         }
 
-        public bool TryReadDateTime([NotNullWhen(true)] out DateTime? dateTime)
+        public bool TryReadDateTime(out DateTime dateTime)
         {
             if (!CanRead(BinarySerializer.SizeOf<DateTime>()))
             {
-                dateTime = null;
+                dateTime = default;
                 return false;
             }
 
@@ -670,126 +916,113 @@ namespace Sphynx.Network.Serialization
         /// <param name="value">The unmanaged type to deserialize.</param>
         /// <typeparam name="T">The type of unmanaged type.</typeparam>
         /// <returns>true if the <paramref name="value"/> could be deserialized; false otherwise.</returns>
-        public bool TryReadUnmanaged<T>([NotNullWhen(true)] out T? value) where T : unmanaged
+        public bool TryReadUnmanaged<T>(out T value) where T : unmanaged
         {
             var typeCode = Type.GetTypeCode(typeof(T));
-
             switch (typeCode)
             {
                 case TypeCode.Boolean:
                 {
-                    bool success = TryReadBool(out bool? val);
-                    value = Unsafe.As<bool?, T?>(ref val);
+                    bool success = TryReadBool(out bool val);
+                    value = Unsafe.As<bool, T>(ref val);
                     return success;
                 }
                 case TypeCode.Byte:
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
                 {
-                    bool success = TryReadByte(out byte? val);
-                    value = Unsafe.As<byte?, T?>(ref val);
+                    bool success = TryReadUInt8(out byte val);
+                    value = Unsafe.As<byte, T>(ref val);
                     return success;
                 }
                 case TypeCode.Int16:
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
                 {
-                    bool success = TryReadInt16(out short? val);
-                    value = Unsafe.As<short?, T?>(ref val);
+                    bool success = TryReadInt16(out short val);
+                    value = Unsafe.As<short, T>(ref val);
                     return success;
                 }
                 case TypeCode.UInt16:
                 {
-                    bool success = TryReadUInt16(out ushort? val);
-                    value = Unsafe.As<ushort?, T?>(ref val);
+                    bool success = TryReadUInt16(out ushort val);
+                    value = Unsafe.As<ushort, T>(ref val);
                     return success;
                 }
                 case TypeCode.Int32:
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
                 {
-                    bool success = TryReadInt32(out int? val);
-                    value = Unsafe.As<int?, T?>(ref val);
+                    bool success = TryReadInt32(out int val);
+                    value = Unsafe.As<int, T>(ref val);
                     return success;
                 }
                 case TypeCode.UInt32:
                 {
-                    bool success = TryReadUInt32(out uint? val);
-                    value = Unsafe.As<uint?, T?>(ref val);
+                    bool success = TryReadUInt32(out uint val);
+                    value = Unsafe.As<uint, T>(ref val);
                     return success;
                 }
                 case TypeCode.Int64:
                 case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
                 {
-                    bool success = TryReadInt64(out long? val);
-                    value = Unsafe.As<long?, T?>(ref val);
+                    bool success = TryReadInt64(out long val);
+                    value = Unsafe.As<long, T>(ref val);
                     return success;
                 }
                 case TypeCode.UInt64:
                 {
-                    bool success = TryReadUInt64(out ulong? val);
-                    value = Unsafe.As<ulong?, T?>(ref val);
+                    bool success = TryReadUInt64(out ulong val);
+                    value = Unsafe.As<ulong, T>(ref val);
                     return success;
                 }
                 case TypeCode.Single:
                 {
-                    bool success = TryReadFloat(out float? val);
-                    value = Unsafe.As<float?, T?>(ref val);
+                    bool success = TryReadSingle(out float val);
+                    value = Unsafe.As<float, T>(ref val);
                     return success;
                 }
                 case TypeCode.Double:
                 {
-                    bool success = TryReadDouble(out double? val);
-                    value = Unsafe.As<double?, T?>(ref val);
+                    bool success = TryReadDouble(out double val);
+                    value = Unsafe.As<double, T>(ref val);
                     return success;
                 }
                 case TypeCode.DateTime:
                 {
                     bool success = TryReadDateTime(out var val);
-                    value = Unsafe.As<DateTime?, T?>(ref val);
+                    value = Unsafe.As<DateTime, T>(ref val);
                     return success;
                 }
                 case TypeCode.Object when typeof(T) == typeof(SnowflakeId):
                 {
                     bool success = TryReadSnowflakeId(out var val);
-                    value = Unsafe.As<SnowflakeId?, T?>(ref val);
+                    value = Unsafe.As<SnowflakeId, T>(ref val);
                     return success;
                 }
                 case TypeCode.Object when typeof(T) == typeof(Version):
                 {
                     bool success = TryReadVersion(out var val);
-                    value = Unsafe.As<Version?, T?>(ref val);
+                    value = Unsafe.As<Version, T>(ref val);
                     return success;
                 }
                 case TypeCode.Object when typeof(T) == typeof(DateTimeOffset):
                 {
                     bool success = TryReadDateTimeOffset(out var val);
-                    value = Unsafe.As<DateTimeOffset?, T?>(ref val);
+                    value = Unsafe.As<DateTimeOffset, T>(ref val);
                     return success;
                 }
                 case TypeCode.Object when typeof(T) == typeof(Guid):
                 {
                     bool success = TryReadGuid(out var val);
-                    value = Unsafe.As<Guid?, T?>(ref val);
+                    value = Unsafe.As<Guid, T>(ref val);
                     return success;
                 }
 
-                case TypeCode.Object:
+                default:
                 {
-                    if (BitConverter.IsLittleEndian)
-                    {
-                        if (MemoryMarshal.TryRead<T>(_span[Offset..], out var val))
-                        {
-                            Offset += Unsafe.SizeOf<T>();
-                            value = val;
-                            return true;
-                        }
-                    }
+                    if (Unsafe.SizeOf<T>() == sizeof(byte))
+                        goto case TypeCode.Byte;
 
-                    value = null;
+                    value = default;
                     return false;
                 }
-
-                default:
-                    value = null;
-                    return false;
             }
         }
 
@@ -812,13 +1045,11 @@ namespace Sphynx.Network.Serialization
                     return Unsafe.As<bool, T>(ref value);
                 }
                 case TypeCode.Byte:
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(byte):
                 {
-                    byte value = ReadByte();
+                    byte value = ReadUInt8();
                     return Unsafe.As<byte, T>(ref value);
                 }
                 case TypeCode.Int16:
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(short):
                 {
                     short value = ReadInt16();
                     return Unsafe.As<short, T>(ref value);
@@ -829,7 +1060,6 @@ namespace Sphynx.Network.Serialization
                     return Unsafe.As<ushort, T>(ref value);
                 }
                 case TypeCode.Int32:
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(int):
                 {
                     int value = ReadInt32();
                     return Unsafe.As<int, T>(ref value);
@@ -840,7 +1070,6 @@ namespace Sphynx.Network.Serialization
                     return Unsafe.As<uint, T>(ref value);
                 }
                 case TypeCode.Int64:
-                case TypeCode.Object when Unsafe.SizeOf<T>() == sizeof(long):
                 {
                     long value = ReadInt64();
                     return Unsafe.As<long, T>(ref value);
@@ -852,7 +1081,7 @@ namespace Sphynx.Network.Serialization
                 }
                 case TypeCode.Single:
                 {
-                    float value = ReadFloat();
+                    float value = ReadSingle();
                     return Unsafe.As<float, T>(ref value);
                 }
                 case TypeCode.Double:
@@ -886,226 +1115,347 @@ namespace Sphynx.Network.Serialization
                     return Unsafe.As<Guid, T>(ref value);
                 }
 
-                case TypeCode.Object:
-                {
-                    if (BitConverter.IsLittleEndian)
-                    {
-                        var value = MemoryMarshal.Read<T>(_span[Offset..]);
-                        Offset += Unsafe.SizeOf<T>();
-                        return value;
-                    }
-
-                    throw new ArgumentException(
-                        $"Deserialization of {typeof(T)} type is unsupported on this machine");
-                }
-
                 default:
+                {
+                    if (Unsafe.SizeOf<T>() == sizeof(byte))
+                        goto case TypeCode.Byte;
+
                     throw new ArgumentException($"Deserialization of {typeof(T)} type is unsupported");
+                }
             }
         }
 
-        public bool TryReadBool([NotNullWhen(true)] out bool? value)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryReadBool(out bool value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<bool>()))
+            if (!TryReadUInt8(out byte val))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadBool();
+            value = val != 0;
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool ReadBool()
         {
-            return ReadByte() != 0;
+            return ReadUInt8() != 0;
         }
 
-        public bool TryReadByte([NotNullWhen(true)] out byte? value)
+        public bool TryReadUInt8(out byte value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<byte>()))
+            if (!CanRead(sizeof(byte)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadByte();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryRead(out byte val);
+                Debug.Assert(read);
+
+                value = val;
+            }
+            else
+            {
+                value = _span[_spanOffset++];
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte ReadByte()
+        public byte ReadUInt8()
         {
-            return _span[Offset++];
+            if (!TryReadUInt8(out byte val))
+                throw ThrowReadException(typeof(byte));
+
+            return val;
         }
 
-        public bool TryReadUInt16([NotNullWhen(true)] out ushort? value)
+        public bool TryReadUInt16(out ushort value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<ushort>()))
+            if (!CanRead(sizeof(ushort)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadUInt16();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryReadLittleEndian(out short val);
+                Debug.Assert(read);
+
+                value = Unsafe.As<short, ushort>(ref val);
+            }
+            else
+            {
+                value = BinaryPrimitives.ReadUInt16LittleEndian(_span[_spanOffset..]);
+                _spanOffset += sizeof(ushort);
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort ReadUInt16()
         {
-            ushort value = BinaryPrimitives.ReadUInt16LittleEndian(_span[Offset..]);
-            Offset += sizeof(ushort);
-            return value;
+            if (!TryReadUInt16(out ushort val))
+                throw ThrowReadException(typeof(ushort));
+
+            return val;
         }
 
-        public bool TryReadInt16([NotNullWhen(true)] out short? value)
+        public bool TryReadInt16(out short value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<short>()))
+            if (!CanRead(sizeof(short)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadInt16();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryReadLittleEndian(out short val);
+                Debug.Assert(read);
+
+                value = val;
+            }
+            else
+            {
+                value = BinaryPrimitives.ReadInt16LittleEndian(_span[_spanOffset..]);
+                _spanOffset += sizeof(short);
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private short ReadInt16()
         {
-            short value = BinaryPrimitives.ReadInt16LittleEndian(_span[Offset..]);
-            Offset += sizeof(short);
-            return value;
+            if (!TryReadInt16(out short val))
+                throw ThrowReadException(typeof(short));
+
+            return val;
         }
 
-        public bool TryReadUInt32([NotNullWhen(true)] out uint? value)
+        public bool TryReadUInt32(out uint value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<uint>()))
+            if (!CanRead(sizeof(uint)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadUInt32();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryReadLittleEndian(out int val);
+                Debug.Assert(read);
+
+                value = Unsafe.As<int, uint>(ref val);
+            }
+            else
+            {
+                value = BinaryPrimitives.ReadUInt32LittleEndian(_span[_spanOffset..]);
+                _spanOffset += sizeof(uint);
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint ReadUInt32()
         {
-            uint value = BinaryPrimitives.ReadUInt32LittleEndian(_span[Offset..]);
-            Offset += sizeof(uint);
-            return value;
+            if (!TryReadUInt32(out uint val))
+                throw ThrowReadException(typeof(uint));
+
+            return val;
         }
 
-        public bool TryReadInt32([NotNullWhen(true)] out int? value)
+        public bool TryReadInt32(out int value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<int>()))
+            if (!CanRead(sizeof(int)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadInt32();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryReadLittleEndian(out int val);
+                Debug.Assert(read);
+
+                value = val;
+            }
+            else
+            {
+                value = BinaryPrimitives.ReadInt32LittleEndian(_span[_spanOffset..]);
+                _spanOffset += sizeof(int);
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ReadInt32()
         {
-            int value = BinaryPrimitives.ReadInt32LittleEndian(_span[Offset..]);
-            Offset += sizeof(int);
-            return value;
+            if (!TryReadInt32(out int val))
+                throw ThrowReadException(typeof(int));
+
+            return val;
         }
 
-        public bool TryReadUInt64([NotNullWhen(true)] out ulong? value)
+        public bool TryReadUInt64(out ulong value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<ulong>()))
+            if (!CanRead(sizeof(ulong)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadUInt64();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryReadLittleEndian(out long val);
+                Debug.Assert(read);
+
+                value = Unsafe.As<long, ulong>(ref val);
+            }
+            else
+            {
+                value = BinaryPrimitives.ReadUInt64LittleEndian(_span[_spanOffset..]);
+                _spanOffset += sizeof(ulong);
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong ReadUInt64()
         {
-            ulong value = BinaryPrimitives.ReadUInt64LittleEndian(_span[Offset..]);
-            Offset += sizeof(ulong);
-            return value;
+            if (!TryReadUInt64(out ulong val))
+                throw ThrowReadException(typeof(ulong));
+
+            return val;
         }
 
-        public bool TryReadInt64([NotNullWhen(true)] out long? value)
+        public bool TryReadInt64(out long value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<long>()))
+            if (!CanRead(sizeof(long)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadInt64();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryReadLittleEndian(out long val);
+                Debug.Assert(read);
+
+                value = val;
+            }
+            else
+            {
+                value = BinaryPrimitives.ReadInt64LittleEndian(_span[_spanOffset..]);
+                _spanOffset += sizeof(long);
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public long ReadInt64()
         {
-            long value = BinaryPrimitives.ReadInt64LittleEndian(_span[Offset..]);
-            Offset += sizeof(long);
-            return value;
+            if (!TryReadInt64(out long val))
+                throw ThrowReadException(typeof(long));
+
+            return val;
         }
 
-        public bool TryReadFloat([NotNullWhen(true)] out float? value)
+        public bool TryReadSingle(out float value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<float>()))
+            if (!CanRead(sizeof(float)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadFloat();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryReadLittleEndian(out int val);
+                Debug.Assert(read);
+
+                value = BitConverter.Int32BitsToSingle(val);
+            }
+            else
+            {
+                value = BinaryPrimitives.ReadSingleLittleEndian(_span[_spanOffset..]);
+                _spanOffset += sizeof(float);
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float ReadFloat()
+        public float ReadSingle()
         {
-            float value = BinaryPrimitives.ReadSingleLittleEndian(_span[Offset..]);
-            Offset += sizeof(float);
-            return value;
+            if (!TryReadSingle(out float val))
+                throw ThrowReadException(typeof(float));
+
+            return val;
         }
 
-        public bool TryReadDouble([NotNullWhen(true)] out double? value)
+        public bool TryReadDouble(out double value)
         {
-            if (!CanRead(BinarySerializer.SizeOf<double>()))
+            if (!CanRead(sizeof(double)))
             {
-                value = null;
+                value = default;
                 return false;
             }
 
-            value = ReadDouble();
+            if (_useSequence)
+            {
+                bool read = _sequence.TryReadLittleEndian(out long val);
+                Debug.Assert(read);
+
+                value = BitConverter.Int64BitsToDouble(val);
+            }
+            else
+            {
+                value = BinaryPrimitives.ReadDoubleLittleEndian(_span[_spanOffset..]);
+                _spanOffset += sizeof(double);
+            }
+
             return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double ReadDouble()
         {
-            double value = BinaryPrimitives.ReadDoubleLittleEndian(_span[Offset..]);
-            Offset += sizeof(double);
-            return value;
+            if (!TryReadDouble(out double val))
+                throw ThrowReadException(typeof(double));
+
+            return val;
         }
 
         #endregion
 
+        // TODO: Maybe remove this and simply speed-read on non-TryReadXXX methods
+        [DoesNotReturn]
+        private Exception ThrowReadException(Type type)
+        {
+            throw new InvalidOperationException($"Could not read {type}");
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool CanRead(int size)
         {
-            return size >= 0 && Offset <= _span.Length - size;
+            Debug.Assert(size >= 0);
+
+            long remaining = _useSequence ? _sequence.Remaining : _span.Length - _spanOffset;
+            return remaining >= size;
         }
     }
 }

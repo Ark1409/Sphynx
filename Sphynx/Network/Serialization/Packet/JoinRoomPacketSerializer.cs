@@ -12,25 +12,18 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class JoinRoomRequestSerializer : RequestSerializer<JoinRoomRequest>
     {
-        protected override int GetMaxSizeInternal(JoinRoomRequest packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(packet.Password);
-        }
-
-        protected override bool SerializeInternal(JoinRoomRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(JoinRoomRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteString(packet.Password);
-            return true;
         }
 
-        protected override JoinRoomRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
+        protected override JoinRoomRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
-            string password = deserializer.ReadString();
+            string password = deserializer.ReadString()!;
 
-            return new JoinRoomRequest(requestInfo.UserId, requestInfo.SessionId, roomId,
-                string.IsNullOrEmpty(password) ? null : password);
+            return new JoinRoomRequest(requestInfo.AccessToken, roomId, string.IsNullOrEmpty(password) ? null : password);
         }
     }
 
@@ -43,48 +36,34 @@ namespace Sphynx.Network.Serialization.Packet
             _roomSerializer = roomSerializer;
         }
 
-        protected override int GetMaxSizeInternal(JoinRoomResponse packet)
+        protected override void SerializeInternal(JoinRoomResponse packet, ref BinarySerializer serializer)
         {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return 0;
+            if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return;
 
-            return _roomSerializer.GetMaxSize(packet.RoomInfo!);
+            _roomSerializer.Serialize(packet.RoomInfo!, ref serializer);
         }
 
-        protected override bool SerializeInternal(JoinRoomResponse packet, ref BinarySerializer serializer)
+        protected override JoinRoomResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            if (packet.ErrorCode != SphynxErrorCode.SUCCESS)
-                return true;
+            if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
+                return new JoinRoomResponse(responseInfo.ErrorInfo);
 
-            return _roomSerializer.TrySerializeUnsafe(packet.RoomInfo!, ref serializer);
-        }
+            var roomInfo = _roomSerializer.Deserialize(ref deserializer)!;
 
-        protected override JoinRoomResponse? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
-        {
-            if (responseInfo.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new JoinRoomResponse(responseInfo.ErrorCode);
-
-            return _roomSerializer.TryDeserialize(ref deserializer, out var room)
-                ? new JoinRoomResponse(room)
-                : null;
+            return new JoinRoomResponse(roomInfo);
         }
     }
 
     public class JoinedRoomBroadcastSerializer : PacketSerializer<JoinedRoomBroadcast>
     {
-        public override int GetMaxSize(JoinedRoomBroadcast packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
-        }
-
-        protected override bool Serialize(JoinedRoomBroadcast packet, ref BinarySerializer serializer)
+        public override void Serialize(JoinedRoomBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.JoinerId);
-            return true;
         }
 
-        protected override JoinedRoomBroadcast Deserialize(ref BinaryDeserializer deserializer)
+        public override JoinedRoomBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var joinerId = deserializer.ReadSnowflakeId();

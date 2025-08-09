@@ -13,8 +13,6 @@ namespace Sphynx.Server.Auth
     /// </summary>
     public class SphynxClient : SphynxTcpClient
     {
-        private readonly IRateLimiter _rateLimiter = new TokenBucketRateLimiter(tokensPerSecond: 1, 1);
-
         public SphynxClient(Socket socket, SphynxTcpServerProfile profile) : base(socket, profile)
         {
         }

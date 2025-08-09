@@ -25,6 +25,9 @@ namespace Sphynx.Core
         /// </summary>
         public static readonly SnowflakeId Empty = default;
 
+        public static readonly SnowflakeId MaxValue = new(DateTimeOffset.MaxValue.ToUnixTimeMilliseconds(), -1);
+        public static readonly SnowflakeId MinValue = new(DateTimeOffset.MinValue.ToUnixTimeMilliseconds(), 0);
+
         private readonly long _a; // timestamp
         private readonly int _b; // sequence number + machine id
 
@@ -32,6 +35,8 @@ namespace Sphynx.Core
         /// Returns the timestamp for this id.
         /// </summary>
         public long Timestamp => _a;
+
+        public DateTimeOffset DateTime => DateTimeOffset.FromUnixTimeMilliseconds(Timestamp);
 
         /// <summary>
         /// Returns the sequence number for this id.
@@ -217,6 +222,7 @@ namespace Sphynx.Core
         public override string ToString()
         {
             // Each byte requires two chars in hex
+            // TODO: Trim to 20 chars (DateTimeOffset.MaxValue)
             const int CHARS_PER_BYTE = 2;
 
             string hex = string.Create(SIZE * CHARS_PER_BYTE, this, static (span, inst) =>

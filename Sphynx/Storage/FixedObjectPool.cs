@@ -1,6 +1,8 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace Sphynx.Storage
 {
     /// <summary>
@@ -39,7 +41,7 @@ namespace Sphynx.Storage
         /// </summary>
         /// <param name="item">The item taken from the pool.</param>
         /// <returns>Whether we could take from the pool.</returns>
-        public bool TryTake(out T? item)
+        public bool TryTake([NotNullWhen(true)] out T? item)
         {
             // If allowed, we de not synchronize our initial read.
             // In the worst case, we miss some recently returned objects.

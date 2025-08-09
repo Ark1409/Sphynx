@@ -31,8 +31,8 @@ namespace Sphynx.ServerV2.Infrastructure.Middleware
         /// <param name="client">The client associated with the packet.</param>
         /// <param name="packet">The packet to be processed.</param>
         /// <param name="next">The next middleware or handler in the pipeline</param>
-        /// <param name="token">A cancellation token for the pipeline.</param>
-        Task InvokeAsync(ISphynxClient client, TPacket packet, NextDelegate<TPacket> next, CancellationToken token = default);
+        /// <param name="cancellationToken">A cancellation token for the pipeline.</param>
+        Task InvokeAsync(ISphynxClient client, TPacket packet, NextDelegate<TPacket> next, CancellationToken cancellationToken = default);
     }
 
     /// <summary>

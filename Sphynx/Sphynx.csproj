@@ -28,6 +28,7 @@
 
     <ItemGroup>
         <PackageReference Include="FastEnum" Version="1.8.0"/>
+        <PackageReference Include="Nerdbank.Streams" Version="2.11.92" />
     </ItemGroup>
 
 </Project>

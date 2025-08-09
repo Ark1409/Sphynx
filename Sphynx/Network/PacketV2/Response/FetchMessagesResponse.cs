@@ -18,8 +18,8 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="FetchMessagesResponse"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for logout attempt.</param>
-        public FetchMessagesResponse(SphynxErrorCode errorCode) : base(errorCode)
+        /// <param name="errorInfo">Error code for logout attempt.</param>
+        public FetchMessagesResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 

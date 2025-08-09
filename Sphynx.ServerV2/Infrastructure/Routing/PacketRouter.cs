@@ -21,7 +21,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
         /// </summary>
         public bool ThrowOnUnregistered { get; set; } = true;
 
-        private readonly Dictionary<Type, NonGenericPacketPipeline> _pipelines = new();
+        private readonly Dictionary<Type, SphynxPacketPipeline> _pipelines = new();
 
         /// <summary>
         /// Applies middleware to the handlers of type <typeparamref name="TPacket"/> and all its children.
@@ -36,7 +36,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
             if (!TryGetPipeline(packetType, out var pipeline))
             {
-                pipeline = NonGenericPacketPipeline.Create(packetType, TryGetPipeline(packetType, out var parentPipeline, true)
+                pipeline = SphynxPacketPipeline.Create(packetType, TryGetPipeline(packetType, out var parentPipeline, true)
                     ? parentPipeline.Handler
                     : NullPacketHandler.Instance);
 
@@ -62,7 +62,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
 
             if (!TryGetPipeline(packetType, out var pipeline))
             {
-                pipeline = NonGenericPacketPipeline.Create(handler);
+                pipeline = SphynxPacketPipeline.Create(handler);
                 AddParentMiddleware(pipeline);
 
                 _pipelines[packetType] = pipeline;
@@ -78,13 +78,13 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
         {
             if (!TryGetPipeline(packet.GetType(), out var pipeline, true))
                 return ThrowOnUnregistered
-                    ? Task.FromException(new ArgumentException($"No existing pipeline for packet {packet.PacketType}"))
+                    ? Task.FromException(new ArgumentException($"No existing pipeline for packet {packet.GetType()}"))
                     : Task.CompletedTask;
 
             return pipeline.ExecuteAsync(client, packet, cancellationToken);
         }
 
-        private void AddParentMiddleware(NonGenericPacketPipeline pipeline)
+        private void AddParentMiddleware(SphynxPacketPipeline pipeline)
         {
             if (!TryGetPipeline(pipeline.PacketType, out var parentPipeline, true))
                 return;
@@ -107,9 +107,9 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
             }
         }
 
-        private bool TryGetPipeline(Type packetType, [NotNullWhen(true)] out NonGenericPacketPipeline? pipeline, bool tryParent = false)
+        private bool TryGetPipeline(Type packetType, [NotNullWhen(true)] out SphynxPacketPipeline? pipeline, bool tryParent = false)
         {
-            Debug.Assert(typeof(SphynxPacket).IsAssignableFrom(packetType), $"Attempted to get pipeline for non-{nameof(SphynxPacket)} type?");
+            Debug.Assert(typeof(SphynxPacket).IsAssignableFrom(packetType), $"Attempted to get pipeline for non-{nameof(SphynxPacket)}?");
 
             if (_pipelines.Count == 0)
             {

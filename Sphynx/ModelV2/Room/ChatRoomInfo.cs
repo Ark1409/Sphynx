@@ -18,7 +18,7 @@ namespace Sphynx.ModelV2.Room
         /// <summary>
         /// Returns the type of this <see cref="ChatRoomInfo"/>.
         /// </summary>
-        public ChatRoomType RoomType { get; set; }
+        public abstract ChatRoomType RoomType { get; }
 
         /// <summary>
         /// The name of this chat room.
@@ -29,10 +29,9 @@ namespace Sphynx.ModelV2.Room
         {
         }
 
-        public ChatRoomInfo(SnowflakeId roomId, ChatRoomType roomType, string name)
+        public ChatRoomInfo(SnowflakeId roomId, string name)
         {
             RoomId = roomId;
-            RoomType = roomType;
             Name = name;
         }
 

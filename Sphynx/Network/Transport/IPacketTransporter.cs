@@ -11,10 +11,8 @@ namespace Sphynx.Network.Transport
     /// </summary>
     public interface IPacketTransporter
     {
-        // TODO: Provide an exceptionless API? (barring maybe cancellation)
-
         /// <summary>
-        /// Sends a <paramref name="packet"/> to the underlying <paramref name="stream"/>.
+        /// Sends a single <paramref name="packet"/> to the underlying <paramref name="stream"/>.
         /// </summary>
         /// <param name="stream">The stream to send the packet to.</param>
         /// <param name="packet">The packet to send.</param>
@@ -25,7 +23,7 @@ namespace Sphynx.Network.Transport
         ValueTask SendAsync(Stream stream, SphynxPacket packet, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Receives a packet from the underlying <paramref name="stream"/>.
+        /// Receives a single packet from the underlying <paramref name="stream"/>.
         /// </summary>
         /// <param name="stream">The stream to receive the packet from.</param>
         /// <param name="cancellationToken">A cancellation token for the reception request.</param>

@@ -34,7 +34,7 @@ namespace Sphynx.Test.Storage
         public void GetOrAdd_ShouldReturnExistingEntry_WhenAlreadyExists()
         {
             // Arrange
-            using var cache = new MemoryCache<int, string>(TimeSpan.FromDays(365));
+            using var cache = new MemoryCache<int, string>(TimeSpan.FromDays(24));
 
             Assert.That(cache.TryAdd(1, "1", TimeSpan.FromHours(1)));
 

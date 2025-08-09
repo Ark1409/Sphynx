@@ -20,9 +20,10 @@ namespace Sphynx.Server.Auth.Middleware
 
         public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token = default)
         {
-            token.ThrowIfCancellationRequested();
+            if (token.IsCancellationRequested)
+                return Task.FromCanceled(token);
 
-            if (packet is not LoginRequest && packet is not RegisterRequest)
+            if (packet is not LoginRequest && packet is not RegisterRequest && packet is not RefreshTokenRequest)
             {
                 if (_logger.IsEnabled(LogLevel.Warning))
                     _logger.LogWarning("Rejecting packet of type {PacketType} received from {EndPoint}", packet.PacketType, client.EndPoint);
