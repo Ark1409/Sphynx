@@ -634,7 +634,7 @@ namespace Sphynx.Network.Serialization
             _bytesWritten += sizeof(ushort);
         }
 
-        private void WriteInt16(short value)
+        public void WriteInt16(short value)
         {
             if (HasBuffer)
             {

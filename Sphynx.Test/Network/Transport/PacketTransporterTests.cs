@@ -20,11 +20,11 @@ namespace Sphynx.Test.Network.Transport
         [SetUp]
         public void SetUp()
         {
-            _transporter = new PacketTransporter();
+            _transporter = new PacketTransporter(null!);
 
-            _transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer())
-                .AddSerializer(SphynxPacketType.LOGOUT_REQ, new LogoutRequestSerializer())
-                .AddSerializer(SphynxPacketType.MSG_REQ, new MessagePostRequestSerializer());
+            // _transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer())
+            //     .AddSerializer(SphynxPacketType.LOGOUT_REQ, new LogoutRequestSerializer())
+            //     .AddSerializer(SphynxPacketType.MSG_REQ, new MessagePostRequestSerializer());
 
             _transporter.Version = new Version(0, 0, 1);
         }
@@ -114,7 +114,7 @@ namespace Sphynx.Test.Network.Transport
                 await _transporter.SendAsync(stream, packet).ConfigureAwait(false);
 
             stream.Seek(0, SeekOrigin.Begin);
-            _transporter.ClearSerializers();
+            // _transporter.ClearSerializers();
 
             // Act + Assert
             for (int i = 0; i < packets.Length; i++)
