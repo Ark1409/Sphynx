@@ -22,6 +22,13 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="MessagePostRequest"/>.
         /// </summary>
+        public MessagePostRequest() : base()
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="MessagePostRequest"/>.
+        /// </summary>
         /// <param name="accessToken">The JWT access token for this request.</param>
         public MessagePostRequest(string accessToken) : base(accessToken)
         {

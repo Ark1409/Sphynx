@@ -481,21 +481,6 @@ namespace Sphynx.Network.Serialization
 
         internal void WriteRaw(in ReadOnlySequence<byte> raw)
         {
-            if (raw.IsSingleSegment && raw.Length <= int.MaxValue - sizeof(int))
-                WriteRaw(raw.FirstSpan);
-            else
-                WriteRawSlow(in raw);
-        }
-
-        private void WriteRawSlow(in ReadOnlySequence<byte> raw)
-        {
-            int count = 0;
-
-            foreach (var _ in raw)
-                count++;
-
-            WriteInt32(count);
-
             foreach (var segment in raw)
                 WriteRaw(segment.Span);
         }

@@ -28,7 +28,7 @@ namespace Sphynx.Network.Transport
 
         public PacketTransporter(ITypeSerializer<SphynxPacket> packetSerializer)
         {
-            PacketSerializer = packetSerializer /*?? throw new ArgumentNullException(nameof(packetSerializer))*/;
+            PacketSerializer = packetSerializer ?? throw new ArgumentNullException(nameof(packetSerializer));
         }
 
         // NOTE: not async to reduce state machine overhead

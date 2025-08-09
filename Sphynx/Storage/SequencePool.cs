@@ -25,7 +25,7 @@ namespace Sphynx.Storage
     // copies or substantial portions of the Software.
 
     /// <summary>
-    /// A thread-safe, alloc-free reusable <see cref="Sequence{byte}"/> pool.
+    /// A thread-safe, alloc-free reusable Sequence&lt;byte&gt; pool.
     /// </summary>
     public sealed class SequencePool
     {

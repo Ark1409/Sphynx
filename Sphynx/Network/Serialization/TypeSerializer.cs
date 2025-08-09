@@ -71,7 +71,7 @@ namespace Sphynx.Network.Serialization
             }
 
             // Slow path
-            byte[] rentArray = ArrayPool<byte>.Shared.Rent(deserializer.UnreadSpan.Length); // TODO: Sequence? Parition the span perhaps
+            byte[] rentArray = ArrayPool<byte>.Shared.Rent(deserializer.UnreadSpan.Length); // TODO: Sequence? Partition the span perhaps
 
             try
             {
@@ -79,6 +79,7 @@ namespace Sphynx.Network.Serialization
 
                 var instance = serializer.Deserialize(new ReadOnlySequence<byte>(rentArray.AsMemory()), out long bytesRead);
                 deserializer.Offset += bytesRead;
+
                 return instance;
             }
             finally

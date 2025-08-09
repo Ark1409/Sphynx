@@ -8,11 +8,11 @@ namespace Sphynx.Network.Serialization
 {
     public class PacketTooLargeException : SerializationException
     {
-        public SphynxPacket? Packet { get; init; }
-        public int Size { get; init; }
+        public SphynxPacket? Packet { get; }
+        public int Size { get; }
 
         public PacketTooLargeException(SphynxPacket? packet, int size)
-            : this(packet, size, $"Packet {packet} is too large ({size} bytes)")
+            : this(packet, size, $"Packet {packet?.ToString() ?? string.Empty} is too large ({size} bytes)")
         {
         }
 
