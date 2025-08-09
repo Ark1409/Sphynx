@@ -1,18 +1,11 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.IO.Pipelines;
-using System.IO.Pipes;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
-using Nerdbank.Streams;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.Serialization;
-using Sphynx.Network.Serialization.Packet;
 using Sphynx.Storage;
 using Sphynx.Utils;
 using Version = Sphynx.Core.Version;
@@ -21,7 +14,7 @@ namespace Sphynx.Network.Transport
 {
     public class PacketTransporter : IPacketTransporter
     {
-        public int MaxPacketSize { get; set; } = int.MaxValue - 1;
+        public int MaxPacketSize { get; set; } = Array.MaxLength;
         public ITypeSerializer<SphynxPacket> PacketSerializer { get; set; }
 
         public Version Version { get; set; }

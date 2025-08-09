@@ -1,9 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Serialization;
-using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization
 {
@@ -20,7 +18,7 @@ namespace Sphynx.Network.Serialization
         {
             serializer.WriteInt32(model.Length);
 
-            foreach (var item in model.AsSpan())
+            foreach (var item in model)
                 _innerSerializer.Serialize(item, ref serializer);
         }
 
@@ -37,10 +35,9 @@ namespace Sphynx.Network.Serialization
                 return Array.Empty<T>();
 
             var array = new T?[size];
-            var span = array.AsSpan();
 
-            for (int i = 0; i < span.Length; i++)
-                span[i] = _innerSerializer.Deserialize(ref deserializer);
+            for (int i = 0; i < array.Length; i++)
+                array[i] = _innerSerializer.Deserialize(ref deserializer);
 
             return array;
         }
