@@ -6,30 +6,30 @@ using Sphynx.Network.PacketV2;
 using Sphynx.ServerV2.Client;
 using Sphynx.ServerV2.Infrastructure.Handlers;
 using Sphynx.ServerV2.Infrastructure.Middleware;
-using NonGenericHandler = Sphynx.ServerV2.Infrastructure.Handlers.IPacketHandler<Sphynx.Network.PacketV2.SphynxPacket>;
-using NonGenericMiddleware = Sphynx.ServerV2.Infrastructure.Middleware.IPacketMiddleware<Sphynx.Network.PacketV2.SphynxPacket>;
+using SphynxPacketHandler = Sphynx.ServerV2.Infrastructure.Handlers.IPacketHandler<Sphynx.Network.PacketV2.SphynxPacket>;
+using SphynxPacketMiddleware = Sphynx.ServerV2.Infrastructure.Middleware.IPacketMiddleware<Sphynx.Network.PacketV2.SphynxPacket>;
 
 namespace Sphynx.ServerV2.Infrastructure.Routing
 {
-    public class NonGenericPacketPipeline
+    public class SphynxPacketPipeline
     {
-        public NonGenericHandler Handler { get; private set; }
-        public IEnumerable<NonGenericMiddleware> Middleware => _middleware ?? Enumerable.Empty<NonGenericMiddleware>();
+        public SphynxPacketHandler Handler { get; private set; }
+        public IEnumerable<SphynxPacketMiddleware> Middleware => _middleware ?? Enumerable.Empty<SphynxPacketMiddleware>();
 
         public Type PacketType { get; }
 
         private NextDelegate<SphynxPacket> Pipeline => _pipelineCache ??= BuildPipeline();
         private NextDelegate<SphynxPacket>? _pipelineCache;
 
-        private List<NonGenericMiddleware>? _middleware;
+        private List<SphynxPacketMiddleware>? _middleware;
 
-        private NonGenericPacketPipeline(Type packetType, NonGenericHandler handler)
+        private SphynxPacketPipeline(Type packetType, SphynxPacketHandler handler)
         {
             PacketType = packetType;
             Handler = handler;
         }
 
-        public static NonGenericPacketPipeline Create(Type packetType, NonGenericHandler handler)
+        public static SphynxPacketPipeline Create(Type packetType, SphynxPacketHandler handler)
         {
             ArgumentNullException.ThrowIfNull(packetType);
             ArgumentNullException.ThrowIfNull(handler);
@@ -37,20 +37,22 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
             if (!typeof(SphynxPacket).IsAssignableFrom(packetType))
                 throw new ArgumentException($"Packet type {packetType} does not derive from {typeof(SphynxPacket)}", nameof(packetType));
 
-            return new NonGenericPacketPipeline(packetType, handler);
+            return new SphynxPacketPipeline(packetType, handler);
         }
 
-        public static NonGenericPacketPipeline Create<TPacket>(IPacketHandler<TPacket> handler) where TPacket : SphynxPacket
+        public static SphynxPacketPipeline Create<TPacket>(IPacketHandler<TPacket> handler) where TPacket : SphynxPacket
         {
             ArgumentNullException.ThrowIfNull(handler);
 
-            var nonGenericHandler = handler as NonGenericHandler ?? new NonGenericHandlerAdapter<TPacket>(handler);
-            return new NonGenericPacketPipeline(typeof(TPacket), nonGenericHandler);
+            var nonGenericHandler = handler as SphynxPacketHandler ?? new GenericHandlerAdapter<TPacket>(handler);
+            return new SphynxPacketPipeline(typeof(TPacket), nonGenericHandler);
         }
 
         public Task ExecuteAsync(ISphynxClient client, SphynxPacket packet, CancellationToken token = default)
         {
-            token.ThrowIfCancellationRequested();
+            if (token.IsCancellationRequested)
+                return Task.FromCanceled(token);
+
             return _middleware?.Count == 0 ? Handler.HandlePacketAsync(client, packet, token) : Pipeline(client, packet, token);
         }
 
@@ -61,10 +63,10 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
             if (!typeof(TParent).IsAssignableFrom(PacketType))
                 throw new ArgumentException($"Cannot use middleware of {typeof(TParent)} on packet {PacketType}", nameof(middleware));
 
-            var nonGenericMiddleware = middleware as NonGenericMiddleware ?? new NonGenericMiddlewareAdapter<TParent>(middleware);
+            var sphynxPacketMiddleware = middleware as SphynxPacketMiddleware ?? new GenericMiddlewareAdapter<TParent>(middleware);
 
-            _middleware ??= new List<NonGenericMiddleware>();
-            _middleware.Add(nonGenericMiddleware);
+            _middleware ??= new List<SphynxPacketMiddleware>();
+            _middleware.Add(sphynxPacketMiddleware);
 
             InvalidatePipeline();
         }
@@ -73,16 +75,16 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
         {
             ArgumentNullException.ThrowIfNull(handler);
 
-            if (Handler == handler || (Handler is NonGenericHandlerAdapter<TPacket> nonGeneric && nonGeneric.InnerHandler == handler))
+            if (Handler == handler || (Handler is GenericHandlerAdapter<TPacket> nonGeneric && nonGeneric.InnerHandler == handler))
                 return;
 
             if (PacketType != typeof(TPacket))
                 throw new ArgumentException($"Cannot use handler of {typeof(TPacket)} on packet {PacketType}", nameof(handler));
 
-            if (Handler is NonGenericHandlerAdapter<TPacket> nonGenericHandler)
-                nonGenericHandler.InnerHandler = handler;
+            if (Handler is GenericHandlerAdapter<TPacket> handlerAdapter)
+                handlerAdapter.InnerHandler = handler;
             else
-                Handler = handler as NonGenericHandler ?? new NonGenericHandlerAdapter<TPacket>(handler);
+                Handler = handler as SphynxPacketHandler ?? new GenericHandlerAdapter<TPacket>(handler);
 
             InvalidatePipeline();
         }
@@ -108,21 +110,21 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void InvalidatePipeline() => _pipelineCache = null;
 
-        private class NonGenericHandlerAdapter<TPacket> : NonGenericHandler where TPacket : SphynxPacket
+        private class GenericHandlerAdapter<TPacket> : SphynxPacketHandler where TPacket : SphynxPacket
         {
             internal IPacketHandler<TPacket> InnerHandler { get; set; }
 
-            public NonGenericHandlerAdapter(IPacketHandler<TPacket> innerHandler) => InnerHandler = innerHandler;
+            public GenericHandlerAdapter(IPacketHandler<TPacket> innerHandler) => InnerHandler = innerHandler;
 
             public Task HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken token) =>
                 InnerHandler.HandlePacketAsync(client, (TPacket)packet, token);
         }
 
-        private class NonGenericMiddlewareAdapter<TPacket> : NonGenericMiddleware where TPacket : SphynxPacket
+        private class GenericMiddlewareAdapter<TPacket> : SphynxPacketMiddleware where TPacket : SphynxPacket
         {
             internal IPacketMiddleware<TPacket> InnerMiddleware { get; set; }
 
-            public NonGenericMiddlewareAdapter(IPacketMiddleware<TPacket> innerMiddleware) => InnerMiddleware = innerMiddleware;
+            public GenericMiddlewareAdapter(IPacketMiddleware<TPacket> innerMiddleware) => InnerMiddleware = innerMiddleware;
 
             public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token) =>
                 InnerMiddleware.InvokeAsync(client, (TPacket)packet, next, token);

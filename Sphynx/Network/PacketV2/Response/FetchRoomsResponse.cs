@@ -18,8 +18,8 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="FetchRoomsResponse"/>.
         /// </summary>
-        /// <param name="errorCode">The error code for the response packet.</param>
-        public FetchRoomsResponse(SphynxErrorCode errorCode) : base(errorCode)
+        /// <param name="errorInfo">The error code for the response packet.</param>
+        public FetchRoomsResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 

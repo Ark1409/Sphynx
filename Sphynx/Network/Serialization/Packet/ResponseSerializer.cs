@@ -8,35 +8,31 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public abstract class ResponseSerializer<T> : PacketSerializer<T> where T : SphynxResponse
     {
-        public sealed override int GetMaxSize(T packet)
+        public sealed override void Serialize(T packet, ref BinarySerializer serializer)
         {
-            return BinarySerializer.MaxSizeOf<SphynxErrorCode>() + GetMaxSizeInternal(packet);
+            serializer.WriteEnum(packet.ErrorInfo.ErrorCode);
+            serializer.WriteString(packet.ErrorInfo.Message);
+
+            SerializeInternal(packet, ref serializer);
         }
 
-        protected abstract int GetMaxSizeInternal(T packet);
+        protected abstract void SerializeInternal(T packet, ref BinarySerializer serializer);
 
-        protected sealed override bool Serialize(T packet, ref BinarySerializer serializer)
-        {
-            serializer.WriteEnum(packet.ErrorCode);
-
-            return SerializeInternal(packet, ref serializer);
-        }
-
-        protected abstract bool SerializeInternal(T packet, ref BinarySerializer serializer);
-
-        protected sealed override T? Deserialize(ref BinaryDeserializer deserializer)
+        public sealed override T? Deserialize(ref BinaryDeserializer deserializer)
         {
             var errorCode = deserializer.ReadEnum<SphynxErrorCode>();
-            var responseInfo = new ResponseInfo { ErrorCode = errorCode };
+            string? errorMessage = deserializer.ReadString();
+
+            var responseInfo = new ResponseInfo { ErrorInfo = new SphynxErrorInfo(errorCode, errorMessage) };
 
             return DeserializeInternal(ref deserializer, responseInfo);
         }
 
-        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo);
+        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo);
     }
 
     public readonly struct ResponseInfo
     {
-        public SphynxErrorCode ErrorCode { get; init; }
+        public SphynxErrorInfo ErrorInfo { get; init; }
     }
 }

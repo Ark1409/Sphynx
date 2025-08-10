@@ -44,7 +44,7 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
 
         public TokenBucketRateLimiter(int tokensPerPeriod, int maxTokens, TimeSpan period)
         {
-            if (tokensPerPeriod <= 0)
+            if (tokensPerPeriod < 0)
                 throw new ArgumentOutOfRangeException(nameof(tokensPerPeriod), "Tokens per period must be positive");
 
             if (maxTokens < 0)
@@ -71,7 +71,7 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
                 return ValueTask.FromResult(TimeSpan.Zero);
 
             if (count > MaxTokens)
-                return ValueTask.FromResult(Timeout.InfiniteTimeSpan);
+                return ValueTask.FromResult(TimeSpan.MaxValue);
 
             return ConsumeInternalAsync(count, cancellationToken);
         }

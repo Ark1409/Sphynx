@@ -10,60 +10,42 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class MessagePostRequestSerializer : RequestSerializer<MessagePostRequest>
     {
-        protected override int GetMaxSizeInternal(MessagePostRequest packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf(packet.Message);
-        }
-
-        protected override bool SerializeInternal(MessagePostRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeInternal(MessagePostRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteString(packet.Message);
-            return true;
         }
 
-        protected override MessagePostRequest DeserializeInternal(ref BinaryDeserializer deserializer, RequestInfo requestInfo)
+        protected override MessagePostRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var roomId = deserializer.ReadSnowflakeId();
-            string message = deserializer.ReadString();
+            string message = deserializer.ReadString() ?? string.Empty;
 
-            return new MessagePostRequest(requestInfo.UserId, requestInfo.SessionId, roomId, message);
+            return new MessagePostRequest(requestInfo.AccessToken, roomId, message);
         }
     }
 
     public class MessagePostResponseSerializer : ResponseSerializer<MessagePostResponse>
     {
-        protected override int GetMaxSizeInternal(MessagePostResponse packet)
+        protected override void SerializeInternal(MessagePostResponse packet, ref BinarySerializer serializer)
         {
-            return 0;
         }
 
-        protected override bool SerializeInternal(MessagePostResponse packet, ref BinarySerializer serializer)
+        protected override MessagePostResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            return true;
-        }
-
-        protected override MessagePostResponse DeserializeInternal(ref BinaryDeserializer deserializer, ResponseInfo responseInfo)
-        {
-            return new MessagePostResponse(responseInfo.ErrorCode);
+            return new MessagePostResponse(responseInfo.ErrorInfo);
         }
     }
 
     public class MessagePostedBroadcastSerializer : PacketSerializer<MessagePostedBroadcast>
     {
-        public override int GetMaxSize(MessagePostedBroadcast packet)
-        {
-            return BinarySerializer.MaxSizeOf<SnowflakeId>() + BinarySerializer.MaxSizeOf<SnowflakeId>();
-        }
-
-        protected override bool Serialize(MessagePostedBroadcast packet, ref BinarySerializer serializer)
+        public override void Serialize(MessagePostedBroadcast packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.RoomId);
             serializer.WriteSnowflakeId(packet.MessageId);
-            return true;
         }
 
-        protected override MessagePostedBroadcast Deserialize(ref BinaryDeserializer deserializer)
+        public override MessagePostedBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
             var roomId = deserializer.ReadSnowflakeId();
             var messageId = deserializer.ReadSnowflakeId();

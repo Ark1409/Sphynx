@@ -29,12 +29,12 @@ namespace Sphynx.ServerV2.Persistence.Room
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorCode> UpdateRoomAsync(ChatRoomInfo updatedRoom, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo> UpdateRoomAsync(ChatRoomInfo updatedRoom, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorCode> DeleteRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo> DeleteRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -54,7 +54,7 @@ namespace Sphynx.ServerV2.Persistence.Room
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorCode> UpdateRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, T value,
+        public Task<SphynxErrorInfo> UpdateRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, T value,
             CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();

@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.PacketV2.Request
@@ -42,26 +43,24 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="FetchRoomsRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public FetchRoomsRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public FetchRoomsRequest(string accessToken) : base(accessToken)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="FetchRoomsRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
+        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="roomIds">The ID of the room to get the information of.</param>
-        public FetchRoomsRequest(SnowflakeId userId, Guid sessionId, params SnowflakeId[] roomIds)
-            : base(userId, sessionId)
+        public FetchRoomsRequest(string accessToken, params SnowflakeId[] roomIds) : base(accessToken)
         {
             RoomIds = roomIds;
         }
 
         /// <inheritdoc/>
-        public bool Equals(FetchRoomsRequest? other) =>
-            base.Equals(other) && MemoryUtils.SequenceEqual(RoomIds, other?.RoomIds);
+        public bool Equals(FetchRoomsRequest? other) => base.Equals(other) && MemoryUtils.SequenceEqual(RoomIds, other?.RoomIds);
+
+        public override FetchRoomsResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchRoomsResponse(errorInfo);
     }
 }

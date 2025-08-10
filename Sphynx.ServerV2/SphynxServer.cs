@@ -83,7 +83,7 @@ namespace Sphynx.ServerV2
         /// <returns>The started server task.</returns>
         /// <exception cref="ObjectDisposedException">If this server has already been disposed.</exception>
         /// <exception cref="OperationCanceledException">If this server has already been stopped.</exception>
-        public async ValueTask StartAsync(CancellationToken cancellationToken = default)
+        public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfStopped();
 

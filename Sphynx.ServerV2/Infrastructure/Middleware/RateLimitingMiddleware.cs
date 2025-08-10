@@ -46,16 +46,22 @@ namespace Sphynx.ServerV2.Infrastructure.Middleware
 
             if (waitTime > TimeSpan.Zero)
             {
+                var rateLimitInfo = new RateLimitInfo { Partition = partitionKey, Client = client, Packet = packet, WaitTime = waitTime };
+
+                await OnRateLimiting(rateLimitInfo).ConfigureAwait(false);
+
                 if (OnRateLimited is not null)
-                {
-                    var rateLimitInfo = new RateLimitInfo { Client = client, Packet = packet, WaitTime = waitTime };
                     await OnRateLimited.Invoke(rateLimitInfo).ConfigureAwait(false);
-                }
 
                 return;
             }
 
-            await next(client, packet, token);
+            await next(client, packet, token).ConfigureAwait(false);
+        }
+
+        protected virtual Task OnRateLimiting(RateLimitInfo info)
+        {
+            return Task.CompletedTask;
         }
 
         public void Dispose()
@@ -69,12 +75,13 @@ namespace Sphynx.ServerV2.Infrastructure.Middleware
             OnRateLimited = null;
             return _rateLimiterCache.DisposeAsync();
         }
-    }
 
-    public readonly struct RateLimitInfo
-    {
-        public ISphynxClient Client { get; init; }
-        public SphynxPacket Packet { get; init; }
-        public TimeSpan WaitTime { get; init; }
+        public readonly struct RateLimitInfo
+        {
+            public TPartition Partition { get; init; }
+            public ISphynxClient Client { get; init; }
+            public SphynxPacket Packet { get; init; }
+            public TimeSpan WaitTime { get; init; }
+        }
     }
 }

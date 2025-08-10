@@ -2,8 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Net;
+using Sphynx.Core;
 using Sphynx.Network.PacketV2;
 using Sphynx.Network.PacketV2.Request;
+using Sphynx.Network.PacketV2.Response;
 using Sphynx.ServerV2;
 using Sphynx.ServerV2.Client;
 using Sphynx.ServerV2.Infrastructure.Handlers;
@@ -202,6 +204,16 @@ namespace Sphynx.Server.Test.Infrastructure
 
         private class TestRequestPacket : SphynxRequest
         {
+            public override SphynxPacketType PacketType => SphynxPacketType.NOP;
+            public override TestResponsePacket CreateResponse(SphynxErrorInfo errorInfo) => new TestResponsePacket(errorInfo);
+        }
+
+        private class TestResponsePacket : SphynxResponse
+        {
+            public TestResponsePacket(SphynxErrorInfo errorInfo) : base(errorInfo)
+            {
+            }
+
             public override SphynxPacketType PacketType => SphynxPacketType.NOP;
         }
 

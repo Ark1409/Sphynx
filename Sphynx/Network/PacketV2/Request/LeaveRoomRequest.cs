@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
@@ -17,31 +18,31 @@ namespace Sphynx.Network.PacketV2.Request
         /// Creates a new <see cref="LeaveRoomRequest"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the room to leave.</param>
-        public LeaveRoomRequest(SnowflakeId roomId) : this(SnowflakeId.Empty, Guid.Empty, roomId)
+        public LeaveRoomRequest(SnowflakeId roomId) : this(null!, roomId)
         {
         }
 
         /// <summary>
         /// Creates new <see cref="LeaveRoomRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
-        public LeaveRoomRequest(SnowflakeId userId, Guid sessionId) : base(userId, sessionId)
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public LeaveRoomRequest(string accessToken) : base(accessToken)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="LeaveRoomRequest"/>.
         /// </summary>
-        /// <param name="userId">The user ID of the requesting user.</param>
-        /// <param name="sessionId">The session ID for the requesting user.</param>
+        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="roomId">Room ID of the room to leave.</param>
-        public LeaveRoomRequest(SnowflakeId userId, Guid sessionId, SnowflakeId roomId) : base(userId, sessionId)
+        public LeaveRoomRequest(string accessToken, SnowflakeId roomId) : base(accessToken)
         {
             RoomId = roomId;
         }
 
         /// <inheritdoc/>
         public bool Equals(LeaveRoomRequest? other) => base.Equals(other) && RoomId == other?.RoomId;
+
+        public override LeaveRoomResponse CreateResponse(SphynxErrorInfo errorInfo) => new LeaveRoomResponse(errorInfo);
     }
 }

@@ -76,6 +76,11 @@
         REGISTER_REQ = 0x0000000Du,
 
         /// <summary>
+        /// A request to refresh a JWT access token and refresh token pair.
+        /// </summary>
+        REFRESH_TOKEN_REQ = 0x0000000Eu,
+
+        /// <summary>
         /// A response sent from server to client for a <see cref="LOGIN_REQ"/> packet indicating whether the login
         /// was successful.
         /// </summary>
@@ -140,7 +145,13 @@
         /// A response sent from server to client for a <see cref="REGISTER_REQ"/> packet indicating whether the registration
         /// was successful.
         /// </summary>
-        REGISTER_RES = 0x0100000Cu,
+        REGISTER_RES = 0x0100000Du,
+
+        /// <summary>
+        /// A response sent from server to client for a <see cref="REFRESH_TOKEN_REQ"/> packet, potentially containing
+        /// the new refresh-access token pair.
+        /// </summary>
+        REFRESH_TOKEN_RES = 0x0100000Eu,
 
         /// <summary>
         /// A broadcast packet sent from server to all other friends of a user when said user goes online.
