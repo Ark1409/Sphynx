@@ -94,6 +94,8 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
                     return TimeSpan.FromTicks(ticksRequired);
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
+
                 _tokens -= count;
 
                 return TimeSpan.Zero;

@@ -31,24 +31,23 @@ namespace Sphynx.Server.Auth.Services
             _logger = logger;
         }
 
-        public async Task<SphynxErrorInfo<SphynxAuthInfo?>> AuthenticateUserAsync(string userName, string password,
-            CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxAuthInfo?>> AuthenticateUserAsync(string userName, string password, CancellationToken ct = default)
         {
             if (_logger.IsEnabled(LogLevel.Information))
                 _logger.LogInformation("Authenticating user against account \"{UserName}\"", userName);
 
-            var verifiedCredentials = await VerifyUserCredentialsAsync(userName, password, cancellationToken).ConfigureAwait(false);
+            var verifiedCredentials = await VerifyUserCredentialsAsync(userName, password, ct).ConfigureAwait(false);
 
             if (verifiedCredentials.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new SphynxErrorInfo<SphynxAuthInfo?>(verifiedCredentials.ErrorCode, verifiedCredentials.Message);
 
-            var userResult = await GetUserAsync(userName, cancellationToken).ConfigureAwait(false);
+            var userResult = await GetUserAsync(userName, ct).ConfigureAwait(false);
 
             if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
                 return new SphynxErrorInfo<SphynxAuthInfo?>(userResult.ErrorCode, userResult.Message);
 
             var user = userResult.Data!;
-            var jwtInfo = await CreateUserTokenAsync(user, cancellationToken).ConfigureAwait(false);
+            var jwtInfo = await CreateUserTokenAsync(user, ct).ConfigureAwait(false);
 
             return new SphynxAuthInfo(user, jwtInfo.Data!.Value);
         }
@@ -58,7 +57,12 @@ namespace Sphynx.Server.Auth.Services
             var passwordResult = await _userRepository.GetUserPasswordAsync(userName, cancellationToken).ConfigureAwait(false);
 
             if (passwordResult.ErrorCode != SphynxErrorCode.SUCCESS)
+            {
+                if (passwordResult.ErrorCode == SphynxErrorCode.INVALID_USERNAME)
+                    return new SphynxErrorInfo<bool>(passwordResult.ErrorCode, passwordResult.Message);
+
                 return SphynxErrorCode.SERVER_ERROR;
+            }
 
             Trace.Assert(passwordResult.Data is not null, "Repository should populate password info on success");
 
@@ -81,6 +85,9 @@ namespace Sphynx.Server.Auth.Services
 
             if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
+                if (userResult.ErrorCode == SphynxErrorCode.INVALID_USERNAME)
+                    return userResult;
+
                 if (_logger.IsEnabled(LogLevel.Warning))
                     _logger.LogWarning("Unable to retrieve user info for user \"{UserName}\"", userName);
 
@@ -116,11 +123,11 @@ namespace Sphynx.Server.Auth.Services
 
             if (userResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("Account creation for user \"{UserName}\" failed. Error: {Error}", userName, userResult);
-
                 if (userResult.ErrorCode == SphynxErrorCode.INVALID_USERNAME)
                     return userResult;
+
+                if (_logger.IsEnabled(LogLevel.Warning))
+                    _logger.LogWarning("Account creation for user \"{UserName}\" failed. Error: {Error}", userName, userResult);
 
                 return new SphynxErrorInfo<SphynxAuthUser?>(userResult.ErrorCode.MaskServerError());
             }
@@ -152,11 +159,11 @@ namespace Sphynx.Server.Auth.Services
             byte[]? rentBuffer = null;
             var buffer = BUFFER_SIZE <= 512 ? stackalloc byte[BUFFER_SIZE] : (rentBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE));
 
-            var pwdHash = buffer[..PASSWORD_HASH_LENGTH];
-            var pwdSalt = buffer.Slice(PASSWORD_HASH_LENGTH, PASSWORD_SALT_LENGTH);
-
             try
             {
+                var pwdHash = buffer[..PASSWORD_HASH_LENGTH];
+                var pwdSalt = buffer.Slice(PASSWORD_HASH_LENGTH, PASSWORD_SALT_LENGTH);
+
                 _passwordHasher.GenerateSalt(pwdSalt);
                 _passwordHasher.HashPassword(password, pwdSalt, pwdHash);
 
