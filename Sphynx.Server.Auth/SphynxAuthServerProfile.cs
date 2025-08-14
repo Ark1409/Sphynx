@@ -92,7 +92,7 @@ namespace Sphynx.Server.Auth
 
             var jwtOptions = JwtOptions.Default;
             jwtOptions.ExpiryTime = TimeSpan.FromMinutes(15);
-            jwtOptions.RefreshTokenExpiryTime = TimeSpan.FromHours(1);
+            jwtOptions.RefreshTokenExpiryTime = TimeSpan.FromDays(14);
 
             _jwtService = new JwtService(refreshRepository, jwtOptions);
             AuthService = new AuthService(passwordHasher, userRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
