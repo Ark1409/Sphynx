@@ -18,10 +18,10 @@ namespace Sphynx.Bindables
     /// <summary>
     /// An interface that represents a leased bindable.
     /// </summary>
-    public interface ILeasedBindable : IBindable
+    public interface ILeasedBindable : IReadOnlyBindable, IUnbindable
     {
         /// <summary>
-        /// End the lease on the source <see cref="Bindable{T}"/>.
+        /// End the lease on the source <see cref="IReadOnlyBindable"/>.
         /// </summary>
         /// <returns>
         /// Whether the lease was returned by this call. Will be <c>false</c> if already returned.

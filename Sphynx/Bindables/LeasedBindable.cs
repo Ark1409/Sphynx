@@ -28,11 +28,11 @@ namespace Sphynx.Bindables
         private readonly bool disabledBeforeLease;
         private readonly bool revertValueOnReturn;
 
-        internal LeasedBindable(Bindable<T> source, bool revertValueOnReturn)
+        internal LeasedBindable(Bindable<T> source, bool revertValueOnReturn) : base(default!)
         {
-            BindTo(source);
-
             this.source = source ?? throw new ArgumentNullException(nameof(source));
+
+            BindTo(source);
 
             if (revertValueOnReturn)
             {
@@ -45,10 +45,10 @@ namespace Sphynx.Bindables
             Disabled = true;
         }
 
-        private LeasedBindable(T defaultValue = default)
+        private LeasedBindable(T defaultValue = default!)
             : base(defaultValue)
         {
-            // used for GetBoundCopy, where we don't want a source.
+            // used for GetBoundCopy/CreateInstance, where we don't want a source.
         }
 
         private bool hasBeenReturned;
@@ -123,6 +123,7 @@ namespace Sphynx.Bindables
             base.UnbindAllInternal();
         }
 
+        public new LeasedBindable<T> GetBoundCopy() => (LeasedBindable<T>)base.GetBoundCopy();
         protected override Bindable<T> CreateInstance() => new LeasedBindable<T>();
 
         private void checkValid()

@@ -48,14 +48,15 @@ namespace Sphynx.Utils
         /// <summary>
         /// Return every base type until (and excluding) <see cref="object"/>
         /// </summary>
-        /// <param name="t"></param>
+        /// <param name="t">THe type</param>
         public static IEnumerable<Type> EnumerateBaseTypes(this Type t)
         {
-            while (t != null && t != typeof(object))
+            Type? type = t;
+            while (type != null && type != typeof(object))
             {
-                yield return t;
+                yield return type;
 
-                t = t.BaseType;
+                type = type.BaseType;
             }
         }
 
@@ -118,13 +119,13 @@ namespace Sphynx.Utils
         /// <remarks>This method is cached.</remarks>
         /// <param name="type">The potentially nullable type.</param>
         /// <returns>The underlying type, or null if one does not exist.</returns>
-        public static Type GetUnderlyingNullableType(this Type type)
+        public static Type? GetUnderlyingNullableType(this Type type)
         {
             if (!type.IsGenericType)
                 return null;
 
             // ReSharper disable once ConvertClosureToMethodGroup (see: https://github.com/dotnet/runtime/issues/33747)
-            return underlying_type_cache.GetOrAdd(type, t => Nullable.GetUnderlyingType(t));
+            return underlying_type_cache.GetOrAdd(type, static t => Nullable.GetUnderlyingType(t)!);
         }
 
         /// <summary>
@@ -137,7 +138,7 @@ namespace Sphynx.Utils
         /// <returns>Whether the event type is nullable.</returns>
         public static bool IsNullable(this EventInfo eventInfo)
         {
-            if (IsNullable(eventInfo.EventHandlerType))
+            if (IsNullable(eventInfo.EventHandlerType!))
                 return true;
 
             return isNullableInfo(new NullabilityInfoContext().Create(eventInfo));

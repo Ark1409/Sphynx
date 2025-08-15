@@ -1,10 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using Sphynx.Storage;
 using Sphynx.Utils;
 
@@ -23,10 +20,10 @@ namespace Sphynx.Bindables
     // all copies or substantial portions of the Software.
 
     /// <summary>
-    /// A generic implementation of a <see cref="IBindable"/>
+    /// A generic implementation of a <see cref="IBindable{T}"/>
     /// </summary>
     /// <typeparam name="T">The type of our stored <see cref="Value"/>.</typeparam>
-    public class Bindable<T> : IBindable<T>, IBindable
+    public class Bindable<T> : IBindable<T>
     {
         /// <summary>
         /// An event which is raised when <see cref="Value"/> has changed (or manually via <see cref="TriggerValueChange"/>).
@@ -44,9 +41,7 @@ namespace Sphynx.Bindables
         public event Action<ValueChangedEvent<T>> DefaultChanged;
 
         private T value;
-
         private T defaultValue;
-
         private bool disabled;
 
         /// <summary>
@@ -66,7 +61,7 @@ namespace Sphynx.Bindables
             }
         }
 
-        internal void SetDisabled(bool value, bool bypassChecks = false, Bindable<T> source = null)
+        internal void SetDisabled(bool value, bool bypassChecks = false, Bindable<T>? source = null)
         {
             if (!bypassChecks)
                 throwIfLeased();
@@ -97,7 +92,7 @@ namespace Sphynx.Bindables
                 // if the leased bindable decides to disable exclusive access (by setting Disabled = false) then anything will be able to write to Value.
 
                 if (Disabled)
-                    throw new InvalidOperationException($"Can not set value to \"{value.ToString()}\" as bindable is disabled.");
+                    throw new InvalidOperationException($"Can not set value to \"{value?.ToString()}\" as bindable is disabled.");
 
                 if (EqualityComparer<T>.Default.Equals(this.value, value)) return;
 
@@ -105,7 +100,7 @@ namespace Sphynx.Bindables
             }
         }
 
-        internal void SetValue(T previousValue, T value, bool bypassChecks = false, Bindable<T> source = null)
+        internal void SetValue(T previousValue, T value, bool bypassChecks = false, Bindable<T>? source = null)
         {
             this.value = value;
             TriggerValueChange(previousValue, source ?? this, true, bypassChecks);
@@ -123,7 +118,7 @@ namespace Sphynx.Bindables
                 // if the leased bindable decides to disable exclusive access (by setting Disabled = false) then anything will be able to write to Default.
 
                 if (Disabled)
-                    throw new InvalidOperationException($"Can not set default value to \"{value.ToString()}\" as bindable is disabled.");
+                    throw new InvalidOperationException($"Can not set default value to \"{value?.ToString()}\" as bindable is disabled.");
 
                 if (EqualityComparer<T>.Default.Equals(defaultValue, value)) return;
 
@@ -131,21 +126,20 @@ namespace Sphynx.Bindables
             }
         }
 
-        internal void SetDefaultValue(T previousValue, T value, bool bypassChecks = false, Bindable<T> source = null)
+        internal void SetDefaultValue(T previousValue, T value, bool bypassChecks = false, Bindable<T>? source = null)
         {
             defaultValue = value;
             TriggerDefaultChange(previousValue, source ?? this, true, bypassChecks);
         }
 
-        private WeakReference<Bindable<T>> weakReferenceInstance;
-
-        private WeakReference<Bindable<T>> weakReference => weakReferenceInstance ??= new WeakReference<Bindable<T>>(this);
+        private WeakReference<IReadOnlyBindable> weakReferenceInstance;
+        private WeakReference<IReadOnlyBindable> weakReference => weakReferenceInstance ??= new WeakReference<IReadOnlyBindable>(this);
 
         /// <summary>
         /// Creates a new bindable instance. This is used for deserialization of bindables.
         /// </summary>
         private Bindable()
-            : this(default)
+            : this(default!)
         {
         }
 
@@ -153,43 +147,27 @@ namespace Sphynx.Bindables
         /// Creates a new bindable instance initialised with a default value.
         /// </summary>
         /// <param name="defaultValue">The initial and default value for this bindable.</param>
-        public Bindable(T defaultValue = default)
+        public Bindable(T defaultValue)
         {
             value = Default = defaultValue;
         }
 
-        protected LockedWeakList<Bindable<T>> Bindings { get; private set; }
-
-        void IBindable.BindTo(IBindable them)
-        {
-            if (!(them is Bindable<T> tThem))
-                throw new InvalidCastException($"Can't bind to a bindable of type {them.GetType()} from a bindable of type {GetType()}.");
-
-            BindTo(tThem);
-        }
-
-        void IBindable<T>.BindTo(IBindable<T> them)
-        {
-            if (!(them is Bindable<T> tThem))
-                throw new InvalidCastException($"Can't bind to a bindable of type {them.GetType()} from a bindable of type {GetType()}.");
-
-            BindTo(tThem);
-        }
+        protected LockedWeakList<IReadOnlyBindable>? Bindings { get; private set; }
 
         /// <summary>
         /// An alias of <see cref="BindTo"/> provided for use in object initializer scenarios.
         /// Passes the provided value as the foreign (more permanent) bindable.
         /// </summary>
-        public IBindable<T> BindTarget
+        public Bindable<T> BindTarget
         {
-            set => ((IBindable<T>)this).BindTo(value);
+            init => BindTo(value);
         }
 
         /// <summary>
         /// Copies all values and value limitations of this bindable to another.
         /// </summary>
         /// <param name="them">The target to copy to.</param>
-        public virtual void CopyTo(Bindable<T> them)
+        public void CopyTo(Bindable<T> them)
         {
             them.Value = Value;
             them.Default = Default;
@@ -202,15 +180,14 @@ namespace Sphynx.Bindables
         /// </summary>
         /// <param name="them">The foreign bindable. This should always be the most permanent end of the bind.</param>
         /// <exception cref="InvalidOperationException">Thrown when attempting to bind to an already bound object.</exception>
-        public virtual void BindTo(Bindable<T> them)
+        public void BindTo(Bindable<T> them)
         {
-            if (Bindings?.Contains(them.weakReference) == true)
-                throw new ArgumentException("An already bound bindable cannot be bound again.");
+            if (Bindings?.Contains(((IReadOnlyBindable)them).WeakReference) == true) return;
 
             them.CopyTo(this);
 
-            addWeakReference(them.weakReference);
-            them.addWeakReference(weakReference);
+            addWeakReference(((IReadOnlyBindable)them).WeakReference);
+            them.addWeakReference(((IReadOnlyBindable)this).WeakReference);
         }
 
         /// <summary>
@@ -237,13 +214,13 @@ namespace Sphynx.Bindables
                 onChange(Disabled);
         }
 
-        private void addWeakReference(WeakReference<Bindable<T>> weakReference)
+        private void addWeakReference(WeakReference<IReadOnlyBindable> weakReference)
         {
-            Bindings ??= new LockedWeakList<Bindable<T>>();
+            Bindings ??= new LockedWeakList<IReadOnlyBindable>();
             Bindings.Add(weakReference);
         }
 
-        private void removeWeakReference(WeakReference<Bindable<T>> weakReference) => Bindings?.Remove(weakReference);
+        private void removeWeakReference(WeakReference<IReadOnlyBindable> weakReference) => Bindings?.Remove(weakReference);
 
         /// <summary>
         /// Parse an object into this instance.
@@ -272,9 +249,9 @@ namespace Sphynx.Bindables
                     // Non-nullable value types can't convert from null.
                     throw new ArgumentNullException(nameof(input));
 
-                case IBindable:
-                    if (!(input is IBindable<T> bindable))
-                        throw new ArgumentException($"Expected bindable of type {nameof(IBindable)}<{typeof(T)}>, got {input.GetType()}", nameof(input));
+                case IReadOnlyBindable:
+                    if (input is not IReadOnlyValuedBindable<T> bindable)
+                        throw new ArgumentException($"Expected bindable of type {nameof(IReadOnlyValuedBindable<T>)}<{typeof(T)}>, got {input.GetType()}", nameof(input));
 
                     Value = bindable.Value;
                     break;
@@ -292,7 +269,6 @@ namespace Sphynx.Bindables
                         // Most likely all conversion methods will not accept empty strings, but we let this fall through so that the exception is thrown by .NET itself.
                         // For example, DateTime.Parse() throws a more contextually relevant exception than int.Parse().
                     }
-
 
                     Type underlyingType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
 
@@ -325,8 +301,8 @@ namespace Sphynx.Bindables
                 foreach (var b in Bindings)
                 {
                     if (b == source) continue;
-
-                    b.SetValue(previousValue, value, bypassChecks, this);
+                    var other = (Bindable<T>)b;
+                    other.SetValue(previousValue, value, bypassChecks, this);
                 }
             }
 
@@ -345,7 +321,8 @@ namespace Sphynx.Bindables
                 {
                     if (b == source) continue;
 
-                    b.SetDefaultValue(previousValue, defaultValue, bypassChecks, this);
+                    var other = (Bindable<T>)b;
+                    other.SetDefaultValue(previousValue, defaultValue, bypassChecks, this);
                 }
             }
 
@@ -364,7 +341,8 @@ namespace Sphynx.Bindables
                 {
                     if (b == source) continue;
 
-                    b.SetDisabled(disabled, bypassChecks, this);
+                    var other = (Bindable<T>)b;
+                    other.SetDisabled(disabled, bypassChecks, this);
                 }
             }
 
@@ -377,9 +355,9 @@ namespace Sphynx.Bindables
         /// </summary>
         public virtual void UnbindEvents()
         {
-            ValueChanged = null;
-            DefaultChanged = null;
-            DisabledChanged = null;
+            ValueChanged = null!;
+            DefaultChanged = null!;
+            DisabledChanged = null!;
         }
 
         /// <summary>
@@ -393,7 +371,9 @@ namespace Sphynx.Bindables
             // ToArray required as this may be called from an async disposal thread.
             // This can lead to deadlocks since each child is also enumerating its Bindings.
             foreach (var b in Bindings.ToArray())
-                UnbindFrom(b);
+            {
+                UnbindFrom((IUnbindable)b);
+            }
         }
 
         /// <summary>
@@ -405,7 +385,7 @@ namespace Sphynx.Bindables
         internal virtual void UnbindAllInternal()
         {
             if (isLeased)
-                leasedBindable.Return();
+                leasedBindable!.Return();
 
             UnbindEvents();
             UnbindBindings();
@@ -413,18 +393,18 @@ namespace Sphynx.Bindables
 
         public virtual void UnbindFrom(IUnbindable them)
         {
-            if (!(them is Bindable<T> tThem))
-                throw new InvalidCastException($"Can't unbind a bindable of type {them.GetType()} from a bindable of type {GetType()}.");
+            // One of the class invariants here is that we can only bind to other Bindable{T}'s
+            if (them is not Bindable<T> tThem)
+                // throw new InvalidCastException($"Can't unbind a bindable of type {them.GetType()} from a bindable of type {GetType()}.");
+                return;
 
-            removeWeakReference(tThem.weakReference);
-            tThem.removeWeakReference(weakReference);
+            removeWeakReference(((IReadOnlyBindable)tThem).WeakReference);
+            tThem.removeWeakReference(((IReadOnlyBindable)this).WeakReference);
         }
-
-        public string Description { get; set; }
 
         public sealed override string ToString() => ToString(null, CultureInfo.CurrentCulture);
 
-        public virtual string ToString(string format, IFormatProvider formatProvider) => string.Format(formatProvider, $"{{0:{format}}}", Value);
+        public virtual string ToString(string? format, IFormatProvider? formatProvider) => string.Format(formatProvider, $"{{0:{format ?? string.Empty}}}", Value);
 
         /// <summary>
         /// Create an unbound clone of this bindable.
@@ -436,23 +416,28 @@ namespace Sphynx.Bindables
             return newBindable;
         }
 
-        IBindable IBindable.CreateInstance() => CreateInstance();
+        /// <inheritdoc cref="IBindable{T}.GetBoundCopy"/>
+        public Bindable<T> GetBoundCopy()
+        {
+            var newBindable = CreateInstance();
+            newBindable.BindTo(this);
+            return newBindable;
+        }
 
-        /// <inheritdoc cref="IBindable.CreateInstance"/>
+        /// <summary>
+        /// Creates an empty instance of this bindable.
+        /// This function should be overriden in subclasses to return the most derived type.
+        /// </summary>
         protected virtual Bindable<T> CreateInstance() => new Bindable<T>();
 
-        IBindable IBindable.GetBoundCopy() => GetBoundCopy();
-
-        WeakReference<Bindable<T>> IBindable<T>.GetWeakReference() => weakReference;
-
+        /// <inheritdoc cref="IBindable{T}.GetBoundCopy"/>
         IBindable<T> IBindable<T>.GetBoundCopy() => GetBoundCopy();
 
-        /// <inheritdoc cref="IBindable{T}.GetBoundCopy"/>
-        public Bindable<T> GetBoundCopy() => IBindable.GetBoundCopyImplementation(this);
-
-        private LeasedBindable<T> leasedBindable;
+        private LeasedBindable<T>? leasedBindable;
 
         private bool isLeased => leasedBindable != null;
+
+        WeakReference<IReadOnlyBindable> IReadOnlyBindable.WeakReference => weakReference;
 
         /// <summary>
         /// Takes out a mutually exclusive lease on this bindable.
@@ -482,7 +467,10 @@ namespace Sphynx.Bindables
             foreach (var b in Bindings)
             {
                 if (b != source)
-                    found |= b.checkForLease(this);
+                {
+                    var other = (Bindable<T>)b;
+                    if (found |= other.checkForLease(this)) return true;
+                }
             }
 
             return found;
