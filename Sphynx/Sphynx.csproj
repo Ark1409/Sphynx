@@ -9,6 +9,20 @@
         <DocumentationFile>$(MSBuildProjectDirectory)\docs\documentation.xml</DocumentationFile>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>full</DebugType>
+        <Optimize>false</Optimize>
+        <DefineConstants>DEBUG;TRACE;$(FrameworkSymbols)</DefineConstants>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <Optimize>true</Optimize>
+        <DebugSymbols>false</DebugSymbols>
+        <DebugType>None</DebugType>
+        <DefineConstants>TRACE;$(FrameworkSymbols)</DefineConstants>
+    </PropertyGroup>
+
     <ItemGroup>
         <Compile Remove="docs\**"/>
         <EmbeddedResource Remove="docs\**"/>

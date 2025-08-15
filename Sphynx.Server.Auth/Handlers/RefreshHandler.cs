@@ -30,7 +30,18 @@ namespace Sphynx.Server.Auth.Handlers
                 return;
             }
 
-            if (!_jwtService.VerifyToken(request.AccessToken))
+            var refreshTokenResult = await _jwtService.ReadTokenAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
+
+            if (refreshTokenResult.ErrorCode != SphynxErrorCode.SUCCESS)
+            {
+                var errorInfo = new SphynxErrorInfo(refreshTokenResult.ErrorCode.MaskServerError(), refreshTokenResult.Message);
+                await client.SendAsync(new RefreshTokenResponse(errorInfo), cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            var refreshTokenInfo = refreshTokenResult.Data!.Value;
+
+            if (request.AccessToken != refreshTokenInfo.AccessToken)
             {
                 await client.SendAsync(new RefreshTokenResponse(SphynxErrorCode.INVALID_TOKEN), cancellationToken).ConfigureAwait(false);
                 return;
@@ -41,39 +52,27 @@ namespace Sphynx.Server.Auth.Handlers
 
         private async Task HandleRefreshAsync(ISphynxClient client, RefreshTokenRequest request, CancellationToken cancellationToken)
         {
-            var jwtPayloadInfo = _jwtService.ReadToken(request.AccessToken);
+            var refreshTokenResult = await _jwtService.DeleteTokenAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
 
-            if (jwtPayloadInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (refreshTokenResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendAsync(new RefreshTokenResponse(jwtPayloadInfo.ErrorCode.MaskServerError()), cancellationToken).ConfigureAwait(false);
+                var errorInfo = new SphynxErrorInfo(refreshTokenResult.ErrorCode.MaskServerError(), refreshTokenResult.Message);
+                await client.SendAsync(new RefreshTokenResponse(errorInfo), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            var accessTokenUser = jwtPayloadInfo.Data!.Value.Subject;
+            var refreshTokenInfo = refreshTokenResult.Data!.Value;
+            var newTokenResult = await _jwtService.CreateTokenAsync(refreshTokenInfo.User, cancellationToken).ConfigureAwait(false);
 
-            // TODO: Are we not replacing UserId and Sessionid with JWT?
-
-            // TODO: - Fix that up ^
-            // - Make Login/Register use JWT
-            // - Make central IUserRepository in Sphyxn.Server
-            // - Start on chat server!
-            //   ... not really...
-            //    - Rewrite serialization using IMemoryWriter<T>
-            //    - think carefully about how ur gonna be able to use this/use BinarySerializer with this
-            //    -  x
-
-            await _jwtService.DeleteTokenAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
-
-            var newTokenInfo = await _jwtService.CreateTokenAsync(accessTokenUser, cancellationToken).ConfigureAwait(false);
-
-            if (newTokenInfo.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (newTokenResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendAsync(new RefreshTokenResponse(newTokenInfo.ErrorCode.MaskServerError()), cancellationToken).ConfigureAwait(false);
+                var errorInfo = new SphynxErrorInfo(newTokenResult.ErrorCode.MaskServerError(), newTokenResult.Message);
+                await client.SendAsync(new RefreshTokenResponse(errorInfo), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            var newToken = newTokenInfo.Data!.Value;
-            var response = new RefreshTokenResponse(newToken.AccessToken, newToken.RefreshTokenInfo.RefreshToken, newToken.ExpiryTime);
+            var newTokenInfo = newTokenResult.Data!.Value;
+            var response = new RefreshTokenResponse(newTokenInfo.AccessToken, newTokenInfo.RefreshTokenInfo.RefreshToken, newTokenInfo.ExpiryTime);
 
             await client.SendAsync(response, cancellationToken).ConfigureAwait(false);
 

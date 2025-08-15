@@ -9,9 +9,9 @@ namespace Sphynx.Server.Auth.Persistence
     public class NullUserRepository : IAuthUserRepository
     {
         public event Action<SphynxAuthUser>? UserCreated;
+
         public Task<SphynxErrorInfo<SphynxAuthUser?>> InsertUserAsync(SphynxAuthUser user, CancellationToken cancellationToken = default)
         {
-            Console.WriteLine($"Insernting user: {user.UserName}");
             return Task.FromResult(new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.DB_WRITE_ERROR));
         }
 
