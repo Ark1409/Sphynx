@@ -4,6 +4,7 @@
 #nullable disable
 
 using Microsoft.Extensions.Logging;
+using Sphynx.Network.Serialization;
 using Sphynx.Network.Transport;
 using Sphynx.ServerV2.Infrastructure.Routing;
 
@@ -14,6 +15,11 @@ namespace Sphynx.ServerV2
     /// </summary>
     public class SphynxTcpServerProfile : SphynxServerProfile
     {
+        /// <summary>
+        /// Returns a <see cref="SphynxTcpServerProfile"/> with the default configured properties.
+        /// </summary>
+        public static SphynxTcpServerProfile Default => new(configure: true);
+
         /// <summary>
         /// The default <see cref="Backlog"/> size.
         /// </summary>
@@ -64,7 +70,7 @@ namespace Sphynx.ServerV2
         private void ConfigureServices()
         {
             PacketRouter = new PacketRouter();
-            PacketTransporter = new PacketTransporter(null!);
+            PacketTransporter = new PacketTransporter(new JsonPacketSerializer());
             BufferSize = DEFAULT_BUFFER_SIZE;
             Backlog = DEFAULT_BACKLOG_SIZE;
         }

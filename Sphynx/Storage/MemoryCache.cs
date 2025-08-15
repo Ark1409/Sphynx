@@ -37,11 +37,11 @@ namespace Sphynx.Storage
         {
             _initialCleanupPeriod = initialCleanupPeriod;
             _adjustCleanupPeriod = adjustCleanupPeriod;
-            _cleanupTimer = new Timer(static state => ((MemoryCache<TKey, T>)state!).CleanupCallback(), this,
+            _cleanupTimer = new Timer(static state => ((MemoryCache<TKey, T>)state!).PerformCleanup(), this,
                 initialCleanupPeriod, Timeout.InfiniteTimeSpan);
         }
 
-        protected void CleanupCallback()
+        protected void PerformCleanup()
         {
             double avgLifetimeSecs = 0;
             int numEntries = 0;
@@ -350,7 +350,7 @@ namespace Sphynx.Storage
                 return this;
             }
 
-            public override bool Equals(object? obj) => obj is Entry entry && Equals(entry);
+            public override bool Equals([NotNullWhen(true)] object? obj) => obj is Entry entry && Equals(entry);
 
             public bool Equals(Entry? other) => Item == other?.Item && _version == other._version;
         }
