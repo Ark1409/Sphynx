@@ -65,12 +65,12 @@ namespace Sphynx.ServerV2.Infrastructure.RateLimiting
         public ValueTask<TimeSpan> ConsumeAsync(int count = 1, CancellationToken cancellationToken = default)
         {
             if (count < 0)
-                return ValueTask.FromException<TimeSpan>(new ArgumentException("Count must be greater than or equal to 0", nameof(count)));
+                return ValueTask.FromException<TimeSpan>(new ArgumentException("Count must be greater or equal to 0", nameof(count)));
 
             if (count == 0)
                 return ValueTask.FromResult(TimeSpan.Zero);
 
-            if (count > MaxTokens)
+            if (count > MaxTokens || (_tokensPerPeriod == 0 && _tokens < count))
                 return ValueTask.FromResult(TimeSpan.MaxValue);
 
             return ConsumeInternalAsync(count, cancellationToken);

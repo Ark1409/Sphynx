@@ -115,7 +115,7 @@ namespace Sphynx.Network.Serialization
         public readonly bool HasSequence
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _hasSequence;
+            get => _hasSequence || !_sequence.Sequence.IsEmpty;
         }
 
         public BinaryDeserializer(in ReadOnlySequence<byte> sequence) : this()
