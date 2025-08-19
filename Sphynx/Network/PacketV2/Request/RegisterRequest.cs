@@ -5,7 +5,7 @@ namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.REGISTER_REQ"/>
     /// <remarks>The <see cref="SphynxRequest.AccessToken"/> property is not serialized for this packet.</remarks>
-    public sealed class RegisterRequest : SphynxRequest, IEquatable<RegisterRequest>
+    public sealed class RegisterRequest : SphynxRequest<RegisterResponse>, IEquatable<RegisterRequest>
     {
         /// <summary>
         /// User name entered by user for registration.

@@ -5,7 +5,7 @@ namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.LOGIN_REQ"/>
     /// <remarks>The <see cref="SphynxRequest.AccessToken"/> property is not serialized for this packet.</remarks>
-    public sealed class LoginRequest : SphynxRequest, IEquatable<LoginRequest>
+    public sealed class LoginRequest : SphynxRequest<LoginResponse>, IEquatable<LoginRequest>
     {
         /// <summary>
         /// User name entered by user for login.

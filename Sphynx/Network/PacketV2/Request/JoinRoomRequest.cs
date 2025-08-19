@@ -5,7 +5,7 @@ using Sphynx.Network.PacketV2.Response;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_JOIN_REQ"/>
-    public sealed class JoinRoomRequest : SphynxRequest, IEquatable<JoinRoomRequest>
+    public sealed class JoinRoomRequest : SphynxRequest<JoinRoomResponse>, IEquatable<JoinRoomRequest>
     {
         /// <summary>
         /// Room ID of the room to join.

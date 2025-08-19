@@ -6,7 +6,7 @@ namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_DEL_REQ"/>
     /// <remarks>Only rooms of type <see cref="ChatRoomType.GROUP"/> can be deleted.</remarks>
-    public sealed class RoomDeleteRequest : SphynxRequest, IEquatable<RoomDeleteRequest>
+    public sealed class RoomDeleteRequest : SphynxRequest<RoomDeleteResponse>, IEquatable<RoomDeleteRequest>
     {
         /// <summary>
         /// The ID of the room to delete.

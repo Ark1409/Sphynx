@@ -5,7 +5,7 @@ using Sphynx.Utils;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_INFO_REQ"/>
-    public sealed class FetchRoomsRequest : SphynxRequest, IEquatable<FetchRoomsRequest>
+    public sealed class FetchRoomsRequest : SphynxRequest<FetchRoomsResponse>, IEquatable<FetchRoomsRequest>
     {
         /// <summary>
         /// The maximum number of rooms which can be requested at once.

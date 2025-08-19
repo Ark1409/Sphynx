@@ -5,7 +5,7 @@ using Sphynx.Network.PacketV2.Response;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_CREATE_REQ"/>
-    public abstract class RoomCreateRequest : SphynxRequest, IEquatable<RoomCreateRequest>
+    public abstract class RoomCreateRequest : SphynxRequest<RoomCreateResponse>, IEquatable<RoomCreateRequest>
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_REQ;
