@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Core;
 using Sphynx.ModelV2.Room;
 using Sphynx.Test.Utils;
 
@@ -9,20 +8,16 @@ namespace Sphynx.Test.Model.Room
 {
     public class TestDirectChatRoomInfo : DirectChatRoomInfo
     {
-        public ChatRoomType RoomType { get; set; } = ChatRoomType.DIRECT_MSG;
-        public SnowflakeId UserOne { get; set; }
-        public SnowflakeId UserTwo { get; set; }
-
-        public TestDirectChatRoomInfo(string name = "Test-Room")
+        public TestDirectChatRoomInfo(string name = "test-room")
         {
             Name = name;
             RoomId = name.AsSnowflakeId();
 
-            UserOne = "user1".AsSnowflakeId();
-            UserTwo = "user2".AsSnowflakeId();
+            UserOne = "user-1".AsSnowflakeId();
+            UserTwo = "user-2".AsSnowflakeId();
         }
 
-        public static TestDirectChatRoomInfo[] FromArray(params string[] names)
+        public static TestDirectChatRoomInfo[] FromNames(params string[] names)
         {
             var users = new TestDirectChatRoomInfo[names.Length];
 
@@ -34,7 +29,7 @@ namespace Sphynx.Test.Model.Room
             return users;
         }
 
-        public bool Equals(DirectChatRoomInfo? other) =>
+        public override bool Equals(DirectChatRoomInfo? other) =>
             base.Equals(other) && UserOne == other.UserOne && UserTwo == other.UserTwo;
     }
 }

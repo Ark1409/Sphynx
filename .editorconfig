@@ -232,7 +232,7 @@ dotnet_diagnostic.cs1591.severity = none
 resharper_non_readonly_member_in_get_hash_code_highlighting = suggestion
 
 # ReSharper: Virtual member call in constructor
-resharper_virtual_member_call_in_constructor_highlighting = suggestion
+resharper_virtual_member_call_in_constructor_highlighting = none
 
 #Disable operator overloads requiring alternate named methods
 dotnet_diagnostic.ca2225.severity = none
@@ -248,6 +248,7 @@ resharper_place_simple_embedded_statement_on_same_line = false
 resharper_wrap_before_declaration_rpar = false
 resharper_wrap_before_primary_constructor_declaration_lpar = false
 resharper_wrap_switch_expression = chop_if_long
+resharper_condition_is_always_true_or_false_according_to_nullable_api_contract_highlighting = suggestion
 
 [*.{yaml,yml}]
 insert_final_newline = true

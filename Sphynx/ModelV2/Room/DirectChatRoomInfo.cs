@@ -10,6 +10,9 @@ namespace Sphynx.ModelV2.Room
     /// </summary>
     public class DirectChatRoomInfo : ChatRoomInfo, IEquatable<DirectChatRoomInfo>
     {
+        /// <inheritdoc />
+        public override ChatRoomType RoomType => ChatRoomType.DIRECT_MSG;
+
         /// <summary>
         /// Returns the user ID of one of the users within this direct-message chat room.
         /// </summary>
@@ -32,13 +35,13 @@ namespace Sphynx.ModelV2.Room
             Name = $"{UserOne}+{UserTwo}";
         }
 
-        public DirectChatRoomInfo(SnowflakeId roomId, ChatRoomType roomType) : base(roomId, roomType, string.Empty)
+        public DirectChatRoomInfo(SnowflakeId roomId) : base(roomId, string.Empty)
         {
             Name = $"{UserOne}+{UserTwo}";
         }
 
-        public DirectChatRoomInfo(SnowflakeId roomId, ChatRoomType roomType, SnowflakeId userOne, SnowflakeId userTwo)
-            : base(roomId, roomType, string.Empty)
+        public DirectChatRoomInfo(SnowflakeId roomId, SnowflakeId userOne, SnowflakeId userTwo)
+            : base(roomId, string.Empty)
         {
             UserOne = userOne;
             UserTwo = userTwo;
@@ -46,6 +49,6 @@ namespace Sphynx.ModelV2.Room
         }
 
         /// <inheritdoc/>
-        public bool Equals(DirectChatRoomInfo? other) => base.Equals(other);
+        public virtual bool Equals(DirectChatRoomInfo? other) => base.Equals(other);
     }
 }

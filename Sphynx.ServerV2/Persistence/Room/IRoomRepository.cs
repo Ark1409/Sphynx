@@ -12,14 +12,14 @@ namespace Sphynx.ServerV2.Persistence.Room
         event Action<ChatRoomInfo>? RoomDeleted;
 
         Task<SphynxErrorInfo<ChatRoomInfo?>> InsertRoomAsync(ChatRoomInfo roomInfo, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> UpdateRoomAsync(ChatRoomInfo updatedRoom, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> DeleteRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> UpdateRoomAsync(ChatRoomInfo updatedRoom, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> DeleteRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<ChatRoomInfo?>> GetRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<ChatRoomInfo[]?>> GetRoomsAsync(SnowflakeId[] roomIds, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<T?>> GetRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, CancellationToken cancellationToken = default);
-        Task<SphynxErrorCode> UpdateRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, T value, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo> UpdateRoomFieldAsync<T>(SnowflakeId roomId, string fieldName, T value, CancellationToken cancellationToken = default);
     }
 }

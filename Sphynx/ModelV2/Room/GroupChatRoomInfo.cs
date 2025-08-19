@@ -10,6 +10,9 @@ namespace Sphynx.ModelV2.Room
     /// </summary>
     public class GroupChatRoomInfo : ChatRoomInfo, IEquatable<GroupChatRoomInfo>
     {
+        /// <inheritdoc />
+        public override ChatRoomType RoomType => ChatRoomType.GROUP;
+
         /// <summary>
         /// Whether this room is public.
         /// </summary>
@@ -24,11 +27,11 @@ namespace Sphynx.ModelV2.Room
         {
         }
 
-        public GroupChatRoomInfo(SnowflakeId roomId, ChatRoomType roomType, string name) : base(roomId, roomType, name)
+        public GroupChatRoomInfo(SnowflakeId roomId, string name) : base(roomId, name)
         {
         }
 
         /// <inheritdoc/>
-        public bool Equals(GroupChatRoomInfo? other) => base.Equals(other);
+        public virtual bool Equals(GroupChatRoomInfo? other) => base.Equals(other);
     }
 }

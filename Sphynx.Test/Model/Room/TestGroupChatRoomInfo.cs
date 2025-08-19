@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Core;
 using Sphynx.ModelV2.Room;
 using Sphynx.Test.Utils;
 
@@ -9,20 +8,16 @@ namespace Sphynx.Test.Model.Room
 {
     public class TestGroupChatRoomInfo : GroupChatRoomInfo
     {
-        public ChatRoomType RoomType { get; set; } = ChatRoomType.GROUP;
-        public SnowflakeId OwnerId { get; set; }
-        public bool IsPublic { get; set; }
-
-        public TestGroupChatRoomInfo(string name = "Test-Group-Room")
+        public TestGroupChatRoomInfo(string name = "test-group-room")
         {
             Name = name;
             RoomId = name.AsSnowflakeId();
 
-            OwnerId = $"owner+{name}".AsSnowflakeId();
+            OwnerId = $"owner-{name}".AsSnowflakeId();
             IsPublic = name.Length % 2 == 0;
         }
 
-        public static TestGroupChatRoomInfo[] FromArray(params string[] names)
+        public static TestGroupChatRoomInfo[] FromNames(params string[] names)
         {
             var users = new TestGroupChatRoomInfo[names.Length];
 
@@ -34,7 +29,7 @@ namespace Sphynx.Test.Model.Room
             return users;
         }
 
-        public bool Equals(GroupChatRoomInfo? other) =>
+        public override bool Equals(GroupChatRoomInfo? other) =>
             base.Equals(other) && OwnerId == other.OwnerId && IsPublic == other.IsPublic;
     }
 }

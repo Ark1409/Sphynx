@@ -16,11 +16,19 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="RoomCreateResponse"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for room creation attempt.</param>
-        public RoomCreateResponse(SphynxErrorCode errorCode) : base(errorCode)
+        /// <param name="errorInfo">Error code for room creation attempt.</param>
+        public RoomCreateResponse(SphynxErrorCode errorInfo) : this(new SphynxErrorInfo(errorInfo))
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="RoomCreateResponse"/>.
+        /// </summary>
+        /// <param name="errorInfo">Error code for room creation attempt.</param>
+        public RoomCreateResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
             // Assume the room is to be created
-            if (errorCode == SphynxErrorCode.SUCCESS)
+            if (errorInfo == SphynxErrorCode.SUCCESS)
                 RoomId = SnowflakeId.NewId();
         }
 

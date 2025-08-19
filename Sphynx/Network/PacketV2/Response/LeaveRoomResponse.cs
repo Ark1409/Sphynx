@@ -11,8 +11,16 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Creates a new <see cref="LeaveRoomResponse"/>.
         /// </summary>
-        /// <param name="errorCode">Error code for leave attempt.</param>
-        public LeaveRoomResponse(SphynxErrorCode errorCode = SphynxErrorCode.SUCCESS) : base(errorCode)
+        /// <param name="errorInfo">Error code for leave attempt.</param>
+        public LeaveRoomResponse(SphynxErrorCode errorInfo = SphynxErrorCode.SUCCESS) : base(errorInfo)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="LeaveRoomResponse"/>.
+        /// </summary>
+        /// <param name="errorInfo">Error code for leave attempt.</param>
+        public LeaveRoomResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 

@@ -37,6 +37,6 @@ namespace Sphynx.ModelV2.User
         }
 
         /// <inheritdoc/>
-        public bool Equals(SphynxUserInfo? other) => UserId == other?.UserId;
+        public virtual bool Equals(SphynxUserInfo? other) => UserId == other?.UserId;
     }
 }

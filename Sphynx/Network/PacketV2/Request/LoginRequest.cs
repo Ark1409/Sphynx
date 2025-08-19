@@ -1,11 +1,11 @@
 ﻿using Sphynx.Core;
+using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.LOGIN_REQ"/>
-    /// <remarks>The <see cref="SphynxRequest.UserId"/> and <see cref="SphynxRequest.SessionId"/> properties
-    /// are not serialized for this packet.</remarks>
-    public sealed class LoginRequest : SphynxRequest, IEquatable<LoginRequest>
+    /// <remarks>The <see cref="SphynxRequest.AccessToken"/> property is not serialized for this packet.</remarks>
+    public sealed class LoginRequest : SphynxRequest<LoginResponse>, IEquatable<LoginRequest>
     {
         /// <summary>
         /// User name entered by user for login.
@@ -15,7 +15,6 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Password entered by user for login.
         /// </summary>
-        /// <remarks>We rely on SSL connection.</remarks>
         public string Password { get; init; }
 
         /// <inheritdoc/>
@@ -26,9 +25,8 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="userName">User name entered by user for login.</param>
         /// <param name="password">Password entered by user for login.</param>
-        /// <remarks>The <see cref="SphynxRequest.UserId"/> and <see cref="SphynxRequest.SessionId"/> properties
-        /// are not serialized for this packet.</remarks>
-        public LoginRequest(string userName, string password) : base(SnowflakeId.Empty, Guid.Empty)
+        /// <remarks>The <see cref="SphynxRequest.AccessToken"/> property is not serialized for this packet.</remarks>
+        public LoginRequest(string userName, string password) : base(null!)
         {
             UserName = userName;
             Password = password;
@@ -37,5 +35,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <inheritdoc/>
         public bool Equals(LoginRequest? other) =>
             PacketType == other?.PacketType && UserName == other?.UserName && Password == other?.Password;
+
+        public override LoginResponse CreateResponse(SphynxErrorInfo errorInfo) => new LoginResponse(errorInfo);
     }
 }

@@ -39,13 +39,13 @@ namespace Sphynx.ServerV2.Persistence.User
         /// The hashed password for this Sphynx user, as a base-64 string.
         /// </summary>
         [BsonElement("pwd")]
-        internal string? Password { get; set; }
+        public string? Password { get; set; }
 
         /// <summary>
         /// The salt for the password of this Sphynx user.
         /// </summary>
         [BsonElement("pwd_salt")]
-        internal string? PasswordSalt { get; set; }
+        public string? PasswordSalt { get; set; }
 
         public SphynxDbUser(SnowflakeId userId, string userName, SphynxUserStatus userStatus)
         {

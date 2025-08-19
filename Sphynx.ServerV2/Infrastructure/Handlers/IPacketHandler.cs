@@ -2,28 +2,29 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Network.PacketV2;
+using Sphynx.ServerV2.Client;
 
-namespace Sphynx.Server.Auth.Handlers
+namespace Sphynx.ServerV2.Infrastructure.Handlers
 {
     /// <summary>
-    /// Represents a type that performs actions according to information from specific packets.
+    /// Represents a type that handles specific packets requests from clients.
     /// </summary>
     /// <typeparam name="TPacket">The packet type accepted by the handler.</typeparam>
     public interface IPacketHandler<in TPacket> where TPacket : SphynxPacket
     {
         /// <summary>
-        /// Asynchronously performs the appropriate actions for the given <paramref name="packet"/> request.
+        /// Asynchronously handles the given <paramref name="packet"/> request.
         /// </summary>
-        /// <param name="client">The client for which the packet should be handled. For example, response information will
+        /// <param name="client">The client for which the packet should be handled. For instance, response information will
         /// be forwarded to this client.</param>
         /// <param name="packet">The packet to handle.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
+        /// <param name="cancellationToken">A cancellation token for the handling request.</param>
         /// <returns>The started handling task, returning a bool representing whether the packet could be sent.</returns>
-        public ValueTask HandlePacketAsync(SphynxClient client, TPacket packet, CancellationToken cancellationToken = default);
+        public Task HandlePacketAsync(ISphynxClient client, TPacket packet, CancellationToken cancellationToken = default);
     }
 
     /// <summary>
-    /// Represents a type that performs actions according to information from specific packets.
+    /// Represents a type that handles generic packets requests from clients.
     /// </summary>
     public interface IPacketHandler : IPacketHandler<SphynxPacket>
     {
