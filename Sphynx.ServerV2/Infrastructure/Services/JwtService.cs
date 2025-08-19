@@ -83,10 +83,18 @@ namespace Sphynx.ServerV2.Infrastructure.Services
 
         public SphynxErrorInfo<SphynxJwtPayload?> ReadToken(string jwt)
         {
-            if (_jwtDecoder.TryDecode(jwt, out SphynxJwtPayload payload) != DecodeResult.Success)
-                return new SphynxErrorInfo<SphynxJwtPayload?>(SphynxErrorCode.INVALID_TOKEN);
+            var decodeResult = _jwtDecoder.TryDecode(jwt, out SphynxJwtPayload payload);
 
-            return new SphynxErrorInfo<SphynxJwtPayload?>(payload);
+            switch (decodeResult)
+            {
+                case DecodeResult.Success:
+                case DecodeResult.FailedVerifyExpire:
+                case DecodeResult.FailedVerifySignature:
+                case DecodeResult.FailedVerifyNotBefore:
+                    return payload;
+                default:
+                    return SphynxErrorCode.INVALID_TOKEN;
+            }
         }
 
         public async Task<SphynxErrorInfo<SphynxRefreshTokenInfo?>> ReadTokenAsync(Guid refreshToken, CancellationToken cancellationToken = default)

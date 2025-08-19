@@ -1,15 +1,21 @@
-// Copyright (c) Ark -α- & Specyy.Licensed under the MIT Licence.
+// Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 #nullable disable
 
+using System.Globalization;
 using System.Net;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson.Serialization;
+using MongoDB.Driver;
+using PropertiesDotNet.Core;
+using PropertiesDotNet.Serialization;
+using PropertiesDotNet.Serialization.Converters;
+using PropertiesDotNet.Serialization.ObjectProviders;
+using PropertiesDotNet.Serialization.PropertiesTree;
 using Sphynx.Core;
-using Sphynx.Network.PacketV2;
 using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.Serialization.Model;
-using Sphynx.Network.Serialization.Packet;
+using Sphynx.Network.Serialization;
 using Sphynx.Network.Transport;
 using Sphynx.Server.Auth.Handlers;
 using Sphynx.Server.Auth.Middleware;
@@ -20,23 +26,24 @@ using Sphynx.ServerV2.Infrastructure.Middleware;
 using Sphynx.ServerV2.Infrastructure.RateLimiting;
 using Sphynx.ServerV2.Infrastructure.Routing;
 using Sphynx.ServerV2.Infrastructure.Services;
+using Sphynx.ServerV2.Persistence;
+using Sphynx.ServerV2.Persistence.Auth;
 
 namespace Sphynx.Server.Auth
 {
     public sealed class SphynxAuthServerProfile : SphynxTcpServerProfile
     {
-        public IPasswordHasher PasswordHasher { get; set; }
-        public IAuthUserRepository UserRepository { get; set; }
-        public IAuthService AuthService { get; set; }
-        public Func<IRateLimiter> RateLimiterFactory { get; set; }
+        public IAuthService AuthService { get; private set; }
+        public Func<IRateLimiter> RateLimiterFactory { get; private set; }
 
         private RateLimitingMiddleware<IPAddress> _rateLimitingMiddleware;
         private IJwtService _jwtService;
 
+        private IMongoClient _mongoClient;
+
         public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
         {
             ConfigureBase(isDevelopment);
-            ConfigureTransporter(isDevelopment);
             ConfigureServices(isDevelopment);
             ConfigureMiddleware(isDevelopment);
             ConfigureRoutes(isDevelopment);
@@ -57,35 +64,146 @@ namespace Sphynx.Server.Auth
             });
 
             EndPoint = DefaultEndPoint;
-        }
 
-        private void ConfigureTransporter(bool isDevelopment)
-        {
-            var transporter = new PacketTransporter(null!);
-
-            // transporter.AddSerializer(SphynxPacketType.LOGIN_REQ, new LoginRequestPacketSerializer())
-            //     .AddSerializer(SphynxPacketType.LOGIN_RES, new LoginResponseSerializer(new SphynxSelfInfoSerializer()))
-            //     .AddSerializer(SphynxPacketType.REGISTER_REQ, new RegisterRequestSerializer())
-            //     .AddSerializer(SphynxPacketType.REGISTER_RES, new RegisterResponseSerializer(new SphynxSelfInfoSerializer()));
-
-            PacketTransporter = transporter;
+            PacketTransporter = new PacketTransporter(new JsonPacketSerializer());
         }
 
         private void ConfigureServices(bool isDevelopment)
         {
-            PasswordHasher = new Pbkdf2PasswordHasher();
-
-            // TODO: Register mongo credentials
-            UserRepository = isDevelopment ? new NullUserRepository() : new MongoAuthUserRepository(null!, null!);
-
-            // TODO: Register mongo credentials
-            _jwtService = new JwtService(null!);
-            AuthService = new AuthService(PasswordHasher, UserRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
+            if (Logger.IsEnabled(LogLevel.Debug))
+                Logger.LogDebug("Configuring services for {Configuration} configuration...", isDevelopment ? "DEBUG" : "RELEASE");
 
             if (isDevelopment)
-                RateLimiterFactory = () => new TokenBucketRateLimiter(int.MaxValue, int.MaxValue, TimeSpan.FromTicks(1));
+                ConfigureDevServices();
             else
-                RateLimiterFactory = () => new TokenBucketRateLimiter(1, 10, TimeSpan.FromMinutes(1));
+                ConfigureReleaseServices();
+        }
+
+        private void ConfigureReleaseServices()
+        {
+            BsonSerializer.RegisterSerializer(new SnowflakeIdSerializer());
+
+            var config = LoadServerConfig();
+
+            ConfigureReleaseServices(config);
+        }
+
+        private SphynxAuthServerConfig LoadServerConfig()
+        {
+            var config = SphynxAuthServerConfig.LoadFromEnvironment();
+
+            var serializer = new PropertiesSerializer
+            {
+                TreeComposer = new FlatTreeComposer(),
+                ObjectProvider = new ExpressionObjectProvider(),
+            };
+
+            serializer.PrimitiveConverters.AddFirst(new CustomTimeSpanConverter());
+            serializer.PrimitiveConverters.AddFirst(new ByteArrayConverter());
+
+            SphynxAuthServerConfig fileConfig = null;
+
+            if (File.Exists(SphynxAuthServerConfig.FILENAME))
+            {
+                try
+                {
+                    using var reader = PropertiesReader.FromFile(SphynxAuthServerConfig.FILENAME);
+                    fileConfig = serializer.DeserializeObject<SphynxAuthServerConfig>(reader);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Unable to read environment file, using defaults...");
+                }
+            }
+            else
+            {
+                Logger.LogInformation("Unable to locate environment file, using defaults...");
+            }
+
+            if (fileConfig is not null)
+                config.MergeFrom(fileConfig);
+
+            return config;
+        }
+
+        private class ByteArrayConverter : IPropertiesPrimitiveConverter
+        {
+            public bool Accepts(Type type) => type == typeof(byte[]);
+
+            public object Deserialize(PropertiesSerializer serializer, Type type, string input)
+            {
+                return Convert.FromBase64String(input!);
+            }
+
+            public string Serialize(PropertiesSerializer serializer, Type type, object input)
+            {
+                return Convert.ToBase64String((byte[])input!);
+            }
+        }
+
+        private class CustomTimeSpanConverter : IPropertiesPrimitiveConverter
+        {
+            private readonly TimeSpanConverter _converter = new TimeSpanConverter();
+
+            public bool Accepts(Type type) => type == typeof(TimeSpan);
+
+            public object Deserialize(PropertiesSerializer serializer, Type type, string input)
+            {
+                string? timeSpanMs = input?.Trim().ToLowerInvariant();
+
+                if ((timeSpanMs?.EndsWith("ms") ?? false) && double.TryParse(timeSpanMs.AsSpan()[..^2], out double timeSpan))
+                    return TimeSpan.FromMilliseconds(timeSpan);
+
+                return _converter.Deserialize(serializer, type, input);
+            }
+
+            public string Serialize(PropertiesSerializer serializer, Type type, object input)
+            {
+                if (input is null)
+                    return "0";
+
+                return ((TimeSpan)input!).TotalMilliseconds.ToString(CultureInfo.InvariantCulture) + "ms";
+            }
+        }
+
+        private void ConfigureReleaseServices(SphynxAuthServerConfig config)
+        {
+            EndPoint.Port = config.Port;
+
+            _mongoClient = new MongoClient(config.DbConnectionString);
+
+            var db = _mongoClient.GetDatabase(config.DbName);
+            var userRepository = new MongoAuthUserRepository(db, config.UserCollectionName);
+            var refreshRepository = new MongoRefreshTokenRepository(db, config.RefreshCollectionName);
+
+            var jwtOptions = new JwtOptions
+            {
+                Issuer = config.JwtIssuer,
+                Audience = config.JwtAudience,
+                Secret = config.JwtSecret,
+                ExpiryTime = config.AccessTokenExpiryTime,
+                RefreshTokenExpiryTime = config.RefreshTokenExpiryTime,
+            };
+
+            _jwtService = new JwtService(refreshRepository, jwtOptions);
+
+            // TODO: Make configurable
+            var passwordHasher = new Pbkdf2PasswordHasher();
+            AuthService = new AuthService(passwordHasher, userRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
+
+            RateLimiterFactory = () => new TokenBucketRateLimiter(config.RateLimiterPermits, config.RateLimiterPermits, config.RateLimiterPeriod);
+        }
+
+        private void ConfigureDevServices()
+        {
+            var userRepository = new NullUserRepository();
+            var refreshRepository = new NullRefreshTokenRepository();
+            var passwordHasher = new Pbkdf2PasswordHasher();
+
+            _jwtService = new JwtService(refreshRepository);
+            AuthService = new AuthService(passwordHasher, userRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
+
+            RateLimiterFactory = () => new TokenBucketRateLimiter(int.MaxValue, int.MaxValue, TimeSpan.FromTicks(1));
         }
 
         private void ConfigureMiddleware(bool isDevelopment)
@@ -132,7 +250,10 @@ namespace Sphynx.Server.Auth
         protected override void Dispose(bool disposing)
         {
             if (disposing)
+            {
                 _rateLimitingMiddleware?.Dispose();
+                _mongoClient?.Dispose();
+            }
 
             base.Dispose(disposing);
         }

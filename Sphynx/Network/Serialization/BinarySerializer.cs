@@ -57,15 +57,18 @@ namespace Sphynx.Network.Serialization
             get => _buffer;
         }
 
-        public BinarySerializer(IBufferWriter<byte> buffer) : this()
+        public BinarySerializer(IBufferWriter<byte> buffer)
         {
             _buffer = buffer ?? throw new ArgumentNullException(nameof(buffer));
+            _span = default;
+            _bytesWritten = 0;
         }
 
-        public BinarySerializer(Span<byte> span) : this()
+        public BinarySerializer(Span<byte> span)
         {
             _buffer = null!;
             _span = span;
+            _bytesWritten = 0;
         }
 
         #region Sizing

@@ -53,7 +53,7 @@ namespace Sphynx.ServerV2.Infrastructure.Routing
             if (token.IsCancellationRequested)
                 return Task.FromCanceled(token);
 
-            return _middleware?.Count == 0 ? Handler.HandlePacketAsync(client, packet, token) : Pipeline(client, packet, token);
+            return _middleware is null || _middleware.Count == 0 ? Handler.HandlePacketAsync(client, packet, token) : Pipeline(client, packet, token);
         }
 
         public void AddMiddleware<TParent>(IPacketMiddleware<TParent> middleware) where TParent : SphynxPacket
