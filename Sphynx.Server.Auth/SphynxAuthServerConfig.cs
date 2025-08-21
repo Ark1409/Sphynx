@@ -130,6 +130,8 @@ namespace Sphynx.Server.Auth
             if (other.JwtSecret != default) JwtSecret = other.JwtSecret;
             if (other.AccessTokenExpiryTime != default) AccessTokenExpiryTime = other.AccessTokenExpiryTime;
             if (other.RefreshTokenExpiryTime != default) RefreshTokenExpiryTime = other.RefreshTokenExpiryTime;
+            if (other.RateLimiterPermits != default) RateLimiterPermits = other.RateLimiterPermits;
+            if (other.RateLimiterPeriod != default) RateLimiterPeriod = other.RateLimiterPeriod;
         }
     }
 }

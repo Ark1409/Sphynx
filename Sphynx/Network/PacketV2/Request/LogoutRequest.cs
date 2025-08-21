@@ -9,12 +9,15 @@ namespace Sphynx.Network.PacketV2.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_REQ;
 
+        public Guid RefreshToken { get; }
+
         /// <summary>
         /// Creates a new <see cref="LogoutRequest"/>.
         /// </summary>
         /// <param name="accessToken">The JWT access token for this request.</param>
-        public LogoutRequest(string accessToken) : base(accessToken)
+        public LogoutRequest(string accessToken, Guid refreshToken) : base(accessToken)
         {
+            RefreshToken = refreshToken;
         }
 
         /// <inheritdoc/>

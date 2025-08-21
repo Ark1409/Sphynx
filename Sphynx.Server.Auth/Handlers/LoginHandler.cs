@@ -56,7 +56,7 @@ namespace Sphynx.Server.Auth.Handlers
             await client.SendAsync(response, cancellationToken).ConfigureAwait(false);
 
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("Successfully authenticated with user {UserId} ({UserName})", authResult, userInfo.UserName);
+                _logger.LogInformation("Successfully authenticated with user {UserId} ({UserName})", userInfo.UserId, userInfo.UserName);
 
             if (client is SphynxTcpClient tcpClient)
                 await tcpClient.StopAsync(waitForFinish: false).ConfigureAwait(false);

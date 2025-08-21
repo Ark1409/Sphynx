@@ -241,6 +241,7 @@ namespace Sphynx.Server.Auth
             router.ThrowOnUnregistered = isDevelopment;
 
             router.UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
+                .UseHandler(new LogoutHandler(_jwtService, LoggerFactory.CreateLogger<LogoutHandler>()))
                 .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()))
                 .UseHandler(new RefreshHandler(_jwtService, LoggerFactory.CreateLogger<RefreshHandler>()));
 

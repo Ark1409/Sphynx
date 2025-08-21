@@ -106,7 +106,16 @@ namespace Sphynx.Network.Serialization
         public readonly ReadOnlySequence<byte> UnreadSequence
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => _sequence.UnreadSequence;
+            get
+            {
+                if (_useSequence)
+                    return _sequence.UnreadSequence;
+
+                if (_hasSequence)
+                    return _sequence.Sequence.Slice(_spanOffset);
+
+                return Sequence;
+            }
         }
 
         /// <summary>

@@ -12,11 +12,12 @@ namespace Sphynx.Network.Serialization.Packet
     {
         protected override void SerializeInternal(LogoutRequest packet, ref BinarySerializer serializer)
         {
+            serializer.WriteGuid(packet.RefreshToken);
         }
 
         protected override LogoutRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            return new LogoutRequest(requestInfo.AccessToken);
+            return new LogoutRequest(requestInfo.AccessToken, deserializer.ReadGuid());
         }
     }
 

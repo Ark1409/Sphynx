@@ -157,7 +157,7 @@ namespace Sphynx.Server.Auth.Services
             const int BUFFER_SIZE = PASSWORD_HASH_LENGTH + PASSWORD_SALT_LENGTH;
 
             byte[]? rentBuffer = null;
-            var buffer = BUFFER_SIZE <= 512 ? stackalloc byte[BUFFER_SIZE] : (rentBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE));
+            var buffer = BUFFER_SIZE <= 512 ? stackalloc byte[512] : (rentBuffer = ArrayPool<byte>.Shared.Rent(BUFFER_SIZE));
 
             try
             {
