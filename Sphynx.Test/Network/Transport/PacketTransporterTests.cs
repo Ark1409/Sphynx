@@ -31,7 +31,7 @@ namespace Sphynx.Test.Network.Transport
             var packets = new SphynxPacket[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("access-token"),
+                new LogoutRequest("access-token", Guid.NewGuid()),
                 new MessagePostRequest("access-token", "room-id".AsSnowflakeId(), "Test message")
             };
 
@@ -51,7 +51,7 @@ namespace Sphynx.Test.Network.Transport
             var packets = new SphynxPacket[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("access-token"),
+                new LogoutRequest("access-token", Guid.NewGuid()),
                 new MessagePostRequest("access-token", "room-id".AsSnowflakeId(), "Test message")
             };
 
