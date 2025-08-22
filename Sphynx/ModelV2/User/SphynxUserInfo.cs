@@ -13,7 +13,7 @@ namespace Sphynx.ModelV2.User
         /// <summary>
         /// The user ID for this <c>Sphynx</c> user.
         /// </summary>
-        public SnowflakeId UserId { get; set; }
+        public Guid UserId { get; set; }
 
         /// <summary>
         /// The username for this <c>Sphynx</c> user.
@@ -29,7 +29,7 @@ namespace Sphynx.ModelV2.User
         {
         }
 
-        public SphynxUserInfo(SnowflakeId userId, string userName, SphynxUserStatus userStatus)
+        public SphynxUserInfo(Guid userId, string userName, SphynxUserStatus userStatus)
         {
             UserId = userId;
             UserName = userName;

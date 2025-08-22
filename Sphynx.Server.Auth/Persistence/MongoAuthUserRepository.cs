@@ -29,7 +29,7 @@ namespace Sphynx.Server.Auth.Persistence
                 return new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USERNAME);
 
             if (user.UserId == default)
-                user.UserId = SnowflakeId.NewId();
+                user.UserId = Guid.NewGuid();
 
             var dbUser = user.ToRecord();
 
@@ -95,7 +95,7 @@ namespace Sphynx.Server.Auth.Persistence
             return SphynxErrorCode.SUCCESS;
         }
 
-        public async Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);
 
@@ -131,7 +131,7 @@ namespace Sphynx.Server.Auth.Persistence
                 : new SphynxErrorInfo<SphynxAuthUser?>(dbUser.ToDomain());
         }
 
-        public async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId,
+        public async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(Guid userId,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);
@@ -171,7 +171,7 @@ namespace Sphynx.Server.Auth.Persistence
             return new SphynxErrorInfo<PasswordInfo?>(cursor.Current.First());
         }
 
-        public async Task<SphynxErrorInfo> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password,
+        public async Task<SphynxErrorInfo> UpdateUserPasswordAsync(Guid userId, PasswordInfo password,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);

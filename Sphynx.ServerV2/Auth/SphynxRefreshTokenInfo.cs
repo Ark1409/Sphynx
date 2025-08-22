@@ -9,7 +9,7 @@ namespace Sphynx.ServerV2.Auth
     public readonly record struct SphynxRefreshTokenInfo(
         Guid RefreshToken,
         string AccessToken,
-        SnowflakeId User,
+        Guid User,
         DateTimeOffset ExpiryTime,
         DateTimeOffset CreatedAt);
 

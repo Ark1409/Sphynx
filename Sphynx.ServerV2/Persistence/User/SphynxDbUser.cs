@@ -1,4 +1,6 @@
-﻿using MongoDB.Bson.Serialization.Attributes;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+using MongoDB.Bson.Serialization.IdGenerators;
 using Sphynx.Core;
 using Sphynx.ModelV2.User;
 
@@ -11,8 +13,9 @@ namespace Sphynx.ServerV2.Persistence.User
     [BsonIgnoreExtraElements]
     public class SphynxDbUser : IEquatable<SphynxDbUser>
     {
-        [BsonId]
-        public SnowflakeId UserId { get; set; }
+        [BsonId(IdGenerator = typeof(CombGuidGenerator))]
+        [BsonGuidRepresentation(GuidRepresentation.Standard)]
+        public Guid UserId { get; set; }
 
         [BsonElement("name")]
         public string UserName { get; set; }
@@ -21,19 +24,19 @@ namespace Sphynx.ServerV2.Persistence.User
         public SphynxUserStatus UserStatus { get; set; }
 
         [BsonElement("friends")]
-        public HashSet<SnowflakeId> Friends { get; set; } = new();
+        public HashSet<Guid> Friends { get; set; } = new();
 
         [BsonElement("rooms")]
-        public HashSet<SnowflakeId> Rooms { get; set; } = new();
+        public HashSet<Guid> Rooms { get; set; } = new();
 
         [BsonElement("last_read")]
         public LastReadDbMessages LastReadMessages { get; set; } = new();
 
         [BsonElement("out_reqs")]
-        public HashSet<SnowflakeId> OutgoingFriendRequests { get; set; } = new();
+        public HashSet<Guid> OutgoingFriendRequests { get; set; } = new();
 
         [BsonElement("inc_recs")]
-        public HashSet<SnowflakeId> IncomingFriendRequests { get; set; } = new();
+        public HashSet<Guid> IncomingFriendRequests { get; set; } = new();
 
         /// <summary>
         /// The hashed password for this Sphynx user, as a base-64 string.
@@ -47,30 +50,30 @@ namespace Sphynx.ServerV2.Persistence.User
         [BsonElement("pwd_salt")]
         public string? PasswordSalt { get; set; }
 
-        public SphynxDbUser(SnowflakeId userId, string userName, SphynxUserStatus userStatus)
+        public SphynxDbUser(Guid userId, string userName, SphynxUserStatus userStatus)
         {
             UserId = userId;
             UserName = userName;
             UserStatus = userStatus;
         }
 
-        public SphynxDbUser(SnowflakeId userId,
+        public SphynxDbUser(Guid userId,
             string userName,
             SphynxUserStatus userStatus,
             string? password,
             string? passwordSalt,
-            ISet<SnowflakeId> friends,
-            ISet<SnowflakeId> rooms,
+            ISet<Guid> friends,
+            ISet<Guid> rooms,
             LastReadDbMessages lastReadMessages,
-            ISet<SnowflakeId> outgoingFriendRequests,
-            ISet<SnowflakeId> incomingFriendRequests)
+            ISet<Guid> outgoingFriendRequests,
+            ISet<Guid> incomingFriendRequests)
             : this(userId, userName, userStatus)
         {
-            Friends = friends as HashSet<SnowflakeId> ?? new HashSet<SnowflakeId>(friends);
-            Rooms = rooms as HashSet<SnowflakeId> ?? new HashSet<SnowflakeId>(rooms);
+            Friends = friends as HashSet<Guid> ?? new HashSet<Guid>(friends);
+            Rooms = rooms as HashSet<Guid> ?? new HashSet<Guid>(rooms);
             LastReadMessages = lastReadMessages;
-            OutgoingFriendRequests = outgoingFriendRequests as HashSet<SnowflakeId> ?? new HashSet<SnowflakeId>(outgoingFriendRequests);
-            IncomingFriendRequests = incomingFriendRequests as HashSet<SnowflakeId> ?? new HashSet<SnowflakeId>(incomingFriendRequests);
+            OutgoingFriendRequests = outgoingFriendRequests as HashSet<Guid> ?? new HashSet<Guid>(outgoingFriendRequests);
+            IncomingFriendRequests = incomingFriendRequests as HashSet<Guid> ?? new HashSet<Guid>(incomingFriendRequests);
             Password = password;
             PasswordSalt = passwordSalt;
         }

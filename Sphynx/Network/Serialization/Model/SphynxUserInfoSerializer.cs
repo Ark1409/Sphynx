@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Collections;
 using Sphynx.Core;
 using Sphynx.ModelV2.User;
 
@@ -11,14 +10,14 @@ namespace Sphynx.Network.Serialization.Model
     {
         public override void Serialize(SphynxUserInfo model, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(model.UserId);
+            serializer.WriteGuid(model.UserId);
             serializer.WriteString(model.UserName);
             serializer.WriteEnum(model.UserStatus);
         }
 
         public override SphynxUserInfo Deserialize(ref BinaryDeserializer deserializer)
         {
-            var userId = deserializer.ReadSnowflakeId();
+            var userId = deserializer.ReadGuid();
             string userName = deserializer.ReadString()!;
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
 
@@ -30,7 +29,7 @@ namespace Sphynx.Network.Serialization.Model
     {
         public override void Serialize(SphynxSelfInfo model, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(model.UserId);
+            serializer.WriteGuid(model.UserId);
             serializer.WriteString(model.UserName);
             serializer.WriteEnum(model.UserStatus);
 
@@ -43,18 +42,16 @@ namespace Sphynx.Network.Serialization.Model
 
         public override SphynxSelfInfo Deserialize(ref BinaryDeserializer deserializer)
         {
-            var userId = deserializer.ReadSnowflakeId();
+            var userId = deserializer.ReadGuid();
             string userName = deserializer.ReadString()!;
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
 
-            var friends = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
-            var rooms = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
-
-            var lastReadMessages = deserializer.ReadDictionary<SnowflakeId, SnowflakeId>();
+            var friends = deserializer.ReadCollection<Guid, HashSet<Guid>>();
+            var rooms = deserializer.ReadCollection<Guid, HashSet<Guid>>();
+            var lastReadMessages = deserializer.ReadDictionary<Guid, SnowflakeId>();
             var lastReadMessagesInfo = new LastReadMessageInfo(lastReadMessages);
-
-            var outgoingFriendReqs = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
-            var incomingFriendReqs = deserializer.ReadCollection<SnowflakeId, HashSet<SnowflakeId>>();
+            var outgoingFriendReqs = deserializer.ReadCollection<Guid, HashSet<Guid>>();
+            var incomingFriendReqs = deserializer.ReadCollection<Guid, HashSet<Guid>>();
 
             return new SphynxSelfInfo
             {

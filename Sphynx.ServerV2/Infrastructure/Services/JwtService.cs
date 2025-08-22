@@ -35,7 +35,7 @@ namespace Sphynx.ServerV2.Infrastructure.Services
             _refreshRepository = refreshRepository;
         }
 
-        public async Task<SphynxErrorInfo<SphynxJwtInfo?>> CreateTokenAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxJwtInfo?>> CreateTokenAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var now = DateTimeOffset.UtcNow;
 
