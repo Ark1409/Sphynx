@@ -72,7 +72,7 @@ namespace Sphynx.Core
         {
             string hex = string.Create(HEX_LENGTH, this, static (span, inst) =>
             {
-                bool formatted = inst.TryFormat(span, out int charsWritten);
+                bool formatted = inst.TryFormatHex(span, out int charsWritten);
 
                 Debug.Assert(formatted);
                 Debug.Assert(charsWritten == span.Length);

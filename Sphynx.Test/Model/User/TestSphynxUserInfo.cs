@@ -11,7 +11,7 @@ namespace Sphynx.Test.Model.User
         public TestSphynxUserInfo(string userName = "test-user")
         {
             UserName = userName;
-            UserId = userName.AsSnowflakeId();
+            UserId = userName.AsGuid();
 
             var statuses = Enum.GetValues<SphynxUserStatus>();
             UserStatus = statuses[userName.Length % statuses.Length];

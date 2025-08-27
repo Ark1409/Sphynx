@@ -148,7 +148,7 @@ namespace Sphynx.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this(new ReadOnlySequence<byte>(memory))
+        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this(sequence: new ReadOnlySequence<byte>(memory))
         {
         }
 
