@@ -6,6 +6,7 @@ using Sphynx.Core;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
 using Sphynx.ServerV2.Client;
+using Sphynx.ServerV2.Extensions;
 using Sphynx.ServerV2.Infrastructure.Handlers;
 using Sphynx.ServerV2.Infrastructure.Services;
 

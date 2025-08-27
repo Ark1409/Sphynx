@@ -9,6 +9,7 @@ using Sphynx.ModelV2.User;
 using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Persistence;
 using Sphynx.ServerV2.Auth;
+using Sphynx.ServerV2.Extensions;
 using Sphynx.ServerV2.Infrastructure.Services;
 
 namespace Sphynx.Server.Auth.Services
