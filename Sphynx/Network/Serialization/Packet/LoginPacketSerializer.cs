@@ -72,13 +72,13 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(LoginBroadcast packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.UserId);
+            serializer.WriteGuid(packet.UserId);
             serializer.WriteEnum(packet.UserStatus);
         }
 
         public override LoginBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
-            var userId = deserializer.ReadSnowflakeId();
+            var userId = deserializer.ReadGuid();
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
 
             return new LoginBroadcast(userId, userStatus);

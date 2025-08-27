@@ -10,18 +10,18 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class KickUserRequestSerializer : RequestSerializer<KickUserRequest>
     {
-        protected override void SerializeInternal(KickUserRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(KickUserRequest packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
-            serializer.WriteSnowflakeId(packet.KickId);
+            serializer.WriteGuid(packet.RoomId);
+            serializer.WriteGuid(packet.KickId);
         }
 
-        protected override KickUserRequest DeserializeInternal( ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override KickUserRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var roomId = deserializer.ReadSnowflakeId();
-            var kickId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
+            var kickId = deserializer.ReadGuid();
 
-            return new KickUserRequest(requestInfo.AccessToken, roomId, kickId);
+            return new KickUserRequest(requestInfo.SessionId, roomId, kickId);
         }
     }
 
@@ -31,7 +31,7 @@ namespace Sphynx.Network.Serialization.Packet
         {
         }
 
-        protected override KickUserResponse DeserializeInternal( ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override KickUserResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             return new KickUserResponse(responseInfo.ErrorInfo);
         }
@@ -41,14 +41,14 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(UserKickedBroadcast packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
-            serializer.WriteSnowflakeId(packet.KickId);
+            serializer.WriteGuid(packet.RoomId);
+            serializer.WriteGuid(packet.KickId);
         }
 
         public override UserKickedBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
-            var roomId = deserializer.ReadSnowflakeId();
-            var kickId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
+            var kickId = deserializer.ReadGuid();
 
             return new UserKickedBroadcast(roomId, kickId);
         }

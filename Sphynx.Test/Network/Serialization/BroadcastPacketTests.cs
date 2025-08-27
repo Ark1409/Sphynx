@@ -17,7 +17,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LoginBroadcastSerializer();
-            var packet = new LoginBroadcast("user1".AsSnowflakeId(), SphynxUserStatus.ONLINE);
+            var packet = new LoginBroadcast("user1".AsGuid(), SphynxUserStatus.ONLINE);
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -33,7 +33,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LogoutBroadcastSerializer();
-            var packet = new LogoutBroadcast("user1".AsSnowflakeId());
+            var packet = new LogoutBroadcast("user1".AsGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -49,7 +49,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new MessagePostedBroadcastSerializer();
-            var packet = new MessagePostedBroadcast("room1".AsSnowflakeId(), "msg1".AsSnowflakeId());
+            var packet = new MessagePostedBroadcast("room1".AsGuid(), "msg1".AsSnowflakeId());
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -65,7 +65,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new RoomDeletedBroadcastSerializer();
-            var packet = new RoomDeletedBroadcast("room1".AsSnowflakeId());
+            var packet = new RoomDeletedBroadcast("room1".AsGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -81,7 +81,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new JoinedRoomBroadcastSerializer();
-            var packet = new JoinedRoomBroadcast("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
+            var packet = new JoinedRoomBroadcast("room1".AsGuid(), "user1".AsGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -97,7 +97,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new UserKickedBroadcastSerializer();
-            var packet = new UserKickedBroadcast("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
+            var packet = new UserKickedBroadcast("room1".AsGuid(), "user1".AsGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -113,7 +113,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LeftRoomBroadcastSerializer();
-            var packet = new LeftRoomBroadcast("room1".AsSnowflakeId(), "user1".AsSnowflakeId());
+            var packet = new LeftRoomBroadcast("room1".AsGuid(), "user1".AsGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);

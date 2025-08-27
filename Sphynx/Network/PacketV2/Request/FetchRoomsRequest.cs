@@ -10,22 +10,22 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The maximum number of rooms which can be requested at once.
         /// </summary>
-        public const int MAX_ROOM_COUNT = 10;
+        public const int MAX_ROOM_COUNT = 25;
 
         /// <summary>
         /// The room IDs of the rooms for which to retrieve information.
         /// </summary>
         /// <remarks>If the provided value has a length greater than <see cref="MAX_ROOM_COUNT"/>, the first
         /// <see cref="MAX_ROOM_COUNT"/> IDs will be taken.</remarks>
-        public SnowflakeId[] RoomIds
+        public Guid[] RoomIds
         {
             get => _roomIds;
-            init
+            set
             {
                 if (value.Length > MAX_ROOM_COUNT)
                 {
                     if (_roomIds.Length != MAX_ROOM_COUNT)
-                        _roomIds = new SnowflakeId[MAX_ROOM_COUNT];
+                        _roomIds = new Guid[MAX_ROOM_COUNT];
 
                     Array.Copy(value, 0, _roomIds, 0, MAX_ROOM_COUNT);
                     return;
@@ -35,25 +35,29 @@ namespace Sphynx.Network.PacketV2.Request
             }
         }
 
-        private SnowflakeId[] _roomIds = Array.Empty<SnowflakeId>();
+        private Guid[] _roomIds = Array.Empty<Guid>();
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_INFO_REQ;
 
-        /// <summary>
-        /// Creates a new <see cref="FetchRoomsRequest"/>.
-        /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public FetchRoomsRequest(string accessToken) : base(accessToken)
+        public FetchRoomsRequest()
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="FetchRoomsRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
+        /// <param name="sessionId">The JWT access token for this request.</param>
+        public FetchRoomsRequest(Guid sessionId) : base(sessionId)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="FetchRoomsRequest"/>.
+        /// </summary>
+        /// <param name="sessionId">The JWT access token for this request.</param>
         /// <param name="roomIds">The ID of the room to get the information of.</param>
-        public FetchRoomsRequest(string accessToken, params SnowflakeId[] roomIds) : base(accessToken)
+        public FetchRoomsRequest(Guid sessionId, params Guid[] roomIds) : base(sessionId)
         {
             RoomIds = roomIds;
         }

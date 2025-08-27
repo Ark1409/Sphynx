@@ -10,14 +10,14 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class LogoutRequestSerializer : RequestSerializer<LogoutRequest>
     {
-        protected override void SerializeInternal(LogoutRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(LogoutRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteGuid(packet.RefreshToken);
         }
 
-        protected override LogoutRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override LogoutRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            return new LogoutRequest(requestInfo.AccessToken, deserializer.ReadGuid());
+            return new LogoutRequest(requestInfo.SessionId, deserializer.ReadGuid());
         }
     }
 
@@ -37,12 +37,12 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(LogoutBroadcast packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.UserId);
+            serializer.WriteGuid(packet.UserId);
         }
 
         public override LogoutBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
-            var userId = deserializer.ReadSnowflakeId();
+            var userId = deserializer.ReadGuid();
             return new LogoutBroadcast(userId);
         }
     }

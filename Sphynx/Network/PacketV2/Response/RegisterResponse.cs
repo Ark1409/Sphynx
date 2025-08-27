@@ -18,6 +18,10 @@ namespace Sphynx.Network.PacketV2.Response
         public Guid? RefreshToken { get; init; }
         public DateTimeOffset? AccessTokenExpiry { get; init; }
 
+        public RegisterResponse()
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="LoginResponse"/>.
         /// </summary>

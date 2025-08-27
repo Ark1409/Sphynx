@@ -12,11 +12,15 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Holds the authenticated user's information.
         /// </summary>
-        public SphynxSelfInfo? UserInfo { get; init; }
+        public SphynxSelfInfo? UserInfo { get; set; }
 
-        public string? AccessToken { get; init; }
-        public Guid? RefreshToken { get; init; }
-        public DateTimeOffset? AccessTokenExpiry { get; init; }
+        public string? AccessToken { get; set; }
+        public Guid? RefreshToken { get; set; }
+        public DateTimeOffset? AccessTokenExpiry { get; set; }
+
+        public LoginResponse()
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="LoginResponse"/>.

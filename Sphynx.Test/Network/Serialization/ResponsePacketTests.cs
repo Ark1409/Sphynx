@@ -125,7 +125,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new RoomCreateResponseSerializer();
-            var packet = new RoomCreateResponse("room1".AsSnowflakeId());
+            var packet = new RoomCreateResponse("room1".AsGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);

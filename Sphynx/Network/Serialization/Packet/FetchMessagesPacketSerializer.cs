@@ -5,28 +5,27 @@ using Sphynx.Core;
 using Sphynx.ModelV2;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
-using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
     public class FetchMessagesRequestSerializer : RequestSerializer<FetchMessagesRequest>
     {
-        protected override void SerializeInternal(FetchMessagesRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(FetchMessagesRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(packet.BeforeId);
-            serializer.WriteSnowflakeId(packet.RoomId);
+            serializer.WriteGuid(packet.RoomId);
             serializer.WriteInt32(packet.Count);
             serializer.WriteBool(packet.Inclusive);
         }
 
-        protected override FetchMessagesRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override FetchMessagesRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var sinceId = deserializer.ReadSnowflakeId();
-            var roomId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
             int count = deserializer.ReadInt32();
             bool inclusive = deserializer.ReadBool();
 
-            return new FetchMessagesRequest(requestInfo.AccessToken, sinceId, roomId, count, inclusive);
+            return new FetchMessagesRequest(requestInfo.SessionId, sinceId, roomId, count, inclusive);
         }
     }
 

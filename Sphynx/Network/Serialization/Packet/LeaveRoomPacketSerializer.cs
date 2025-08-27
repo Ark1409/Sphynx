@@ -10,16 +10,16 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class LeaveRoomRequestSerializer : RequestSerializer<LeaveRoomRequest>
     {
-        protected override void SerializeInternal(LeaveRoomRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(LeaveRoomRequest packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
+            serializer.WriteGuid(packet.RoomId);
         }
 
-        protected override LeaveRoomRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override LeaveRoomRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var roomId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
 
-            return new LeaveRoomRequest(requestInfo.AccessToken, roomId);
+            return new LeaveRoomRequest(requestInfo.SessionId, roomId);
         }
     }
 
@@ -39,14 +39,14 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(LeftRoomBroadcast packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
-            serializer.WriteSnowflakeId(packet.LeaverId);
+            serializer.WriteGuid(packet.RoomId);
+            serializer.WriteGuid(packet.LeaverId);
         }
 
         public override LeftRoomBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
-            var roomId = deserializer.ReadSnowflakeId();
-            var leaverId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
+            var leaverId = deserializer.ReadGuid();
 
             return new LeftRoomBroadcast(roomId, leaverId);
         }

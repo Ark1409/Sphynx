@@ -9,12 +9,12 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The ID of the room to which the message was sent.
         /// </summary>
-        public SnowflakeId RoomId { get; init; }
+        public SnowflakeId RoomId { get; set; }
 
         /// <summary>
         /// The contents of the chat message.
         /// </summary>
-        public string Message { get; init; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_REQ;
@@ -22,25 +22,23 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="MessagePostRequest"/>.
         /// </summary>
-        public MessagePostRequest() : base()
+        public MessagePostRequest()
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="MessagePostRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public MessagePostRequest(string accessToken) : base(accessToken)
+        public MessagePostRequest(Guid sessionId) : base(sessionId)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="MessagePostRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessagePostRequest(string accessToken, SnowflakeId roomId, string message) : base(accessToken)
+        public MessagePostRequest(Guid sessionId, SnowflakeId roomId, string message) : base(sessionId)
         {
             RoomId = roomId;
             Message = message ?? throw new ArgumentNullException(nameof(message));

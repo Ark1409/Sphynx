@@ -42,7 +42,7 @@ namespace Sphynx.Server.Auth.Handlers
 
             var refreshTokenInfo = refreshTokenResult.Data!.Value;
 
-            if (request.AccessToken != refreshTokenInfo.AccessToken)
+            if (request.SessionId.ToString() != refreshTokenInfo.AccessToken)
             {
                 await client.SendAsync(new RefreshTokenResponse(SphynxErrorCode.INVALID_TOKEN), cancellationToken).ConfigureAwait(false);
                 return;

@@ -10,7 +10,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Room ID of the room to join.
         /// </summary>
-        public SnowflakeId RoomId { get; init; }
+        public Guid RoomId { get; set; }
 
         /// <summary>
         /// Password for the room, if the room is guarded with a password.
@@ -20,31 +20,32 @@ namespace Sphynx.Network.PacketV2.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_JOIN_REQ;
 
+        public JoinRoomRequest()
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="RoomCreateResponsePacket"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the room to join.</param>
         /// <param name="password">Password for the room, if the room is guarded with a password.</param>
-        public JoinRoomRequest(SnowflakeId roomId, string? password = null)
-            : this(null!, roomId, password)
+        public JoinRoomRequest(Guid roomId, string? password = null) : this(default, roomId, password)
         {
         }
 
         /// <summary>
         /// Creates new <see cref="JoinRoomRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public JoinRoomRequest(string accessToken) : base(accessToken)
+        public JoinRoomRequest(Guid sessionId) : base(sessionId)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="RoomCreateResponsePacket"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="roomId">Room ID of the room to join.</param>
         /// <param name="password">Password for the room, if the room is guarded with a password.</param>
-        public JoinRoomRequest(string accessToken, SnowflakeId roomId, string? password = null) : base(accessToken)
+        public JoinRoomRequest(Guid sessionId, Guid roomId, string? password = null) : base(sessionId)
         {
             RoomId = roomId;
             Password = password;

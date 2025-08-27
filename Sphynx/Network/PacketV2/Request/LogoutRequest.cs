@@ -11,11 +11,14 @@ namespace Sphynx.Network.PacketV2.Request
 
         public Guid RefreshToken { get; }
 
+        public LogoutRequest()
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="LogoutRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public LogoutRequest(string accessToken, Guid refreshToken) : base(accessToken)
+        public LogoutRequest(Guid sessionId, Guid refreshToken) : base(sessionId)
         {
             RefreshToken = refreshToken;
         }

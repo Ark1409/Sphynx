@@ -1,5 +1,3 @@
-using Sphynx.Core;
-
 namespace Sphynx.Network.PacketV2.Broadcast
 {
     /// <inheritdoc cref="SphynxPacketType.LOGOUT_BCAST"/>
@@ -8,16 +6,20 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// <summary>
         /// User ID of the user who went offline.
         /// </summary>
-        public SnowflakeId UserId { get; init; }
+        public Guid UserId { get; set; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_BCAST;
+
+        public LogoutBroadcast()
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="LogoutBroadcast"/>.
         /// </summary>
         /// <param name="userId">User ID of the user who went offline.</param>
-        public LogoutBroadcast(SnowflakeId userId)
+        public LogoutBroadcast(Guid userId)
         {
             UserId = userId;
         }
