@@ -2,8 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Net.Sockets;
-using Sphynx.ServerV2;
-using Sphynx.ServerV2.Client;
+using Sphynx.Server;
+using Sphynx.Server.Client;
 
 namespace Sphynx.Server.Auth
 {

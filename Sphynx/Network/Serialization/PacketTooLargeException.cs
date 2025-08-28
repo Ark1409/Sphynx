@@ -2,7 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Runtime.Serialization;
-using Sphynx.Network.PacketV2;
+using Sphynx.Network.Packet;
 
 namespace Sphynx.Network.Serialization
 {

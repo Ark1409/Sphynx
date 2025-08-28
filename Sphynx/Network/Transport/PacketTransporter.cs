@@ -4,7 +4,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
-using Sphynx.Network.PacketV2;
+using Sphynx.Network.Packet;
 using Sphynx.Network.Serialization;
 using Sphynx.Storage;
 using Sphynx.Utils;

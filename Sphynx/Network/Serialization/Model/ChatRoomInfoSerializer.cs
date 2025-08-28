@@ -4,7 +4,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using Sphynx.Core;
-using Sphynx.ModelV2.Room;
+using Sphynx.Model.Room;
 
 namespace Sphynx.Network.Serialization.Model
 {

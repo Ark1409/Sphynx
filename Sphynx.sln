@@ -4,8 +4,6 @@ VisualStudioVersion = 17.7.34202.233
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sphynx.Client", "Sphynx.Client\Sphynx.Client.csproj", "{40BB1048-7127-420C-8BD2-6A276461BFB5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sphynx.Server", "Sphynx.Server\Sphynx.Server.csproj", "{9CC97D13-45A5-4232-BB32-BC13F1CB8859}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sphynx", "Sphynx\Sphynx.csproj", "{7FD728F5-B94E-477F-8634-511454CFB560}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Test", "Sphynx.Test\Sphynx.Test.csproj", "{9E496B77-B4E6-46F4-978A-F589FA431F19}"
@@ -15,7 +13,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.ServerV2", "Sphynx.ServerV2\Sphynx.ServerV2.csproj", "{B364B847-224E-4B0A-98EC-9E527BB2DE49}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Server", "Sphynx.Server\Sphynx.Server.csproj", "{B364B847-224E-4B0A-98EC-9E527BB2DE49}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Server.Auth", "Sphynx.Server.Auth\Sphynx.Server.Auth.csproj", "{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}"
 EndProject
@@ -31,10 +29,6 @@ Global
 		{40BB1048-7127-420C-8BD2-6A276461BFB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{40BB1048-7127-420C-8BD2-6A276461BFB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{40BB1048-7127-420C-8BD2-6A276461BFB5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9CC97D13-45A5-4232-BB32-BC13F1CB8859}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9CC97D13-45A5-4232-BB32-BC13F1CB8859}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9CC97D13-45A5-4232-BB32-BC13F1CB8859}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9CC97D13-45A5-4232-BB32-BC13F1CB8859}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7FD728F5-B94E-477F-8634-511454CFB560}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7FD728F5-B94E-477F-8634-511454CFB560}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7FD728F5-B94E-477F-8634-511454CFB560}.Release|Any CPU.ActiveCfg = Release|Any CPU

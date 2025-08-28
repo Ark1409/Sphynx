@@ -4,10 +4,10 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using Sphynx.Core;
-using Sphynx.ModelV2.Room;
-using Sphynx.Network.PacketV2;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.Room;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {

@@ -2,9 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Net.Sockets;
-using Sphynx.ServerV2;
-using Sphynx.ServerV2.Client;
-using Sphynx.ServerV2.Infrastructure.RateLimiting;
+using Sphynx.Server;
+using Sphynx.Server.Client;
+using Sphynx.Server.Infrastructure.RateLimiting;
 
 namespace Sphynx.Server.Auth
 {

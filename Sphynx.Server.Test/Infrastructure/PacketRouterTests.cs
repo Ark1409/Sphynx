@@ -3,14 +3,14 @@
 
 using System.Net;
 using Sphynx.Core;
-using Sphynx.Network.PacketV2;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
-using Sphynx.ServerV2;
-using Sphynx.ServerV2.Client;
-using Sphynx.ServerV2.Infrastructure.Handlers;
-using Sphynx.ServerV2.Infrastructure.Middleware;
-using Sphynx.ServerV2.Infrastructure.Routing;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
+using Sphynx.Server;
+using Sphynx.Server.Client;
+using Sphynx.Server.Infrastructure.Handlers;
+using Sphynx.Server.Infrastructure.Middleware;
+using Sphynx.Server.Infrastructure.Routing;
 
 namespace Sphynx.Server.Test.Infrastructure
 {

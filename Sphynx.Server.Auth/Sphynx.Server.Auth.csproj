@@ -24,7 +24,7 @@
 
     <ItemGroup>
         <ProjectReference Include="../Sphynx/Sphynx.csproj"/>
-        <ProjectReference Include="../Sphynx.ServerV2/Sphynx.ServerV2.csproj"/>
+        <ProjectReference Include="..\Sphynx.Server\Sphynx.Server.csproj" />
     </ItemGroup>
 
     <ItemGroup>

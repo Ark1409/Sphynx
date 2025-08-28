@@ -1,8 +1,8 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.ModelV2.Room;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.Room;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization;
 using Sphynx.Network.Serialization.Model;
 using Sphynx.Network.Serialization.Packet;
