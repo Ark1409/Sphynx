@@ -2,12 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
-using Sphynx.Network.PacketV2.Broadcast;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.User;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization.Model;
-using SphynxUserStatus = Sphynx.Model.User.SphynxUserStatus;
 
 namespace Sphynx.Network.Serialization.Packet
 {
@@ -47,10 +46,7 @@ namespace Sphynx.Network.Serialization.Packet
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return;
 
-            serializer.WriteString(packet.AccessToken!);
-            serializer.WriteGuid(packet.RefreshToken.GetValueOrDefault());
-            serializer.WriteDateTimeOffset(packet.AccessTokenExpiry.GetValueOrDefault());
-
+            serializer.WriteGuid(packet.SessionId.GetValueOrDefault());
             _userSerializer.Serialize(packet.UserInfo!, ref serializer);
         }
 
@@ -59,12 +55,10 @@ namespace Sphynx.Network.Serialization.Packet
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new LoginResponse(responseInfo.ErrorInfo);
 
-            string accessToken = deserializer.ReadString()!;
-            var refreshToken = deserializer.ReadGuid();
-            var accessTokenExpiry = deserializer.ReadDateTimeOffset();
+            var sessionId = deserializer.ReadGuid();
             var userInfo = _userSerializer.Deserialize(ref deserializer)!;
 
-            return new LoginResponse(userInfo, accessToken, refreshToken, accessTokenExpiry);
+            return new LoginResponse(userInfo, sessionId);
         }
     }
 
@@ -72,13 +66,13 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(LoginBroadcast packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.UserId);
+            serializer.WriteGuid(packet.UserId);
             serializer.WriteEnum(packet.UserStatus);
         }
 
         public override LoginBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
-            var userId = deserializer.ReadSnowflakeId();
+            var userId = deserializer.ReadGuid();
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
 
             return new LoginBroadcast(userId, userStatus);

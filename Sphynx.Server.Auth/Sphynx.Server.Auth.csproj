@@ -5,6 +5,7 @@
         <TargetFramework>net6.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -23,7 +24,7 @@
 
     <ItemGroup>
         <ProjectReference Include="../Sphynx/Sphynx.csproj"/>
-        <ProjectReference Include="../Sphynx.ServerV2/Sphynx.ServerV2.csproj"/>
+        <ProjectReference Include="..\Sphynx.Server\Sphynx.Server.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -34,6 +35,12 @@
         <Reference Include="PropertiesDotNet">
             <HintPath>lib\propertiesdotnet-net6.0\PropertiesDotNet.dll</HintPath>
         </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update=".env">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

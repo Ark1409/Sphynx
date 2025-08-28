@@ -2,28 +2,28 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.Room;
-using Sphynx.Network.PacketV2.Broadcast;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.Room;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
     public class JoinRoomRequestSerializer : RequestSerializer<JoinRoomRequest>
     {
-        protected override void SerializeInternal(JoinRoomRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(JoinRoomRequest packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
+            serializer.WriteGuid(packet.RoomId);
             serializer.WriteString(packet.Password);
         }
 
-        protected override JoinRoomRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override JoinRoomRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var roomId = deserializer.ReadSnowflakeId();
-            string password = deserializer.ReadString()!;
+            var roomId = deserializer.ReadGuid();
+            string? password = deserializer.ReadString();
 
-            return new JoinRoomRequest(requestInfo.AccessToken, roomId, string.IsNullOrEmpty(password) ? null : password);
+            return new JoinRoomRequest(requestInfo.SessionId, roomId, string.IsNullOrEmpty(password) ? null : password);
         }
     }
 
@@ -59,14 +59,14 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(JoinedRoomBroadcast packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
-            serializer.WriteSnowflakeId(packet.JoinerId);
+            serializer.WriteGuid(packet.RoomId);
+            serializer.WriteGuid(packet.JoinerId);
         }
 
         public override JoinedRoomBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
-            var roomId = deserializer.ReadSnowflakeId();
-            var joinerId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
+            var joinerId = deserializer.ReadGuid();
 
             return new JoinedRoomBroadcast(roomId, joinerId);
         }

@@ -2,31 +2,31 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
-using Sphynx.ServerV2.Persistence.User;
+using Sphynx.Model.User;
+using Sphynx.Server.Persistence.User;
 
 namespace Sphynx.Server.Auth.Model
 {
     public class SphynxAuthUser : IEquatable<SphynxAuthUser>
     {
-        public SnowflakeId UserId { get; set; }
+        public Guid UserId { get; set; }
         public string UserName { get; set; } = null!;
         public SphynxUserStatus UserStatus { get; set; }
 
         public string? PasswordHash { get; set; }
         public string? PasswordSalt { get; set; }
 
-        public ISet<SnowflakeId>? Friends { get; set; }
-        public ISet<SnowflakeId>? Rooms { get; set; }
-        public IDictionary<SnowflakeId, SnowflakeId>? LastReadMessages { get; set; }
-        public ISet<SnowflakeId>? OutgoingFriendRequests { get; set; }
-        public ISet<SnowflakeId>? IncomingFriendRequests { get; set; }
+        public ISet<Guid>? Friends { get; set; }
+        public ISet<Guid>? Rooms { get; set; }
+        public IDictionary<Guid, SnowflakeId>? LastReadMessages { get; set; }
+        public ISet<Guid>? OutgoingFriendRequests { get; set; }
+        public ISet<Guid>? IncomingFriendRequests { get; set; }
 
         public SphynxAuthUser()
         {
         }
 
-        public SphynxAuthUser(SnowflakeId userId, string userName, SphynxUserStatus userStatus)
+        public SphynxAuthUser(Guid userId, string userName, SphynxUserStatus userStatus)
         {
             UserId = userId;
             UserName = userName;
@@ -80,15 +80,15 @@ namespace Sphynx.Server.Auth.Model
         {
             return new SphynxDbUser(user.UserId, user.UserName, user.UserStatus)
             {
-                Friends = user.Friends as HashSet<SnowflakeId> ?? new HashSet<SnowflakeId>(user.Friends ?? Enumerable.Empty<SnowflakeId>()),
-                Rooms = user.Rooms as HashSet<SnowflakeId> ?? new HashSet<SnowflakeId>(user.Rooms ?? Enumerable.Empty<SnowflakeId>()),
+                Friends = user.Friends as HashSet<Guid> ?? new HashSet<Guid>(user.Friends ?? Enumerable.Empty<Guid>()),
+                Rooms = user.Rooms as HashSet<Guid> ?? new HashSet<Guid>(user.Rooms ?? Enumerable.Empty<Guid>()),
                 Password = user.PasswordHash,
                 PasswordSalt = user.PasswordSalt,
                 LastReadMessages = user.LastReadMessages is null ? new LastReadDbMessages() : new LastReadDbMessages(user.LastReadMessages),
-                IncomingFriendRequests = user.IncomingFriendRequests as HashSet<SnowflakeId> ??
-                                         new HashSet<SnowflakeId>(user.IncomingFriendRequests ?? Enumerable.Empty<SnowflakeId>()),
-                OutgoingFriendRequests = user.OutgoingFriendRequests as HashSet<SnowflakeId> ??
-                                         new HashSet<SnowflakeId>(user.OutgoingFriendRequests ?? Enumerable.Empty<SnowflakeId>()),
+                IncomingFriendRequests = user.IncomingFriendRequests as HashSet<Guid> ??
+                                         new HashSet<Guid>(user.IncomingFriendRequests ?? Enumerable.Empty<Guid>()),
+                OutgoingFriendRequests = user.OutgoingFriendRequests as HashSet<Guid> ??
+                                         new HashSet<Guid>(user.OutgoingFriendRequests ?? Enumerable.Empty<Guid>()),
             };
         }
 

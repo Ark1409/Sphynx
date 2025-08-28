@@ -2,7 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
+using Sphynx.Model.User;
 using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.User
@@ -13,7 +13,7 @@ namespace Sphynx.Test.Model.User
         {
         }
 
-        public TestLastReadMessagesInfo(params KeyValuePair<SnowflakeId, SnowflakeId>[] values) : base(values)
+        public TestLastReadMessagesInfo(params KeyValuePair<Guid, SnowflakeId>[] values) : base(values)
         {
             foreach (var value in values)
                 this[value.Key] = value.Value;
@@ -22,7 +22,7 @@ namespace Sphynx.Test.Model.User
         public TestLastReadMessagesInfo(params string[] messages) : this()
         {
             foreach (string msg in messages)
-                this[$"room-{msg}".AsSnowflakeId()] = msg.AsSnowflakeId();
+                this[$"room-{msg}".AsGuid()] = msg.AsSnowflakeId();
         }
     }
 }

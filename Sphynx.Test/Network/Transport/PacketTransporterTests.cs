@@ -1,8 +1,8 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Network.PacketV2;
-using Sphynx.Network.PacketV2.Request;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Request;
 using Sphynx.Network.Serialization;
 using Sphynx.Network.Transport;
 using Sphynx.Test.Utils;
@@ -31,8 +31,8 @@ namespace Sphynx.Test.Network.Transport
             var packets = new SphynxPacket[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("access-token"),
-                new MessagePostRequest("access-token", "room-id".AsSnowflakeId(), "Test message")
+                new LogoutRequest("access-token".AsGuid()),
+                new MessagePostRequest("access-token".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
             };
 
             using var stream = new MemoryStream();
@@ -51,8 +51,8 @@ namespace Sphynx.Test.Network.Transport
             var packets = new SphynxPacket[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("access-token"),
-                new MessagePostRequest("access-token", "room-id".AsSnowflakeId(), "Test message")
+                new LogoutRequest("access-token".AsGuid()),
+                new MessagePostRequest("access-token".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
             };
 
             using var stream = new MemoryStream();

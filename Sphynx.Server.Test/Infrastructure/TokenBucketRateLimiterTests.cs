@@ -1,7 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.ServerV2.Infrastructure.RateLimiting;
+using Sphynx.Server.Infrastructure.RateLimiting;
 
 namespace Sphynx.Server.Test.Infrastructure
 {

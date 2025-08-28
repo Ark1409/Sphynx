@@ -2,24 +2,24 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.Room;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.Room;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
     public class FetchRoomsRequestSerializer : RequestSerializer<FetchRoomsRequest>
     {
-        protected override void SerializeInternal(FetchRoomsRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(FetchRoomsRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteCollection(packet.RoomIds);
         }
 
-        protected override FetchRoomsRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override FetchRoomsRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var roomIds = deserializer.ReadArray<SnowflakeId>();
-            return new FetchRoomsRequest(requestInfo.AccessToken, roomIds);
+            var roomIds = deserializer.ReadArray<Guid>();
+            return new FetchRoomsRequest(requestInfo.SessionId, roomIds);
         }
     }
 

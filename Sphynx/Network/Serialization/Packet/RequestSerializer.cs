@@ -1,7 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Network.PacketV2.Request;
+using Sphynx.Network.Packet.Request;
 
 namespace Sphynx.Network.Serialization.Packet
 {
@@ -9,26 +9,26 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public sealed override void Serialize(T packet, ref BinarySerializer serializer)
         {
-            serializer.WriteString(packet.AccessToken);
+            serializer.WriteGuid(packet.SessionId);
 
-            SerializeInternal(packet, ref serializer);
+            SerializeRequest(packet, ref serializer);
         }
 
-        protected abstract void SerializeInternal(T packet, ref BinarySerializer serializer);
+        protected abstract void SerializeRequest(T packet, ref BinarySerializer serializer);
 
         public sealed override T? Deserialize(ref BinaryDeserializer deserializer)
         {
-            string accessToken = deserializer.ReadString()!;
-            var requestInfo = new RequestInfo { AccessToken = accessToken };
+            var sessionId = deserializer.ReadGuid();
+            var requestInfo = new RequestInfo { SessionId = sessionId };
 
-            return DeserializeInternal(ref deserializer, in requestInfo);
+            return DeserializeRequest(ref deserializer, in requestInfo);
         }
 
-        protected abstract T? DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo);
+        protected abstract T? DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo);
     }
 
     public readonly struct RequestInfo
     {
-        public string AccessToken { get; init; }
+        public Guid SessionId { get; init; }
     }
 }

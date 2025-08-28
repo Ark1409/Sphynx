@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using FastEnumUtility;
-using Sphynx.Network.PacketV2;
+using Sphynx.Network.Packet;
 using Sphynx.Network.Serialization;
 using Sphynx.Utils;
 using Version = Sphynx.Core.Version;

@@ -2,10 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Microsoft.Extensions.Logging;
-using Sphynx.Network.PacketV2;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.ServerV2.Client;
-using Sphynx.ServerV2.Infrastructure.Middleware;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Server.Client;
+using Sphynx.Server.Infrastructure.Middleware;
 
 namespace Sphynx.Server.Auth.Middleware
 {
@@ -23,11 +23,12 @@ namespace Sphynx.Server.Auth.Middleware
             if (token.IsCancellationRequested)
                 return Task.FromCanceled(token);
 
-            if (packet is not LoginRequest && packet is not RegisterRequest && packet is not RefreshTokenRequest)
+            if (packet is not LoginRequest && packet is not RegisterRequest && packet is not LogoutRequest)
             {
                 if (_logger.IsEnabled(LogLevel.Warning))
                     _logger.LogWarning("Rejecting packet of type {PacketType} received from {EndPoint}", packet.PacketType, client.EndPoint);
 
+                // TODO: Respond with invalid request?
                 return Task.CompletedTask;
             }
 

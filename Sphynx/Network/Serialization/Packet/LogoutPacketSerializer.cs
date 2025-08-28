@@ -2,21 +2,22 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.Network.PacketV2.Broadcast;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
     public class LogoutRequestSerializer : RequestSerializer<LogoutRequest>
     {
-        protected override void SerializeInternal(LogoutRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(LogoutRequest packet, ref BinarySerializer serializer)
         {
+            serializer.WriteBool(packet.AllSessions);
         }
 
-        protected override LogoutRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override LogoutRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            return new LogoutRequest(requestInfo.AccessToken);
+            return new LogoutRequest(requestInfo.SessionId, deserializer.ReadBool());
         }
     }
 
@@ -36,12 +37,12 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(LogoutBroadcast packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.UserId);
+            serializer.WriteGuid(packet.UserId);
         }
 
         public override LogoutBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
-            var userId = deserializer.ReadSnowflakeId();
+            var userId = deserializer.ReadGuid();
             return new LogoutBroadcast(userId);
         }
     }

@@ -3,11 +3,12 @@
 
 using Microsoft.Extensions.Logging;
 using Sphynx.Core;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
-using Sphynx.ServerV2.Client;
-using Sphynx.ServerV2.Infrastructure.Handlers;
-using Sphynx.ServerV2.Infrastructure.Services;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
+using Sphynx.Server.Client;
+using Sphynx.Server.Extensions;
+using Sphynx.Server.Infrastructure.Handlers;
+using Sphynx.Server.Infrastructure.Services;
 
 namespace Sphynx.Server.Auth.Handlers
 {
@@ -41,7 +42,7 @@ namespace Sphynx.Server.Auth.Handlers
 
             var refreshTokenInfo = refreshTokenResult.Data!.Value;
 
-            if (request.AccessToken != refreshTokenInfo.AccessToken)
+            if (request.SessionId.ToString() != refreshTokenInfo.AccessToken)
             {
                 await client.SendAsync(new RefreshTokenResponse(SphynxErrorCode.INVALID_TOKEN), cancellationToken).ConfigureAwait(false);
                 return;

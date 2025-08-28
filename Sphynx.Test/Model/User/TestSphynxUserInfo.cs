@@ -1,7 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.ModelV2.User;
+using Sphynx.Model.User;
 using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.User
@@ -11,7 +11,7 @@ namespace Sphynx.Test.Model.User
         public TestSphynxUserInfo(string userName = "test-user")
         {
             UserName = userName;
-            UserId = userName.AsSnowflakeId();
+            UserId = userName.AsGuid();
 
             var statuses = Enum.GetValues<SphynxUserStatus>();
             UserStatus = statuses[userName.Length % statuses.Length];

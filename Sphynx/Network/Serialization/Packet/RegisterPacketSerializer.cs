@@ -2,9 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.User;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
@@ -45,10 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return;
 
-            serializer.WriteString(packet.AccessToken);
-            serializer.WriteGuid(packet.RefreshToken.GetValueOrDefault());
-            serializer.WriteDateTimeOffset(packet.AccessTokenExpiry.GetValueOrDefault());
-
+            serializer.WriteGuid(packet.SessionId.GetValueOrDefault());
             _userSerializer.Serialize(packet.UserInfo!, ref serializer);
         }
 
@@ -57,12 +54,10 @@ namespace Sphynx.Network.Serialization.Packet
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new RegisterResponse(responseInfo.ErrorInfo);
 
-            string accessToken = deserializer.ReadString()!;
-            var refreshToken = deserializer.ReadGuid();
-            var accessTokenExpiry = deserializer.ReadDateTimeOffset();
+            var sessionId = deserializer.ReadGuid();
             var userInfo = _userSerializer.Deserialize(ref deserializer)!;
 
-            return new RegisterResponse(userInfo, accessToken, refreshToken, accessTokenExpiry);
+            return new RegisterResponse(userInfo, sessionId);
         }
     }
 }

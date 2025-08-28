@@ -2,24 +2,24 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.User;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
     public class FetchUsersRequestSerializer : RequestSerializer<FetchUsersRequest>
     {
-        protected override void SerializeInternal(FetchUsersRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(FetchUsersRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteCollection(packet.UserIds);
         }
 
-        protected override FetchUsersRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override FetchUsersRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var userIds = deserializer.ReadArray<SnowflakeId>();
-            return new FetchUsersRequest(requestInfo.AccessToken, userIds);
+            var userIds = deserializer.ReadArray<Guid>();
+            return new FetchUsersRequest(requestInfo.SessionId, userIds);
         }
     }
 

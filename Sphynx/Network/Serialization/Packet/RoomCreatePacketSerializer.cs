@@ -4,17 +4,17 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using Sphynx.Core;
-using Sphynx.ModelV2.Room;
-using Sphynx.Network.PacketV2;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.Room;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
     public abstract class RoomCreateRequestSerializer<TRequest> : RequestSerializer<TRequest>
         where TRequest : RoomCreateRequest
     {
-        protected sealed override void SerializeInternal(TRequest packet, ref BinarySerializer serializer)
+        protected sealed override void SerializeRequest(TRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteEnum(packet.RoomType);
 
@@ -23,10 +23,10 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected internal abstract void SerializeRoom(TRequest packet, ref BinarySerializer serializer);
 
-        protected sealed override TRequest? DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected sealed override TRequest? DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var roomType = deserializer.ReadEnum<ChatRoomType>();
-            var roomInfo = new RoomCreateRequestInfo { Base = requestInfo, RoomType = roomType };
+            var roomInfo = new RoomCreateRequestInfo { RequestInfo = requestInfo, RoomType = roomType };
 
             return DeserializeRoom(ref deserializer, in roomInfo);
         }
@@ -36,7 +36,7 @@ namespace Sphynx.Network.Serialization.Packet
 
     public readonly struct RoomCreateRequestInfo
     {
-        public RequestInfo Base { get; init; }
+        public RequestInfo RequestInfo { get; init; }
         public ChatRoomType RoomType { get; init; }
     }
 
@@ -113,21 +113,19 @@ namespace Sphynx.Network.Serialization.Packet
             }
         }
 
-        #region Concrete Implementations
-
         public class Direct : RoomCreateRequestSerializer<RoomCreateRequest.Direct>
         {
             protected internal override void SerializeRoom(RoomCreateRequest.Direct packet, ref BinarySerializer serializer)
             {
-                serializer.WriteSnowflakeId(packet.OtherId);
+                serializer.WriteGuid(packet.OtherId);
             }
 
             protected internal override RoomCreateRequest.Direct DeserializeRoom(ref BinaryDeserializer deserializer,
                 in RoomCreateRequestInfo requestInfo)
             {
-                var otherId = deserializer.ReadSnowflakeId();
+                var otherId = deserializer.ReadGuid();
 
-                return new RoomCreateRequest.Direct(requestInfo.Base.AccessToken, otherId);
+                return new RoomCreateRequest.Direct(requestInfo.RequestInfo.SessionId, otherId);
             }
         }
 
@@ -147,11 +145,9 @@ namespace Sphynx.Network.Serialization.Packet
                 string? password = deserializer.ReadString();
                 bool isPublic = deserializer.ReadBool();
 
-                return new RoomCreateRequest.Group(requestInfo.Base.AccessToken, name, password, isPublic);
+                return new RoomCreateRequest.Group(requestInfo.RequestInfo.SessionId, name, password, isPublic);
             }
         }
-
-        #endregion
     }
 
     public class RoomCreateResponseSerializer : ResponseSerializer<RoomCreateResponse>
@@ -161,7 +157,7 @@ namespace Sphynx.Network.Serialization.Packet
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return;
 
-            serializer.WriteSnowflakeId(packet.RoomId!.Value);
+            serializer.WriteGuid(packet.RoomId!.Value);
         }
 
         protected override RoomCreateResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
@@ -169,7 +165,7 @@ namespace Sphynx.Network.Serialization.Packet
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new RoomCreateResponse(responseInfo.ErrorInfo);
 
-            var roomId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
             return new RoomCreateResponse(roomId);
         }
     }

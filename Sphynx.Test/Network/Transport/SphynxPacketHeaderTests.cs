@@ -1,4 +1,4 @@
-using Sphynx.Network.PacketV2;
+using Sphynx.Network.Packet;
 using Sphynx.Network.Transport;
 using Version = Sphynx.Core.Version;
 
