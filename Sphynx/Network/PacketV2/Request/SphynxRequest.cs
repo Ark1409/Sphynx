@@ -11,7 +11,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The JWT access token with which this request should be authorized.
         /// </summary>
-        public Guid SessionId { get; init; }
+        public Guid SessionId { get; set; }
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
@@ -44,15 +44,17 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        public SphynxRequest() : base(null!)
-        { }
+        public SphynxRequest() : base(default)
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public SphynxRequest(string accessToken) : base(accessToken)
-        { }
+        /// <param name="sessionId">The JWT access token for this request.</param>
+        public SphynxRequest(Guid sessionId) : base(sessionId)
+        {
+        }
 
         public abstract override TResponse CreateResponse(SphynxErrorInfo errorInfo);
     }
