@@ -92,11 +92,10 @@ namespace Sphynx.ServerV2
             try
             {
                 // Propagate exceptions to concurrent callers
-                if (_serverTask is not null)
-                {
-                    await _serverTask.ConfigureAwait(false);
-                    return;
-                }
+                var serverTask = _serverTask;
+
+                if (serverTask?.Exception is not null)
+                    throw serverTask.Exception;
 
                 if (!_serverCts.IsCancellationRequested)
                 {
