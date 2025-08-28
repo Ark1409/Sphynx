@@ -28,17 +28,22 @@ using Sphynx.ServerV2.Infrastructure.Routing;
 using Sphynx.ServerV2.Infrastructure.Services;
 using Sphynx.ServerV2.Persistence;
 using Sphynx.ServerV2.Persistence.Auth;
+using StackExchange.Redis;
 
 namespace Sphynx.Server.Auth
 {
     public sealed class SphynxAuthServerProfile : SphynxTcpServerProfile
     {
+        public override ILogger Logger => _logger ??= LoggerFactory.CreateLogger(typeof(SphynxAuthServer));
+        private ILogger _logger;
+
         public IAuthService AuthService { get; private set; }
         public Func<IRateLimiter> RateLimiterFactory { get; private set; }
 
         private RateLimitingMiddleware<IPAddress> _rateLimitingMiddleware;
 
         private IMongoClient _mongoClient;
+        private IConnectionMultiplexer _redisClient;
 
         public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
         {
@@ -122,14 +127,14 @@ namespace Sphynx.Server.Auth
             if (fileConfig is not null)
                 config.MergeFrom(fileConfig);
 
+            if (Logger.IsEnabled(LogLevel.Information))
+                Logger.LogInformation("Successfully loaded environment configuration.");
+
             if (Logger.IsEnabled(LogLevel.Trace))
             {
-                Logger.LogTrace("Successfully loaded environment configuration. Current environment settings: \n{EnvironmentSettings}",
-                    serializer.SerializeObject(config));
-            }
-            else if (Logger.IsEnabled(LogLevel.Information))
-            {
-                Logger.LogInformation("Successfully loaded environment configuration.");
+                Logger.LogTrace("Current environment settings:\r\n" +
+                                "-----------------------------\r\n" +
+                                "{EnvironmentSettings}", serializer.SerializeObject(config));
             }
 
             return config;
@@ -180,12 +185,14 @@ namespace Sphynx.Server.Auth
             EndPoint.Port = config.Port;
 
             _mongoClient = new MongoClient(config.DbConnectionString);
+            _redisClient = ConnectionMultiplexer.Connect(config.RedisConnectionString);
 
             var db = _mongoClient.GetDatabase(config.DbName);
             var userRepository = new MongoAuthUserRepository(db, config.UserCollectionName);
+
+            var activeSessionRepository = new RedisSessionRepository(_redisClient);
             var sessionRepository = new MongoSessionRepository(db, config.SessionCollectionName);
-            // TODO: Add redis
-            var sessionService = new SessionService(null!, sessionRepository, LoggerFactory.CreateLogger<SessionService>());
+            var sessionService = new SessionService(activeSessionRepository, sessionRepository, LoggerFactory.CreateLogger<SessionService>());
 
             // TODO: Make configurable
             var passwordHasher = new Pbkdf2PasswordHasher();
@@ -251,6 +258,7 @@ namespace Sphynx.Server.Auth
             {
                 _rateLimitingMiddleware?.Dispose();
                 _mongoClient?.Dispose();
+                _redisClient?.Dispose();
             }
 
             base.Dispose(disposing);
