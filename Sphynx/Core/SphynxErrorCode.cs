@@ -87,27 +87,5 @@
         ALREADY_LOGGED_IN,
     }
 
-    public static class SphynxErrorCodeExtensions
-    {
-        public static bool IsServerError(this SphynxErrorCode errorCode)
-        {
-            switch (errorCode)
-            {
-                case SphynxErrorCode.SERVER_ERROR:
-                case SphynxErrorCode.DB_READ_ERROR:
-                case SphynxErrorCode.DB_WRITE_ERROR:
-                case SphynxErrorCode.INVALID_PASSWORD:
-                case SphynxErrorCode.INVALID_FIELD:
-                    return true;
 
-                default:
-                    return false;
-            }
-        }
-
-        public static SphynxErrorCode MaskServerError(this SphynxErrorCode errorCode)
-        {
-            return errorCode.IsServerError() ? SphynxErrorCode.SERVER_ERROR : errorCode;
-        }
-    }
 }

@@ -8,22 +8,26 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// <summary>
         /// Room ID of the room the user has left.
         /// </summary>
-        public SnowflakeId RoomId { get; init; }
+        public Guid RoomId { get; set; }
 
         /// <summary>
         /// The user ID of the user who left the room.
         /// </summary>
-        public SnowflakeId LeaverId { get; init; }
+        public Guid LeaverId { get; set; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
+
+        public LeftRoomBroadcast()
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="LeftRoomBroadcast"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the room the user has left.</param>
         /// <param name="leaverId">The user ID of the user who left the room.</param>
-        public LeftRoomBroadcast(SnowflakeId roomId, SnowflakeId leaverId)
+        public LeftRoomBroadcast(Guid roomId, Guid leaverId)
         {
             RoomId = roomId;
             LeaverId = leaverId;

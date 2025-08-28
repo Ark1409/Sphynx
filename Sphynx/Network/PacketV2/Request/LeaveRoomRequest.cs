@@ -9,7 +9,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Room ID of the room to leave.
         /// </summary>
-        public SnowflakeId RoomId { get; init; }
+        public Guid RoomId { get; set; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_LEAVE_REQ;
@@ -18,24 +18,15 @@ namespace Sphynx.Network.PacketV2.Request
         /// Creates a new <see cref="LeaveRoomRequest"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the room to leave.</param>
-        public LeaveRoomRequest(SnowflakeId roomId) : this(null!, roomId)
-        {
-        }
-
-        /// <summary>
-        /// Creates new <see cref="LeaveRoomRequest"/>.
-        /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public LeaveRoomRequest(string accessToken) : base(accessToken)
+        public LeaveRoomRequest(Guid roomId) : this(default, roomId)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="LeaveRoomRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
         /// <param name="roomId">Room ID of the room to leave.</param>
-        public LeaveRoomRequest(string accessToken, SnowflakeId roomId) : base(accessToken)
+        public LeaveRoomRequest(Guid sessionId, Guid roomId) : base(sessionId)
         {
             RoomId = roomId;
         }

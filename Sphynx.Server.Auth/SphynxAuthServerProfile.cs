@@ -28,18 +28,22 @@ using Sphynx.ServerV2.Infrastructure.Routing;
 using Sphynx.ServerV2.Infrastructure.Services;
 using Sphynx.ServerV2.Persistence;
 using Sphynx.ServerV2.Persistence.Auth;
+using StackExchange.Redis;
 
 namespace Sphynx.Server.Auth
 {
     public sealed class SphynxAuthServerProfile : SphynxTcpServerProfile
     {
+        public override ILogger Logger => _logger ??= LoggerFactory.CreateLogger(typeof(SphynxAuthServer));
+        private ILogger _logger;
+
         public IAuthService AuthService { get; private set; }
         public Func<IRateLimiter> RateLimiterFactory { get; private set; }
 
         private RateLimitingMiddleware<IPAddress> _rateLimitingMiddleware;
-        private IJwtService _jwtService;
 
         private IMongoClient _mongoClient;
+        private IConnectionMultiplexer _redisClient;
 
         public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
         {
@@ -51,7 +55,7 @@ namespace Sphynx.Server.Auth
 
         private void ConfigureBase(bool isDevelopment)
         {
-            Backlog = isDevelopment ? 16 : 256;
+            Backlog = isDevelopment ? 32 : 256;
 
             LoggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
             {
@@ -123,6 +127,16 @@ namespace Sphynx.Server.Auth
             if (fileConfig is not null)
                 config.MergeFrom(fileConfig);
 
+            if (Logger.IsEnabled(LogLevel.Information))
+                Logger.LogInformation("Successfully loaded environment configuration.");
+
+            if (Logger.IsEnabled(LogLevel.Trace))
+            {
+                Logger.LogTrace("Current environment settings:\r\n" +
+                                "-----------------------------\r\n" +
+                                "{EnvironmentSettings}", serializer.SerializeObject(config));
+            }
+
             return config;
         }
 
@@ -171,25 +185,19 @@ namespace Sphynx.Server.Auth
             EndPoint.Port = config.Port;
 
             _mongoClient = new MongoClient(config.DbConnectionString);
+            _redisClient = ConnectionMultiplexer.Connect(config.RedisConnectionString);
 
             var db = _mongoClient.GetDatabase(config.DbName);
             var userRepository = new MongoAuthUserRepository(db, config.UserCollectionName);
-            var refreshRepository = new MongoRefreshTokenRepository(db, config.RefreshCollectionName);
 
-            var jwtOptions = new JwtOptions
-            {
-                Issuer = config.JwtIssuer,
-                Audience = config.JwtAudience,
-                Secret = config.JwtSecret,
-                ExpiryTime = config.AccessTokenExpiryTime,
-                RefreshTokenExpiryTime = config.RefreshTokenExpiryTime,
-            };
-
-            _jwtService = new JwtService(refreshRepository, jwtOptions);
+            var activeSessionRepository = new RedisSessionRepository(_redisClient);
+            var sessionRepository = new MongoSessionRepository(db, config.SessionCollectionName);
+            var sessionService = new SessionService(activeSessionRepository, sessionRepository, LoggerFactory.CreateLogger<SessionService>());
 
             // TODO: Make configurable
             var passwordHasher = new Pbkdf2PasswordHasher();
-            AuthService = new AuthService(passwordHasher, userRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
+
+            AuthService = new AuthService(passwordHasher, userRepository, sessionService, LoggerFactory.CreateLogger<AuthService>());
 
             RateLimiterFactory = () => new TokenBucketRateLimiter(config.RateLimiterPermits, config.RateLimiterPermits, config.RateLimiterPeriod);
         }
@@ -197,11 +205,10 @@ namespace Sphynx.Server.Auth
         private void ConfigureDevServices()
         {
             var userRepository = new NullUserRepository();
-            var refreshRepository = new NullRefreshTokenRepository();
             var passwordHasher = new Pbkdf2PasswordHasher();
+            var sessionService = new SessionService(null!, null!, LoggerFactory.CreateLogger<SessionService>());
 
-            _jwtService = new JwtService(refreshRepository);
-            AuthService = new AuthService(passwordHasher, userRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
+            AuthService = new AuthService(passwordHasher, userRepository, sessionService, LoggerFactory.CreateLogger<AuthService>());
 
             RateLimiterFactory = () => new TokenBucketRateLimiter(int.MaxValue, int.MaxValue, TimeSpan.FromTicks(1));
         }
@@ -219,9 +226,7 @@ namespace Sphynx.Server.Auth
                 {
                     if (info.Packet is SphynxRequest request)
                     {
-                        var errorInfo = new SphynxErrorInfo(SphynxErrorCode.ENHANCE_YOUR_CALM,
-                            $"Too many requests. Please wait {Math.Ceiling(info.WaitTime.TotalMinutes)} minute(s).");
-
+                        var errorInfo = new SphynxErrorInfo(SphynxErrorCode.ENHANCE_YOUR_CALM, "Too many requests.");
                         await info.Client.SendAsync(request.CreateResponse(errorInfo)).ConfigureAwait(false);
                     }
                 };
@@ -242,7 +247,7 @@ namespace Sphynx.Server.Auth
 
             router.UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
                 .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()))
-                .UseHandler(new RefreshHandler(_jwtService, LoggerFactory.CreateLogger<RefreshHandler>()));
+                .UseHandler(new LogoutHandler(AuthService, LoggerFactory.CreateLogger<LogoutHandler>()));
 
             PacketRouter = router;
         }
@@ -253,6 +258,7 @@ namespace Sphynx.Server.Auth
             {
                 _rateLimitingMiddleware?.Dispose();
                 _mongoClient?.Dispose();
+                _redisClient?.Dispose();
             }
 
             base.Dispose(disposing);

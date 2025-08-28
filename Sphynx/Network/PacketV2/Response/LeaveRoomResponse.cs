@@ -8,6 +8,10 @@ namespace Sphynx.Network.PacketV2.Response
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_LEAVE_RES;
 
+        public LeaveRoomResponse()
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="LeaveRoomResponse"/>.
         /// </summary>

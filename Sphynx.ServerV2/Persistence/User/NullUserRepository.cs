@@ -23,7 +23,7 @@ namespace Sphynx.ServerV2.Persistence.User
             return Task.FromResult(new SphynxErrorInfo(SphynxErrorCode.SUCCESS));
         }
 
-        public Task<SphynxErrorInfo> DeleteUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo> DeleteUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var newUser = GetNullUser();
             newUser.UserId = userId;
@@ -33,7 +33,7 @@ namespace Sphynx.ServerV2.Persistence.User
             return Task.FromResult(new SphynxErrorInfo(SphynxErrorCode.SUCCESS));
         }
 
-        public Task<SphynxErrorInfo<SphynxDbUser?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<SphynxDbUser?>> GetUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var user = GetNullUser();
             user.UserId = userId;
@@ -49,7 +49,7 @@ namespace Sphynx.ServerV2.Persistence.User
             return Task.FromResult(new SphynxErrorInfo<SphynxDbUser?>(user));
         }
 
-        public Task<SphynxErrorInfo<SphynxDbUser?>> GetSelfAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<SphynxDbUser?>> GetSelfAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var user = GetNullUser();
             user.UserId = userId;
@@ -62,7 +62,7 @@ namespace Sphynx.ServerV2.Persistence.User
             return Task.FromResult(new SphynxErrorInfo<SphynxDbUser?>(GetNullUser()));
         }
 
-        public Task<SphynxErrorInfo<SphynxDbUser[]?>> GetUsersAsync(SnowflakeId[] userIds, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<SphynxDbUser[]?>> GetUsersAsync(Guid[] userIds, CancellationToken cancellationToken = default)
         {
             // var user = GetNullUser();
             // user.UserId = userId;
@@ -74,12 +74,12 @@ namespace Sphynx.ServerV2.Persistence.User
             return Task.FromResult(new SphynxErrorInfo<SphynxDbUser[]?>(new[] { GetNullUser() }));
         }
 
-        public Task<SphynxErrorInfo<T?>> GetUserFieldAsync<T>(SnowflakeId userId, string fieldName, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<T?>> GetUserFieldAsync<T>(Guid userId, string fieldName, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new SphynxErrorInfo<T?>(default));
         }
 
-        public Task<SphynxErrorInfo> UpdateUserFieldAsync<T>(SnowflakeId userId, string fieldName, T value,
+        public Task<SphynxErrorInfo> UpdateUserFieldAsync<T>(Guid userId, string fieldName, T value,
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(new SphynxErrorInfo(SphynxErrorCode.SUCCESS));

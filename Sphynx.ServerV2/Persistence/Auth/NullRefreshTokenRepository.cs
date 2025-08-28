@@ -22,7 +22,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
                 {
                     AccessToken = "null-access-token",
                     RefreshToken = refreshToken,
-                    User = SnowflakeId.NewId(),
+                    User = Guid.NewGuid(),
                     CreatedAt = DateTimeOffset.UtcNow,
                     ExpiryTime = DateTimeOffset.UtcNow,
                 }
@@ -43,7 +43,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
                 {
                     AccessToken = "null-access-token",
                     RefreshToken = refreshToken,
-                    User = SnowflakeId.NewId(),
+                    User = Guid.NewGuid(),
                     CreatedAt = DateTimeOffset.UtcNow,
                     ExpiryTime = DateTimeOffset.UtcNow,
                 }

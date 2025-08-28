@@ -13,7 +13,11 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved users' information.
         /// </summary>
-        public SphynxUserInfo[]? Users { get; init; }
+        public SphynxUserInfo[]? Users { get; set; }
+
+        public FetchUsersResponse()
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="FetchUsersResponse"/>.

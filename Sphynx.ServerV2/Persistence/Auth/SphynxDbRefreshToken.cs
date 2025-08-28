@@ -4,7 +4,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.IdGenerators;
-using Sphynx.Core;
 
 namespace Sphynx.ServerV2.Persistence.Auth
 {
@@ -19,7 +18,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
         public string AccessToken { get; set; } = null!;
 
         [BsonElement("user_id")]
-        public SnowflakeId User { get; set; }
+        public Guid User { get; set; }
 
         [BsonElement("exp")]
         [BsonRepresentation(BsonType.String)]

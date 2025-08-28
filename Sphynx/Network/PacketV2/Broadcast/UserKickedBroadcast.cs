@@ -8,22 +8,26 @@ namespace Sphynx.Network.PacketV2.Broadcast
         /// <summary>
         /// Room ID of the room to kick the user from.
         /// </summary>
-        public SnowflakeId RoomId { get; init; }
+        public Guid RoomId { get; set; }
 
         /// <summary>
         /// User ID of the user that was kicked.
         /// </summary>
-        public SnowflakeId KickId { get; init; }
+        public Guid KickId { get; set; }
 
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.CHAT_KICK_BCAST;
+
+        public UserKickedBroadcast()
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="UserKickedBroadcast"/>.
         /// </summary>
         /// <param name="roomId">Room ID of the room to kick the user from.</param>
         /// <param name="kickId">User ID of the user that was kicked.</param>
-        public UserKickedBroadcast(SnowflakeId roomId, SnowflakeId kickId)
+        public UserKickedBroadcast(Guid roomId, Guid kickId)
         {
             RoomId = roomId;
             KickId = kickId;

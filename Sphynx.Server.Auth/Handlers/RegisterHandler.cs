@@ -42,21 +42,28 @@ namespace Sphynx.Server.Auth.Handlers
 
         private async Task HandleRegisterAsync(ISphynxClient client, RegisterRequest request, CancellationToken cancellationToken)
         {
-            var authResult = await _authService.RegisterUserAsync(request.UserName, request.Password, cancellationToken).ConfigureAwait(false);
+            var registerInfo = new SphynxLoginInfo
+            {
+                UserName = request.UserName.Trim(),
+                Password = request.Password.Trim(),
+                ClientAddress = client.EndPoint.Address
+            };
+
+            var authResult = await _authService.RegisterUserAsync(registerInfo, cancellationToken).ConfigureAwait(false);
 
             if (authResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendAsync(new RegisterResponse((SphynxErrorInfo)authResult), cancellationToken).ConfigureAwait(false);
+                await client.SendAsync(new RegisterResponse(authResult), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            var (userInfo, jwtInfo) = authResult.Data!.Value;
-            var response = new RegisterResponse(userInfo.ToDto(), jwtInfo.AccessToken, jwtInfo.RefreshTokenInfo.RefreshToken, jwtInfo.ExpiryTime);
+            var authInfo = authResult.Data!.Value;
+            var response = new RegisterResponse(authInfo.User.ToDto(), authInfo.Session.SessionId);
 
             await client.SendAsync(response, cancellationToken).ConfigureAwait(false);
 
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("Successfully authenticated with user {UserId} ({UserName})", userInfo.UserId, userInfo.UserName);
+                _logger.LogInformation("Successfully authenticated with user {UserId} ({UserName})", authInfo.User.UserId, authInfo.User.UserName);
 
             if (client is SphynxTcpClient tcpClient)
                 await tcpClient.StopAsync(waitForFinish: false).ConfigureAwait(false);

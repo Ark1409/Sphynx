@@ -47,10 +47,7 @@ namespace Sphynx.Network.Serialization.Packet
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return;
 
-            serializer.WriteString(packet.AccessToken!);
-            serializer.WriteGuid(packet.RefreshToken.GetValueOrDefault());
-            serializer.WriteDateTimeOffset(packet.AccessTokenExpiry.GetValueOrDefault());
-
+            serializer.WriteGuid(packet.SessionId.GetValueOrDefault());
             _userSerializer.Serialize(packet.UserInfo!, ref serializer);
         }
 
@@ -59,12 +56,10 @@ namespace Sphynx.Network.Serialization.Packet
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new LoginResponse(responseInfo.ErrorInfo);
 
-            string accessToken = deserializer.ReadString()!;
-            var refreshToken = deserializer.ReadGuid();
-            var accessTokenExpiry = deserializer.ReadDateTimeOffset();
+            var sessionId = deserializer.ReadGuid();
             var userInfo = _userSerializer.Deserialize(ref deserializer)!;
 
-            return new LoginResponse(userInfo, accessToken, refreshToken, accessTokenExpiry);
+            return new LoginResponse(userInfo, sessionId);
         }
     }
 
@@ -72,13 +67,13 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(LoginBroadcast packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.UserId);
+            serializer.WriteGuid(packet.UserId);
             serializer.WriteEnum(packet.UserStatus);
         }
 
         public override LoginBroadcast Deserialize(ref BinaryDeserializer deserializer)
         {
-            var userId = deserializer.ReadSnowflakeId();
+            var userId = deserializer.ReadGuid();
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
 
             return new LoginBroadcast(userId, userStatus);

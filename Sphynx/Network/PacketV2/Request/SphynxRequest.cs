@@ -11,22 +11,22 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// The JWT access token with which this request should be authorized.
         /// </summary>
-        public string AccessToken { get; init; }
+        public Guid SessionId { get; set; }
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        public SphynxRequest() : this(null!)
+        public SphynxRequest() : this(Guid.Empty)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public SphynxRequest(string accessToken)
+        /// <param name="sessionId">The JWT access token for this request.</param>
+        public SphynxRequest(Guid sessionId)
         {
-            AccessToken = accessToken;
+            SessionId = sessionId;
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <param name="other">A request packet to compare with this request packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxRequest? other) => base.Equals(other) && AccessToken == other?.AccessToken;
+        protected bool Equals(SphynxRequest? other) => base.Equals(other) && SessionId == other?.SessionId;
 
         public abstract SphynxResponse CreateResponse(SphynxErrorInfo errorInfo);
     }
@@ -44,15 +44,17 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        public SphynxRequest() : base(null!)
-        { }
+        public SphynxRequest()
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public SphynxRequest(string accessToken) : base(accessToken)
-        { }
+        /// <param name="sessionId">The JWT access token for this request.</param>
+        public SphynxRequest(Guid sessionId) : base(sessionId)
+        {
+        }
 
         public abstract override TResponse CreateResponse(SphynxErrorInfo errorInfo);
     }

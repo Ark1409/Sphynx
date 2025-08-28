@@ -15,11 +15,14 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         public abstract ChatRoomType RoomType { get; }
 
+        public RoomCreateRequest()
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="RoomCreateRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public RoomCreateRequest(string accessToken) : base(accessToken)
+        public RoomCreateRequest(Guid sessionId) : base(sessionId)
         {
         }
 
@@ -37,30 +40,28 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// The user ID of the other user to create the DM with.
             /// </summary>
-            public SnowflakeId OtherId { get; init; }
+            public Guid OtherId { get; set; }
 
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="otherId">The user ID of the other user to create the DM with.</param>
-            public Direct(SnowflakeId otherId) : this(null!, otherId)
+            public Direct()
             {
             }
 
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="accessToken">The JWT access token for this request.</param>
-            public Direct(string accessToken) : base(accessToken)
+            /// <param name="otherId">The user ID of the other user to create the DM with.</param>
+            public Direct(Guid otherId) : this(default, otherId)
             {
             }
 
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="accessToken">The JWT access token for this request.</param>
             /// <param name="otherId">The user ID of the other user to create the DM with.</param>
-            public Direct(string accessToken, SnowflakeId otherId) : base(accessToken)
+            public Direct(Guid sessionId, Guid otherId) : base(sessionId)
             {
                 OtherId = otherId;
             }
@@ -79,7 +80,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// The name of the chat room.
             /// </summary>
-            public string Name { get; init; }
+            public string Name { get; set; } = null!;
 
             /// <summary>
             /// The password for the chat room.
@@ -89,7 +90,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// Whether this room is public.
             /// </summary>
-            public bool Public { get; init; }
+            public bool Public { get; set; }
 
             /// <inheritdoc/>
             public override ChatRoomType RoomType => ChatRoomType.GROUP;
@@ -97,8 +98,15 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="accessToken">The JWT access token for this request.</param>
-            public Group(string accessToken) : base(accessToken)
+            public Group()
+            {
+            }
+
+            /// <summary>
+            /// Creates a new <see cref="RoomCreateRequest"/>.
+            /// </summary>
+            /// <param name="sessionId">The JWT access token for this request.</param>
+            public Group(Guid sessionId) : base(sessionId)
             {
             }
 
@@ -108,7 +116,7 @@ namespace Sphynx.Network.PacketV2.Request
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
             /// <param name="isPublic">Whether this room is public.</param>
-            public Group(string name, string? password = null, bool isPublic = true) : this(null!,
+            public Group(string name, string? password = null, bool isPublic = true) : this(default,
                 name, password, isPublic)
             {
             }
@@ -116,11 +124,11 @@ namespace Sphynx.Network.PacketV2.Request
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.
             /// </summary>
-            /// <param name="accessToken">The JWT access token for this request.</param>
+            /// <param name="sessionId">The JWT access token for this request.</param>
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
             /// <param name="isPublic">Whether this room is public.</param>
-            public Group(string accessToken, string name, string? password = null, bool isPublic = true) : base(accessToken)
+            public Group(Guid sessionId, string name, string? password = null, bool isPublic = true) : base(sessionId)
             {
                 Name = name ?? throw new ArgumentNullException(nameof(name));
                 Password = password;

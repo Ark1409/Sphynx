@@ -13,7 +13,11 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved messages' information. The array is in decreasing order of message creation time.
         /// </summary>
-        public ChatMessage[]? Messages { get; init; }
+        public ChatMessage[]? Messages { get; set; }
+
+        public FetchMessagesResponse()
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="FetchMessagesResponse"/>.

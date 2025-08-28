@@ -5,6 +5,7 @@ using LitJWT;
 using LitJWT.Algorithms;
 using Sphynx.Core;
 using Sphynx.ServerV2.Auth;
+using Sphynx.ServerV2.Extensions;
 using Sphynx.ServerV2.Persistence.Auth;
 
 namespace Sphynx.ServerV2.Infrastructure.Services
@@ -35,7 +36,7 @@ namespace Sphynx.ServerV2.Infrastructure.Services
             _refreshRepository = refreshRepository;
         }
 
-        public async Task<SphynxErrorInfo<SphynxJwtInfo?>> CreateTokenAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxJwtInfo?>> CreateTokenAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var now = DateTimeOffset.UtcNow;
 
@@ -57,7 +58,6 @@ namespace Sphynx.ServerV2.Infrastructure.Services
                 RefreshTokenInfo = new SphynxRefreshTokenInfo
                 {
                     RefreshToken = refreshToken,
-                    AccessToken = accessToken,
                     User = userId,
                     ExpiryTime = now + _jwtOptions.RefreshTokenExpiryTime,
                     CreatedAt = now,

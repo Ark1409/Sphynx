@@ -12,30 +12,30 @@ namespace Sphynx.Test.Model.User
         public TestSphynxSelfInfo(string name = "test-self")
         {
             UserName = name;
-            UserId = name.AsSnowflakeId();
+            UserId = name.AsGuid();
 
             var statuses = Enum.GetValues<SphynxUserStatus>();
             UserStatus = statuses[name.Length % statuses.Length];
 
-            Friends = new HashSet<SnowflakeId>
+            Friends = new HashSet<Guid>
             {
-                $"user1-{name}".AsSnowflakeId(), $"user2-{name}".AsSnowflakeId(), $"user3-{name}".AsSnowflakeId()
+                $"user1-{name}".AsGuid(), $"user2-{name}".AsGuid(), $"user3-{name}".AsGuid()
             };
-            Rooms = new HashSet<SnowflakeId>
+            Rooms = new HashSet<Guid>
             {
-                $"room1-{name}".AsSnowflakeId(), $"room2-{name}".AsSnowflakeId(), $"room3-{name}".AsSnowflakeId()
+                $"room1-{name}".AsGuid(), $"room2-{name}".AsGuid(), $"room3-{name}".AsGuid()
             };
-            IncomingFriendRequests = new HashSet<SnowflakeId>
+            IncomingFriendRequests = new HashSet<Guid>
             {
-                $"inc_user1-{name}".AsSnowflakeId(),
-                $"inc_user2-{name}".AsSnowflakeId(),
-                $"inc_user3-{name}".AsSnowflakeId()
+                $"inc_user1-{name}".AsGuid(),
+                $"inc_user2-{name}".AsGuid(),
+                $"inc_user3-{name}".AsGuid()
             };
-            OutgoingFriendRequests = new HashSet<SnowflakeId>
+            OutgoingFriendRequests = new HashSet<Guid>
             {
-                $"out_user1-{name}".AsSnowflakeId(),
-                $"out_user2-{name}".AsSnowflakeId(),
-                $"out_user3-{name}".AsSnowflakeId()
+                $"out_user1-{name}".AsGuid(),
+                $"out_user2-{name}".AsGuid(),
+                $"out_user3-{name}".AsGuid()
             };
             LastReadMessages = new TestLastReadMessagesInfo($"msg1-{name}", $"msg2-{name}", $"msg3-{name}");
         }

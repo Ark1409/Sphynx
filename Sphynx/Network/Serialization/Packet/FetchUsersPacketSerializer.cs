@@ -11,15 +11,15 @@ namespace Sphynx.Network.Serialization.Packet
 {
     public class FetchUsersRequestSerializer : RequestSerializer<FetchUsersRequest>
     {
-        protected override void SerializeInternal(FetchUsersRequest packet, ref BinarySerializer serializer)
+        protected override void SerializeRequest(FetchUsersRequest packet, ref BinarySerializer serializer)
         {
             serializer.WriteCollection(packet.UserIds);
         }
 
-        protected override FetchUsersRequest DeserializeInternal(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
+        protected override FetchUsersRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var userIds = deserializer.ReadArray<SnowflakeId>();
-            return new FetchUsersRequest(requestInfo.AccessToken, userIds);
+            var userIds = deserializer.ReadArray<Guid>();
+            return new FetchUsersRequest(requestInfo.SessionId, userIds);
         }
     }
 
