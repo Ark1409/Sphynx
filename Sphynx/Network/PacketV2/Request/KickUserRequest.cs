@@ -4,7 +4,7 @@ using Sphynx.Network.PacketV2.Response;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_KICK_REQ"/>
-    public sealed class KickUserRequest : SphynxRequest, IEquatable<KickUserRequest>
+    public sealed class KickUserRequest : SphynxRequest<KickUserResponse>, IEquatable<KickUserRequest>
     {
         /// <summary>
         /// Room ID of the room to kick the user from.

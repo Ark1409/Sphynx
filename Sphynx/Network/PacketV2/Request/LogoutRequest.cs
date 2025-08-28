@@ -1,10 +1,10 @@
-﻿using Sphynx.Core;
+using Sphynx.Core;
 using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.LOGOUT_REQ"/>
-    public sealed class LogoutRequest : SphynxRequest, IEquatable<LogoutRequest>
+    public sealed class LogoutRequest : SphynxRequest<LogoutResponse>, IEquatable<LogoutRequest>
     {
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_REQ;

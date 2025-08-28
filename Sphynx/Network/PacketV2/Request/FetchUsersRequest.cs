@@ -5,7 +5,7 @@ using Sphynx.Utils;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.USER_INFO_REQ"/>
-    public sealed class FetchUsersRequest : SphynxRequest, IEquatable<FetchUsersRequest>
+    public sealed class FetchUsersRequest : SphynxRequest<FetchUsersResponse>, IEquatable<FetchUsersRequest>
     {
         /// <summary>
         /// The maximum number of users which can be requested at once.

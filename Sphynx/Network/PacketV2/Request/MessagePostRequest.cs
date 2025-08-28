@@ -4,7 +4,7 @@ using Sphynx.Network.PacketV2.Response;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.MSG_REQ"/>
-    public sealed class MessagePostRequest : SphynxRequest, IEquatable<MessagePostRequest>
+    public sealed class MessagePostRequest : SphynxRequest<MessagePostResponse>, IEquatable<MessagePostRequest>
     {
         /// <summary>
         /// The ID of the room to which the message was sent.

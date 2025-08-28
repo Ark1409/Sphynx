@@ -4,7 +4,7 @@ using Sphynx.Network.PacketV2.Response;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.MSG_INFO_REQ"/>
-    public sealed class FetchMessagesRequest : SphynxRequest, IEquatable<FetchMessagesRequest>
+    public sealed class FetchMessagesRequest : SphynxRequest<FetchMessagesResponse>, IEquatable<FetchMessagesRequest>
     {
         /// <summary>
         /// The maximum number of messages which can be requested at once.

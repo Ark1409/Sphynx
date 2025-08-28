@@ -4,7 +4,7 @@ using Sphynx.Network.PacketV2.Response;
 namespace Sphynx.Network.PacketV2.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_LEAVE_REQ"/>
-    public sealed class LeaveRoomRequest : SphynxRequest, IEquatable<LeaveRoomRequest>
+    public sealed class LeaveRoomRequest : SphynxRequest<LeaveRoomResponse>, IEquatable<LeaveRoomRequest>
     {
         /// <summary>
         /// Room ID of the room to leave.

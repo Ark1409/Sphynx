@@ -38,4 +38,22 @@ namespace Sphynx.Network.PacketV2.Request
 
         public abstract SphynxResponse CreateResponse(SphynxErrorInfo errorInfo);
     }
+
+    public abstract class SphynxRequest<TResponse> : SphynxRequest where TResponse : SphynxResponse
+    {
+        /// <summary>
+        /// Creates a new <see cref="SphynxRequest"/>.
+        /// </summary>
+        public SphynxRequest() : base(null!)
+        { }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxRequest"/>.
+        /// </summary>
+        /// <param name="accessToken">The JWT access token for this request.</param>
+        public SphynxRequest(string accessToken) : base(accessToken)
+        { }
+
+        public abstract override TResponse CreateResponse(SphynxErrorInfo errorInfo);
+    }
 }
