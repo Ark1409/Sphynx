@@ -8,6 +8,7 @@ using Sphynx.Network.PacketV2.Response;
 using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2.Client;
+using Sphynx.ServerV2.Extensions;
 using Sphynx.ServerV2.Infrastructure.Handlers;
 
 namespace Sphynx.Server.Auth.Handlers
@@ -42,21 +43,28 @@ namespace Sphynx.Server.Auth.Handlers
 
         private async Task HandleLoginAsync(ISphynxClient client, LoginRequest request, CancellationToken cancellationToken)
         {
-            var authResult = await _authService.AuthenticateUserAsync(request.UserName, request.Password, cancellationToken).ConfigureAwait(false);
+            var loginInfo = new SphynxLoginInfo
+            {
+                UserName = request.UserName.Trim(),
+                Password = request.Password.Trim(),
+                ClientAddress = client.EndPoint.Address
+            };
+
+            var authResult = await _authService.LoginUserAsync(loginInfo, cancellationToken).ConfigureAwait(false);
 
             if (authResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendAsync(new LoginResponse((SphynxErrorInfo)authResult), cancellationToken).ConfigureAwait(false);
+                await client.SendAsync(new LoginResponse(authResult.MaskServerError()), cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            var (userInfo, jwtInfo) = authResult.Data!.Value;
-            var response = new LoginResponse(userInfo.ToDto(), jwtInfo.AccessToken, jwtInfo.RefreshTokenInfo.RefreshToken, jwtInfo.ExpiryTime);
+            var authInfo = authResult.Data!.Value;
+            var response = new LoginResponse(authInfo.User.ToDto(), authInfo.Session.SessionId);
 
             await client.SendAsync(response, cancellationToken).ConfigureAwait(false);
 
             if (_logger.IsEnabled(LogLevel.Information))
-                _logger.LogInformation("Successfully authenticated with user {UserId} ({UserName})", userInfo.UserId, userInfo.UserName);
+                _logger.LogInformation("Successfully authenticated with user {UserId} ({UserName})", authInfo.User.UserId, authInfo.User.UserName);
 
             if (client is SphynxTcpClient tcpClient)
                 await tcpClient.StopAsync(waitForFinish: false).ConfigureAwait(false);

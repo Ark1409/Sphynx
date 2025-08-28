@@ -5,5 +5,5 @@ using Sphynx.ServerV2.Auth;
 
 namespace Sphynx.Server.Auth.Model
 {
-    public readonly record struct SphynxAuthInfo(SphynxAuthUser User, SphynxJwtInfo Jwt);
+    public readonly record struct SphynxAuthResult(SphynxAuthUser User, SphynxSessionInfo Session);
 }

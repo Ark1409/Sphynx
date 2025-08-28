@@ -23,6 +23,9 @@ namespace Sphynx.ServerV2.Infrastructure.Services
 
         Task<SphynxErrorInfo<SphynxSessionInfo?>> RevokeSessionAsync(Guid sessionId, SessionUpdatePolicy updatePolicy = SessionUpdatePolicy.WriteThrough,
             CancellationToken cancellationToken = default);
+
+        Task<SphynxErrorInfo<long>> RevokeSessionsAsync(Guid userId, SessionUpdatePolicy updatePolicy = SessionUpdatePolicy.WriteThrough,
+            CancellationToken cancellationToken = default);
     }
 
     public enum SessionUpdatePolicy : byte
@@ -38,7 +41,7 @@ namespace Sphynx.ServerV2.Infrastructure.Services
         WriteThrough,
 
         /// <summary>
-        /// Writes to the cache and Performs a write-behind on the database.
+        /// Writes to the cache and performs a write-behind on the database.
         /// </summary>
         WriteBehind
     }

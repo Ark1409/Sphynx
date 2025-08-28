@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Sphynx.Core;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
+using Sphynx.Server.Auth.Services;
 using Sphynx.ServerV2.Client;
 using Sphynx.ServerV2.Extensions;
 using Sphynx.ServerV2.Infrastructure.Handlers;
@@ -14,59 +15,38 @@ namespace Sphynx.Server.Auth.Handlers
 {
     public class LogoutHandler : IPacketHandler<LogoutRequest>
     {
-        private readonly IJwtService _jwtService;
+        private readonly IAuthService _authService;
         private readonly ILogger _logger;
 
-        public LogoutHandler(IJwtService jwtService, ILogger<LogoutHandler> logger)
+        public LogoutHandler(IAuthService authService, ILogger<LogoutHandler> logger)
         {
-            _jwtService = jwtService;
+            _authService = authService;
             _logger = logger;
         }
 
         public async Task HandlePacketAsync(ISphynxClient client, LogoutRequest request, CancellationToken cancellationToken = default)
         {
-            if (!await _jwtService.VerifyTokenAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false))
+            var logoutResult = await _authService
+                .LogoutUserAsync(request.SessionId, request.AllSessions ? LogoutPolicy.Global : LogoutPolicy.Self, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (logoutResult.ErrorCode != SphynxErrorCode.SUCCESS)
             {
-                await client.SendAsync(new RefreshTokenResponse(SphynxErrorCode.INVALID_TOKEN), cancellationToken).ConfigureAwait(false);
+                await client.SendAsync(new LoginResponse(logoutResult), cancellationToken).ConfigureAwait(false);
                 return;
             }
-
-            var refreshTokenResult = await _jwtService.ReadTokenAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
-
-            if (refreshTokenResult.ErrorCode != SphynxErrorCode.SUCCESS)
-            {
-                var errorInfo = new SphynxErrorInfo(refreshTokenResult.ErrorCode.MaskServerError(), refreshTokenResult.Message);
-                await client.SendAsync(new RefreshTokenResponse(errorInfo), cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            var refreshTokenInfo = refreshTokenResult.Data!.Value;
-
-            if (request.SessionId.ToString() != refreshTokenInfo.AccessToken)
-            {
-                await client.SendAsync(new RefreshTokenResponse(SphynxErrorCode.INVALID_TOKEN), cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            await HandleLogoutAsync(client, request, cancellationToken).ConfigureAwait(false);
-        }
-
-        private async Task HandleLogoutAsync(ISphynxClient client, LogoutRequest request, CancellationToken cancellationToken)
-        {
-            var authResult = await _jwtService.DeleteTokenAsync(request.RefreshToken, cancellationToken).ConfigureAwait(false);
-
-            if (authResult.ErrorCode != SphynxErrorCode.SUCCESS)
-            {
-                await client.SendAsync(new LoginResponse((SphynxErrorInfo)authResult), cancellationToken).ConfigureAwait(false);
-                return;
-            }
-
-            // TODO: Sign out of all clients?
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
-                var accessToken = _jwtService.ReadToken(request.SessionId.ToString()).Data!.Value;
-                _logger.LogInformation("Successfully logged out user {UserId}", accessToken.Subject);
+                if (request.AllSessions)
+                {
+                    _logger.LogInformation("Successfully logged out of session {SessionId} and {OtherCount} other(s)", request.SessionId,
+                        logoutResult.Data - 1);
+                }
+                else
+                {
+                    _logger.LogInformation("Successfully logged out of session {SessionId}", request.SessionId);
+                }
             }
 
             await client.SendAsync(new LogoutResponse(), cancellationToken).ConfigureAwait(false);

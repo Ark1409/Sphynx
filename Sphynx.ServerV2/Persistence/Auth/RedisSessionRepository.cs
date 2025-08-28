@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Sphynx.Core;
 using Sphynx.ServerV2.Auth;
+using Sphynx.ServerV2.Extensions;
 using StackExchange.Redis;
 
 namespace Sphynx.ServerV2.Persistence.Auth
@@ -77,6 +78,48 @@ namespace Sphynx.ServerV2.Persistence.Auth
             var dbSession = JsonSerializer.Deserialize<SphynxRedisSession>(sessionValue.ToString(), _serializerOptions);
 
             return dbSession.WithExpiry(sessionBundle.Expiry!.Value);
+        }
+
+        public async Task<SphynxErrorInfo<SphynxSessionInfo[]?>> GetAsync(Guid[] sessionIds, CancellationToken cancellationToken = default)
+        {
+            var sessions = new List<SphynxSessionInfo>();
+
+            foreach (var sessionId in sessionIds)
+            {
+                var sessionResult = await GetAsync(sessionId, cancellationToken).ConfigureAwait(false);
+
+                if (sessionResult.ErrorCode == SphynxErrorCode.SUCCESS)
+                    sessions.Add(sessionResult.Data!.Value);
+            }
+
+            return sessions.ToArray();
+        }
+
+        public async Task<SphynxErrorInfo<SphynxSessionInfo[]?>> GetSessionsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var servers = _db.Multiplexer.GetServers();
+
+            if (servers.Length < 1)
+                return SphynxErrorCode.DB_READ_ERROR;
+
+            // Assume the first server
+            var keysEnumerator = servers[0].KeysAsync(_db.Database, GetUserSessionsPattern(userId)).WithCancellation(cancellationToken);
+            var sessions = new List<SphynxSessionInfo>();
+
+            await foreach (var userSessionKey in keysEnumerator.ConfigureAwait(false))
+            {
+                var sessionKey = GetSessionKey(userSessionKey);
+                var sessionBundle = await _db.StringGetWithExpiryAsync(sessionKey, CommandFlags.PreferReplica).ConfigureAwait(false);
+                var sessionValue = sessionBundle.Value;
+
+                if (!sessionValue.IsNull)
+                {
+                    var dbSession = JsonSerializer.Deserialize<SphynxRedisSession>(sessionValue.ToString(), _serializerOptions);
+                    sessions.Add(dbSession.WithExpiry(sessionBundle.Expiry!.Value));
+                }
+            }
+
+            return sessions.ToArray();
         }
 
         public async Task<SphynxErrorInfo<bool>> SessionExistsAsync(Guid sessionId, CancellationToken cancellationToken = default)
@@ -160,6 +203,45 @@ namespace Sphynx.ServerV2.Persistence.Auth
             return await GetAndUpdateExpiry(sessionId, expiryTime, cancellationToken).ConfigureAwait(false);
         }
 
+        public async Task<SphynxErrorInfo<int>> DeleteAsync(Guid[] sessionIds, CancellationToken cancellationToken = default)
+        {
+            var sessionsResult = await GetAsync(sessionIds, cancellationToken).ConfigureAwait(false);
+
+            if (sessionsResult.ErrorCode != SphynxErrorCode.SUCCESS)
+                return new SphynxErrorInfo<int>(sessionsResult.ErrorCode, sessionsResult.Message).MaskServerError();
+
+            var userSessionKeys = new List<RedisKey>();
+
+            foreach (var session in sessionsResult.Data!)
+            {
+                userSessionKeys.Add(GetUserSessionKey(session.UserId, session.SessionId));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return (SphynxErrorInfo<int>)await _db.KeyDeleteAsync(userSessionKeys.ToArray()).ConfigureAwait(false);
+        }
+
+        public async Task<SphynxErrorInfo<long>> DeleteSessionsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var servers = _db.Multiplexer.GetServers();
+
+            if (servers.Length < 1)
+                return SphynxErrorCode.DB_READ_ERROR;
+
+            // Assume the first server
+            var keysEnumerator = servers[0].KeysAsync(_db.Database, GetUserSessionsPattern(userId)).WithCancellation(cancellationToken);
+            var keys = new List<RedisKey>();
+
+            await foreach (var userSessionKey in keysEnumerator.ConfigureAwait(false))
+            {
+                keys.Add(userSessionKey);
+                keys.Add(GetSessionKey(userSessionKey));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return await _db.KeyDeleteAsync(keys.ToArray()).ConfigureAwait(false);
+        }
+
         public async Task<SphynxErrorInfo<SphynxSessionInfo?>> DeleteAsync(Guid sessionId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -197,5 +279,12 @@ namespace Sphynx.ServerV2.Persistence.Auth
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static RedisValue GetUserSessionsPattern(Guid userId) => $"userId:{userId}:session:*";
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static RedisKey GetSessionKey(RedisKey userSessionKey)
+        {
+            string userSessionString = userSessionKey.ToString()!;
+            return userSessionString[userSessionString.IndexOf("session:", StringComparison.Ordinal)..];
+        }
     }
 }

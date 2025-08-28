@@ -18,7 +18,7 @@ namespace Sphynx.ServerV2.Infrastructure.Services
 
         private readonly ILogger _logger;
 
-        public SessionService(ISessionRepository activeSessionRepo, ILogger logger, ISessionRepository sessionRepo)
+        public SessionService(ISessionRepository activeSessionRepo, ISessionRepository sessionRepo, ILogger logger)
             : this(activeSessionRepo, sessionRepo, logger, SessionOptions.Default)
         {
         }
@@ -189,14 +189,19 @@ namespace Sphynx.ServerV2.Infrastructure.Services
 
                 case SessionUpdatePolicy.WriteBehind:
                 {
-                    _ = _sessionRepo.UpdateExpiryAsync(sessionId, _options.ExpiryTime, cancellationToken).ContinueWith((t, l) =>
-                    {
-                        var dbUpdateResult = t.Result;
-                        ILogger logger = (ILogger)l!;
+                    var updateTask = _sessionRepo.UpdateExpiryAsync(sessionId, _options.ExpiryTime, cancellationToken);
 
-                        if (dbUpdateResult.ErrorCode != SphynxErrorCode.SUCCESS && logger.IsEnabled(LogLevel.Error))
-                            logger.LogError(t.Exception, "Failed {UpdatePolicy} session update for session {SessionId}", updatePolicy, sessionId);
-                    }, _logger);
+                    if (_logger.IsEnabled(LogLevel.Error))
+                    {
+                        _ = updateTask.ContinueWith((t, l) =>
+                        {
+                            var dbUpdateResult = t.Result;
+                            ILogger logger = (ILogger)l!;
+
+                            if (dbUpdateResult.ErrorCode != SphynxErrorCode.SUCCESS && logger.IsEnabled(LogLevel.Error))
+                                logger.LogError(t.Exception, "Failed {UpdatePolicy} session update for session {SessionId}", updatePolicy, sessionId);
+                        }, _logger);
+                    }
 
                     goto default;
                 }
@@ -212,7 +217,7 @@ namespace Sphynx.ServerV2.Infrastructure.Services
         {
             var deleteResult = await _activeSessionRepo.DeleteAsync(sessionId, cancellationToken).ConfigureAwait(false);
 
-            if (deleteResult.ErrorCode != SphynxErrorCode.SUCCESS)
+            if (deleteResult.ErrorCode != SphynxErrorCode.SUCCESS && deleteResult.ErrorCode != SphynxErrorCode.INVALID_TOKEN)
             {
                 if (_logger.IsEnabled(LogLevel.Warning))
                     _logger.LogWarning("Failed session revoking for session {SessionId}", sessionId);
@@ -242,30 +247,94 @@ namespace Sphynx.ServerV2.Infrastructure.Services
 
                 case SessionUpdatePolicy.WriteBehind:
                 {
-                    _ = _sessionRepo.DeleteAsync(sessionId, cancellationToken).ContinueWith((t, l) =>
+                    var deleteTask = _sessionRepo.DeleteAsync(sessionId, cancellationToken);
+
+                    if (_logger.IsEnabled(LogLevel.Information))
                     {
-                        var dbDeleteResult = t.Result;
-                        ILogger logger = (ILogger)l!;
-
-                        if (dbDeleteResult.ErrorCode != SphynxErrorCode.SUCCESS)
+                        _ = deleteTask.ContinueWith((t, l) =>
                         {
-                            if (logger.IsEnabled(LogLevel.Error))
-                                logger.LogError("Failed {UpdatePolicy} session revoking for session {SessionId}", updatePolicy, sessionId);
+                            var dbDeleteResult = t.Result;
+                            ILogger logger = (ILogger)l!;
 
-                            return;
-                        }
+                            if (dbDeleteResult.ErrorCode != SphynxErrorCode.SUCCESS)
+                            {
+                                if (logger.IsEnabled(LogLevel.Error))
+                                    logger.LogError("Failed {UpdatePolicy} session revoking for session {SessionId}", updatePolicy, sessionId);
 
-                        if (logger.IsEnabled(LogLevel.Information))
-                            logger.LogInformation("Successfully revoked session {SessionId}", sessionId);
-                    }, _logger);
+                                return;
+                            }
+
+                            if (logger.IsEnabled(LogLevel.Information))
+                                logger.LogInformation("Successfully revoked session {SessionId}", sessionId);
+                        }, _logger);
+                    }
 
                     break;
                 }
 
-                // Simply perform a write-behind on the db in the default case
+                // Simply perform a write-behind update on the db in the default case
                 case SessionUpdatePolicy.Ephemeral:
                 default:
                     _ = _sessionRepo.UpdateExpiryAsync(sessionId, _options.ExpiryTime, cancellationToken);
+                    break;
+            }
+
+            return deleteResult;
+        }
+
+        public async Task<SphynxErrorInfo<long>> RevokeSessionsAsync(Guid userId, SessionUpdatePolicy updatePolicy = SessionUpdatePolicy.WriteThrough,
+            CancellationToken cancellationToken = default)
+        {
+            var deleteResult = await _activeSessionRepo.DeleteSessionsAsync(userId, cancellationToken).ConfigureAwait(false);
+
+            if (deleteResult.ErrorCode != SphynxErrorCode.SUCCESS && deleteResult.ErrorCode != SphynxErrorCode.INVALID_USER)
+            {
+                if (_logger.IsEnabled(LogLevel.Error))
+                    _logger.LogError("Failed session revoking for user {UserId}", userId);
+
+                return deleteResult.MaskServerError();
+            }
+
+            switch (updatePolicy)
+            {
+                case SessionUpdatePolicy.WriteThrough:
+                {
+                    deleteResult = await _sessionRepo.DeleteSessionsAsync(userId, cancellationToken).ConfigureAwait(false);
+
+                    if (deleteResult.ErrorCode != SphynxErrorCode.SUCCESS && deleteResult.ErrorCode != SphynxErrorCode.INVALID_USER)
+                    {
+                        if (_logger.IsEnabled(LogLevel.Error))
+                            _logger.LogError("Failed {UpdatePolicy} session revoking for user {UserId}", updatePolicy, userId);
+
+                        return deleteResult.MaskServerError();
+                    }
+
+                    break;
+                }
+
+                case SessionUpdatePolicy.WriteBehind:
+                {
+                    var deleteTask = _sessionRepo.DeleteSessionsAsync(userId, cancellationToken);
+
+                    if (_logger.IsEnabled(LogLevel.Error))
+                    {
+                        _ = deleteTask.ContinueWith((t, l) =>
+                        {
+                            ILogger logger = (ILogger)l!;
+
+                            bool isDeleted = deleteResult.ErrorCode == SphynxErrorCode.SUCCESS ||
+                                             deleteResult.ErrorCode == SphynxErrorCode.INVALID_USER;
+
+                            if (!isDeleted && logger.IsEnabled(LogLevel.Error))
+                                logger.LogError("Failed {UpdatePolicy} session revoking for user {UserId}", updatePolicy, userId);
+                        }, _logger);
+                    }
+
+                    break;
+                }
+
+                case SessionUpdatePolicy.Ephemeral:
+                default:
                     break;
             }
 

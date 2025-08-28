@@ -37,7 +37,6 @@ namespace Sphynx.Server.Auth
         public Func<IRateLimiter> RateLimiterFactory { get; private set; }
 
         private RateLimitingMiddleware<IPAddress> _rateLimitingMiddleware;
-        private IJwtService _jwtService;
 
         private IMongoClient _mongoClient;
 
@@ -51,7 +50,7 @@ namespace Sphynx.Server.Auth
 
         private void ConfigureBase(bool isDevelopment)
         {
-            Backlog = isDevelopment ? 16 : 256;
+            Backlog = isDevelopment ? 32 : 256;
 
             LoggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
             {
@@ -123,6 +122,16 @@ namespace Sphynx.Server.Auth
             if (fileConfig is not null)
                 config.MergeFrom(fileConfig);
 
+            if (Logger.IsEnabled(LogLevel.Trace))
+            {
+                Logger.LogTrace("Successfully loaded environment configuration. Current environment settings: \n{EnvironmentSettings}",
+                    serializer.SerializeObject(config));
+            }
+            else if (Logger.IsEnabled(LogLevel.Information))
+            {
+                Logger.LogInformation("Successfully loaded environment configuration.");
+            }
+
             return config;
         }
 
@@ -174,22 +183,14 @@ namespace Sphynx.Server.Auth
 
             var db = _mongoClient.GetDatabase(config.DbName);
             var userRepository = new MongoAuthUserRepository(db, config.UserCollectionName);
-            var refreshRepository = new MongoRefreshTokenRepository(db, config.RefreshCollectionName);
-
-            var jwtOptions = new JwtOptions
-            {
-                Issuer = config.JwtIssuer,
-                Audience = config.JwtAudience,
-                Secret = config.JwtSecret,
-                ExpiryTime = config.AccessTokenExpiryTime,
-                RefreshTokenExpiryTime = config.RefreshTokenExpiryTime,
-            };
-
-            _jwtService = new JwtService(refreshRepository, jwtOptions);
+            var sessionRepository = new MongoSessionRepository(db, config.SessionCollectionName);
+            // TODO: Add redis
+            var sessionService = new SessionService(null!, sessionRepository, LoggerFactory.CreateLogger<SessionService>());
 
             // TODO: Make configurable
             var passwordHasher = new Pbkdf2PasswordHasher();
-            AuthService = new AuthService(passwordHasher, userRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
+
+            AuthService = new AuthService(passwordHasher, userRepository, sessionService, LoggerFactory.CreateLogger<AuthService>());
 
             RateLimiterFactory = () => new TokenBucketRateLimiter(config.RateLimiterPermits, config.RateLimiterPermits, config.RateLimiterPeriod);
         }
@@ -197,11 +198,10 @@ namespace Sphynx.Server.Auth
         private void ConfigureDevServices()
         {
             var userRepository = new NullUserRepository();
-            var refreshRepository = new NullRefreshTokenRepository();
             var passwordHasher = new Pbkdf2PasswordHasher();
+            var sessionService = new SessionService(null!, null!, LoggerFactory.CreateLogger<SessionService>());
 
-            _jwtService = new JwtService(refreshRepository);
-            AuthService = new AuthService(passwordHasher, userRepository, _jwtService, LoggerFactory.CreateLogger<AuthService>());
+            AuthService = new AuthService(passwordHasher, userRepository, sessionService, LoggerFactory.CreateLogger<AuthService>());
 
             RateLimiterFactory = () => new TokenBucketRateLimiter(int.MaxValue, int.MaxValue, TimeSpan.FromTicks(1));
         }
@@ -219,9 +219,7 @@ namespace Sphynx.Server.Auth
                 {
                     if (info.Packet is SphynxRequest request)
                     {
-                        var errorInfo = new SphynxErrorInfo(SphynxErrorCode.ENHANCE_YOUR_CALM,
-                            $"Too many requests. Please wait {Math.Ceiling(info.WaitTime.TotalMinutes)} minute(s).");
-
+                        var errorInfo = new SphynxErrorInfo(SphynxErrorCode.ENHANCE_YOUR_CALM, "Too many requests.");
                         await info.Client.SendAsync(request.CreateResponse(errorInfo)).ConfigureAwait(false);
                     }
                 };
@@ -241,9 +239,8 @@ namespace Sphynx.Server.Auth
             router.ThrowOnUnregistered = isDevelopment;
 
             router.UseHandler(new LoginHandler(AuthService, LoggerFactory.CreateLogger<LoginHandler>()))
-                .UseHandler(new LogoutHandler(_jwtService, LoggerFactory.CreateLogger<LogoutHandler>()))
                 .UseHandler(new RegisterHandler(AuthService, LoggerFactory.CreateLogger<RegisterHandler>()))
-                .UseHandler(new RefreshHandler(_jwtService, LoggerFactory.CreateLogger<RefreshHandler>()));
+                .UseHandler(new LogoutHandler(AuthService, LoggerFactory.CreateLogger<LogoutHandler>()));
 
             PacketRouter = router;
         }

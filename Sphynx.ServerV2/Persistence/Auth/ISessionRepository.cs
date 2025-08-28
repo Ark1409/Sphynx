@@ -11,16 +11,20 @@ namespace Sphynx.ServerV2.Persistence.Auth
         Task<SphynxErrorInfo> InsertAsync(SphynxSessionInfo sessionInfo, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<SphynxSessionInfo?>> GetAsync(Guid sessionId, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<SphynxSessionInfo[]?>> GetAsync(Guid[] sessionIds, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<SphynxSessionInfo[]?>> GetSessionsAsync(Guid userId, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<SphynxSessionInfo?>> GetAndUpdateExpiry(Guid sessionId, DateTimeOffset expiryTime,
+            CancellationToken cancellationToken = default);
+
         Task<SphynxErrorInfo<bool>> SessionExistsAsync(Guid sessionId, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<bool>> UserExistsAsync(Guid userId, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<long>> CountSessionsAsync(Guid userId, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorInfo<SphynxSessionInfo?>> GetAndUpdateExpiry(Guid sessionId, DateTimeOffset expiryTime,
-            CancellationToken cancellationToken = default);
-
         Task<SphynxErrorInfo> UpdateExpiryAsync(Guid sessionId, DateTimeOffset expiryTime, CancellationToken cancellationToken = default);
 
+        Task<SphynxErrorInfo<int>> DeleteAsync(Guid[] sessionIds, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<long>> DeleteSessionsAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<SphynxSessionInfo?>> DeleteAsync(Guid sessionId, CancellationToken cancellationToken = default);
     }
 

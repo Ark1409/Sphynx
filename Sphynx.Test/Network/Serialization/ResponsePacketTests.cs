@@ -21,7 +21,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LoginResponseSerializer(new SphynxSelfInfoSerializer());
-            var packet = new LoginResponse(new TestSphynxSelfInfo(), "access-token", Guid.NewGuid(), DateTimeOffset.UtcNow);
+            var packet = new LoginResponse(new TestSphynxSelfInfo(), Guid.NewGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -53,7 +53,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new RegisterResponseSerializer(new SphynxSelfInfoSerializer());
-            var packet = new RegisterResponse(new TestSphynxSelfInfo(), "access-token", Guid.NewGuid(), DateTimeOffset.UtcNow);
+            var packet = new RegisterResponse(new TestSphynxSelfInfo(), Guid.NewGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);

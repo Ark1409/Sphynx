@@ -48,9 +48,7 @@ namespace Sphynx.ServerV2.Persistence.Auth
         {
             var sessionFilter = Builders<SphynxDbSession>.Filter.Eq(session => session.SessionId, sessionId);
 
-            var dbSession = await _collection.Find(sessionFilter)
-                .FirstOrDefaultAsync(cancellationToken)
-                .ConfigureAwait(false);
+            var dbSession = await _collection.Find(sessionFilter).FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
             // TODO: Remove if expired?
 
@@ -59,18 +57,49 @@ namespace Sphynx.ServerV2.Persistence.Auth
                 : new SphynxErrorInfo<SphynxSessionInfo?>(dbSession.ToDomain());
         }
 
+        public async Task<SphynxErrorInfo<SphynxSessionInfo[]?>> GetAsync(Guid[] sessionIds, CancellationToken cancellationToken = default)
+        {
+            var sessionFilters = sessionIds.Select(id => Builders<SphynxDbSession>.Filter.Eq(token => token.SessionId, id));
+            var filter = Builders<SphynxDbSession>.Filter.Or(sessionFilters);
+
+            var dbSessions = await _collection.Find(filter).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            // TODO: Remove if expired?
+
+            return dbSessions.Select(x => x.ToDomain()).ToArray();
+        }
+
+        public async Task<SphynxErrorInfo<SphynxSessionInfo[]?>> GetSessionsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var userFilter = Builders<SphynxDbSession>.Filter.Eq(token => token.UserId, userId);
+
+            var dbSessions = await _collection.Find(userFilter).ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            // TODO: Remove if expired?
+
+            return dbSessions.Select(x => x.ToDomain()).ToArray();
+        }
+
         public async Task<SphynxErrorInfo<bool>> SessionExistsAsync(Guid sessionId, CancellationToken cancellationToken = default)
         {
             var sessionFilter = Builders<SphynxDbSession>.Filter.Eq(session => session.SessionId, sessionId);
 
             // TODO: Don't count if expired?
-            long sessionCount = await _collection.CountDocumentsAsync(sessionFilter, cancellationToken: cancellationToken).ConfigureAwait(false);
+            long sessionCount = await _collection.CountDocumentsAsync(sessionFilter, new CountOptions { Limit = 1 }, cancellationToken)
+                .ConfigureAwait(false);
+
             return sessionCount > 0;
         }
 
         public async Task<SphynxErrorInfo<bool>> UserExistsAsync(Guid userId, CancellationToken cancellationToken = default)
         {
-            return await CountSessionsAsync(userId, cancellationToken).ConfigureAwait(false) > 0;
+            var userFilter = Builders<SphynxDbSession>.Filter.Eq(token => token.UserId, userId);
+
+            // TODO: Don't count if expired?
+            long sessionCount = await _collection.CountDocumentsAsync(userFilter, new CountOptions { Limit = 1 }, cancellationToken)
+                .ConfigureAwait(false);
+
+            return sessionCount > 0;
         }
 
         public async Task<SphynxErrorInfo<long>> CountSessionsAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -83,9 +112,16 @@ namespace Sphynx.ServerV2.Persistence.Auth
             return sessionCount;
         }
 
-        public Task<SphynxErrorInfo<SphynxSessionInfo?>> GetAndUpdateExpiry(Guid sessionId, DateTimeOffset expiryTime, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxSessionInfo?>> GetAndUpdateExpiry(Guid sessionId, DateTimeOffset expiryTime,
+            CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var sessionFilter = Builders<SphynxDbSession>.Filter.Eq(token => token.SessionId, sessionId);
+            var expiryUpdate = Builders<SphynxDbSession>.Update.Set(session => session.ExpiresAt, expiryTime);
+
+            var updateResult = await _collection.FindOneAndUpdateAsync(sessionFilter, expiryUpdate, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return updateResult.ToDomain();
         }
 
         public async Task<SphynxErrorInfo> UpdateExpiryAsync(Guid sessionId, DateTimeOffset expiryTime, CancellationToken cancellationToken = default)
@@ -103,6 +139,41 @@ namespace Sphynx.ServerV2.Persistence.Auth
                 return SphynxErrorCode.INVALID_TOKEN;
 
             return SphynxErrorCode.SUCCESS;
+        }
+
+        public async Task<SphynxErrorInfo<int>> DeleteAsync(Guid[] sessionIds, CancellationToken cancellationToken = default)
+        {
+            var sessionFilters = sessionIds.Select(id => Builders<SphynxDbSession>.Filter.Eq(token => token.SessionId, id));
+            var filter = Builders<SphynxDbSession>.Filter.Or(sessionFilters);
+
+            var deleteResult = await _collection.DeleteManyAsync(filter, cancellationToken).ConfigureAwait(false);
+
+            if (!deleteResult.IsAcknowledged)
+                return SphynxErrorCode.DB_WRITE_ERROR;
+
+            if (deleteResult.DeletedCount < 1)
+                return SphynxErrorCode.INVALID_TOKEN;
+
+            // TODO: Remove if expired?
+
+            return (int)deleteResult.DeletedCount;
+        }
+
+        public async Task<SphynxErrorInfo<long>> DeleteSessionsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            var userFilter = Builders<SphynxDbSession>.Filter.Eq(token => token.UserId, userId);
+
+            var deleteResult = await _collection.DeleteManyAsync(userFilter, cancellationToken).ConfigureAwait(false);
+
+            if (!deleteResult.IsAcknowledged)
+                return SphynxErrorCode.DB_WRITE_ERROR;
+
+            if (deleteResult.DeletedCount < 1)
+                return SphynxErrorCode.INVALID_TOKEN;
+
+            // TODO: Remove if expired?
+
+            return deleteResult.DeletedCount;
         }
 
         public async Task<SphynxErrorInfo<SphynxSessionInfo?>> DeleteAsync(Guid sessionId, CancellationToken cancellationToken = default)

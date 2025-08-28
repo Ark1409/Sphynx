@@ -9,7 +9,10 @@ namespace Sphynx.Network.PacketV2.Request
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_REQ;
 
-        public Guid RefreshToken { get; }
+        /// <summary>
+        /// Whether to logout of all sessions for this user.
+        /// </summary>
+        public bool AllSessions { get; set; }
 
         public LogoutRequest()
         {
@@ -18,9 +21,9 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="LogoutRequest"/>.
         /// </summary>
-        public LogoutRequest(Guid sessionId, Guid refreshToken) : base(sessionId)
+        public LogoutRequest(Guid sessionId, bool allSessions = false) : base(sessionId)
         {
-            RefreshToken = refreshToken;
+            AllSessions = allSessions;
         }
 
         /// <inheritdoc/>

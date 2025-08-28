@@ -50,6 +50,10 @@ namespace Sphynx.ServerV2.Persistence.User
         [BsonElement("pwd_salt")]
         public string? PasswordSalt { get; set; }
 
+        public SphynxDbUser() : this(default, null!, default)
+        {
+        }
+
         public SphynxDbUser(Guid userId, string userName, SphynxUserStatus userStatus)
         {
             UserId = userId;

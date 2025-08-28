@@ -12,11 +12,9 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// Holds the authenticated user's information.
         /// </summary>
-        public SphynxSelfInfo? UserInfo { get; init; }
+        public SphynxSelfInfo? UserInfo { get; set; }
 
-        public string? AccessToken { get; init; }
-        public Guid? RefreshToken { get; init; }
-        public DateTimeOffset? AccessTokenExpiry { get; init; }
+        public Guid? SessionId { get; set; }
 
         public RegisterResponse()
         {
@@ -34,16 +32,11 @@ namespace Sphynx.Network.PacketV2.Response
         /// Creates a new <see cref="LoginResponse"/>.
         /// </summary>
         /// <param name="userInfo">Holds the authenticated user's information.</param>
-        /// <param name="accessToken">The JWT access token.</param>
-        /// <param name="refreshToken">The refresh token for the access token.</param>
-        /// <param name="accessTokenExpiry">The expiry time of the access token.</param>
-        public RegisterResponse(SphynxSelfInfo userInfo, string accessToken, Guid refreshToken, DateTimeOffset accessTokenExpiry)
-            : this(SphynxErrorCode.SUCCESS)
+        /// <param name="sessionId">The identifier the user's session.</param>
+        public RegisterResponse(SphynxSelfInfo userInfo, Guid sessionId) : this(SphynxErrorCode.SUCCESS)
         {
             UserInfo = userInfo;
-            AccessToken = string.IsNullOrEmpty(accessToken) ? throw new ArgumentException(accessToken) : accessToken;
-            RefreshToken = refreshToken;
-            AccessTokenExpiry = accessTokenExpiry;
+            SessionId = sessionId;
         }
 
         /// <inheritdoc/>
@@ -52,7 +45,7 @@ namespace Sphynx.Network.PacketV2.Response
             if (other is null || !base.Equals(other))
                 return false;
 
-            if (AccessToken != other.AccessToken || RefreshToken != other.RefreshToken || AccessTokenExpiry != other.AccessTokenExpiry)
+            if (SessionId != other.SessionId)
                 return false;
 
             if (UserInfo is null && other.UserInfo is null)

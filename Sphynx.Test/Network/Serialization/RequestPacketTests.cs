@@ -33,7 +33,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LogoutRequestSerializer();
-            var packet = new LogoutRequest("access-token".AsGuid(), Guid.NewGuid());
+            var packet = new LogoutRequest("access-token".AsGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);
