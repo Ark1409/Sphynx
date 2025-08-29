@@ -8,6 +8,10 @@ namespace Sphynx.Network.PacketV2.Response
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_KICK_RES;
 
+        public KickUserResponse()
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="KickUserResponse"/>.
         /// </summary>

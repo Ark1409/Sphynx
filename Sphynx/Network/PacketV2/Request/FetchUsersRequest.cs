@@ -20,15 +20,15 @@ namespace Sphynx.Network.PacketV2.Request
         /// </summary>
         /// <remarks>If the provided value has a length greater than <see cref="MAX_USER_COUNT"/>, the first
         /// <see cref="MAX_USER_COUNT"/> IDs will be taken.</remarks>
-        public SnowflakeId[] UserIds
+        public Guid[] UserIds
         {
             get => _userIds;
-            init
+            set
             {
                 if (value.Length > MAX_USER_COUNT)
                 {
                     if (_userIds.Length != MAX_USER_COUNT)
-                        _userIds = new SnowflakeId[MAX_USER_COUNT];
+                        _userIds = new Guid[MAX_USER_COUNT];
 
                     Array.Copy(value, 0, _userIds, 0, MAX_USER_COUNT);
                     return;
@@ -38,22 +38,25 @@ namespace Sphynx.Network.PacketV2.Request
             }
         }
 
-        private SnowflakeId[] _userIds = Array.Empty<SnowflakeId>();
+        private Guid[] _userIds = Array.Empty<Guid>();
 
-        /// <summary>
-        /// Creates a new <see cref="FetchUsersRequest"/>.
-        /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public FetchUsersRequest(string accessToken) : base(accessToken)
+        public FetchUsersRequest()
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="FetchUsersRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
+        public FetchUsersRequest(Guid sessionId) : base(sessionId)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="FetchUsersRequest"/>.
+        /// </summary>
+        /// <param name="sessionId">The JWT access token for this request.</param>
         /// <param name="userIds">The user IDs of the users for which to retrieve information.</param>
-        public FetchUsersRequest(string accessToken, params SnowflakeId[] userIds) : base(accessToken)
+        public FetchUsersRequest(Guid sessionId, params Guid[] userIds) : base(sessionId)
         {
             UserIds = userIds;
         }

@@ -23,11 +23,12 @@ namespace Sphynx.Server.Auth.Middleware
             if (token.IsCancellationRequested)
                 return Task.FromCanceled(token);
 
-            if (packet is not LoginRequest && packet is not RegisterRequest && packet is not RefreshTokenRequest)
+            if (packet is not LoginRequest && packet is not RegisterRequest && packet is not LogoutRequest)
             {
                 if (_logger.IsEnabled(LogLevel.Warning))
                     _logger.LogWarning("Rejecting packet of type {PacketType} received from {EndPoint}", packet.PacketType, client.EndPoint);
 
+                // TODO: Respond with invalid request?
                 return Task.CompletedTask;
             }
 

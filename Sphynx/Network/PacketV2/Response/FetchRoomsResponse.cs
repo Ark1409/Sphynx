@@ -13,7 +13,11 @@ namespace Sphynx.Network.PacketV2.Response
         /// <summary>
         /// The resolved rooms' information.
         /// </summary>
-        public ChatRoomInfo[]? Rooms { get; init; }
+        public ChatRoomInfo[]? Rooms { get; set; }
+
+        public FetchRoomsResponse()
+        {
+        }
 
         /// <summary>
         /// Creates a new <see cref="FetchRoomsResponse"/>.

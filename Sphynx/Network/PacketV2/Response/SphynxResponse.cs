@@ -12,6 +12,10 @@ namespace Sphynx.Network.PacketV2.Response
         /// </summary>
         public SphynxErrorInfo ErrorInfo { get; init; }
 
+        public SphynxResponse() : this(SphynxErrorCode.SERVER_ERROR)
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="SphynxResponse"/>.
         /// </summary>

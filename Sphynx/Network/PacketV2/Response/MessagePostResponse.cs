@@ -8,6 +8,10 @@ namespace Sphynx.Network.PacketV2.Response
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_RES;
 
+        public MessagePostResponse()
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="MessagePostResponse"/>.
         /// </summary>

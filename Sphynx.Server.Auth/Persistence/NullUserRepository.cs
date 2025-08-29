@@ -20,7 +20,7 @@ namespace Sphynx.Server.Auth.Persistence
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -30,7 +30,7 @@ namespace Sphynx.Server.Auth.Persistence
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -40,7 +40,7 @@ namespace Sphynx.Server.Auth.Persistence
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo> UpdateUserPasswordAsync(Guid userId, PasswordInfo password, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

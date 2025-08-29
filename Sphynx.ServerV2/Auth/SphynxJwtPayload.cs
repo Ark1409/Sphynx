@@ -16,8 +16,7 @@ namespace Sphynx.ServerV2.Auth
         public string Audience { get; set; }
 
         [JsonPropertyName("sub")]
-        [JsonConverter(typeof(SnowflakeIdConverter))]
-        public SnowflakeId Subject { get; set; }
+        public Guid Subject { get; set; }
 
         [JsonPropertyName("iat")]
         [JsonConverter(typeof(DateTimeOffsetConverter))]

@@ -72,7 +72,7 @@ namespace Sphynx.Core
         {
             string hex = string.Create(HEX_LENGTH, this, static (span, inst) =>
             {
-                bool formatted = inst.TryFormat(span, out int charsWritten);
+                bool formatted = inst.TryFormatHex(span, out int charsWritten);
 
                 Debug.Assert(formatted);
                 Debug.Assert(charsWritten == span.Length);
@@ -132,8 +132,7 @@ namespace Sphynx.Core
         {
             if (format.IsEmpty)
             {
-                charsWritten = 0;
-                return false;
+                goto DefaultFormat;
             }
 
             if (format[0] == 'D' || format[0] == 'd')
@@ -141,7 +140,8 @@ namespace Sphynx.Core
                 return TryFormatDecimal(destination, out charsWritten);
             }
 
-            return TryFormatHex(destination, out charsWritten, format[0] != 'X');
+            DefaultFormat:
+            return TryFormatHex(destination, out charsWritten, format.IsEmpty || format[0] != 'X');
         }
 
         private bool TryFormatHex(Span<char> destination, out int charsWritten, bool lowerCase = true)

@@ -6,6 +6,7 @@ using Sphynx.Core;
 using Sphynx.Network.PacketV2.Request;
 using Sphynx.Network.PacketV2.Response;
 using Sphynx.ServerV2.Client;
+using Sphynx.ServerV2.Extensions;
 using Sphynx.ServerV2.Infrastructure.Handlers;
 using Sphynx.ServerV2.Infrastructure.Services;
 
@@ -41,7 +42,7 @@ namespace Sphynx.Server.Auth.Handlers
 
             var refreshTokenInfo = refreshTokenResult.Data!.Value;
 
-            if (request.AccessToken != refreshTokenInfo.AccessToken)
+            if (request.SessionId.ToString() != refreshTokenInfo.AccessToken)
             {
                 await client.SendAsync(new RefreshTokenResponse(SphynxErrorCode.INVALID_TOKEN), cancellationToken).ConfigureAwait(false);
                 return;

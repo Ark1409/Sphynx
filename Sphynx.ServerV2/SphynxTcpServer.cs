@@ -256,12 +256,7 @@ namespace Sphynx.ServerV2
 
             await StopAsync(waitForFinish: true).ConfigureAwait(false);
 
-            if (ServerSocket is not null)
-            {
-                await ServerSocket.DisconnectAsync(false).ConfigureAwait(false);
-                ServerSocket.Shutdown(SocketShutdown.Both);
-                ServerSocket.Dispose();
-            }
+            ServerSocket?.Dispose();
 
             while (_socketPool?.TryTake(out var socket) ?? false)
                 socket.Dispose();

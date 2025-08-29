@@ -7,12 +7,15 @@ namespace Sphynx.Core
     /// <param name="Message">A descriptive message for the error.</param>
     public readonly record struct SphynxErrorInfo(SphynxErrorCode ErrorCode, string? Message = null)
     {
+        public SphynxErrorInfo<TData> WithData<TData>(TData data) => new SphynxErrorInfo<TData>(ErrorCode, Message, data);
+        public SphynxErrorInfo<TData?> WithData<TData>(TData? data) where TData : struct => new SphynxErrorInfo<TData?>(ErrorCode, Message, data);
+
         /// <summary>
         /// Returns a new <see cref="SphynxErrorInfo"/> with the specified error code.
         /// </summary>
         /// <param name="error">The error code for this <see cref="SphynxErrorInfo"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo"/>.</returns>
-        public static implicit operator SphynxErrorInfo(SphynxErrorCode error) => new SphynxErrorInfo(error);
+        public static implicit operator SphynxErrorInfo(SphynxErrorCode error) => new(error);
     };
 
     /// <summary>
@@ -52,14 +55,14 @@ namespace Sphynx.Core
         /// </summary>
         /// <param name="data">The data to encapsulate.</param>
         /// <returns>A new <see cref="SphynxErrorInfo{TData}"/> with the underlying <paramref name="data"/>.</returns>
-        public static implicit operator SphynxErrorInfo<TData>(TData data) => new SphynxErrorInfo<TData>(data);
+        public static implicit operator SphynxErrorInfo<TData>(TData data) => new(data);
 
         /// <summary>
         /// Returns a new <see cref="SphynxErrorInfo{TData}"/> with <see langword="default"/> <see cref="Data"/>.
         /// </summary>
         /// <param name="error">The error code for this <see cref="SphynxErrorInfo{TData}"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo{TData}"/>.</returns>
-        public static implicit operator SphynxErrorInfo<TData>(SphynxErrorCode error) => new SphynxErrorInfo<TData>(error);
+        public static implicit operator SphynxErrorInfo<TData>(SphynxErrorCode error) => new(error);
 
         /// <summary>
         /// Returns a new <see cref="SphynxErrorInfo"/> with the same <see cref="ErrorCode"/> and <see cref="Message"/>
@@ -70,11 +73,11 @@ namespace Sphynx.Core
         public static implicit operator SphynxErrorInfo(SphynxErrorInfo<TData> error) => new(error.ErrorCode, error.Message);
 
         /// <summary>
-        /// Returns a new <see cref="SphynxErrorInfo{TData}"/> converted from a <see cref="SphynxErrorInfo"/> object.
+        /// Returns a new <see cref="SphynxErrorInfo{TData}"/> with <see langword="default"/> <see cref="Data"/>.
         /// </summary>
-        /// <param name="info">The original <see cref="SphynxErrorInfo"/> object.</param>
-        /// <returns>The data for this <see cref="SphynxErrorInfo"/>.</returns>
-        public static explicit operator SphynxErrorInfo<TData>(SphynxErrorInfo info) => new(info.ErrorCode, info.Message);
+        /// <param name="error">The error code for this <see cref="SphynxErrorInfo{TData}"/>.</param>
+        /// <returns>The data for this <see cref="SphynxErrorInfo{TData}"/>.</returns>
+        public static explicit operator SphynxErrorInfo<TData>(SphynxErrorInfo error) => new(error.ErrorCode, error.Message);
 
         /// <inheritdoc/>
         public bool Equals(TData? other)

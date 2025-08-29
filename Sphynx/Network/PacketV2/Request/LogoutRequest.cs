@@ -1,4 +1,4 @@
-﻿using Sphynx.Core;
+using Sphynx.Core;
 using Sphynx.Network.PacketV2.Response;
 
 namespace Sphynx.Network.PacketV2.Request
@@ -10,11 +10,20 @@ namespace Sphynx.Network.PacketV2.Request
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_REQ;
 
         /// <summary>
+        /// Whether to logout of all sessions for this user.
+        /// </summary>
+        public bool AllSessions { get; set; }
+
+        public LogoutRequest()
+        {
+        }
+
+        /// <summary>
         /// Creates a new <see cref="LogoutRequest"/>.
         /// </summary>
-        /// <param name="accessToken">The JWT access token for this request.</param>
-        public LogoutRequest(string accessToken) : base(accessToken)
+        public LogoutRequest(Guid sessionId, bool allSessions = false) : base(sessionId)
         {
+            AllSessions = allSessions;
         }
 
         /// <inheritdoc/>

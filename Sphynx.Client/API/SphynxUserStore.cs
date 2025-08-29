@@ -12,7 +12,7 @@ namespace Sphynx.Client.API;
 
 public class SphynxUserStore : ISphynxUserStore
 {
-    private readonly Dictionary<SnowflakeId, UserInfo> _userCache = new();
+    private readonly Dictionary<Guid, UserInfo> _userCache = new();
 
     private readonly SphynxServerConnection _connection;
     private readonly IPacketTransporter _transporter = null!;
@@ -29,7 +29,7 @@ public class SphynxUserStore : ISphynxUserStore
         }
     }
 
-    public async Task<IReadOnlyBindable<SphynxUserInfo>> GetUser(SnowflakeId userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyBindable<SphynxUserInfo>> GetUser(Guid userId, CancellationToken cancellationToken = default)
     {
         // if (GetUserCached(userId, out var val))
         // {
@@ -50,7 +50,7 @@ public class SphynxUserStore : ISphynxUserStore
         return null!;
     }
 
-    public bool GetUserCached(SnowflakeId userId, [NotNullWhen(true)] out IReadOnlyBindable<SphynxUserInfo>? val)
+    public bool GetUserCached(Guid userId, [NotNullWhen(true)] out IReadOnlyBindable<SphynxUserInfo>? val)
     {
         if (!_userCache.TryGetValue(userId, out var info))
         {

@@ -10,8 +10,6 @@ namespace Sphynx.Server.Auth.Persistence
 {
     public class MongoAuthUserRepository : IAuthUserRepository
     {
-        public event Action<SphynxAuthUser>? UserCreated;
-
         private readonly IMongoCollection<SphynxDbUser> _collection;
 
         public MongoAuthUserRepository(IMongoDatabase db, string collectionName) : this(db.GetCollection<SphynxDbUser>(collectionName))
@@ -29,7 +27,7 @@ namespace Sphynx.Server.Auth.Persistence
                 return new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USERNAME);
 
             if (user.UserId == default)
-                user.UserId = SnowflakeId.NewId();
+                user.UserId = Guid.NewGuid();
 
             var dbUser = user.ToRecord();
 
@@ -42,8 +40,6 @@ namespace Sphynx.Server.Auth.Persistence
             {
                 return new SphynxErrorInfo<SphynxAuthUser?>(SphynxErrorCode.INVALID_USER, "User with matching ID already exists");
             }
-
-            UserCreated?.Invoke(user);
 
             return new SphynxErrorInfo<SphynxAuthUser?>(user);
         }
@@ -95,7 +91,7 @@ namespace Sphynx.Server.Auth.Persistence
             return SphynxErrorCode.SUCCESS;
         }
 
-        public async Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(SnowflakeId userId, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(Guid userId, CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);
 
@@ -131,7 +127,7 @@ namespace Sphynx.Server.Auth.Persistence
                 : new SphynxErrorInfo<SphynxAuthUser?>(dbUser.ToDomain());
         }
 
-        public async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(SnowflakeId userId,
+        public async Task<SphynxErrorInfo<PasswordInfo?>> GetUserPasswordAsync(Guid userId,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);
@@ -145,7 +141,7 @@ namespace Sphynx.Server.Auth.Persistence
                 .ToCursorAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!await cursor.MoveNextAsync(cancellationToken))
+            if (!await cursor.MoveNextAsync(cancellationToken).ConfigureAwait(false))
                 return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.INVALID_USER, "User not found");
 
             return new SphynxErrorInfo<PasswordInfo?>(cursor.Current.First());
@@ -165,13 +161,13 @@ namespace Sphynx.Server.Auth.Persistence
                 .ToCursorAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!await cursor.MoveNextAsync(cancellationToken))
+            if (!await cursor.MoveNextAsync(cancellationToken).ConfigureAwait(false))
                 return new SphynxErrorInfo<PasswordInfo?>(SphynxErrorCode.INVALID_USERNAME, "User not found");
 
             return new SphynxErrorInfo<PasswordInfo?>(cursor.Current.First());
         }
 
-        public async Task<SphynxErrorInfo> UpdateUserPasswordAsync(SnowflakeId userId, PasswordInfo password,
+        public async Task<SphynxErrorInfo> UpdateUserPasswordAsync(Guid userId, PasswordInfo password,
             CancellationToken cancellationToken = default)
         {
             var userFilter = Builders<SphynxDbUser>.Filter.Eq(user => user.UserId, userId);

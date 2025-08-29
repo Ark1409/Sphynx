@@ -8,6 +8,10 @@ namespace Sphynx.Network.PacketV2.Response
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_RES;
 
+        public LogoutResponse()
+        {
+        }
+
         /// <summary>
         /// Creates a new <see cref="LogoutResponse"/>.
         /// </summary>

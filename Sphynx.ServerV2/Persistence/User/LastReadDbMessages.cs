@@ -7,22 +7,21 @@ using Sphynx.Core;
 namespace Sphynx.ServerV2.Persistence.User
 {
     [BsonIgnoreExtraElements]
-    public class LastReadDbMessages : Dictionary<SnowflakeId, SnowflakeId>
+    public class LastReadDbMessages : Dictionary<Guid, SnowflakeId>
     {
-        private readonly IDictionary<SnowflakeId, SnowflakeId> _lastReadMessages;
-
-        public LastReadDbMessages() : this(new Dictionary<SnowflakeId, SnowflakeId>())
+        public LastReadDbMessages()
         {
         }
 
-        public LastReadDbMessages(IDictionary<SnowflakeId, SnowflakeId> lastReadMessages)
+        public LastReadDbMessages(IDictionary<Guid, SnowflakeId> lastReadMessages)
         {
-            _lastReadMessages = lastReadMessages;
+            foreach(var kvp in lastReadMessages)
+                Add(kvp.Key, kvp.Value);
         }
 
-        public void SetLastMessage(SnowflakeId roomId, SnowflakeId msgId) => this[roomId] = msgId;
-        public bool RemoveRoom(SnowflakeId roomId) => Remove(roomId);
-        public SnowflakeId GetLastMessage(SnowflakeId roomId) => this[roomId];
-        public bool TryGetLastMessage(SnowflakeId roomId, out SnowflakeId msgId) => TryGetValue(roomId, out msgId);
+        public void SetLastMessage(Guid roomId, SnowflakeId msgId) => this[roomId] = msgId;
+        public bool RemoveRoom(Guid roomId) => Remove(roomId);
+        public SnowflakeId GetLastMessage(Guid roomId) => this[roomId];
+        public bool TryGetLastMessage(Guid roomId, out SnowflakeId msgId) => TryGetValue(roomId, out msgId);
     }
 }

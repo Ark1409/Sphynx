@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using Sphynx.Core;
@@ -30,7 +29,7 @@ namespace Sphynx.Network.Serialization.Model
 
             var roomInfo = new RoomInfo { RoomId = roomId, RoomType = roomType, Name = roomName };
 
-            return DeserializeRoom(ref deserializer, roomInfo);
+            return DeserializeRoom(ref deserializer, in roomInfo);
         }
 
         protected internal abstract TRoom? DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo);

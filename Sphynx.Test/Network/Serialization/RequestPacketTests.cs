@@ -33,7 +33,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LogoutRequestSerializer();
-            var packet = new LogoutRequest("access-token");
+            var packet = new LogoutRequest("access-token".AsGuid());
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -65,9 +65,9 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new FetchMessagesRequestSerializer();
-            var packet = new FetchMessagesRequest("access-token")
+            var packet = new FetchMessagesRequest("access-token".AsGuid())
             {
-                BeforeId = "before".AsSnowflakeId(), Count = 123, Inclusive = true, RoomId = "room".AsSnowflakeId()
+                BeforeId = "before".AsSnowflakeId(), Count = 123, Inclusive = true, RoomId = "room".AsGuid()
             };
 
             // Act
@@ -84,9 +84,9 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new FetchUsersRequestSerializer();
-            var packet = new FetchUsersRequest("access-token")
+            var packet = new FetchUsersRequest("access-token".AsGuid())
             {
-                UserIds = new[] { "test user".AsSnowflakeId(), "test user 2".AsSnowflakeId(), "test user 3".AsSnowflakeId(), }
+                UserIds = new[] { "test user".AsGuid(), "test user 2".AsGuid(), "test user 3".AsGuid(), }
             };
 
             // Act
@@ -103,7 +103,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new MessagePostRequestSerializer();
-            var packet = new MessagePostRequest("access-token")
+            var packet = new MessagePostRequest("access-token".AsGuid())
             {
                 RoomId = "test room id".AsSnowflakeId(),
                 Message = "This is a test message. The quick brown fox jumps over... \r\n" +
@@ -124,7 +124,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new RoomCreateRequestSerializer();
-            var packet = new RoomCreateRequest.Direct("access-token") { OtherId = "other-user".AsSnowflakeId() };
+            var packet = new RoomCreateRequest.Direct("access-token".AsGuid()) { OtherId = "other-user".AsGuid() };
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -140,7 +140,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new RoomCreateRequestSerializer();
-            var packet = new RoomCreateRequest.Group("access-token")
+            var packet = new RoomCreateRequest.Group("access-token".AsGuid())
             {
                 Name = "test-group", Password = "test-group-pwd", Public = true
             };
@@ -159,7 +159,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new DeleteRoomRequestSerializer();
-            var packet = new RoomDeleteRequest("access-token")
+            var packet = new RoomDeleteRequest("access-token".AsGuid())
             {
                 RoomId = "room".AsSnowflakeId(), Password = "test-group-pwd"
             };
@@ -178,9 +178,9 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new JoinRoomRequestSerializer();
-            var packet = new JoinRoomRequest("access-token")
+            var packet = new JoinRoomRequest("access-token".AsGuid())
             {
-                RoomId = "room".AsSnowflakeId(), Password = "test-group-pwd"
+                RoomId = "room".AsGuid(), Password = "test-group-pwd"
             };
 
             // Act
@@ -197,9 +197,9 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new KickUserRequestSerializer();
-            var packet = new KickUserRequest("access-token")
+            var packet = new KickUserRequest("access-token".AsGuid())
             {
-                RoomId = "room".AsSnowflakeId(), KickId = "kick-user".AsSnowflakeId()
+                RoomId = "room".AsGuid(), KickId = "kick-user".AsGuid()
             };
 
             // Act
@@ -216,7 +216,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new LeaveRoomRequestSerializer();
-            var packet = new LeaveRoomRequest("access-token") { RoomId = "room".AsSnowflakeId() };
+            var packet = new LeaveRoomRequest("access-token".AsGuid()) { RoomId = "room".AsGuid() };
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -232,9 +232,9 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new FetchRoomsRequestSerializer();
-            var packet = new FetchRoomsRequest("access-token")
+            var packet = new FetchRoomsRequest("access-token".AsGuid())
             {
-                RoomIds = new[] { "room1".AsSnowflakeId(), "room2".AsSnowflakeId(), "room3".AsSnowflakeId() }
+                RoomIds = new[] { "room1".AsGuid(), "room2".AsGuid(), "room3".AsGuid() }
             };
 
             // Act
