@@ -3,7 +3,7 @@
     /// <summary>
     /// Represents a version of this application.
     /// </summary>
-    public readonly struct Version : IEquatable<Version?>, IComparable<Version>
+    public readonly struct Version : IEquatable<Version>, IComparable<Version>
     {
         /// <summary>
         /// The major version number.
@@ -58,7 +58,7 @@
         /// </summary>
         /// <param name="other">The other version to which this should be compared.</param>
         /// <returns>True if this version is the same as the given one, false otherwise.</returns>
-        public readonly bool Equals(Version? other) => other.HasValue && CompareTo(other.Value) == 0;
+        public readonly bool Equals(Version other) => CompareTo(other) == 0;
 
         /// <inheritdoc/>
         public readonly override bool Equals(object? obj) => obj is Version version && Equals(version);

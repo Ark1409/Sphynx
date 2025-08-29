@@ -85,7 +85,7 @@ namespace Sphynx.Bindables
     /// </summary>
     /// <typeparam name="T">The type of value encapsulated by this <see cref="IBindable{T}"/>.</typeparam>
     /// <seealso cref="IBindable{T}"/>
-    public interface IReadOnlyBindable<T> : IReadOnlyValuedBindable<T>
+    public interface IReadOnlyBindable<T> : IReadOnlyValuedBindable<T>, IEquatable<T>
     {
         /// <summary>
         /// An event which is raised when <see cref="IReadOnlyValuedBindable{T}.Value"/> has changed.
@@ -109,6 +109,8 @@ namespace Sphynx.Bindables
 
         void IReadOnlyValuedBindable<T>.BindValueChanged(Action<ValueChangedEvent<object?>> onChange, bool runOnceImmediately)
             => BindValueChanged(e => onChange(new(e.OldValue, e.NewValue)), runOnceImmediately);
+
+        bool IEquatable<T>.Equals(T? other) => other != null && EqualityComparer<T>.Default.Equals(other);
     }
 
     /// <summary>

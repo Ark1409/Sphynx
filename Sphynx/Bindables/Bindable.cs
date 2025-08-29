@@ -147,12 +147,18 @@ namespace Sphynx.Bindables
         /// Creates a new bindable instance initialised with a default value.
         /// </summary>
         /// <param name="defaultValue">The initial and default value for this bindable.</param>
-        public Bindable(T defaultValue)
+        public Bindable(T defaultValue = default)
         {
             value = Default = defaultValue;
         }
 
         protected LockedWeakList<IReadOnlyBindable>? Bindings { get; private set; }
+
+        /// <summaru>
+        /// Represents the sum of the number of bindables which this has bound to as well as the number of bindables
+        /// which have bound to this instance.
+        /// </summaru>
+        public int BindingCount => Bindings?.Count() ?? 0;
 
         /// <summary>
         /// An alias of <see cref="BindTo"/> provided for use in object initializer scenarios.
@@ -179,7 +185,6 @@ namespace Sphynx.Bindables
         /// This will adopt any values and value limitations of the bindable bound to.
         /// </summary>
         /// <param name="them">The foreign bindable. This should always be the most permanent end of the bind.</param>
-        /// <exception cref="InvalidOperationException">Thrown when attempting to bind to an already bound object.</exception>
         public void BindTo(Bindable<T> them)
         {
             if (Bindings?.Contains(((IReadOnlyBindable)them).WeakReference) == true) return;
@@ -433,6 +438,7 @@ namespace Sphynx.Bindables
         /// <inheritdoc cref="IBindable{T}.GetBoundCopy"/>
         IBindable<T> IBindable<T>.GetBoundCopy() => GetBoundCopy();
 
+        #region Leasing
         private LeasedBindable<T>? leasedBindable;
 
         private bool isLeased => leasedBindable != null;
@@ -496,5 +502,9 @@ namespace Sphynx.Bindables
             if (isLeased)
                 throw new InvalidOperationException($"Cannot perform this operation on a {nameof(Bindable<T>)} that is currently in a leased state.");
         }
+
+        #endregion
+
+        public override int GetHashCode() => HashCode.Combine(Value);
     }
 }

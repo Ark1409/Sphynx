@@ -67,7 +67,14 @@ namespace Sphynx.Core
         /// </summary>
         /// <param name="error">The error code for this <see cref="SphynxErrorInfo"/>.</param>
         /// <returns>The data for this <see cref="SphynxErrorInfo"/>.</returns>
-        public static explicit operator SphynxErrorInfo(SphynxErrorInfo<TData> error) => new(error.ErrorCode, error.Message);
+        public static implicit operator SphynxErrorInfo(SphynxErrorInfo<TData> error) => new(error.ErrorCode, error.Message);
+
+        /// <summary>
+        /// Returns a new <see cref="SphynxErrorInfo{TData}"/> converted from a <see cref="SphynxErrorInfo"/> object.
+        /// </summary>
+        /// <param name="info">The original <see cref="SphynxErrorInfo"/> object.</param>
+        /// <returns>The data for this <see cref="SphynxErrorInfo"/>.</returns>
+        public static explicit operator SphynxErrorInfo<TData>(SphynxErrorInfo info) => new(info.ErrorCode, info.Message);
 
         /// <inheritdoc/>
         public bool Equals(TData? other)

@@ -44,7 +44,7 @@ namespace Sphynx.Network.PacketV2.Request
         /// <summary>
         /// Creates a new <see cref="SphynxRequest"/>.
         /// </summary>
-        public SphynxRequest() : base(null!)
+        public SphynxRequest() : base()
         { }
 
         /// <summary>
