@@ -21,19 +21,25 @@ namespace Sphynx.Network.Serialization.Packet
             var roomId = deserializer.ReadSnowflakeId();
             string message = deserializer.ReadString() ?? string.Empty;
 
-            return new MessagePostRequest(requestInfo.SessionId, roomId, message);
+            return new MessagePostRequest(requestInfo.SessionId, roomId, message)
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
     public class MessagePostResponseSerializer : ResponseSerializer<MessagePostResponse>
     {
-        protected override void SerializeInternal(MessagePostResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(MessagePostResponse packet, ref BinarySerializer serializer)
         {
         }
 
-        protected override MessagePostResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override MessagePostResponse DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            return new MessagePostResponse(responseInfo.ErrorInfo);
+            return new MessagePostResponse(responseInfo.ErrorInfo)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 

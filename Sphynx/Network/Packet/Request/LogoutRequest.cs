@@ -29,6 +29,9 @@ namespace Sphynx.Network.Packet.Request
         /// <inheritdoc/>
         public bool Equals(LogoutRequest? other) => base.Equals(other);
 
-        public override LogoutResponse CreateResponse(SphynxErrorInfo errorInfo) => new LogoutResponse(errorInfo);
+        public override LogoutResponse CreateResponse(SphynxErrorInfo errorInfo) => new LogoutResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

@@ -57,6 +57,9 @@ namespace Sphynx.Network.Packet.Request
         /// <inheritdoc/>
         public bool Equals(RoomDeleteRequest? other) => base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
 
-        public override RoomDeleteResponse CreateResponse(SphynxErrorInfo errorInfo) => new RoomDeleteResponse(errorInfo);
+        public override RoomDeleteResponse CreateResponse(SphynxErrorInfo errorInfo) => new RoomDeleteResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

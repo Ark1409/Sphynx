@@ -34,6 +34,9 @@ namespace Sphynx.Network.Packet.Request
         /// <inheritdoc/>
         public bool Equals(LeaveRoomRequest? other) => base.Equals(other) && RoomId == other?.RoomId;
 
-        public override LeaveRoomResponse CreateResponse(SphynxErrorInfo errorInfo) => new LeaveRoomResponse(errorInfo);
+        public override LeaveRoomResponse CreateResponse(SphynxErrorInfo errorInfo) => new LeaveRoomResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

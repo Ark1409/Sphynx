@@ -85,7 +85,7 @@ namespace Sphynx.Test.Network.Serialization
         }
 
         [Test]
-        public void GetUsersResponsePacket_ShouldSerializeAndDeserialize()
+        public void FetchUsersResponsePacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
             var serializer = new FetchUsersResponseSerializer(new SphynxUserInfoSerializer());

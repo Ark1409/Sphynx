@@ -40,6 +40,9 @@ namespace Sphynx.Network.Packet.Request
         public bool Equals(LoginRequest? other) =>
             PacketType == other?.PacketType && UserName == other?.UserName && Password == other?.Password;
 
-        public override LoginResponse CreateResponse(SphynxErrorInfo errorInfo) => new LoginResponse(errorInfo);
+        public override LoginResponse CreateResponse(SphynxErrorInfo errorInfo) => new LoginResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

@@ -53,6 +53,9 @@ namespace Sphynx.Network.Packet.Request
         /// <inheritdoc/>
         public bool Equals(JoinRoomRequest? other) => base.Equals(other) && RoomId == other?.RoomId && Password == other?.Password;
 
-        public override JoinRoomResponse CreateResponse(SphynxErrorInfo errorInfo) => new JoinRoomResponse(errorInfo);
+        public override JoinRoomResponse CreateResponse(SphynxErrorInfo errorInfo) => new JoinRoomResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

@@ -9,7 +9,12 @@ namespace Sphynx.Network.Packet.Request
     public abstract class SphynxRequest : SphynxPacket
     {
         /// <summary>
-        /// The JWT access token with which this request should be authorized.
+        /// An identifier for this request-response exchange.
+        /// </summary>
+        public Guid RequestTag { get; set; }
+
+        /// <summary>
+        /// Identifier representing the client's current session.
         /// </summary>
         public Guid SessionId { get; set; }
 
@@ -34,7 +39,7 @@ namespace Sphynx.Network.Packet.Request
         /// </summary>
         /// <param name="other">A request packet to compare with this request packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxRequest? other) => base.Equals(other) && SessionId == other?.SessionId;
+        protected bool Equals(SphynxRequest? other) => base.Equals(other) && RequestTag == other?.RequestTag && SessionId == other?.SessionId;
 
         public abstract SphynxResponse CreateResponse(SphynxErrorInfo errorInfo);
     }

@@ -8,11 +8,16 @@ namespace Sphynx.Network.Packet.Response
     public abstract class SphynxResponse : SphynxPacket
     {
         /// <summary>
+        /// An identifier for this request-response exchange.
+        /// </summary>
+        public Guid RequestTag { get; set; }
+
+        /// <summary>
         /// <inheritdoc cref="SphynxErrorInfo"/>
         /// </summary>
         public SphynxErrorInfo ErrorInfo { get; init; }
 
-        public SphynxResponse() : this(SphynxErrorCode.SERVER_ERROR)
+        public SphynxResponse() : this(SphynxErrorCode.SUCCESS)
         {
         }
 
@@ -38,6 +43,6 @@ namespace Sphynx.Network.Packet.Response
         /// </summary>
         /// <param name="other">A request packet to compare with this request packet.</param>
         /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxResponse? other) => base.Equals(other) && ErrorInfo == other?.ErrorInfo;
+        protected bool Equals(SphynxResponse? other) => base.Equals(other) && RequestTag == other?.RequestTag && ErrorInfo == other?.ErrorInfo;
     }
 }

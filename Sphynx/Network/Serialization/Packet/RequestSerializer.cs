@@ -9,6 +9,7 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public sealed override void Serialize(T packet, ref BinarySerializer serializer)
         {
+            serializer.WriteGuid(packet.RequestTag);
             serializer.WriteGuid(packet.SessionId);
 
             SerializeRequest(packet, ref serializer);
@@ -18,8 +19,9 @@ namespace Sphynx.Network.Serialization.Packet
 
         public sealed override T? Deserialize(ref BinaryDeserializer deserializer)
         {
+            var requestTag = deserializer.ReadGuid();
             var sessionId = deserializer.ReadGuid();
-            var requestInfo = new RequestInfo { SessionId = sessionId };
+            var requestInfo = new RequestInfo { RequestTag = requestTag, SessionId = sessionId };
 
             return DeserializeRequest(ref deserializer, in requestInfo);
         }
@@ -29,6 +31,7 @@ namespace Sphynx.Network.Serialization.Packet
 
     public readonly struct RequestInfo
     {
+        public Guid RequestTag { get; init; }
         public Guid SessionId { get; init; }
     }
 }
