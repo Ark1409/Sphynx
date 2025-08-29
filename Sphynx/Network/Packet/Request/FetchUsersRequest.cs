@@ -65,6 +65,9 @@ namespace Sphynx.Network.Packet.Request
         public bool Equals(FetchUsersRequest? other) =>
             base.Equals(other) && MemoryUtils.SequenceEqual(UserIds, other?.UserIds);
 
-        public override FetchUsersResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchUsersResponse(errorInfo);
+        public override FetchUsersResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchUsersResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

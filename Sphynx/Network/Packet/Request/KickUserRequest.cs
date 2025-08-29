@@ -53,6 +53,9 @@ namespace Sphynx.Network.Packet.Request
         /// <inheritdoc/>
         public bool Equals(KickUserRequest? other) => base.Equals(other) && RoomId == other?.RoomId && KickId == other?.KickId;
 
-        public override KickUserResponse CreateResponse(SphynxErrorInfo errorInfo) => new KickUserResponse(errorInfo);
+        public override KickUserResponse CreateResponse(SphynxErrorInfo errorInfo) => new KickUserResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

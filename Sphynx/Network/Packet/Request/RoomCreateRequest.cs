@@ -138,7 +138,10 @@ namespace Sphynx.Network.Packet.Request
             /// <inheritdoc/>
             public bool Equals(Group? other) => base.Equals(other) && Name == other?.Name && Password == other?.Password;
 
-            public override RoomCreateResponse CreateResponse(SphynxErrorInfo errorInfo) => new RoomCreateResponse(errorInfo);
+            public override RoomCreateResponse CreateResponse(SphynxErrorInfo errorInfo) => new RoomCreateResponse(errorInfo)
+            {
+                RequestTag = RequestTag
+            };
         }
     }
 }

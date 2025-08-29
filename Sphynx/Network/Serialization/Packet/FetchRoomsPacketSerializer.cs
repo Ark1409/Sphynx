@@ -19,7 +19,10 @@ namespace Sphynx.Network.Serialization.Packet
         protected override FetchRoomsRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var roomIds = deserializer.ReadArray<Guid>();
-            return new FetchRoomsRequest(requestInfo.SessionId, roomIds);
+            return new FetchRoomsRequest(requestInfo.SessionId, roomIds)
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
@@ -37,7 +40,7 @@ namespace Sphynx.Network.Serialization.Packet
             _roomSerializer = roomSerializer;
         }
 
-        protected override void SerializeInternal(FetchRoomsResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(FetchRoomsResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize Rooms on success
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
@@ -46,14 +49,22 @@ namespace Sphynx.Network.Serialization.Packet
             _roomSerializer.Serialize(packet.Rooms!, ref serializer);
         }
 
-        protected override FetchRoomsResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override FetchRoomsResponse? DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
-                return new FetchRoomsResponse(responseInfo.ErrorInfo);
+            {
+                return new FetchRoomsResponse(responseInfo.ErrorInfo)
+                {
+                    RequestTag = responseInfo.RequestTag
+                };
+            }
 
             var rooms = _roomSerializer.Deserialize(ref deserializer)!;
 
-            return new FetchRoomsResponse(rooms);
+            return new FetchRoomsResponse(rooms)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 }

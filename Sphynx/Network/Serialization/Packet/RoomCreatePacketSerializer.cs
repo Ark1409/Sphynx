@@ -125,7 +125,10 @@ namespace Sphynx.Network.Serialization.Packet
             {
                 var otherId = deserializer.ReadGuid();
 
-                return new RoomCreateRequest.Direct(requestInfo.RequestInfo.SessionId, otherId);
+                return new RoomCreateRequest.Direct(requestInfo.RequestInfo.SessionId, otherId)
+                {
+                    RequestTag = requestInfo.RequestInfo.RequestTag
+                };
             }
         }
 
@@ -145,14 +148,17 @@ namespace Sphynx.Network.Serialization.Packet
                 string? password = deserializer.ReadString();
                 bool isPublic = deserializer.ReadBool();
 
-                return new RoomCreateRequest.Group(requestInfo.RequestInfo.SessionId, name, password, isPublic);
+                return new RoomCreateRequest.Group(requestInfo.RequestInfo.SessionId, name, password, isPublic)
+                {
+                    RequestTag = requestInfo.RequestInfo.RequestTag
+                };
             }
         }
     }
 
     public class RoomCreateResponseSerializer : ResponseSerializer<RoomCreateResponse>
     {
-        protected override void SerializeInternal(RoomCreateResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(RoomCreateResponse packet, ref BinarySerializer serializer)
         {
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return;
@@ -160,13 +166,16 @@ namespace Sphynx.Network.Serialization.Packet
             serializer.WriteGuid(packet.RoomId!.Value);
         }
 
-        protected override RoomCreateResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override RoomCreateResponse DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new RoomCreateResponse(responseInfo.ErrorInfo);
 
             var roomId = deserializer.ReadGuid();
-            return new RoomCreateResponse(roomId);
+            return new RoomCreateResponse(roomId)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 }

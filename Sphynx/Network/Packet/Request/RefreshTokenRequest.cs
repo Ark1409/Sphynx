@@ -12,6 +12,9 @@ namespace Sphynx.Network.Packet.Request
         public override SphynxPacketType PacketType => SphynxPacketType.REFRESH_TOKEN_REQ;
 
         public Guid RefreshToken { get; init; }
-        public override RefreshTokenResponse CreateResponse(SphynxErrorInfo errorInfo) => new RefreshTokenResponse(errorInfo);
+        public override RefreshTokenResponse CreateResponse(SphynxErrorInfo errorInfo) => new RefreshTokenResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

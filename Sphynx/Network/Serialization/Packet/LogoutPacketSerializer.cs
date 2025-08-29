@@ -17,19 +17,25 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected override LogoutRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            return new LogoutRequest(requestInfo.SessionId, deserializer.ReadBool());
+            return new LogoutRequest(requestInfo.SessionId, deserializer.ReadBool())
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
     public class LogoutResponseSerializer : ResponseSerializer<LogoutResponse>
     {
-        protected override void SerializeInternal(LogoutResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(LogoutResponse packet, ref BinarySerializer serializer)
         {
         }
 
-        protected override LogoutResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override LogoutResponse DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            return new LogoutResponse(responseInfo.ErrorInfo);
+            return new LogoutResponse(responseInfo.ErrorInfo)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 

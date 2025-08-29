@@ -25,7 +25,10 @@ namespace Sphynx.Network.Serialization.Packet
             int count = deserializer.ReadInt32();
             bool inclusive = deserializer.ReadBool();
 
-            return new FetchMessagesRequest(requestInfo.SessionId, sinceId, roomId, count, inclusive);
+            return new FetchMessagesRequest(requestInfo.SessionId, sinceId, roomId, count, inclusive)
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
@@ -43,7 +46,7 @@ namespace Sphynx.Network.Serialization.Packet
             _chatMessageSerializer = chatMessageSerializer;
         }
 
-        protected override void SerializeInternal(FetchMessagesResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(FetchMessagesResponse packet, ref BinarySerializer serializer)
         {
             // Only send data on success
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
@@ -52,14 +55,22 @@ namespace Sphynx.Network.Serialization.Packet
             _chatMessageSerializer.Serialize(packet.Messages!, ref serializer);
         }
 
-        protected override FetchMessagesResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override FetchMessagesResponse? DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
-                return new FetchMessagesResponse(responseInfo.ErrorInfo);
+            {
+                return new FetchMessagesResponse(responseInfo.ErrorInfo)
+                {
+                    RequestTag = responseInfo.RequestTag
+                };
+            }
 
             var messages = _chatMessageSerializer.Deserialize(ref deserializer)!;
 
-            return new FetchMessagesResponse(messages);
+            return new FetchMessagesResponse(messages)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 }

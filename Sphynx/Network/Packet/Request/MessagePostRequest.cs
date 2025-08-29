@@ -48,6 +48,9 @@ namespace Sphynx.Network.Packet.Request
         public bool Equals(MessagePostRequest? other) =>
             base.Equals(other) && RoomId == other?.RoomId && Message == other?.Message;
 
-        public override MessagePostResponse CreateResponse(SphynxErrorInfo errorInfo) => new MessagePostResponse(errorInfo);
+        public override MessagePostResponse CreateResponse(SphynxErrorInfo errorInfo) => new MessagePostResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

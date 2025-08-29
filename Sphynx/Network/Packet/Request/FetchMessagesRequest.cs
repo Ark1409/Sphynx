@@ -78,6 +78,9 @@ namespace Sphynx.Network.Packet.Request
                                                            && Count == other.Count
                                                            && Inclusive == other.Inclusive;
 
-        public override FetchMessagesResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchMessagesResponse(errorInfo);
+        public override FetchMessagesResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchMessagesResponse(errorInfo)
+        {
+            RequestTag = RequestTag
+        };
     }
 }

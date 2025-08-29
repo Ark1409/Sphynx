@@ -17,16 +17,21 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(RegisterRequest packet, ref BinarySerializer serializer)
         {
+            serializer.WriteGuid(packet.RequestTag);
             serializer.WriteString(packet.UserName);
             serializer.WriteString(packet.Password);
         }
 
         public override RegisterRequest Deserialize(ref BinaryDeserializer deserializer)
         {
+            var requestTag = deserializer.ReadGuid();
             string userName = deserializer.ReadString()!;
             string password = deserializer.ReadString()!;
 
-            return new RegisterRequest(userName, password);
+            return new RegisterRequest(userName, password)
+            {
+                RequestTag = requestTag
+            };
         }
     }
 
@@ -39,7 +44,7 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer = userSerializer;
         }
 
-        protected override void SerializeInternal(RegisterResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(RegisterResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize user info when authentication is successful
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
@@ -49,7 +54,7 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer.Serialize(packet.UserInfo!, ref serializer);
         }
 
-        protected override RegisterResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override RegisterResponse? DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new RegisterResponse(responseInfo.ErrorInfo);
@@ -57,7 +62,10 @@ namespace Sphynx.Network.Serialization.Packet
             var sessionId = deserializer.ReadGuid();
             var userInfo = _userSerializer.Deserialize(ref deserializer)!;
 
-            return new RegisterResponse(userInfo, sessionId);
+            return new RegisterResponse(userInfo, sessionId)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 }
