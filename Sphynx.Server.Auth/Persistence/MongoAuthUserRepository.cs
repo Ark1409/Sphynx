@@ -4,7 +4,7 @@
 using MongoDB.Driver;
 using Sphynx.Core;
 using Sphynx.Server.Auth.Model;
-using Sphynx.ServerV2.Persistence.User;
+using Sphynx.Server.Persistence.User;
 
 namespace Sphynx.Server.Auth.Persistence
 {

@@ -6,12 +6,12 @@ using System.Diagnostics;
 using System.Net;
 using Microsoft.Extensions.Logging;
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
+using Sphynx.Model.User;
 using Sphynx.Server.Auth.Model;
 using Sphynx.Server.Auth.Persistence;
-using Sphynx.ServerV2.Auth;
-using Sphynx.ServerV2.Extensions;
-using Sphynx.ServerV2.Infrastructure.Services;
+using Sphynx.Server.Auth;
+using Sphynx.Server.Extensions;
+using Sphynx.Server.Infrastructure.Services;
 
 namespace Sphynx.Server.Auth.Services
 {

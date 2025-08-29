@@ -2,9 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.Network.PacketV2.Broadcast;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
@@ -19,19 +19,25 @@ namespace Sphynx.Network.Serialization.Packet
         {
             var roomId = deserializer.ReadGuid();
 
-            return new LeaveRoomRequest(requestInfo.SessionId, roomId);
+            return new LeaveRoomRequest(requestInfo.SessionId, roomId)
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
     public class LeaveRoomResponseSerializer : ResponseSerializer<LeaveRoomResponse>
     {
-        protected override void SerializeInternal(LeaveRoomResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(LeaveRoomResponse packet, ref BinarySerializer serializer)
         {
         }
 
-        protected override LeaveRoomResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override LeaveRoomResponse DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            return new LeaveRoomResponse(responseInfo.ErrorInfo);
+            return new LeaveRoomResponse(responseInfo.ErrorInfo)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 

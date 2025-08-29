@@ -1,7 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.ModelV2;
+using Sphynx.Model;
 
 namespace Sphynx.Network.Serialization.Model
 {

@@ -2,10 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Microsoft.Extensions.Logging;
-using Sphynx.Network.PacketV2;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.ServerV2.Client;
-using Sphynx.ServerV2.Infrastructure.Middleware;
+using Sphynx.Network.Packet;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Server.Client;
+using Sphynx.Server.Infrastructure.Middleware;
 
 namespace Sphynx.Server.Auth.Middleware
 {

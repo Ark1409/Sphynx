@@ -2,7 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using PropertiesDotNet.Serialization;
-using Sphynx.ServerV2;
+using Sphynx.Server;
 
 namespace Sphynx.Server.Auth
 {

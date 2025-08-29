@@ -2,9 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.User;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
@@ -19,7 +19,10 @@ namespace Sphynx.Network.Serialization.Packet
         protected override FetchUsersRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
             var userIds = deserializer.ReadArray<Guid>();
-            return new FetchUsersRequest(requestInfo.SessionId, userIds);
+            return new FetchUsersRequest(requestInfo.SessionId, userIds)
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
@@ -37,7 +40,7 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer = userSerializer;
         }
 
-        protected override void SerializeInternal(FetchUsersResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(FetchUsersResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize users on success
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
@@ -46,14 +49,22 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer.Serialize(packet.Users!, ref serializer);
         }
 
-        protected override FetchUsersResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override FetchUsersResponse? DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
-                return new FetchUsersResponse(responseInfo.ErrorInfo);
+            {
+                return new FetchUsersResponse(responseInfo.ErrorInfo)
+                {
+                    RequestTag = responseInfo.RequestTag
+                };
+            }
 
             var users = _userSerializer.Deserialize(ref deserializer)!;
 
-            return new FetchUsersResponse(users);
+            return new FetchUsersResponse(users)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 }

@@ -1,9 +1,9 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Network.PacketV2.Broadcast;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
@@ -20,19 +20,25 @@ namespace Sphynx.Network.Serialization.Packet
             var roomId = deserializer.ReadSnowflakeId();
             string? password = deserializer.ReadString();
 
-            return new RoomDeleteRequest(requestInfo.SessionId, roomId, password);
+            return new RoomDeleteRequest(requestInfo.SessionId, roomId, password)
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
     public class RoomDeleteResponseSerializer : ResponseSerializer<RoomDeleteResponse>
     {
-        protected override void SerializeInternal(RoomDeleteResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(RoomDeleteResponse packet, ref BinarySerializer serializer)
         {
         }
 
-        protected override RoomDeleteResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override RoomDeleteResponse DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            return new RoomDeleteResponse(responseInfo.ErrorInfo);
+            return new RoomDeleteResponse(responseInfo.ErrorInfo)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 

@@ -2,10 +2,10 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.Room;
-using Sphynx.Network.PacketV2.Broadcast;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.Room;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
@@ -23,7 +23,10 @@ namespace Sphynx.Network.Serialization.Packet
             var roomId = deserializer.ReadGuid();
             string? password = deserializer.ReadString();
 
-            return new JoinRoomRequest(requestInfo.SessionId, roomId, string.IsNullOrEmpty(password) ? null : password);
+            return new JoinRoomRequest(requestInfo.SessionId, roomId, string.IsNullOrEmpty(password) ? null : password)
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
@@ -36,7 +39,7 @@ namespace Sphynx.Network.Serialization.Packet
             _roomSerializer = roomSerializer;
         }
 
-        protected override void SerializeInternal(JoinRoomResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(JoinRoomResponse packet, ref BinarySerializer serializer)
         {
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return;
@@ -44,14 +47,22 @@ namespace Sphynx.Network.Serialization.Packet
             _roomSerializer.Serialize(packet.RoomInfo!, ref serializer);
         }
 
-        protected override JoinRoomResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override JoinRoomResponse? DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
-                return new JoinRoomResponse(responseInfo.ErrorInfo);
+            {
+                return new JoinRoomResponse(responseInfo.ErrorInfo)
+                {
+                    RequestTag = responseInfo.RequestTag
+                };
+            }
 
             var roomInfo = _roomSerializer.Deserialize(ref deserializer)!;
 
-            return new JoinRoomResponse(roomInfo);
+            return new JoinRoomResponse(roomInfo)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 

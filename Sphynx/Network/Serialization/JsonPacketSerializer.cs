@@ -5,7 +5,7 @@ using System.Buffers;
 using System.Runtime.Serialization;
 using System.Text.Json;
 using Sphynx.Core;
-using Sphynx.Network.PacketV2;
+using Sphynx.Network.Packet;
 using Sphynx.Network.Serialization.Packet;
 
 namespace Sphynx.Network.Serialization

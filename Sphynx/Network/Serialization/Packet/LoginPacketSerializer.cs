@@ -2,12 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
-using Sphynx.Network.PacketV2.Broadcast;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Model.User;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 using Sphynx.Network.Serialization.Model;
-using SphynxUserStatus = Sphynx.Model.User.SphynxUserStatus;
 
 namespace Sphynx.Network.Serialization.Packet
 {
@@ -19,16 +18,21 @@ namespace Sphynx.Network.Serialization.Packet
     {
         public override void Serialize(LoginRequest packet, ref BinarySerializer serializer)
         {
+            serializer.WriteGuid(packet.RequestTag);
             serializer.WriteString(packet.UserName);
             serializer.WriteString(packet.Password);
         }
 
         public override LoginRequest Deserialize(ref BinaryDeserializer deserializer)
         {
+            var requestTag = deserializer.ReadGuid();
             string userName = deserializer.ReadString()!;
             string password = deserializer.ReadString()!;
 
-            return new LoginRequest(userName, password);
+            return new LoginRequest(userName, password)
+            {
+                RequestTag = requestTag
+            };
         }
     }
 
@@ -41,7 +45,7 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer = userSerializer;
         }
 
-        protected override void SerializeInternal(LoginResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(LoginResponse packet, ref BinarySerializer serializer)
         {
             // Only serialize user info when authentication is successful
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
@@ -51,7 +55,7 @@ namespace Sphynx.Network.Serialization.Packet
             _userSerializer.Serialize(packet.UserInfo!, ref serializer);
         }
 
-        protected override LoginResponse? DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override LoginResponse? DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new LoginResponse(responseInfo.ErrorInfo);
@@ -59,7 +63,10 @@ namespace Sphynx.Network.Serialization.Packet
             var sessionId = deserializer.ReadGuid();
             var userInfo = _userSerializer.Deserialize(ref deserializer)!;
 
-            return new LoginResponse(userInfo, sessionId);
+            return new LoginResponse(userInfo, sessionId)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 

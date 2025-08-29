@@ -2,10 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Model.User;
-using Sphynx.Network.PacketV2.Broadcast;
+using Sphynx.Network.Packet.Broadcast;
 using Sphynx.Network.Serialization.Packet;
 using Sphynx.Test.Utils;
-using Sphynx.Network.Serialization;
 
 namespace Sphynx.Test.Network.Serialization
 {

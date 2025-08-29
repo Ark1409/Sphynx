@@ -2,8 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.ModelV2.User;
-using Sphynx.ServerV2.Persistence.User;
+using Sphynx.Model.User;
+using Sphynx.Server.Persistence.User;
 
 namespace Sphynx.Server.Auth.Model
 {

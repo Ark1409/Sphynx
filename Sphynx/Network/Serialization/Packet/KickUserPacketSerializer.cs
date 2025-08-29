@@ -2,9 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using Sphynx.Core;
-using Sphynx.Network.PacketV2.Broadcast;
-using Sphynx.Network.PacketV2.Request;
-using Sphynx.Network.PacketV2.Response;
+using Sphynx.Network.Packet.Broadcast;
+using Sphynx.Network.Packet.Request;
+using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Serialization.Packet
 {
@@ -21,19 +21,25 @@ namespace Sphynx.Network.Serialization.Packet
             var roomId = deserializer.ReadGuid();
             var kickId = deserializer.ReadGuid();
 
-            return new KickUserRequest(requestInfo.SessionId, roomId, kickId);
+            return new KickUserRequest(requestInfo.SessionId, roomId, kickId)
+            {
+                RequestTag = requestInfo.RequestTag
+            };
         }
     }
 
     public class KickUserResponseSerializer : ResponseSerializer<KickUserResponse>
     {
-        protected override void SerializeInternal(KickUserResponse packet, ref BinarySerializer serializer)
+        protected override void SerializeResponse(KickUserResponse packet, ref BinarySerializer serializer)
         {
         }
 
-        protected override KickUserResponse DeserializeInternal(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
+        protected override KickUserResponse DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
         {
-            return new KickUserResponse(responseInfo.ErrorInfo);
+            return new KickUserResponse(responseInfo.ErrorInfo)
+            {
+                RequestTag = responseInfo.RequestTag
+            };
         }
     }
 
