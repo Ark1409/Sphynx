@@ -32,7 +32,16 @@ namespace Sphynx.Core
         /// Creates a new <see cref="SphynxErrorInfo{TData}"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
         /// <param name="data">The data to store.</param>
-        public SphynxErrorInfo(TData data) : this(SphynxErrorCode.SUCCESS, null, data)
+        public SphynxErrorInfo(TData data) : this(data, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="SphynxErrorInfo{TData}"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
+        /// </summary>
+        /// <param name="data">The data to store.</param>
+        /// <param name="message">A descriptive message for the error.</param>
+        public SphynxErrorInfo(TData data, string? message) : this(SphynxErrorCode.SUCCESS, message, data)
         {
         }
 
