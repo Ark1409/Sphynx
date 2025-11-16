@@ -73,6 +73,9 @@ namespace Sphynx.Server.Infrastructure.RateLimiting
             if (count > MaxTokens || (_tokensPerPeriod == 0 && _tokens < count))
                 return ValueTask.FromResult(TimeSpan.MaxValue);
 
+            if (cancellationToken.IsCancellationRequested)
+                return ValueTask.FromCanceled<TimeSpan>(cancellationToken);
+
             return ConsumeInternalAsync(count, cancellationToken);
         }
 
