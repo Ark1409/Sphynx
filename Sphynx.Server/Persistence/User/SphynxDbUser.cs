@@ -1,7 +1,6 @@
 ﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.IdGenerators;
-using Sphynx.Core;
 using Sphynx.Model.User;
 
 namespace Sphynx.Server.Persistence.User
@@ -9,7 +8,7 @@ namespace Sphynx.Server.Persistence.User
     /// <summary>
     /// Represents a complete representation of a <c>Sphynx</c> user within the database.
     /// </summary>
-    /// <seealso cref="Model.User.SphynxSelfInfo"/>
+    /// <seealso cref="SphynxSelfInfo"/>
     [BsonIgnoreExtraElements]
     public class SphynxDbUser : IEquatable<SphynxDbUser>
     {
@@ -23,32 +22,28 @@ namespace Sphynx.Server.Persistence.User
         [BsonElement("status")]
         public SphynxUserStatus UserStatus { get; set; }
 
-        [BsonElement("friends")]
-        public HashSet<Guid> Friends { get; set; } = new();
-
-        [BsonElement("rooms")]
-        public HashSet<Guid> Rooms { get; set; } = new();
-
-        [BsonElement("last_read")]
-        public LastReadDbMessages LastReadMessages { get; set; } = new();
-
-        [BsonElement("out_reqs")]
-        public HashSet<Guid> OutgoingFriendRequests { get; set; } = new();
-
-        [BsonElement("inc_recs")]
-        public HashSet<Guid> IncomingFriendRequests { get; set; } = new();
-
         /// <summary>
         /// The hashed password for this Sphynx user, as a base-64 string.
         /// </summary>
         [BsonElement("pwd")]
-        public string? Password { get; set; }
+        public string Password { get; set; } = null!;
 
         /// <summary>
         /// The salt for the password of this Sphynx user.
         /// </summary>
         [BsonElement("pwd_salt")]
-        public string? PasswordSalt { get; set; }
+        public string PasswordSalt { get; set; } = null!;
+
+        [BsonElement("last_login")]
+        [BsonRepresentation(BsonType.String)]
+        public DateTimeOffset LastLogin { get; set; }
+
+        [BsonElement("created_at")]
+        [BsonRepresentation(BsonType.String)]
+        public DateTimeOffset CreatedAt { get; set; }
+
+        [BsonElement("last_read")]
+        public LastReadDbMessages LastReadMessages { get; set; } = new();
 
         public SphynxDbUser() : this(default, null!, default)
         {
@@ -61,25 +56,14 @@ namespace Sphynx.Server.Persistence.User
             UserStatus = userStatus;
         }
 
-        public SphynxDbUser(Guid userId,
-            string userName,
-            SphynxUserStatus userStatus,
-            string? password,
-            string? passwordSalt,
-            ISet<Guid> friends,
-            ISet<Guid> rooms,
-            LastReadDbMessages lastReadMessages,
-            ISet<Guid> outgoingFriendRequests,
-            ISet<Guid> incomingFriendRequests)
-            : this(userId, userName, userStatus)
+        public SphynxDbUser(Guid userId, string userName, SphynxUserStatus userStatus, string password, string passwordSalt, DateTimeOffset createdAt)
         {
-            Friends = friends as HashSet<Guid> ?? new HashSet<Guid>(friends);
-            Rooms = rooms as HashSet<Guid> ?? new HashSet<Guid>(rooms);
-            LastReadMessages = lastReadMessages;
-            OutgoingFriendRequests = outgoingFriendRequests as HashSet<Guid> ?? new HashSet<Guid>(outgoingFriendRequests);
-            IncomingFriendRequests = incomingFriendRequests as HashSet<Guid> ?? new HashSet<Guid>(incomingFriendRequests);
+            UserId = userId;
+            UserName = userName;
+            UserStatus = userStatus;
             Password = password;
             PasswordSalt = passwordSalt;
+            CreatedAt = createdAt;
         }
 
         /// <inheritdoc/>

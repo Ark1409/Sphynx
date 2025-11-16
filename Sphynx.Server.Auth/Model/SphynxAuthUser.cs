@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Core;
 using Sphynx.Model.User;
 using Sphynx.Server.Persistence.User;
 
@@ -16,21 +15,19 @@ namespace Sphynx.Server.Auth.Model
         public string? PasswordHash { get; set; }
         public string? PasswordSalt { get; set; }
 
-        public ISet<Guid>? Friends { get; set; }
-        public ISet<Guid>? Rooms { get; set; }
-        public IDictionary<Guid, SnowflakeId>? LastReadMessages { get; set; }
-        public ISet<Guid>? OutgoingFriendRequests { get; set; }
-        public ISet<Guid>? IncomingFriendRequests { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset LastLogin { get; set; }
 
         public SphynxAuthUser()
         {
         }
 
-        public SphynxAuthUser(Guid userId, string userName, SphynxUserStatus userStatus)
+        public SphynxAuthUser(Guid userId, string userName, SphynxUserStatus userStatus, DateTimeOffset createdAt)
         {
             UserId = userId;
             UserName = userName;
             UserStatus = userStatus;
+            CreatedAt = createdAt;
         }
 
         /// <inheritdoc/>
@@ -41,7 +38,7 @@ namespace Sphynx.Server.Auth.Model
     {
         public static SphynxAuthUser ToDomain(this SphynxUserInfo userInfo, string? password = null, string? passwordSalt = null)
         {
-            return new SphynxAuthUser(userInfo.UserId, userInfo.UserName, userInfo.UserStatus)
+            return new SphynxAuthUser(userInfo.UserId, userInfo.UserName, userInfo.UserStatus, userInfo.CreatedAt)
             {
                 PasswordHash = password,
                 PasswordSalt = passwordSalt
@@ -50,29 +47,21 @@ namespace Sphynx.Server.Auth.Model
 
         public static SphynxAuthUser ToDomain(this SphynxSelfInfo selfInfo, string? password = null, string? passwordSalt = null)
         {
-            return new SphynxAuthUser(selfInfo.UserId, selfInfo.UserName, selfInfo.UserStatus)
+            return new SphynxAuthUser(selfInfo.UserId, selfInfo.UserName, selfInfo.UserStatus, selfInfo.CreatedAt)
             {
-                Friends = selfInfo.Friends,
-                Rooms = selfInfo.Rooms,
+                LastLogin = selfInfo.LastLogin,
                 PasswordHash = password,
                 PasswordSalt = passwordSalt,
-                LastReadMessages = selfInfo.LastReadMessages,
-                IncomingFriendRequests = selfInfo.IncomingFriendRequests,
-                OutgoingFriendRequests = selfInfo.OutgoingFriendRequests,
             };
         }
 
         public static SphynxAuthUser ToDomain(this SphynxDbUser dbUser)
         {
-            return new SphynxAuthUser(dbUser.UserId, dbUser.UserName, dbUser.UserStatus)
+            return new SphynxAuthUser(dbUser.UserId, dbUser.UserName, dbUser.UserStatus, dbUser.CreatedAt)
             {
-                Friends = dbUser.Friends,
-                Rooms = dbUser.Rooms,
+                LastLogin = dbUser.LastLogin,
                 PasswordHash = dbUser.Password,
                 PasswordSalt = dbUser.PasswordSalt,
-                LastReadMessages = dbUser.LastReadMessages,
-                IncomingFriendRequests = dbUser.IncomingFriendRequests,
-                OutgoingFriendRequests = dbUser.OutgoingFriendRequests,
             };
         }
 
@@ -80,33 +69,24 @@ namespace Sphynx.Server.Auth.Model
         {
             return new SphynxDbUser(user.UserId, user.UserName, user.UserStatus)
             {
-                Friends = user.Friends as HashSet<Guid> ?? new HashSet<Guid>(user.Friends ?? Enumerable.Empty<Guid>()),
-                Rooms = user.Rooms as HashSet<Guid> ?? new HashSet<Guid>(user.Rooms ?? Enumerable.Empty<Guid>()),
-                Password = user.PasswordHash,
-                PasswordSalt = user.PasswordSalt,
-                LastReadMessages = user.LastReadMessages is null ? new LastReadDbMessages() : new LastReadDbMessages(user.LastReadMessages),
-                IncomingFriendRequests = user.IncomingFriendRequests as HashSet<Guid> ??
-                                         new HashSet<Guid>(user.IncomingFriendRequests ?? Enumerable.Empty<Guid>()),
-                OutgoingFriendRequests = user.OutgoingFriendRequests as HashSet<Guid> ??
-                                         new HashSet<Guid>(user.OutgoingFriendRequests ?? Enumerable.Empty<Guid>()),
+                CreatedAt = user.CreatedAt,
+                LastLogin = user.LastLogin,
+                Password = user.PasswordHash ?? throw new NullReferenceException("Password cannot be null"),
+                PasswordSalt = user.PasswordSalt ?? throw new NullReferenceException("Password salt cannot be null"),
             };
         }
 
         public static SphynxSelfInfo ToDto(this SphynxAuthUser user)
         {
-            return new SphynxSelfInfo(user.UserId, user.UserName, user.UserStatus)
+            return new SphynxSelfInfo(user.UserId, user.UserName, user.UserStatus, user.CreatedAt, user.LastLogin)
             {
-                Friends = user.Friends!,
-                Rooms = user.Rooms!,
-                LastReadMessages = user.LastReadMessages is null ? null! : new LastReadMessageInfo(user.LastReadMessages),
-                IncomingFriendRequests = user.IncomingFriendRequests!,
-                OutgoingFriendRequests = user.OutgoingFriendRequests!,
+                LastLogin = user.LastLogin,
             };
         }
 
         public static SphynxUserInfo ToSimpleDto(this SphynxAuthUser user)
         {
-            return new SphynxUserInfo(user.UserId, user.UserName, user.UserStatus);
+            return new SphynxUserInfo(user.UserId, user.UserName, user.UserStatus, user.CreatedAt, user.LastLogin);
         }
     }
 }

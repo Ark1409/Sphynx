@@ -203,7 +203,7 @@ namespace Sphynx.Server.Auth.Services
                 _passwordHasher.GenerateSalt(pwdSalt);
                 _passwordHasher.HashPassword(password, pwdSalt, pwdHash);
 
-                return new SphynxAuthUser(Guid.NewGuid(), userName, SphynxUserStatus.ONLINE)
+                return new SphynxAuthUser(Guid.NewGuid(), userName, SphynxUserStatus.ONLINE, DateTimeOffset.UtcNow)
                 {
                     PasswordHash = Convert.ToBase64String(pwdHash),
                     PasswordSalt = Convert.ToBase64String(pwdSalt)
