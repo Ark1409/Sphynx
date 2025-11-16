@@ -23,15 +23,32 @@ namespace Sphynx.Model.User
         /// </summary>
         public SphynxUserStatus UserStatus { get; set; }
 
+        /// <summary>
+        /// The time at which this account was created.
+        /// </summary>
+        public DateTimeOffset CreatedAt { get; set; }
+
+        /// <summary>
+        /// Last login time of the user.
+        /// </summary>
+        public DateTimeOffset LastLogin { get; set; }
+
         public SphynxUserInfo()
         {
         }
 
         public SphynxUserInfo(Guid userId, string userName, SphynxUserStatus userStatus)
+            : this(userId, userName, userStatus, default, default)
+        {
+        }
+
+        public SphynxUserInfo(Guid userId, string userName, SphynxUserStatus userStatus, DateTimeOffset createdAt, DateTimeOffset lastLogin)
         {
             UserId = userId;
             UserName = userName;
             UserStatus = userStatus;
+            CreatedAt = createdAt;
+            LastLogin = lastLogin;
         }
 
         /// <inheritdoc/>
