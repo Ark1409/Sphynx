@@ -13,6 +13,8 @@ namespace Sphynx.Network.Serialization.Model
             serializer.WriteGuid(model.UserId);
             serializer.WriteString(model.UserName);
             serializer.WriteEnum(model.UserStatus);
+            serializer.WriteDateTimeOffset(model.CreatedAt);
+            serializer.WriteDateTimeOffset(model.LastLogin);
         }
 
         public override SphynxUserInfo Deserialize(ref BinaryDeserializer deserializer)
@@ -20,8 +22,10 @@ namespace Sphynx.Network.Serialization.Model
             var userId = deserializer.ReadGuid();
             string userName = deserializer.ReadString()!;
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
+            var createdAt = deserializer.ReadDateTimeOffset();
+            var lastLogin = deserializer.ReadDateTimeOffset();
 
-            return new SphynxUserInfo { UserId = userId, UserName = userName, UserStatus = userStatus };
+            return new SphynxUserInfo(userId, userName, userStatus, createdAt, lastLogin);
         }
     }
 
@@ -32,12 +36,8 @@ namespace Sphynx.Network.Serialization.Model
             serializer.WriteGuid(model.UserId);
             serializer.WriteString(model.UserName);
             serializer.WriteEnum(model.UserStatus);
-
-            serializer.WriteCollection(model.Friends);
-            serializer.WriteCollection(model.Rooms);
-            serializer.WriteDictionary(model.LastReadMessages);
-            serializer.WriteCollection(model.OutgoingFriendRequests);
-            serializer.WriteCollection(model.IncomingFriendRequests);
+            serializer.WriteDateTimeOffset(model.CreatedAt);
+            serializer.WriteDateTimeOffset(model.LastLogin);
         }
 
         public override SphynxSelfInfo Deserialize(ref BinaryDeserializer deserializer)
@@ -45,24 +45,16 @@ namespace Sphynx.Network.Serialization.Model
             var userId = deserializer.ReadGuid();
             string userName = deserializer.ReadString()!;
             var userStatus = deserializer.ReadEnum<SphynxUserStatus>();
-
-            var friends = deserializer.ReadCollection<Guid, HashSet<Guid>>();
-            var rooms = deserializer.ReadCollection<Guid, HashSet<Guid>>();
-            var lastReadMessages = deserializer.ReadDictionary<Guid, SnowflakeId>();
-            var lastReadMessagesInfo = new LastReadMessageInfo(lastReadMessages);
-            var outgoingFriendReqs = deserializer.ReadCollection<Guid, HashSet<Guid>>();
-            var incomingFriendReqs = deserializer.ReadCollection<Guid, HashSet<Guid>>();
+            var createdAt = deserializer.ReadDateTimeOffset();
+            var lastLogin = deserializer.ReadDateTimeOffset();
 
             return new SphynxSelfInfo
             {
                 UserId = userId,
                 UserName = userName,
                 UserStatus = userStatus,
-                Friends = friends,
-                Rooms = rooms,
-                LastReadMessages = lastReadMessagesInfo,
-                OutgoingFriendRequests = outgoingFriendReqs,
-                IncomingFriendRequests = incomingFriendReqs
+                CreatedAt = createdAt,
+                LastLogin = lastLogin,
             };
         }
     }
