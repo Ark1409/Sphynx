@@ -51,6 +51,8 @@ namespace Sphynx.Server.Auth.Services
 
             var sessionInfo = await CreateUserSessionAsync(userResult.Data!, loginInfo.ClientAddress, cancellationToken).ConfigureAwait(false);
 
+            // TODO: Broadcast online (to friends..?)
+
             return new SphynxAuthResult(userResult.Data!, sessionInfo.Data!.Value);
         }
 
