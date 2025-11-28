@@ -72,7 +72,7 @@ namespace Sphynx.Test.Network.Serialization
             var packet = new FetchMessagesResponse
             {
                 // ReSharper disable once CoVariantArrayConversion
-                Messages = TestChatMessage.FromArray("Hello World", "Test message", "Crème glacée")
+                Messages = TestSphynxChatMessage.FromArray("Hello World", "Test message", "Crème glacée")
             };
 
             // Act

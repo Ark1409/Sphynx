@@ -8,7 +8,7 @@ namespace Sphynx.Model
     /// <summary>
     /// Represents a single message within a chat room.
     /// </summary>
-    public class ChatMessage : IEquatable<ChatMessage>
+    public class SphynxChatMessage : IEquatable<SphynxChatMessage>
     {
         /// <summary>
         /// An ID for this specific message.
@@ -35,11 +35,11 @@ namespace Sphynx.Model
         /// </summary>
         public DateTimeOffset? EditTimestamp { get; set; }
 
-        public ChatMessage()
+        public SphynxChatMessage()
         {
         }
 
-        public ChatMessage(SnowflakeId roomId, SnowflakeId senderId, string content)
+        public SphynxChatMessage(SnowflakeId roomId, SnowflakeId senderId, string content)
         {
             RoomId = roomId;
             SenderId = senderId;
@@ -47,7 +47,7 @@ namespace Sphynx.Model
         }
 
         /// <inheritdoc/>
-        public virtual bool Equals(ChatMessage? other) => MessageId.Equals(other?.MessageId);
+        public virtual bool Equals(SphynxChatMessage? other) => MessageId.Equals(other?.MessageId);
 
         /// <inheritdoc/>
         public override int GetHashCode() => MessageId.GetHashCode();
