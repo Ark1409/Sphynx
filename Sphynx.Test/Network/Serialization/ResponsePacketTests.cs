@@ -157,7 +157,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new JoinRoomResponseSerializer(new ChatRoomInfoSerializer());
-            var packet = new JoinRoomResponse { RoomInfo = new TestDirectChatRoomInfo() };
+            var packet = new JoinRoomResponse { RoomInfo = new TestSphynxDirectRoomInfo() };
 
             // Act
             serializer.Serialize(packet, Sequence);
@@ -205,7 +205,7 @@ namespace Sphynx.Test.Network.Serialization
         {
             // Arrange
             var serializer = new FetchRoomsResponseSerializer(new ChatRoomInfoSerializer());
-            var packet = new FetchRoomsResponse { Rooms = new ChatRoomInfo[] { new TestDirectChatRoomInfo(), new TestGroupChatRoomInfo() } };
+            var packet = new FetchRoomsResponse { Rooms = new SphynxRoomInfo[] { new TestSphynxDirectRoomInfo(), new TestSphynxGroupRoomInfo() } };
 
             // Act
             serializer.Serialize(packet, Sequence);

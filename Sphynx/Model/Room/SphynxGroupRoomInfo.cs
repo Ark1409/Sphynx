@@ -8,10 +8,10 @@ namespace Sphynx.Model.Room
     /// <summary>
     /// Holds information about a group chat room with visibility options.
     /// </summary>
-    public class GroupChatRoomInfo : ChatRoomInfo, IEquatable<GroupChatRoomInfo>
+    public class SphynxGroupRoomInfo : SphynxRoomInfo, IEquatable<SphynxGroupRoomInfo>
     {
         /// <inheritdoc />
-        public override ChatRoomType RoomType => ChatRoomType.GROUP;
+        public override SphynxRoomType RoomType => SphynxRoomType.GROUP;
 
         /// <summary>
         /// Whether this room is public.
@@ -21,17 +21,17 @@ namespace Sphynx.Model.Room
         /// <summary>
         /// The user ID of the owner/creator of this group chat.
         /// </summary>
-        public SnowflakeId OwnerId { get; set; }
+        public Guid OwnerId { get; set; }
 
-        public GroupChatRoomInfo()
+        public SphynxGroupRoomInfo()
         {
         }
 
-        public GroupChatRoomInfo(SnowflakeId roomId, string name) : base(roomId, name)
+        public SphynxGroupRoomInfo(Guid roomId, string name) : base(roomId, name)
         {
         }
 
         /// <inheritdoc/>
-        public virtual bool Equals(GroupChatRoomInfo? other) => base.Equals(other);
+        public virtual bool Equals(SphynxGroupRoomInfo? other) => base.Equals(other);
     }
 }

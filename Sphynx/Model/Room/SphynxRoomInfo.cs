@@ -8,34 +8,36 @@ namespace Sphynx.Model.Room
     /// <summary>
     /// Holds information about a chat room containing Sphynx users.
     /// </summary>
-    public abstract class ChatRoomInfo : IEquatable<ChatRoomInfo>
+    public abstract class SphynxRoomInfo : IEquatable<SphynxRoomInfo>
     {
         /// <summary>
         /// The unique ID of this room.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public Guid RoomId { get; set; }
 
         /// <summary>
-        /// Returns the type of this <see cref="ChatRoomInfo"/>.
+        /// Returns the type of this <see cref="SphynxRoomInfo"/>.
         /// </summary>
-        public abstract ChatRoomType RoomType { get; }
+        public abstract SphynxRoomType RoomType { get; }
 
         /// <summary>
         /// The name of this chat room.
         /// </summary>
         public string Name { get; set; } = null!;
 
-        public ChatRoomInfo()
+        public DateTimeOffset CreatedAt { get; set; }
+
+        public SphynxRoomInfo()
         {
         }
 
-        public ChatRoomInfo(SnowflakeId roomId, string name)
+        public SphynxRoomInfo(Guid roomId, string name)
         {
             RoomId = roomId;
             Name = name;
         }
 
         /// <inheritdoc/>
-        public virtual bool Equals(ChatRoomInfo? other) => RoomId == other?.RoomId;
+        public virtual bool Equals(SphynxRoomInfo? other) => RoomId == other?.RoomId;
     }
 }

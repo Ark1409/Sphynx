@@ -6,30 +6,30 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.Room
 {
-    public class TestGroupChatRoomInfo : GroupChatRoomInfo
+    public class TestSphynxGroupRoomInfo : SphynxGroupRoomInfo
     {
-        public TestGroupChatRoomInfo(string name = "test-group-room")
+        public TestSphynxGroupRoomInfo(string name = "test-group-room")
         {
             Name = name;
-            RoomId = name.AsSnowflakeId();
+            RoomId = name.AsGuid();
 
-            OwnerId = $"owner-{name}".AsSnowflakeId();
+            OwnerId = $"owner-{name}".AsGuid();
             IsPublic = name.Length % 2 == 0;
         }
 
-        public static TestGroupChatRoomInfo[] FromNames(params string[] names)
+        public static TestSphynxGroupRoomInfo[] FromNames(params string[] names)
         {
-            var users = new TestGroupChatRoomInfo[names.Length];
+            var users = new TestSphynxGroupRoomInfo[names.Length];
 
             for (int i = 0; i < names.Length; i++)
             {
-                users[i] = new TestGroupChatRoomInfo(names[i]);
+                users[i] = new TestSphynxGroupRoomInfo(names[i]);
             }
 
             return users;
         }
 
-        public override bool Equals(GroupChatRoomInfo? other) =>
+        public override bool Equals(SphynxGroupRoomInfo? other) =>
             base.Equals(other) && OwnerId == other.OwnerId && IsPublic == other.IsPublic;
     }
 }

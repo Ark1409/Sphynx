@@ -6,14 +6,14 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model.Room
 {
-    public abstract class TestChatRoomInfo : ChatRoomInfo
+    public abstract class TestSphynxRoomInfo : SphynxRoomInfo
     {
-        public TestChatRoomInfo(string name = "test-room")
+        public TestSphynxRoomInfo(string name = "test-room")
         {
             Name = name;
-            RoomId = name.AsSnowflakeId();
+            RoomId = name.AsGuid();
         }
 
-        public override bool Equals(ChatRoomInfo? other) => RoomId == other?.RoomId && Name == other.Name;
+        public override bool Equals(SphynxRoomInfo? other) => RoomId == other?.RoomId && Name == other.Name;
     }
 }

@@ -3,7 +3,7 @@
     /// <summary>
     /// Type of chat room.
     /// </summary>
-    public enum ChatRoomType : byte
+    public enum SphynxRoomType : byte
     {
         /// <summary>
         /// Direct message chat room.
