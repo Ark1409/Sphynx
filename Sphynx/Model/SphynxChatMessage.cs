@@ -18,12 +18,12 @@ namespace Sphynx.Model
         /// <summary>
         /// The chat room to which this message was sent.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public Guid RoomId { get; set; }
 
         /// <summary>
         /// The user ID of the message sender.
         /// </summary>
-        public SnowflakeId SenderId { get; set; }
+        public Guid SenderId { get; set; }
 
         /// <summary>
         /// The message content.
@@ -39,7 +39,7 @@ namespace Sphynx.Model
         {
         }
 
-        public SphynxChatMessage(SnowflakeId roomId, SnowflakeId senderId, string content)
+        public SphynxChatMessage(Guid roomId, Guid senderId, string content)
         {
             RoomId = roomId;
             SenderId = senderId;

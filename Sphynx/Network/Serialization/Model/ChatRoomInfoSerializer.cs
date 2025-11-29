@@ -8,11 +8,11 @@ using Sphynx.Model.Room;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public abstract class ChatRoomInfoSerializer<TRoom> : TypeSerializer<TRoom> where TRoom : ChatRoomInfo
+    public abstract class ChatRoomInfoSerializer<TRoom> : TypeSerializer<TRoom> where TRoom : SphynxRoomInfo
     {
         public sealed override void Serialize(TRoom packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
+            serializer.WriteGuid(packet.RoomId);
             serializer.WriteEnum(packet.RoomType);
             serializer.WriteString(packet.Name);
 
@@ -23,8 +23,8 @@ namespace Sphynx.Network.Serialization.Model
 
         public sealed override TRoom? Deserialize(ref BinaryDeserializer deserializer)
         {
-            var roomId = deserializer.ReadSnowflakeId();
-            var roomType = deserializer.ReadEnum<ChatRoomType>();
+            var roomId = deserializer.ReadGuid();
+            var roomType = deserializer.ReadEnum<SphynxRoomType>();
             string roomName = deserializer.ReadString()!;
 
             var roomInfo = new RoomInfo { RoomId = roomId, RoomType = roomType, Name = roomName };
@@ -37,23 +37,23 @@ namespace Sphynx.Network.Serialization.Model
 
     public readonly struct RoomInfo
     {
-        public SnowflakeId RoomId { get; init; }
-        public ChatRoomType RoomType { get; init; }
+        public Guid RoomId { get; init; }
+        public SphynxRoomType RoomType { get; init; }
         public string Name { get; init; }
     }
 
-    public sealed class ChatRoomInfoSerializer : ChatRoomInfoSerializer<ChatRoomInfo>
+    public sealed class ChatRoomInfoSerializer : ChatRoomInfoSerializer<SphynxRoomInfo>
     {
-        private readonly Dictionary<ChatRoomType, ChatRoomInfoSerializer<ChatRoomInfo>> _serializers = new();
+        private readonly Dictionary<SphynxRoomType, ChatRoomInfoSerializer<SphynxRoomInfo>> _serializers = new();
 
         public ChatRoomInfoSerializer()
         {
-            AddSerializer(ChatRoomType.DIRECT_MSG, new DirectChatRoomInfoSerializer());
-            AddSerializer(ChatRoomType.GROUP, new GroupChatRoomInfoSerializer());
+            AddSerializer(SphynxRoomType.DIRECT_MSG, new DirectChatRoomInfoSerializer());
+            AddSerializer(SphynxRoomType.GROUP, new GroupChatRoomInfoSerializer());
         }
 
 
-        protected internal override void SerializeRoom(ChatRoomInfo room, ref BinarySerializer serializer)
+        protected internal override void SerializeRoom(SphynxRoomInfo room, ref BinarySerializer serializer)
         {
             if (!_serializers.TryGetValue(room.RoomType, out var roomSerializer))
                 throw new SerializationException($"No serializer for room {room} found");
@@ -61,7 +61,7 @@ namespace Sphynx.Network.Serialization.Model
             roomSerializer.SerializeRoom(room, ref serializer);
         }
 
-        protected internal override ChatRoomInfo? DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
+        protected internal override SphynxRoomInfo? DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
         {
             if (!_serializers.TryGetValue(roomInfo.RoomType, out var roomDeserializer))
                 throw new SerializationException($"No deserializer for room {roomInfo.RoomType} found");
@@ -69,8 +69,8 @@ namespace Sphynx.Network.Serialization.Model
             return roomDeserializer.DeserializeRoom(ref deserializer, in roomInfo);
         }
 
-        public ChatRoomInfoSerializer AddSerializer<T>(ChatRoomType roomType, ChatRoomInfoSerializer<T> serializer)
-            where T : ChatRoomInfo
+        public ChatRoomInfoSerializer AddSerializer<T>(SphynxRoomType roomType, ChatRoomInfoSerializer<T> serializer)
+            where T : SphynxRoomInfo
         {
             ref var existingAdapter = ref CollectionsMarshal.GetValueRefOrAddDefault(_serializers, roomType, out bool exists);
 
@@ -87,14 +87,14 @@ namespace Sphynx.Network.Serialization.Model
             return this;
         }
 
-        public ChatRoomInfoSerializer RemoveSerializer(ChatRoomType roomType)
+        public ChatRoomInfoSerializer RemoveSerializer(SphynxRoomType roomType)
         {
             _serializers.Remove(roomType);
             return this;
         }
 
-        private class SerializerAdapter<T> : ChatRoomInfoSerializer<ChatRoomInfo>
-            where T : ChatRoomInfo
+        private class SerializerAdapter<T> : ChatRoomInfoSerializer<SphynxRoomInfo>
+            where T : SphynxRoomInfo
         {
             internal ChatRoomInfoSerializer<T> InnerSerializer { get; set; }
 
@@ -103,61 +103,61 @@ namespace Sphynx.Network.Serialization.Model
                 InnerSerializer = innerSerializer;
             }
 
-            protected internal override void SerializeRoom(ChatRoomInfo packet, ref BinarySerializer serializer)
+            protected internal override void SerializeRoom(SphynxRoomInfo packet, ref BinarySerializer serializer)
             {
                 InnerSerializer.SerializeRoom((T)packet, ref serializer);
             }
 
-            protected internal override ChatRoomInfo? DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
+            protected internal override SphynxRoomInfo? DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
             {
                 return InnerSerializer.DeserializeRoom(ref deserializer, in roomInfo);
             }
         }
     }
 
-    public class DirectChatRoomInfoSerializer : ChatRoomInfoSerializer<DirectChatRoomInfo>
+    public class DirectChatRoomInfoSerializer : ChatRoomInfoSerializer<SphynxDirectRoomInfo>
     {
-        protected internal override void SerializeRoom(DirectChatRoomInfo model, ref BinarySerializer serializer)
+        protected internal override void SerializeRoom(SphynxDirectRoomInfo model, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(model.UserOne);
-            serializer.WriteSnowflakeId(model.UserTwo);
+            serializer.WriteGuid(model.UserA);
+            serializer.WriteGuid(model.UserB);
         }
 
-        protected internal override DirectChatRoomInfo DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
+        protected internal override SphynxDirectRoomInfo DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
         {
-            if (roomInfo.RoomType != ChatRoomType.DIRECT_MSG)
-                throw new SerializationException($"Unknown room type for {nameof(DirectChatRoomInfo)} '{roomInfo.RoomType}'");
+            if (roomInfo.RoomType != SphynxRoomType.DIRECT_MSG)
+                throw new SerializationException($"Unknown room type for {nameof(SphynxDirectRoomInfo)} '{roomInfo.RoomType}'");
 
-            var userOne = deserializer.ReadSnowflakeId();
-            var userTwo = deserializer.ReadSnowflakeId();
+            var userOne = deserializer.ReadGuid();
+            var userTwo = deserializer.ReadGuid();
 
-            return new DirectChatRoomInfo
+            return new SphynxDirectRoomInfo
             {
                 RoomId = roomInfo.RoomId,
                 Name = roomInfo.Name,
-                UserOne = userOne,
-                UserTwo = userTwo
+                UserA = userOne,
+                UserB = userTwo
             };
         }
     }
 
-    public class GroupChatRoomInfoSerializer : ChatRoomInfoSerializer<GroupChatRoomInfo>
+    public class GroupChatRoomInfoSerializer : ChatRoomInfoSerializer<SphynxGroupRoomInfo>
     {
-        protected internal override void SerializeRoom(GroupChatRoomInfo model, ref BinarySerializer serializer)
+        protected internal override void SerializeRoom(SphynxGroupRoomInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteBool(model.IsPublic);
-            serializer.WriteSnowflakeId(model.OwnerId);
+            serializer.WriteGuid(model.OwnerId);
         }
 
-        protected internal override GroupChatRoomInfo DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
+        protected internal override SphynxGroupRoomInfo DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
         {
-            if (roomInfo.RoomType != ChatRoomType.GROUP)
-                throw new SerializationException($"Unknown room type for {nameof(GroupChatRoomInfo)} '{roomInfo.RoomType}'");
+            if (roomInfo.RoomType != SphynxRoomType.GROUP)
+                throw new SerializationException($"Unknown room type for {nameof(SphynxGroupRoomInfo)} '{roomInfo.RoomType}'");
 
             bool isPublic = deserializer.ReadBool();
-            var ownerId = deserializer.ReadSnowflakeId();
+            var ownerId = deserializer.ReadGuid();
 
-            return new GroupChatRoomInfo
+            return new SphynxGroupRoomInfo
             {
                 RoomId = roomInfo.RoomId,
                 Name = roomInfo.Name,

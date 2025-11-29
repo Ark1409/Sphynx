@@ -11,8 +11,8 @@ namespace Sphynx.Test.Model
         public TestSphynxChatMessage(string msg)
         {
             MessageId = msg.AsSnowflakeId();
-            RoomId = $"room-{msg}".AsSnowflakeId();
-            SenderId = $"sender-{msg}".AsSnowflakeId();
+            RoomId = $"room-{msg}".AsGuid();
+            SenderId = $"sender-{msg}".AsGuid();
             Content = msg;
             EditTimestamp = string.IsNullOrEmpty(msg) ? null : new DateTime(1990, 10, 12).ToUniversalTime();
         }

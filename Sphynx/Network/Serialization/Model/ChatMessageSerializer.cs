@@ -5,26 +5,26 @@ using Sphynx.Model;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public class ChatMessageSerializer : TypeSerializer<ChatMessage>
+    public class ChatMessageSerializer : TypeSerializer<SphynxChatMessage>
     {
-        public override void Serialize(ChatMessage model, ref BinarySerializer serializer)
+        public override void Serialize(SphynxChatMessage model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.MessageId);
-            serializer.WriteSnowflakeId(model.RoomId);
-            serializer.WriteSnowflakeId(model.SenderId);
+            serializer.WriteGuid(model.RoomId);
+            serializer.WriteGuid(model.SenderId);
             serializer.WriteString(model.Content);
             serializer.WriteDateTimeOffset(model.EditTimestamp ?? DateTimeOffset.MinValue);
         }
 
-        public override ChatMessage Deserialize(ref BinaryDeserializer deserializer)
+        public override SphynxChatMessage Deserialize(ref BinaryDeserializer deserializer)
         {
             var msgId = deserializer.ReadSnowflakeId();
-            var roomId = deserializer.ReadSnowflakeId();
-            var senderId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
+            var senderId = deserializer.ReadGuid();
             string? content = deserializer.ReadString();
             var editTimestamp = deserializer.ReadDateTimeOffset();
 
-            return new ChatMessage
+            return new SphynxChatMessage
             {
                 MessageId = msgId,
                 RoomId = roomId,
