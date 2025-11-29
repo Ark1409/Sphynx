@@ -11,9 +11,9 @@ namespace Sphynx.Network.Packet.Request
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_REQ;
 
         /// <summary>
-        /// <inheritdoc cref="ChatRoomType"/>
+        /// <inheritdoc cref="SphynxRoomType"/>
         /// </summary>
-        public abstract ChatRoomType RoomType { get; }
+        public abstract SphynxRoomType RoomType { get; }
 
         public RoomCreateRequest()
         {
@@ -30,12 +30,12 @@ namespace Sphynx.Network.Packet.Request
         public bool Equals(RoomCreateRequest? other) => base.Equals(other) && RoomType == other?.RoomType;
 
         /// <summary>
-        /// <see cref="ChatRoomType.DIRECT_MSG"/> room creation request.
+        /// <see cref="SphynxRoomType.DIRECT_MSG"/> room creation request.
         /// </summary>
         public sealed class Direct : RoomCreateRequest, IEquatable<Direct>
         {
             /// <inheritdoc/>
-            public override ChatRoomType RoomType => ChatRoomType.DIRECT_MSG;
+            public override SphynxRoomType RoomType => SphynxRoomType.DIRECT_MSG;
 
             /// <summary>
             /// The user ID of the other user to create the DM with.
@@ -73,7 +73,7 @@ namespace Sphynx.Network.Packet.Request
         }
 
         /// <summary>
-        /// <see cref="ChatRoomType.GROUP"/> room creation request.
+        /// <see cref="SphynxRoomType.GROUP"/> room creation request.
         /// </summary>
         public sealed class Group : RoomCreateRequest, IEquatable<Group>
         {
@@ -93,7 +93,7 @@ namespace Sphynx.Network.Packet.Request
             public bool Public { get; set; }
 
             /// <inheritdoc/>
-            public override ChatRoomType RoomType => ChatRoomType.GROUP;
+            public override SphynxRoomType RoomType => SphynxRoomType.GROUP;
 
             /// <summary>
             /// Creates a new <see cref="RoomCreateRequest"/>.

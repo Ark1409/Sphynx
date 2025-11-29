@@ -32,9 +32,9 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class JoinRoomResponseSerializer : ResponseSerializer<JoinRoomResponse>
     {
-        private readonly ITypeSerializer<ChatRoomInfo> _roomSerializer;
+        private readonly ITypeSerializer<SphynxRoomInfo> _roomSerializer;
 
-        public JoinRoomResponseSerializer(ITypeSerializer<ChatRoomInfo> roomSerializer)
+        public JoinRoomResponseSerializer(ITypeSerializer<SphynxRoomInfo> roomSerializer)
         {
             _roomSerializer = roomSerializer;
         }

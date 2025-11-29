@@ -5,7 +5,7 @@ using Sphynx.Network.Packet.Response;
 namespace Sphynx.Network.Packet.Request
 {
     /// <inheritdoc cref="SphynxPacketType.ROOM_DEL_REQ"/>
-    /// <remarks>Only rooms of type <see cref="ChatRoomType.GROUP"/> can be deleted.</remarks>
+    /// <remarks>Only rooms of type <see cref="SphynxRoomType.GROUP"/> can be deleted.</remarks>
     public sealed class RoomDeleteRequest : SphynxRequest<RoomDeleteResponse>, IEquatable<RoomDeleteRequest>
     {
         /// <summary>
@@ -46,7 +46,7 @@ namespace Sphynx.Network.Packet.Request
         /// <summary>
         /// Creates new <see cref="RoomDeleteRequest"/>.
         /// </summary>
-        /// <param name="roomId">The ID of the room to delete. Only rooms of type <see cref="ChatRoomType.GROUP"/> can be deleted.</param>
+        /// <param name="roomId">The ID of the room to delete. Only rooms of type <see cref="SphynxRoomType.GROUP"/> can be deleted.</param>
         /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
         public RoomDeleteRequest(Guid sessionId, SnowflakeId roomId, string? password) : base(sessionId)
         {

@@ -25,7 +25,7 @@ namespace Sphynx.Network.Serialization.Packet
 
         protected sealed override TRequest? DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var roomType = deserializer.ReadEnum<ChatRoomType>();
+            var roomType = deserializer.ReadEnum<SphynxRoomType>();
             var roomInfo = new RoomCreateRequestInfo { RequestInfo = requestInfo, RoomType = roomType };
 
             return DeserializeRoom(ref deserializer, in roomInfo);
@@ -37,18 +37,18 @@ namespace Sphynx.Network.Serialization.Packet
     public readonly struct RoomCreateRequestInfo
     {
         public RequestInfo RequestInfo { get; init; }
-        public ChatRoomType RoomType { get; init; }
+        public SphynxRoomType RoomType { get; init; }
     }
 
     public sealed class RoomCreateRequestSerializer : RoomCreateRequestSerializer<RoomCreateRequest>
     {
-        private readonly Dictionary<ChatRoomType, RoomCreateRequestSerializer<RoomCreateRequest>>
+        private readonly Dictionary<SphynxRoomType, RoomCreateRequestSerializer<RoomCreateRequest>>
             _serializers = new();
 
         public RoomCreateRequestSerializer()
         {
-            WithSerializer(ChatRoomType.DIRECT_MSG, new Direct());
-            WithSerializer(ChatRoomType.GROUP, new Group());
+            WithSerializer(SphynxRoomType.DIRECT_MSG, new Direct());
+            WithSerializer(SphynxRoomType.GROUP, new Group());
         }
 
         protected internal override void SerializeRoom(RoomCreateRequest packet, ref BinarySerializer serializer)
@@ -67,7 +67,7 @@ namespace Sphynx.Network.Serialization.Packet
             throw new SerializationException($"No deserializer for room type {requestInfo.RoomType} found");
         }
 
-        public RoomCreateRequestSerializer WithSerializer<T>(ChatRoomType roomType, RoomCreateRequestSerializer<T> serializer)
+        public RoomCreateRequestSerializer WithSerializer<T>(SphynxRoomType roomType, RoomCreateRequestSerializer<T> serializer)
             where T : RoomCreateRequest
         {
             ref var existingAdapter =
@@ -86,7 +86,7 @@ namespace Sphynx.Network.Serialization.Packet
             return this;
         }
 
-        public RoomCreateRequestSerializer WithoutSerializer(ChatRoomType roomType)
+        public RoomCreateRequestSerializer WithoutSerializer(SphynxRoomType roomType)
         {
             _serializers.Remove(roomType);
             return this;

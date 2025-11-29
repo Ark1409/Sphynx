@@ -34,14 +34,14 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class FetchMessagesResponseSerializer : ResponseSerializer<FetchMessagesResponse>
     {
-        private readonly ITypeSerializer<ChatMessage[]> _chatMessageSerializer;
+        private readonly ITypeSerializer<SphynxChatMessage[]> _chatMessageSerializer;
 
-        public FetchMessagesResponseSerializer(ITypeSerializer<ChatMessage> chatMessageSerializer)
-            : this(new ArraySerializer<ChatMessage>(chatMessageSerializer))
+        public FetchMessagesResponseSerializer(ITypeSerializer<SphynxChatMessage> chatMessageSerializer)
+            : this(new ArraySerializer<SphynxChatMessage>(chatMessageSerializer))
         {
         }
 
-        public FetchMessagesResponseSerializer(ITypeSerializer<ChatMessage[]> chatMessageSerializer)
+        public FetchMessagesResponseSerializer(ITypeSerializer<SphynxChatMessage[]> chatMessageSerializer)
         {
             _chatMessageSerializer = chatMessageSerializer;
         }
