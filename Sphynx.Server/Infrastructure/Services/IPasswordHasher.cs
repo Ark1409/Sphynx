@@ -6,7 +6,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 
-namespace Sphynx.Server.Auth.Services
+namespace Sphynx.Server.Infrastructure.Services
 {
     public interface IPasswordHasher
     {

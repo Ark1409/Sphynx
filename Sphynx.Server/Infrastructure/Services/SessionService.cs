@@ -60,7 +60,7 @@ namespace Sphynx.Server.Infrastructure.Services
             var insertResult = await _sessionRepo.InsertAsync(sessionInfo, cancellationToken).ConfigureAwait(false);
 
             if (insertResult.ErrorCode != SphynxErrorCode.SUCCESS)
-                return (SphynxErrorInfo<SphynxSessionInfo?>)insertResult.MaskServerError();
+                return insertResult.MaskServerError();
 
             sessionInfo = sessionInfo with { ExpiresAt = DateTimeOffset.UtcNow + _options.ActiveExpiryTime };
 
@@ -102,11 +102,11 @@ namespace Sphynx.Server.Infrastructure.Services
                     if (_logger.IsEnabled(LogLevel.Error))
                         _logger.LogError(ex, "Failed to delete all session data for login {ClientAddress}", clientAddress);
 
-                    return (SphynxErrorInfo<SphynxSessionInfo?>)insertResult.MaskServerError();
+                    return insertResult.MaskServerError();
                 }
             }
 
-            return insertResult.WithData<SphynxSessionInfo?>(sessionInfo);
+            return insertResult;
         }
 
         public async Task<SphynxErrorInfo<long>> CountActiveSessionsAsync(Guid userId, CancellationToken cancellationToken = default)

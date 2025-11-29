@@ -20,10 +20,13 @@ namespace Sphynx.Server.Persistence.Auth
             _collection = collection;
         }
 
-        public async Task<SphynxErrorInfo> InsertAsync(SphynxSessionInfo sessionInfo, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxSessionInfo?>> InsertAsync(SphynxSessionInfo sessionInfo, CancellationToken cancellationToken = default)
         {
-            if (sessionInfo.SessionId == default || sessionInfo.UserId == default)
+            if (sessionInfo.UserId == default)
                 return SphynxErrorCode.INVALID_TOKEN;
+
+            if (sessionInfo.SessionId == default)
+                sessionInfo = sessionInfo with { SessionId = Guid.NewGuid() };
 
             // No need to insert already-expired tokens
             if (sessionInfo.ExpiresAt < DateTimeOffset.UtcNow)
@@ -38,10 +41,10 @@ namespace Sphynx.Server.Persistence.Auth
             // We consider duplicate PKs to be some sort of pseudo-transient error
             catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
             {
-                return new SphynxErrorInfo(SphynxErrorCode.INVALID_TOKEN);
+                return SphynxErrorCode.INVALID_TOKEN;
             }
 
-            return SphynxErrorCode.SUCCESS;
+            return sessionInfo;
         }
 
         public async Task<SphynxErrorInfo<SphynxSessionInfo?>> GetAsync(Guid sessionId, CancellationToken cancellationToken = default)

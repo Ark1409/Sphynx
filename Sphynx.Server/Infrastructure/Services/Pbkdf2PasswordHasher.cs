@@ -4,7 +4,7 @@
 using System.Buffers;
 using System.Security.Cryptography;
 
-namespace Sphynx.Server.Auth.Services
+namespace Sphynx.Server.Infrastructure.Services
 {
     public class Pbkdf2PasswordHasher : IPasswordHasher
     {
