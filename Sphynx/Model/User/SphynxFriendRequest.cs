@@ -5,9 +5,9 @@ namespace Sphynx.Model.User
 {
     public class SphynxFriendRequest
     {
-        public Guid SenderId { get; set; }
+        public Guid InitiatorId { get; set; }
 
-        public Guid ReceiverId { get; set; }
+        public Guid OtherId { get; set; }
 
         public DateTimeOffset SentAt { get; set; }
     }

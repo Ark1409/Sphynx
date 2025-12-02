@@ -41,6 +41,11 @@
         INVALID_USER,
 
         /// <summary>
+        /// Invalid group ID or userId when performing an action.
+        /// </summary>
+        INVALID_MEMBERSHIP,
+
+        /// <summary>
         /// Attempted to query an invalid or unknown field from the database.
         /// </summary>
         INVALID_FIELD,
