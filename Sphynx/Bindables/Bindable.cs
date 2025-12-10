@@ -1,0 +1,510 @@
+// Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
+using System.Globalization;
+using Sphynx.Storage;
+using Sphynx.Utils;
+
+namespace Sphynx.Bindables
+{
+    // Copyright (c) 2024 ppy Pty Ltd <contact@ppy.sh>.
+    //
+    // Permission is hereby granted, free of charge, to any person obtaining a copy
+    // of this software and associated documentation files (the "Software"), to deal
+    // in the Software without restriction, including without limitation the rights
+    // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    // copies of the Software, and to permit persons to whom the Software is
+    // furnished to do so, subject to the following conditions:
+    //
+    // The above copyright notice and this permission notice shall be included in
+    // all copies or substantial portions of the Software.
+
+    /// <summary>
+    /// A generic implementation of a <see cref="IBindable{T}"/>
+    /// </summary>
+    /// <typeparam name="T">The type of our stored <see cref="Value"/>.</typeparam>
+    public class Bindable<T> : IBindable<T>
+    {
+        /// <summary>
+        /// An event which is raised when <see cref="Value"/> has changed (or manually via <see cref="TriggerValueChange"/>).
+        /// </summary>
+        public event Action<ValueChangedEvent<T>> ValueChanged;
+
+        /// <summary>
+        /// An event which is raised when <see cref="Disabled"/> has changed (or manually via <see cref="TriggerDisabledChange"/>).
+        /// </summary>
+        public event Action<bool> DisabledChanged;
+
+        /// <summary>
+        /// An event which is raised when <see cref="Default"/> has changed (or manually via <see cref="TriggerDefaultChange"/>).
+        /// </summary>
+        public event Action<ValueChangedEvent<T>> DefaultChanged;
+
+        private T value;
+        private T defaultValue;
+        private bool disabled;
+
+        /// <summary>
+        /// Whether this bindable has been disabled. When disabled, attempting to change the <see cref="Value"/> will result in an <see cref="InvalidOperationException"/>.
+        /// </summary>
+        public virtual bool Disabled
+        {
+            get => disabled;
+            set
+            {
+                // if a lease is active, disabled can *only* be changed by that leased bindable.
+                throwIfLeased();
+
+                if (disabled == value) return;
+
+                SetDisabled(value);
+            }
+        }
+
+        internal void SetDisabled(bool value, bool bypassChecks = false, Bindable<T>? source = null)
+        {
+            if (!bypassChecks)
+                throwIfLeased();
+
+            disabled = value;
+            TriggerDisabledChange(source ?? this, true, bypassChecks);
+        }
+
+        /// <summary>
+        /// Check whether the current <see cref="Value"/> is equal to <see cref="Default"/>.
+        /// </summary>
+        public virtual bool IsDefault => EqualityComparer<T>.Default.Equals(value, Default);
+
+        /// <summary>
+        /// Revert the current <see cref="Value"/> to the defined <see cref="Default"/>.
+        /// </summary>
+        public void SetDefault() => Value = Default;
+
+        /// <summary>
+        /// The current value of this bindable.
+        /// </summary>
+        public virtual T Value
+        {
+            get => value;
+            set
+            {
+                // intentionally don't have throwIfLeased() here.
+                // if the leased bindable decides to disable exclusive access (by setting Disabled = false) then anything will be able to write to Value.
+
+                if (Disabled)
+                    throw new InvalidOperationException($"Can not set value to \"{value?.ToString()}\" as bindable is disabled.");
+
+                if (EqualityComparer<T>.Default.Equals(this.value, value)) return;
+
+                SetValue(this.value, value);
+            }
+        }
+
+        internal void SetValue(T previousValue, T value, bool bypassChecks = false, Bindable<T>? source = null)
+        {
+            this.value = value;
+            TriggerValueChange(previousValue, source ?? this, true, bypassChecks);
+        }
+
+        /// <summary>
+        /// The default value of this bindable. Used when calling <see cref="SetDefault"/> or querying <see cref="IsDefault"/>.
+        /// </summary>
+        public virtual T Default
+        {
+            get => defaultValue;
+            set
+            {
+                // intentionally don't have throwIfLeased() here.
+                // if the leased bindable decides to disable exclusive access (by setting Disabled = false) then anything will be able to write to Default.
+
+                if (Disabled)
+                    throw new InvalidOperationException($"Can not set default value to \"{value?.ToString()}\" as bindable is disabled.");
+
+                if (EqualityComparer<T>.Default.Equals(defaultValue, value)) return;
+
+                SetDefaultValue(defaultValue, value);
+            }
+        }
+
+        internal void SetDefaultValue(T previousValue, T value, bool bypassChecks = false, Bindable<T>? source = null)
+        {
+            defaultValue = value;
+            TriggerDefaultChange(previousValue, source ?? this, true, bypassChecks);
+        }
+
+        private WeakReference<IReadOnlyBindable> weakReferenceInstance;
+        private WeakReference<IReadOnlyBindable> weakReference => weakReferenceInstance ??= new WeakReference<IReadOnlyBindable>(this);
+
+        /// <summary>
+        /// Creates a new bindable instance. This is used for deserialization of bindables.
+        /// </summary>
+        private Bindable()
+            : this(default!)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new bindable instance initialised with a default value.
+        /// </summary>
+        /// <param name="defaultValue">The initial and default value for this bindable.</param>
+        public Bindable(T defaultValue = default)
+        {
+            value = Default = defaultValue;
+        }
+
+        protected LockedWeakList<IReadOnlyBindable>? Bindings { get; private set; }
+
+        /// <summaru>
+        /// Represents the sum of the number of bindables which this has bound to as well as the number of bindables
+        /// which have bound to this instance.
+        /// </summaru>
+        public int BindingCount => Bindings?.Count() ?? 0;
+
+        /// <summary>
+        /// An alias of <see cref="BindTo"/> provided for use in object initializer scenarios.
+        /// Passes the provided value as the foreign (more permanent) bindable.
+        /// </summary>
+        public Bindable<T> BindTarget
+        {
+            init => BindTo(value);
+        }
+
+        /// <summary>
+        /// Copies all values and value limitations of this bindable to another.
+        /// </summary>
+        /// <param name="them">The target to copy to.</param>
+        public void CopyTo(Bindable<T> them)
+        {
+            them.Value = Value;
+            them.Default = Default;
+            them.Disabled = Disabled;
+        }
+
+        /// <summary>
+        /// Binds this bindable to another such that bi-directional updates are propagated.
+        /// This will adopt any values and value limitations of the bindable bound to.
+        /// </summary>
+        /// <param name="them">The foreign bindable. This should always be the most permanent end of the bind.</param>
+        public void BindTo(Bindable<T> them)
+        {
+            if (Bindings?.Contains(((IReadOnlyBindable)them).WeakReference) == true) return;
+
+            them.CopyTo(this);
+
+            addWeakReference(((IReadOnlyBindable)them).WeakReference);
+            them.addWeakReference(((IReadOnlyBindable)this).WeakReference);
+        }
+
+        /// <summary>
+        /// Bind an action to <see cref="ValueChanged"/> with the option of running the bound action once immediately.
+        /// </summary>
+        /// <param name="onChange">The action to perform when <see cref="Value"/> changes.</param>
+        /// <param name="runOnceImmediately">Whether the action provided in <paramref name="onChange"/> should be run once immediately.</param>
+        public void BindValueChanged(Action<ValueChangedEvent<T>> onChange, bool runOnceImmediately = false)
+        {
+            ValueChanged += onChange;
+            if (runOnceImmediately)
+                onChange(new ValueChangedEvent<T>(Value, Value));
+        }
+
+        /// <summary>
+        /// Bind an action to <see cref="DisabledChanged"/> with the option of running the bound action once immediately.
+        /// </summary>
+        /// <param name="onChange">The action to perform when <see cref="Disabled"/> changes.</param>
+        /// <param name="runOnceImmediately">Whether the action provided in <paramref name="onChange"/> should be run once immediately.</param>
+        public void BindDisabledChanged(Action<bool> onChange, bool runOnceImmediately = false)
+        {
+            DisabledChanged += onChange;
+            if (runOnceImmediately)
+                onChange(Disabled);
+        }
+
+        private void addWeakReference(WeakReference<IReadOnlyBindable> weakReference)
+        {
+            Bindings ??= new LockedWeakList<IReadOnlyBindable>();
+            Bindings.Add(weakReference);
+        }
+
+        private void removeWeakReference(WeakReference<IReadOnlyBindable> weakReference) => Bindings?.Remove(weakReference);
+
+        /// <summary>
+        /// Parse an object into this instance.
+        /// An object deriving T can be parsed, or a string can be parsed if T is an enum type.
+        /// </summary>
+        /// <param name="input">The input which is to be parsed.</param>
+        /// <param name="provider">An object that provides culture-specific formatting information about <paramref name="input"/>.</param>
+        public virtual void Parse(object input, IFormatProvider provider)
+        {
+            switch (input)
+            {
+                // Of note, this covers the case when the input is a string and `T` is `string`.
+                // Both `string.Empty` and `null` are valid values for this type.
+                case T t:
+                    Value = t;
+                    break;
+
+                case null:
+                    // Nullable value types and reference types (annotated or not) are allowed to be initialised with `null`.
+                    if (typeof(T).IsNullable() || typeof(T).IsClass)
+                    {
+                        Value = default;
+                        break;
+                    }
+
+                    // Non-nullable value types can't convert from null.
+                    throw new ArgumentNullException(nameof(input));
+
+                case IReadOnlyBindable:
+                    if (input is not IReadOnlyValuedBindable<T> bindable)
+                        throw new ArgumentException($"Expected bindable of type {nameof(IReadOnlyValuedBindable<T>)}<{typeof(T)}>, got {input.GetType()}", nameof(input));
+
+                    Value = bindable.Value;
+                    break;
+
+                default:
+                    if (input is string strInput && string.IsNullOrEmpty(strInput))
+                    {
+                        // Nullable value types and reference types are initialised to `null` on empty strings.
+                        if (typeof(T).IsNullable() || typeof(T).IsClass)
+                        {
+                            Value = default;
+                            break;
+                        }
+
+                        // Most likely all conversion methods will not accept empty strings, but we let this fall through so that the exception is thrown by .NET itself.
+                        // For example, DateTime.Parse() throws a more contextually relevant exception than int.Parse().
+                    }
+
+                    Type underlyingType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+                    if (underlyingType.IsEnum)
+                        Value = (T)Enum.Parse(underlyingType, input.ToString()!);
+                    else
+                        Value = (T)Convert.ChangeType(input, underlyingType, provider);
+
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Raise <see cref="ValueChanged"/> and <see cref="DisabledChanged"/> once, without any changes actually occurring.
+        /// This does not propagate to any outward bound bindables.
+        /// </summary>
+        public virtual void TriggerChange()
+        {
+            TriggerValueChange(value, this, false);
+            TriggerDisabledChange(this, false);
+        }
+
+        protected void TriggerValueChange(T previousValue, Bindable<T> source, bool propagateToBindings = true, bool bypassChecks = false)
+        {
+            // check a bound bindable hasn't changed the value again (it will fire its own event)
+            T beforePropagation = value;
+
+            if (propagateToBindings && Bindings != null)
+            {
+                foreach (var b in Bindings)
+                {
+                    if (b == source) continue;
+                    var other = (Bindable<T>)b;
+                    other.SetValue(previousValue, value, bypassChecks, this);
+                }
+            }
+
+            if (EqualityComparer<T>.Default.Equals(beforePropagation, value))
+                ValueChanged?.Invoke(new ValueChangedEvent<T>(previousValue, value));
+        }
+
+        protected void TriggerDefaultChange(T previousValue, Bindable<T> source, bool propagateToBindings = true, bool bypassChecks = false)
+        {
+            // check a bound bindable hasn't changed the value again (it will fire its own event)
+            T beforePropagation = defaultValue;
+
+            if (propagateToBindings && Bindings != null)
+            {
+                foreach (var b in Bindings)
+                {
+                    if (b == source) continue;
+
+                    var other = (Bindable<T>)b;
+                    other.SetDefaultValue(previousValue, defaultValue, bypassChecks, this);
+                }
+            }
+
+            if (EqualityComparer<T>.Default.Equals(beforePropagation, defaultValue))
+                DefaultChanged?.Invoke(new ValueChangedEvent<T>(previousValue, defaultValue));
+        }
+
+        protected void TriggerDisabledChange(Bindable<T> source, bool propagateToBindings = true, bool bypassChecks = false)
+        {
+            // check a bound bindable hasn't changed the value again (it will fire its own event)
+            bool beforePropagation = disabled;
+
+            if (propagateToBindings && Bindings != null)
+            {
+                foreach (var b in Bindings)
+                {
+                    if (b == source) continue;
+
+                    var other = (Bindable<T>)b;
+                    other.SetDisabled(disabled, bypassChecks, this);
+                }
+            }
+
+            if (beforePropagation == disabled)
+                DisabledChanged?.Invoke(disabled);
+        }
+
+        /// <summary>
+        /// Unbinds any actions bound to the value changed events.
+        /// </summary>
+        public virtual void UnbindEvents()
+        {
+            ValueChanged = null!;
+            DefaultChanged = null!;
+            DisabledChanged = null!;
+        }
+
+        /// <summary>
+        /// Remove all bound <see cref="Bindable{T}"/>s via <see cref="GetBoundCopy"/> or <see cref="BindTo"/>.
+        /// </summary>
+        public void UnbindBindings()
+        {
+            if (Bindings == null)
+                return;
+
+            // ToArray required as this may be called from an async disposal thread.
+            // This can lead to deadlocks since each child is also enumerating its Bindings.
+            foreach (var b in Bindings.ToArray())
+            {
+                UnbindFrom((IUnbindable)b);
+            }
+        }
+
+        /// <summary>
+        /// Calls <see cref="UnbindEvents"/> and <see cref="UnbindBindings"/>.
+        /// Also returns any active lease.
+        /// </summary>
+        public void UnbindAll() => UnbindAllInternal();
+
+        internal virtual void UnbindAllInternal()
+        {
+            if (isLeased)
+                leasedBindable!.Return();
+
+            UnbindEvents();
+            UnbindBindings();
+        }
+
+        public virtual void UnbindFrom(IUnbindable them)
+        {
+            // One of the class invariants here is that we can only bind to other Bindable{T}'s
+            if (them is not Bindable<T> tThem)
+                // throw new InvalidCastException($"Can't unbind a bindable of type {them.GetType()} from a bindable of type {GetType()}.");
+                return;
+
+            removeWeakReference(((IReadOnlyBindable)tThem).WeakReference);
+            tThem.removeWeakReference(((IReadOnlyBindable)this).WeakReference);
+        }
+
+        public sealed override string ToString() => ToString(null, CultureInfo.CurrentCulture);
+
+        public virtual string ToString(string? format, IFormatProvider? formatProvider) => string.Format(formatProvider, $"{{0:{format ?? string.Empty}}}", Value);
+
+        /// <summary>
+        /// Create an unbound clone of this bindable.
+        /// </summary>
+        public Bindable<T> GetUnboundCopy()
+        {
+            var newBindable = CreateInstance();
+            CopyTo(newBindable);
+            return newBindable;
+        }
+
+        /// <inheritdoc cref="IBindable{T}.GetBoundCopy"/>
+        public Bindable<T> GetBoundCopy()
+        {
+            var newBindable = CreateInstance();
+            newBindable.BindTo(this);
+            return newBindable;
+        }
+
+        /// <summary>
+        /// Creates an empty instance of this bindable.
+        /// This function should be overriden in subclasses to return the most derived type.
+        /// </summary>
+        protected virtual Bindable<T> CreateInstance() => new Bindable<T>();
+
+        /// <inheritdoc cref="IBindable{T}.GetBoundCopy"/>
+        IBindable<T> IBindable<T>.GetBoundCopy() => GetBoundCopy();
+
+        #region Leasing
+        private LeasedBindable<T>? leasedBindable;
+
+        private bool isLeased => leasedBindable != null;
+
+        WeakReference<IReadOnlyBindable> IReadOnlyBindable.WeakReference => weakReference;
+
+        /// <summary>
+        /// Takes out a mutually exclusive lease on this bindable.
+        /// During a lease, the bindable will be set to <see cref="Disabled"/>, but changes can still be applied via the <see cref="LeasedBindable{T}"/> returned by this call.
+        /// You should end a lease by calling <see cref="LeasedBindable{T}.Return"/> when done.
+        /// </summary>
+        /// <param name="revertValueOnReturn">Whether the <see cref="Value"/> when <see cref="BeginLease"/> was called should be restored when the lease ends.</param>
+        /// <returns>A bindable with a lease.</returns>
+        public LeasedBindable<T> BeginLease(bool revertValueOnReturn)
+        {
+            if (checkForLease(this))
+                throw new InvalidOperationException("Attempted to lease a bindable that is already in a leased state.");
+
+            return leasedBindable = new LeasedBindable<T>(this, revertValueOnReturn);
+        }
+
+        private bool checkForLease(Bindable<T> source)
+        {
+            if (isLeased)
+                return true;
+
+            if (Bindings == null)
+                return false;
+
+            bool found = false;
+
+            foreach (var b in Bindings)
+            {
+                if (b != source)
+                {
+                    var other = (Bindable<T>)b;
+                    if (found |= other.checkForLease(this)) return true;
+                }
+            }
+
+            return found;
+        }
+
+        /// <summary>
+        /// Called internally by a <see cref="LeasedBindable{T}"/> to end a lease.
+        /// </summary>
+        /// <param name="returnedBindable">The <see cref="ILeasedBindable{T}"/> that was provided as a return of a <see cref="BeginLease"/> call.</param>
+        internal void EndLease(ILeasedBindable<T> returnedBindable)
+        {
+            if (!isLeased)
+                throw new InvalidOperationException("Attempted to end a lease without beginning one.");
+
+            if (returnedBindable != leasedBindable)
+                throw new InvalidOperationException("Attempted to end a lease but returned a different bindable to the one used to start the lease.");
+
+            leasedBindable = null;
+        }
+
+        private void throwIfLeased()
+        {
+            if (isLeased)
+                throw new InvalidOperationException($"Cannot perform this operation on a {nameof(Bindable<T>)} that is currently in a leased state.");
+        }
+
+        #endregion
+
+        public override int GetHashCode() => HashCode.Combine(Value);
+    }
+}
