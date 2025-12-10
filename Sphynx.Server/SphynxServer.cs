@@ -1,193 +1,271 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
+// Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Server.ChatRooms;
-using Sphynx.Server.Client;
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Sphynx.Server
 {
     /// <summary>
-    /// Represents the server through which Sphynx clients communicate.
+    /// Represents a generic server instance which accepts clients on a specific endpoint.
     /// </summary>
-    public sealed class SphynxServer : IDisposable
+    public abstract class SphynxServer : IAsyncDisposable
     {
         /// <summary>
-        /// Retrieves the encoding for information exchange between clients and servers.
+        /// Retrieves the running state of the server.
         /// </summary>
-        public static Encoding Encoding => Encoding.UTF8;
+        public bool IsRunning => !_serverTask?.IsCompleted ?? false;
 
         /// <summary>
-        /// Returns the default IP endpoint for the server.
+        /// The name of this <see cref="SphynxServer"/>.
         /// </summary>
-        // TODO: New one each time?
-        public static IPEndPoint DefaultEndPoint => new IPEndPoint(Dns.GetHostEntry(Dns.GetHostName()).AddressList[0], Port);
+        public string Name { get; init; }
 
         /// <summary>
-        /// Retrieves the port for socket information exchange between clients and servers.
+        /// An event which fired before the server starts. This can be used as a last attempt to inject
+        /// some configurations into the server.
         /// </summary>
-        public static short Port => 2000;
+        public event Action<SphynxServer>? OnStart;
 
         /// <summary>
-        /// Maximum number of users in server backlog.
+        /// The profile with which to configure the server.
         /// </summary>
-        public static int Backlog => 10;
+        public virtual SphynxServerProfile Profile { get; }
 
         /// <summary>
-        /// Returns buffer size for information exchange.
+        /// A shorthand to the <see cref="Profile"/>'s <see cref="SphynxServerProfile.Logger"/>.
         /// </summary>
-        public static int BufferSize => ushort.MaxValue;
+        public ILogger Logger => Profile.Logger;
 
         /// <summary>
-        /// Returns the users connected to this server.
+        /// The start task representing the running state of the server.
         /// </summary>
-        public ICollection<SphynxUserInfo> Users => _users.Values;
+        protected Task? ServerTask => _serverTask;
+
+        private volatile Task? _serverTask;
+
+        private CancellationTokenSource _serverCts = new();
+        private readonly AsyncLocal<bool> _isInsideServerTask = new();
+        private readonly SemaphoreSlim _startSemaphore = new(1, 1);
+
+        private volatile bool _disposed;
 
         /// <summary>
-        /// Return a list of all available chat rooms.
+        /// Creates (but does not start) a new <see cref="SphynxServer"/> using the specified <paramref name="profile"/>.
         /// </summary>
-        public ICollection<ChatRoom> ChatRooms => _chatRooms.Values;
-
-        /// <summary>
-        /// Retrives the running state of the server.
-        /// </summary>
-        public bool Running { get; set; }
-
-        /// <summary>
-        /// Returns the endpoint associated with this socket.
-        /// </summary>
-        public IPEndPoint EndPoint { get; private set; }
-
-        private readonly Dictionary<Guid, SphynxUserInfo> _users;
-        private readonly Dictionary<Guid, ChatRoom> _chatRooms;
-
-        private readonly Socket _serverSocket;
-        private readonly Thread _serverThread;
-        private object _disposeLock = new object();
-        private bool _disposed;
-
-        /// <summary>
-        /// Creates a new Sphynx server, associating it with <see cref="DefaultEndPoint"/>.
-        /// </summary>
-        public SphynxServer() : this(DefaultEndPoint)
+        /// <param name="profile">The profile with which the server should be configured.</param>
+        public SphynxServer(SphynxServerProfile profile) : this(profile, null)
         {
-
         }
 
         /// <summary>
-        /// Creates a new Sphynx server and associates it with the specified <paramref name="serverEndpoint"/>.
+        /// Creates (but does not start) a new <see cref="SphynxServer"/> with the given <paramref name="name"/>
+        /// using the specified <paramref name="profile"/>.
         /// </summary>
-        /// <param name="serverEndpoint">The server endpoint to bind to.</param>
-        public SphynxServer(IPEndPoint serverEndpoint)
+        /// <param name="profile">The profile with which the server should be configured.</param>
+        /// <param name="name">A user-friendly name for the server.</param>
+        public SphynxServer(SphynxServerProfile profile, string? name)
         {
-            EndPoint = serverEndpoint;
-            _serverSocket = new Socket(serverEndpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _serverSocket.SendBufferSize = _serverSocket.ReceiveBufferSize = BufferSize;
-            _serverThread = new Thread(Run);
+            ArgumentNullException.ThrowIfNull(profile, nameof(profile));
 
-            _users = new Dictionary<Guid, SphynxUserInfo>();
-            _chatRooms = new Dictionary<Guid, ChatRoom>();
+            if (profile.IsDisposed)
+                throw new ArgumentException("Cannot use a disposed profile to configure a server", nameof(profile));
+
+            Profile = profile;
+            Name = name ?? $"{GetType().Name}@{profile.EndPoint}";
         }
 
         /// <summary>
-        /// Starts the server on a new thread.
+        /// Starts the server, optionally with a cancellation token which can be used to stop the server. On completion, this function
+        /// will also stop the server, and it may be stopped manually by calling <see cref="StopAsync"/>.
         /// </summary>
-        public void Start()
+        /// <param name="cancellationToken">A cancellation token to control the running state of the server.</param>
+        /// <returns>The started server task.</returns>
+        /// <exception cref="ObjectDisposedException">If this server has already been disposed.</exception>
+        /// <exception cref="OperationCanceledException">If this server has already been stopped.</exception>
+        public async Task StartAsync(CancellationToken cancellationToken = default)
         {
-            Running = true;
-            _serverThread.Start();
+            ThrowIfStopped();
+
+            await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                // Propagate exceptions to concurrent callers
+                var serverTask = _serverTask;
+
+                if (serverTask?.Exception is not null)
+                    throw serverTask.Exception;
+
+                if (!_serverCts.IsCancellationRequested)
+                {
+                    OnStart?.Invoke(this);
+
+                    Logger.LogDebug("Starting {ServerName}...", Name);
+
+                    await RunAsync(cancellationToken).ConfigureAwait(false);
+
+                    Logger.LogDebug("Stopping {ServerName}...", Name);
+                }
+            }
+            finally
+            {
+                _startSemaphore.Release();
+            }
+
+            await StopAsync().ConfigureAwait(false);
         }
 
-        private void Run()
+        private async Task RunAsync(CancellationToken cancellationToken)
         {
-            _serverSocket.Bind(EndPoint);
-            _serverSocket.Listen(Backlog);
+            Debug.Assert(_startSemaphore.CurrentCount == 0);
+            Debug.Assert(_serverTask == null);
 
-            while (Running)
+            if (cancellationToken.CanBeCanceled)
+                _serverCts = CancellationTokenSource.CreateLinkedTokenSource(_serverCts.Token, cancellationToken);
+
+            try
+            {
+                if (!_serverCts.IsCancellationRequested)
+                {
+                    try
+                    {
+                        _isInsideServerTask.Value = true;
+                        await (_serverTask = OnStartAsync(_serverCts.Token)).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        _isInsideServerTask.Value = false;
+                    }
+                }
+            }
+            catch (OperationCanceledException ex) when (ex.CancellationToken == _serverCts.Token)
+            {
+                // Server stopped
+            }
+            catch (Exception ex)
+            {
+                Logger.LogCritical(ex, "An unhandled exception occured during server execution");
+            }
+        }
+
+        private void ThrowIfStopped()
+        {
+            ThrowIfDisposed();
+
+            if (_serverCts.IsCancellationRequested)
+                throw new OperationCanceledException("The operation was canceled.");
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(GetType().FullName);
+        }
+
+        /// <summary>
+        /// Called once the server has been instructed to start and should begin running.
+        /// This method is typically where the server's read loop is initiated.
+        /// </summary>
+        /// <param name="cancellationToken">A cancellation token to control the running state of the server. Once cancelled,
+        /// it is expected that the server should begin its shutdown process.</param>
+        /// <returns>The server's running task.</returns>
+        protected abstract Task OnStartAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Stops the server, optionally waiting for its termination.
+        /// </summary>
+        /// <param name="waitForFinish">Whether to wait the server to finish.</param>
+        /// <returns>A task representing the stop operation. If <paramref name="waitForFinish"/> is true, this task will not
+        /// complete until the server has terminated; else, it will return after sending a stop signal.</returns>
+        /// <remarks>This method does not dispose of the server's resources. <see cref="DisposeAsync"/> should be called for
+        /// that.</remarks>
+        public ValueTask StopAsync(bool waitForFinish = true)
+        {
+            // We allow the server to be stopped even when disposed. Just makes our lives easier.
+            if (_disposed)
+                return ValueTask.CompletedTask;
+
+            // Signal for stop
+            if (!_serverCts.IsCancellationRequested)
             {
                 try
                 {
-                    var user = AddUser(_serverSocket.Accept());
-                    Task.Factory.StartNew(() => HandleUser(user));
+                    _serverCts.Cancel();
                 }
-                catch (SocketException)
+                catch (ObjectDisposedException)
                 {
-                    Console.WriteLine("Interrupted");
+                    // Since we are not acquiring the semaphore before cancelling, it's technically
+                    // possible for a concurrent disposal to sneak in after the previous
+                    // cancellation check. This can technically be guarded against by yet another
+                    // semaphore, but that would potentially make this unlikely path non-synchronous,
+                    // which might confuse the caller when waitForFinish == false.
                 }
             }
+
+            if (_isInsideServerTask.Value || !waitForFinish)
+                return ValueTask.CompletedTask;
+
+            return WaitAsync();
         }
 
-        public void HandleUser(SphynxUserInfo user)
+        /// <summary>
+        /// Waits for the server to finish execution.
+        /// </summary>
+        private async ValueTask WaitAsync()
         {
-            // Receive user messages and broadcast
-            // Retrieve user status (online or away) and broadcast
-            // Receive request for going into a specific room
+            if (_disposed)
+                return;
 
+            if (_serverTask?.IsCompleted ?? false)
+                return;
+
+            await _startSemaphore.WaitAsync().ConfigureAwait(false);
+            _startSemaphore.Release();
         }
 
-        private SphynxUserInfo AddUser(Socket clientSocket)
+        /// <summary>
+        /// Returns the server's <see cref="Name"/>.
+        /// </summary>
+        /// <returns>The server's name.</returns>
+        public override string ToString() => Name;
+
+        private async ValueTask DisposeServerAsync()
         {
-            var user = new SphynxUserInfo(clientSocket);
-            _users.Add(user.UserId, user);
+            await _startSemaphore.WaitAsync().ConfigureAwait(false);
 
-            return user;
-        }
-
-        public void AddRoom(ChatRoom room)
-        {
-            room.MessageAdded += BroadcastRoomMessage;
-        }
-
-        public void BroadcastRoomMessage(ChatRoomMessage message)
-        {
-            var messageData = message.Serialize(Encoding);
-
-            foreach (var user in message.Room.Users)
+            try
             {
-                if (user.UserId != message.Sender.UserId)
-                {
-                    byte[] header = { (byte)SocketMessageType.MessageSend };
-                    byte[] userId = user.UserId.ToByteArray();
-                    byte[] userName = Encoding.GetBytes(user.UserName);
-
-                    user.UserSocket.Send(header);
-                    user.UserSocket.Send(userId);
-                    user.UserSocket.Send(userName);
-                    //user.UserSocket.Send(messageData.RoomId);
-                    //user.UserSocket.Send(messageData.Timestamp);
-                    //user.UserSocket.Send(messageData.Content);
-                }
-            }
-        }
-
-        /// <inheritdoc/>
-        public void Dispose()
-        {
-            lock (_disposeLock)
-            {
-                if (_disposed) 
+                if (_disposed)
                     return;
 
-                _disposed = true;
-                Running = false;
-
-                foreach (var user in _users)
-                {
-                    user.Value.Dispose();
-                }
-
-                if (_serverThread.IsAlive)
-                {
-                    _serverSocket.Dispose();
-                    _serverThread.Join();
-                }
+                _serverCts.Dispose();
+                Profile.Dispose();
             }
+            catch
+            {
+                // We don't really care at this point
+            }
+            finally
+            {
+                _disposed = true;
+                _startSemaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Asynchronously disposes of all resources held by this <see cref="SphynxServer"/>.
+        /// </summary>
+        public virtual async ValueTask DisposeAsync()
+        {
+            // Concurrent disposal should be fine
+            if (_disposed)
+                return;
+
+            OnStart = null;
+
+            await StopAsync().ConfigureAwait(false);
+            await DisposeServerAsync().ConfigureAwait(false);
         }
     }
 }

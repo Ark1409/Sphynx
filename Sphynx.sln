@@ -1,15 +1,23 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.7.34202.233
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sphynx.Client", "Sphynx.Client\Sphynx.Client.csproj", "{40BB1048-7127-420C-8BD2-6A276461BFB5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sphynx.Server", "Sphynx.Server\Sphynx.Server.csproj", "{9CC97D13-45A5-4232-BB32-BC13F1CB8859}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sphynx", "Sphynx\Sphynx.csproj", "{7FD728F5-B94E-477F-8634-511454CFB560}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Test", "Sphynx.Test\Sphynx.Test.csproj", "{9E496B77-B4E6-46F4-978A-F589FA431F19}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{AE60E20D-9670-4366-B1B3-6F5B91A19DD6}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Server", "Sphynx.Server\Sphynx.Server.csproj", "{B364B847-224E-4B0A-98EC-9E527BB2DE49}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Server.Auth", "Sphynx.Server.Auth\Sphynx.Server.Auth.csproj", "{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sphynx.Server.Test", "Sphynx.Server.Test\Sphynx.Server.Test.csproj", "{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,10 +29,6 @@ Global
 		{40BB1048-7127-420C-8BD2-6A276461BFB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{40BB1048-7127-420C-8BD2-6A276461BFB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{40BB1048-7127-420C-8BD2-6A276461BFB5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9CC97D13-45A5-4232-BB32-BC13F1CB8859}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9CC97D13-45A5-4232-BB32-BC13F1CB8859}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9CC97D13-45A5-4232-BB32-BC13F1CB8859}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9CC97D13-45A5-4232-BB32-BC13F1CB8859}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7FD728F5-B94E-477F-8634-511454CFB560}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{7FD728F5-B94E-477F-8634-511454CFB560}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7FD728F5-B94E-477F-8634-511454CFB560}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -33,6 +37,18 @@ Global
 		{9E496B77-B4E6-46F4-978A-F589FA431F19}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9E496B77-B4E6-46F4-978A-F589FA431F19}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9E496B77-B4E6-46F4-978A-F589FA431F19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B364B847-224E-4B0A-98EC-9E527BB2DE49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B364B847-224E-4B0A-98EC-9E527BB2DE49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B364B847-224E-4B0A-98EC-9E527BB2DE49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B364B847-224E-4B0A-98EC-9E527BB2DE49}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8E607DC-9772-4D4B-A170-1E45DC80C4B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D20F9F3-A1FA-4DD3-AF21-9283F457234C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
