@@ -20,21 +20,15 @@ namespace Sphynx.Model.Room
         /// </summary>
         public abstract SphynxRoomType RoomType { get; }
 
-        /// <summary>
-        /// The name of this chat room.
-        /// </summary>
-        public string Name { get; set; } = null!;
-
         public DateTimeOffset CreatedAt { get; set; }
 
         public SphynxRoomInfo()
         {
         }
 
-        public SphynxRoomInfo(Guid roomId, string name)
+        public SphynxRoomInfo(Guid roomId)
         {
             RoomId = roomId;
-            Name = name;
         }
 
         /// <inheritdoc/>

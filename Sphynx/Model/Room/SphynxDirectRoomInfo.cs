@@ -25,27 +25,23 @@ namespace Sphynx.Model.Room
 
         public SphynxDirectRoomInfo()
         {
-            Name = $"{UserA}+{UserB}";
         }
 
         public SphynxDirectRoomInfo(Guid userA, Guid userB)
         {
             UserA = userA;
             UserB = userB;
-            Name = $"{UserA}+{UserB}";
         }
 
-        public SphynxDirectRoomInfo(Guid roomId) : base(roomId, string.Empty)
+        public SphynxDirectRoomInfo(Guid roomId) : base(roomId)
         {
-            Name = $"{UserA}+{UserB}";
         }
 
         public SphynxDirectRoomInfo(Guid roomId, Guid userA, Guid userB)
-            : base(roomId, string.Empty)
+            : base(roomId)
         {
             UserA = userA;
             UserB = userB;
-            Name = $"{UserA}+{UserB}";
         }
 
         /// <inheritdoc/>

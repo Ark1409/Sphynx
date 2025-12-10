@@ -14,7 +14,7 @@ namespace Sphynx.Network.Serialization.Model
         {
             serializer.WriteGuid(packet.RoomId);
             serializer.WriteEnum(packet.RoomType);
-            serializer.WriteString(packet.Name);
+            serializer.WriteDateTimeOffset(packet.CreatedAt);
 
             SerializeRoom(packet, ref serializer);
         }
@@ -25,9 +25,9 @@ namespace Sphynx.Network.Serialization.Model
         {
             var roomId = deserializer.ReadGuid();
             var roomType = deserializer.ReadEnum<SphynxRoomType>();
-            string roomName = deserializer.ReadString()!;
+            var createdAt = deserializer.ReadDateTimeOffset()!;
 
-            var roomInfo = new RoomInfo { RoomId = roomId, RoomType = roomType, Name = roomName };
+            var roomInfo = new RoomInfo { RoomId = roomId, RoomType = roomType, CreatedAt = createdAt };
 
             return DeserializeRoom(ref deserializer, in roomInfo);
         }
@@ -39,7 +39,7 @@ namespace Sphynx.Network.Serialization.Model
     {
         public Guid RoomId { get; init; }
         public SphynxRoomType RoomType { get; init; }
-        public string Name { get; init; }
+        public DateTimeOffset CreatedAt { get; init; }
     }
 
     public sealed class ChatRoomInfoSerializer : ChatRoomInfoSerializer<SphynxRoomInfo>
@@ -51,7 +51,6 @@ namespace Sphynx.Network.Serialization.Model
             AddSerializer(SphynxRoomType.DIRECT_MSG, new DirectChatRoomInfoSerializer());
             AddSerializer(SphynxRoomType.GROUP, new GroupChatRoomInfoSerializer());
         }
-
 
         protected internal override void SerializeRoom(SphynxRoomInfo room, ref BinarySerializer serializer)
         {
@@ -134,9 +133,9 @@ namespace Sphynx.Network.Serialization.Model
             return new SphynxDirectRoomInfo
             {
                 RoomId = roomInfo.RoomId,
-                Name = roomInfo.Name,
                 UserA = userOne,
-                UserB = userTwo
+                UserB = userTwo,
+CreatedAt = roomInfo.CreatedAt,
             };
         }
     }
@@ -147,6 +146,9 @@ namespace Sphynx.Network.Serialization.Model
         {
             serializer.WriteBool(model.IsPublic);
             serializer.WriteGuid(model.OwnerId);
+            serializer.WriteString(model.Name);
+            serializer.WriteString(model.Password);
+            serializer.WriteString(model.PasswordSalt);
         }
 
         protected internal override SphynxGroupRoomInfo DeserializeRoom(ref BinaryDeserializer deserializer, in RoomInfo roomInfo)
@@ -156,13 +158,19 @@ namespace Sphynx.Network.Serialization.Model
 
             bool isPublic = deserializer.ReadBool();
             var ownerId = deserializer.ReadGuid();
+            string? name = deserializer.ReadString();
+            string? password = deserializer.ReadString();
+            string? passwordSalt = deserializer.ReadString();
 
             return new SphynxGroupRoomInfo
             {
                 RoomId = roomInfo.RoomId,
-                Name = roomInfo.Name,
+                Name = name!,
                 IsPublic = isPublic,
-                OwnerId = ownerId
+                OwnerId = ownerId,
+                Password = password,
+                PasswordSalt = passwordSalt,
+                CreatedAt = roomInfo.CreatedAt,
             };
         }
     }

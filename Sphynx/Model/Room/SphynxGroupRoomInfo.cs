@@ -23,11 +23,16 @@ namespace Sphynx.Model.Room
         /// </summary>
         public Guid OwnerId { get; set; }
 
+        public string Name { get; set; } = null!;
+
+        public string? Password { get; set; }
+        public string? PasswordSalt { get; set; }
+
         public SphynxGroupRoomInfo()
         {
         }
 
-        public SphynxGroupRoomInfo(Guid roomId, string name) : base(roomId, name)
+        public SphynxGroupRoomInfo(Guid roomId) : base(roomId)
         {
         }
 
