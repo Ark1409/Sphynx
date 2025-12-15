@@ -1,6 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using Sphynx.Model.User;
 using Sphynx.Server.Chat.Persistence.Friend;
 
 namespace Sphynx.Server.Chat.Model
@@ -29,7 +30,17 @@ namespace Sphynx.Server.Chat.Model
             };
         }
 
-        public static SphynxDbFriendRequest ToDto(this SphynxChatFriendRequest friendReq)
+        public static SphynxFriendRequest ToDto(this SphynxChatFriendRequest friendReq)
+        {
+            return new SphynxFriendRequest
+            {
+                InitiatorId = friendReq.InitiatorId,
+                OtherId = friendReq.OtherId,
+                SentAt = friendReq.SentAt
+            };
+        }
+
+        public static SphynxDbFriendRequest ToRecord(this SphynxChatFriendRequest friendReq)
         {
             return new SphynxDbFriendRequest
             {
