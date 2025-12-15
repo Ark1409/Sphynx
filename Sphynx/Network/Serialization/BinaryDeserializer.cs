@@ -148,8 +148,26 @@ namespace Sphynx.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this(sequence: new ReadOnlySequence<byte>(memory))
+        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this()
         {
+            var sequence = new ReadOnlySequence<byte>(memory);
+
+            // For all intents and purposes, reading directly from a span is currently faster than parsing
+            // a single-segment sequence
+            if (sequence.IsSingleSegment)
+            {
+                _useSequence = false;
+                _span = sequence.FirstSpan;
+                _spanOffset = 0;
+            }
+            else
+            {
+                _useSequence = true;
+            }
+
+            // In both cases, we'll still store a refence to the passed sequence
+            _sequence = new SequenceReader<byte>(sequence);
+            _hasSequence = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
