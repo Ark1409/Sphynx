@@ -38,7 +38,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update=".env">
+      <None Update="sample.env">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>
