@@ -152,7 +152,7 @@ namespace Sphynx.Core
                     _timestamp2 = Unsafe.Add(ref timestampBytes, 3);
                     _timestamp3 = Unsafe.Add(ref timestampBytes, 2);
                     _timestamp4 = Unsafe.Add(ref timestampBytes, 1);
-                    _timestamp5 = Unsafe.Add(ref timestampBytes, 0);
+                    _timestamp5 = timestampBytes;
 
                     _sm0 = Unsafe.Add(ref sequenceBytes, 1);
                     _sm1 = sequenceBytes;
