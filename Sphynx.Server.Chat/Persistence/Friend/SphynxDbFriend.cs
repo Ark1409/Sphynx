@@ -23,7 +23,7 @@ namespace Sphynx.Server.Chat.Persistence.Friend
         public Guid AcceptorId { get; set; }
 
         [BsonElement("created_at")]
-        [BsonRepresentation(BsonType.String)]
+        [BsonRepresentation(BsonType.DateTime)]
         public DateTimeOffset CreatedAt { get; set; }
     }
 }

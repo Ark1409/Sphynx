@@ -210,8 +210,7 @@ namespace Sphynx.Server.Chat.Persistence.Room
             return replaceResult is not null ? replaceResult.ToDomain() : SphynxErrorCode.INVALID_ROOM;
         }
 
-        public async Task<SphynxErrorInfo<SphynxChatGroupMembership?>> AddMemberAsync(Guid groupId, Guid userId,
-            CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxChatGroupMembership?>> AddMemberAsync(Guid groupId, Guid userId, CancellationToken cancellationToken = default)
         {
             var dbMembership = new SphynxDbGroupMembership
             {
@@ -386,9 +385,7 @@ namespace Sphynx.Server.Chat.Persistence.Room
                     return SphynxErrorCode.INVALID_ROOM;
                 }
 
-                await roomDeleteTask.ConfigureAwait(false);
-
-                deleteResult = await dmDeleteTask.ConfigureAwait(false);
+                deleteResult = await roomDeleteTask.ConfigureAwait(false);
 
                 if (deleteResult.DeletedCount <= 0)
                 {
@@ -422,9 +419,7 @@ namespace Sphynx.Server.Chat.Persistence.Room
                     return SphynxErrorCode.INVALID_ROOM;
                 }
 
-                await roomDeleteTask.ConfigureAwait(false);
-
-                deleteResult = await groupDeleteTask.ConfigureAwait(false);
+                deleteResult = await roomDeleteTask.ConfigureAwait(false);
 
                 if (deleteResult.DeletedCount <= 0)
                 {

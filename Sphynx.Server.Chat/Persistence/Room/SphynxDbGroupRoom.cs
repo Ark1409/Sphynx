@@ -32,7 +32,7 @@ namespace Sphynx.Server.Chat.Persistence.Room
 
         // Denormalize
         [BsonElement("created_at")]
-        [BsonRepresentation(BsonType.String)]
+        [BsonRepresentation(BsonType.DateTime)]
         public DateTimeOffset CreatedAt { get; set; }
     }
 }

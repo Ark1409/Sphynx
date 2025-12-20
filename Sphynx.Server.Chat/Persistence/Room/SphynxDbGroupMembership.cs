@@ -20,11 +20,10 @@ namespace Sphynx.Server.Chat.Persistence.Room
         public Guid MemberId { get; set; }
 
         [BsonElement("is_owner")]
-        [BsonGuidRepresentation(GuidRepresentation.Standard)]
         public bool IsOwner { get; set; }
 
         [BsonElement("joined_at")]
-        [BsonRepresentation(BsonType.String)]
+        [BsonRepresentation(BsonType.DateTime)]
         public DateTimeOffset JoinedAt { get; set; }
     }
 }
