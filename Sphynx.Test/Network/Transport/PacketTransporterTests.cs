@@ -32,7 +32,7 @@ namespace Sphynx.Test.Network.Transport
             {
                 new LoginRequest("username", "password"),
                 new LogoutRequest("access-token".AsGuid()),
-                new MessagePostRequest("access-token".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
+                new MessagePostRequest("access-token".AsGuid(), "room-id".AsGuid(), "Test message")
             };
 
             using var stream = new MemoryStream();
@@ -52,7 +52,7 @@ namespace Sphynx.Test.Network.Transport
             {
                 new LoginRequest("username", "password"),
                 new LogoutRequest("access-token".AsGuid()),
-                new MessagePostRequest("access-token".AsGuid(), "room-id".AsSnowflakeId(), "Test message")
+                new MessagePostRequest("access-token".AsGuid(), "room-id".AsGuid(), "Test message")
             };
 
             using var stream = new MemoryStream();
