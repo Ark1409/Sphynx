@@ -72,7 +72,7 @@ namespace Sphynx.Test.Network.Serialization
             var packet = new FetchMessagesResponse
             {
                 // ReSharper disable once CoVariantArrayConversion
-                Messages = TestSphynxChatMessage.FromArray("Hello World", "Test message", "Crème glacée")
+                Messages = TestSphynxMessageInfo.FromArray("Hello World", "Test message", "Crème glacée")
             };
 
             // Act
@@ -124,8 +124,14 @@ namespace Sphynx.Test.Network.Serialization
         public void RoomCreateResponsePacket_ShouldSerializeAndDeserialize()
         {
             // Arrange
-            var serializer = new RoomCreateResponseSerializer();
-            var packet = new RoomCreateResponse("room1".AsGuid());
+            var serializer = new RoomCreateResponseSerializer(new ChatRoomInfoSerializer());
+            var packet = new RoomCreateResponse(new SphynxDirectRoomInfo
+            {
+                CreatedAt = DateTimeOffset.UtcNow,
+                RoomId = Guid.NewGuid(),
+                UserA = Guid.NewGuid(),
+                UserB = Guid.NewGuid(),
+            });
 
             // Act
             serializer.Serialize(packet, Sequence);

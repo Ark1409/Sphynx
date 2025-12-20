@@ -8,22 +8,19 @@ namespace Sphynx.Test.Model.Room
 {
     public class TestSphynxDirectRoomInfo : SphynxDirectRoomInfo
     {
-        public TestSphynxDirectRoomInfo(string name = "test-room")
+        public TestSphynxDirectRoomInfo()
         {
-            Name = name;
-            RoomId = name.AsGuid();
-
-            UserA = "user-1".AsGuid();
-            UserB = "user-2".AsGuid();
+            UserA =Guid.NewGuid();
+            UserB =Guid.NewGuid();
         }
 
-        public static TestSphynxDirectRoomInfo[] FromNames(params string[] names)
+        public static TestSphynxDirectRoomInfo[] FromCount(int count)
         {
-            var users = new TestSphynxDirectRoomInfo[names.Length];
+            var users = new TestSphynxDirectRoomInfo[count];
 
-            for (int i = 0; i < names.Length; i++)
+            for (int i = 0; i < count; i++)
             {
-                users[i] = new TestSphynxDirectRoomInfo(names[i]);
+                users[i] = new TestSphynxDirectRoomInfo();
             }
 
             return users;

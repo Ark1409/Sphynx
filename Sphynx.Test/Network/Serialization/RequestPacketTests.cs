@@ -105,7 +105,7 @@ namespace Sphynx.Test.Network.Serialization
             var serializer = new MessagePostRequestSerializer();
             var packet = new MessagePostRequest("access-token".AsGuid())
             {
-                RoomId = "test room id".AsSnowflakeId(),
+                RoomId = "test room id".AsGuid(),
                 Message = "This is a test message. The quick brown fox jumps over... \r\n" +
                           "Let's also add in $some $sp4cia1 ch4r6t3rs: e, è, é, ê, ë\t\aç"
             };
@@ -142,7 +142,7 @@ namespace Sphynx.Test.Network.Serialization
             var serializer = new RoomCreateRequestSerializer();
             var packet = new RoomCreateRequest.Group("access-token".AsGuid())
             {
-                Name = "test-group", Password = "test-group-pwd", Public = true
+                Name = "test-group", Password = "test-group-pwd", IsPublic = true
             };
 
             // Act
@@ -161,7 +161,7 @@ namespace Sphynx.Test.Network.Serialization
             var serializer = new DeleteRoomRequestSerializer();
             var packet = new RoomDeleteRequest("access-token".AsGuid())
             {
-                RoomId = "room".AsSnowflakeId(), Password = "test-group-pwd"
+                RoomId = "room".AsGuid(), Password = "test-group-pwd"
             };
 
             // Act

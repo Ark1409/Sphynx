@@ -12,7 +12,7 @@ namespace Sphynx.Network.Packet.Request
         /// The ID of the room to delete.
         /// </summary>
         /// <remarks>Must be a room ID for a group chat room.</remarks>
-        public SnowflakeId RoomId { get; set; }
+        public Guid RoomId { get; set; }
 
         /// <summary>
         /// The password for the room to delete, if the room was guarded with a password.
@@ -32,7 +32,7 @@ namespace Sphynx.Network.Packet.Request
         /// </summary>
         /// <param name="roomId">The ID of the room to delete.</param>
         /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
-        public RoomDeleteRequest(SnowflakeId roomId, string? password) : this(default, roomId, password)
+        public RoomDeleteRequest(Guid roomId, string? password) : this(default, roomId, password)
         {
         }
 
@@ -48,7 +48,7 @@ namespace Sphynx.Network.Packet.Request
         /// </summary>
         /// <param name="roomId">The ID of the room to delete. Only rooms of type <see cref="SphynxRoomType.GROUP"/> can be deleted.</param>
         /// <param name="password">The password for the room to delete, if the room was guarded with a password.</param>
-        public RoomDeleteRequest(Guid sessionId, SnowflakeId roomId, string? password) : base(sessionId)
+        public RoomDeleteRequest(Guid sessionId, Guid roomId, string? password) : base(sessionId)
         {
             RoomId = roomId;
             Password = password;

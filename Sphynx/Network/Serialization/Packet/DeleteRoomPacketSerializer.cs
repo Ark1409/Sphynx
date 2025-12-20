@@ -11,13 +11,13 @@ namespace Sphynx.Network.Serialization.Packet
     {
         protected override void SerializeRequest(RoomDeleteRequest packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
+            serializer.WriteGuid(packet.RoomId);
             serializer.WriteString(packet.Password);
         }
 
         protected override RoomDeleteRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var roomId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
             string? password = deserializer.ReadString();
 
             return new RoomDeleteRequest(requestInfo.SessionId, roomId, password)

@@ -81,6 +81,11 @@
         REFRESH_TOKEN_REQ = 0x0000000Eu,
 
         /// <summary>
+        /// A request to send (or accept) a friend request to/from another user.
+        /// </summary>
+        ADD_FRIEND_REQ = 0x0000000Fu,
+
+        /// <summary>
         /// A response sent from server to client for a <see cref="LOGIN_REQ"/> packet indicating whether the login
         /// was successful.
         /// </summary>
@@ -152,6 +157,12 @@
         /// the new refresh-access token pair.
         /// </summary>
         REFRESH_TOKEN_RES = 0x0100000Eu,
+
+        /// <summary>
+        /// A response sent from the server to client for <see cref="ADD_FRIEND_REQ"/>, potentially containing
+        /// friend request info.
+        /// </summary>
+        ADD_FRIEND_RES = 0x0000000Fu,
 
         /// <summary>
         /// A broadcast packet sent from server to all other friends of a user when said user goes online.

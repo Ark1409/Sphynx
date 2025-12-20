@@ -90,7 +90,7 @@ namespace Sphynx.Network.Packet.Request
             /// <summary>
             /// Whether this room is public.
             /// </summary>
-            public bool Public { get; set; }
+            public bool IsPublic { get; set; }
 
             /// <inheritdoc/>
             public override SphynxRoomType RoomType => SphynxRoomType.GROUP;
@@ -116,8 +116,8 @@ namespace Sphynx.Network.Packet.Request
             /// <param name="name">The name for the chat room.</param>
             /// <param name="password">The password for the chat room, or null if the room is not guarded by a password.</param>
             /// <param name="isPublic">Whether this room is public.</param>
-            public Group(string name, string? password = null, bool isPublic = true) : this(default,
-                name, password, isPublic)
+            public Group(string name, string? password = null, bool isPublic = true)
+                : this(default, name, password, isPublic)
             {
             }
 
@@ -132,7 +132,7 @@ namespace Sphynx.Network.Packet.Request
             {
                 Name = name ?? throw new ArgumentNullException(nameof(name));
                 Password = password;
-                Public = isPublic;
+                IsPublic = isPublic;
             }
 
             /// <inheritdoc/>

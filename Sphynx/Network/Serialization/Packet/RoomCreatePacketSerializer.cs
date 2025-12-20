@@ -8,6 +8,7 @@ using Sphynx.Model.Room;
 using Sphynx.Network.Packet;
 using Sphynx.Network.Packet.Request;
 using Sphynx.Network.Packet.Response;
+using Sphynx.Network.Serialization.Model;
 
 namespace Sphynx.Network.Serialization.Packet
 {
@@ -138,7 +139,7 @@ namespace Sphynx.Network.Serialization.Packet
             {
                 serializer.WriteString(packet.Name);
                 serializer.WriteString(packet.Password);
-                serializer.WriteBool(packet.Public);
+                serializer.WriteBool(packet.IsPublic);
             }
 
             protected internal override RoomCreateRequest.Group DeserializeRoom(ref BinaryDeserializer deserializer,
@@ -158,12 +159,19 @@ namespace Sphynx.Network.Serialization.Packet
 
     public class RoomCreateResponseSerializer : ResponseSerializer<RoomCreateResponse>
     {
+        private readonly ChatRoomInfoSerializer _roomSerializer;
+
+        public RoomCreateResponseSerializer(ChatRoomInfoSerializer roomSerializer)
+        {
+            _roomSerializer = roomSerializer;
+        }
+
         protected override void SerializeResponse(RoomCreateResponse packet, ref BinarySerializer serializer)
         {
             if (packet.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return;
 
-            serializer.WriteGuid(packet.RoomId!.Value);
+            _roomSerializer.Serialize(packet.RoomInfo!, ref serializer);
         }
 
         protected override RoomCreateResponse DeserializeResponse(ref BinaryDeserializer deserializer, in ResponseInfo responseInfo)
@@ -171,8 +179,7 @@ namespace Sphynx.Network.Serialization.Packet
             if (responseInfo.ErrorInfo != SphynxErrorCode.SUCCESS)
                 return new RoomCreateResponse(responseInfo.ErrorInfo);
 
-            var roomId = deserializer.ReadGuid();
-            return new RoomCreateResponse(roomId)
+            return new RoomCreateResponse(_roomSerializer.Deserialize(ref deserializer)!)
             {
                 RequestTag = responseInfo.RequestTag
             };

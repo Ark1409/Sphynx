@@ -8,10 +8,6 @@ namespace Sphynx.Network.Packet.Response
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.ROOM_DEL_RES;
 
-        public RoomDeleteResponse()
-        {
-        }
-
         /// <summary>
         /// Creates a new <see cref="RoomDeleteResponse"/>.
         /// </summary>

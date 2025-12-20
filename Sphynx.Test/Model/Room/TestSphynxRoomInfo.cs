@@ -8,12 +8,11 @@ namespace Sphynx.Test.Model.Room
 {
     public abstract class TestSphynxRoomInfo : SphynxRoomInfo
     {
-        public TestSphynxRoomInfo(string name = "test-room")
+        public TestSphynxRoomInfo()
         {
-            Name = name;
-            RoomId = name.AsGuid();
+            RoomId = Guid.NewGuid();
         }
 
-        public override bool Equals(SphynxRoomInfo? other) => RoomId == other?.RoomId && Name == other.Name;
+        public override bool Equals(SphynxRoomInfo? other) => RoomId == other?.RoomId ;
     }
 }
