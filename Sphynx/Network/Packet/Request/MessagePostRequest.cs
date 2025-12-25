@@ -9,7 +9,7 @@ namespace Sphynx.Network.Packet.Request
         /// <summary>
         /// The ID of the room to which the message was sent.
         /// </summary>
-        public SnowflakeId RoomId { get; set; }
+        public Guid RoomId { get; set; }
 
         /// <summary>
         /// The contents of the chat message.
@@ -38,7 +38,7 @@ namespace Sphynx.Network.Packet.Request
         /// </summary>
         /// <param name="roomId">The ID of the room to which the message was sent.</param>
         /// <param name="message">The contents of the chat message.</param>
-        public MessagePostRequest(Guid sessionId, SnowflakeId roomId, string message) : base(sessionId)
+        public MessagePostRequest(Guid sessionId, Guid roomId, string message) : base(sessionId)
         {
             RoomId = roomId;
             Message = message ?? throw new ArgumentNullException(nameof(message));

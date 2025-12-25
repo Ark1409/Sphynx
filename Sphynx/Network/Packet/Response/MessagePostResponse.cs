@@ -1,4 +1,5 @@
 ﻿using Sphynx.Core;
+using Sphynx.Model;
 
 namespace Sphynx.Network.Packet.Response
 {
@@ -8,6 +9,8 @@ namespace Sphynx.Network.Packet.Response
         /// <inheritdoc/>
         public override SphynxPacketType PacketType => SphynxPacketType.MSG_RES;
 
+        public SphynxMessageInfo? MessageInfo { get; set; }
+
         public MessagePostResponse()
         {
         }
@@ -15,9 +18,9 @@ namespace Sphynx.Network.Packet.Response
         /// <summary>
         /// Creates a new <see cref="MessagePostResponse"/>.
         /// </summary>
-        /// <param name="errorInfo">Error code for message attempt.</param>
-        public MessagePostResponse(SphynxErrorCode errorInfo = SphynxErrorCode.SUCCESS) : base(errorInfo)
+        public MessagePostResponse(SphynxMessageInfo msgInfo) : base(SphynxErrorCode.SUCCESS)
         {
+            MessageInfo = msgInfo;
         }
 
         /// <summary>
@@ -29,6 +32,6 @@ namespace Sphynx.Network.Packet.Response
         }
 
         /// <inheritdoc/>
-        public bool Equals(MessagePostResponse? other) => base.Equals(other);
+        public bool Equals(MessagePostResponse? other) => base.Equals(other) && (MessageInfo?.Equals(other?.MessageInfo) ?? false);
     }
 }

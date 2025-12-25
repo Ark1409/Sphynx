@@ -13,7 +13,7 @@ namespace Sphynx.Network.Packet.Response
         /// <summary>
         /// The resolved messages' information. The array is in decreasing order of message creation time.
         /// </summary>
-        public SphynxChatMessage[]? Messages { get; set; }
+        public SphynxMessageInfo[]? Messages { get; set; }
 
         public FetchMessagesResponse()
         {
@@ -31,7 +31,7 @@ namespace Sphynx.Network.Packet.Response
         /// Creates a new <see cref="FetchMessagesResponse"/> with <see cref="SphynxErrorCode.SUCCESS"/>.
         /// </summary>
         /// <param name="messages">The resolved messages' information.</param>
-        public FetchMessagesResponse(params SphynxChatMessage[] messages) : this(SphynxErrorCode.SUCCESS)
+        public FetchMessagesResponse(params SphynxMessageInfo[] messages) : this(SphynxErrorCode.SUCCESS)
         {
             Messages = messages;
         }

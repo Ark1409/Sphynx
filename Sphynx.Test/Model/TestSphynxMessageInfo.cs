@@ -6,34 +6,34 @@ using Sphynx.Test.Utils;
 
 namespace Sphynx.Test.Model
 {
-    public class TestSphynxChatMessage : SphynxChatMessage
+    public class TestSphynxMessageInfo : SphynxMessageInfo
     {
-        public TestSphynxChatMessage(string msg)
+        public TestSphynxMessageInfo(string msg)
         {
             MessageId = msg.AsSnowflakeId();
             RoomId = $"room-{msg}".AsGuid();
             SenderId = $"sender-{msg}".AsGuid();
             Content = msg;
-            EditTimestamp = string.IsNullOrEmpty(msg) ? null : new DateTime(1990, 10, 12).ToUniversalTime();
+            EditedAt = string.IsNullOrEmpty(msg) ? null : new DateTime(1990, 10, 12).ToUniversalTime();
         }
 
-        public static TestSphynxChatMessage[] FromArray(params string[] msgs)
+        public static TestSphynxMessageInfo[] FromArray(params string[] msgs)
         {
-            var chatMessages = new TestSphynxChatMessage[msgs.Length];
+            var chatMessages = new TestSphynxMessageInfo[msgs.Length];
 
             for (int i = 0; i < msgs.Length; i++)
             {
-                chatMessages[i] = new TestSphynxChatMessage(msgs[i]);
+                chatMessages[i] = new TestSphynxMessageInfo(msgs[i]);
             }
 
             return chatMessages;
         }
 
-        public override bool Equals(SphynxChatMessage? other)
+        public override bool Equals(SphynxMessageInfo? other)
         {
             return MessageId.Equals(other?.MessageId) && RoomId.Equals(other?.RoomId) &&
                    SenderId.Equals(other?.SenderId) && Content == other?.Content &&
-                   Nullable.Equals(EditTimestamp, other.EditTimestamp);
+                   Nullable.Equals(EditedAt, other.EditedAt);
         }
     }
 }

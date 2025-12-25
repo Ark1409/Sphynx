@@ -8,7 +8,7 @@ namespace Sphynx.Model
     /// <summary>
     /// Represents a single message within a chat room.
     /// </summary>
-    public class SphynxChatMessage : IEquatable<SphynxChatMessage>
+    public class SphynxMessageInfo : IEquatable<SphynxMessageInfo>
     {
         /// <summary>
         /// An ID for this specific message.
@@ -31,15 +31,20 @@ namespace Sphynx.Model
         public string Content { get; set; } = null!;
 
         /// <summary>
-        /// The timestamp at which this message was edited.
+        /// The most recent timestamp at which this message was edited.
         /// </summary>
-        public DateTimeOffset? EditTimestamp { get; set; }
+        public DateTimeOffset? EditedAt { get; set; }
 
-        public SphynxChatMessage()
+        /// <summary>
+        /// The timestamp at which this message was created.
+        /// </summary>
+        public DateTimeOffset CreatedAt { get; set; }
+
+        public SphynxMessageInfo()
         {
         }
 
-        public SphynxChatMessage(Guid roomId, Guid senderId, string content)
+        public SphynxMessageInfo(Guid roomId, Guid senderId, string content)
         {
             RoomId = roomId;
             SenderId = senderId;
@@ -47,9 +52,9 @@ namespace Sphynx.Model
         }
 
         /// <inheritdoc/>
-        public virtual bool Equals(SphynxChatMessage? other) => MessageId.Equals(other?.MessageId);
+        public virtual bool Equals(SphynxMessageInfo? other) => RoomId == other?.RoomId && MessageId.Equals(other?.MessageId);
 
         /// <inheritdoc/>
-        public override int GetHashCode() => MessageId.GetHashCode();
+        public override int GetHashCode() => HashCode.Combine(RoomId.GetHashCode(), MessageId.GetHashCode());
     }
 }
