@@ -5,18 +5,18 @@ using Sphynx.Model;
 
 namespace Sphynx.Network.Serialization.Model
 {
-    public class ChatMessageSerializer : TypeSerializer<SphynxChatMessage>
+    public class ChatMessageSerializer : TypeSerializer<SphynxMessageInfo>
     {
-        public override void Serialize(SphynxChatMessage model, ref BinarySerializer serializer)
+        public override void Serialize(SphynxMessageInfo model, ref BinarySerializer serializer)
         {
             serializer.WriteSnowflakeId(model.MessageId);
             serializer.WriteGuid(model.RoomId);
             serializer.WriteGuid(model.SenderId);
             serializer.WriteString(model.Content);
-            serializer.WriteDateTimeOffset(model.EditTimestamp ?? DateTimeOffset.MinValue);
+            serializer.WriteDateTimeOffset(model.EditedAt ?? DateTimeOffset.MinValue);
         }
 
-        public override SphynxChatMessage Deserialize(ref BinaryDeserializer deserializer)
+        public override SphynxMessageInfo Deserialize(ref BinaryDeserializer deserializer)
         {
             var msgId = deserializer.ReadSnowflakeId();
             var roomId = deserializer.ReadGuid();
@@ -24,13 +24,13 @@ namespace Sphynx.Network.Serialization.Model
             string? content = deserializer.ReadString();
             var editTimestamp = deserializer.ReadDateTimeOffset();
 
-            return new SphynxChatMessage
+            return new SphynxMessageInfo
             {
                 MessageId = msgId,
                 RoomId = roomId,
                 SenderId = senderId,
                 Content = content ?? string.Empty,
-                EditTimestamp = editTimestamp == DateTimeOffset.MinValue ? null : editTimestamp
+                EditedAt = editTimestamp == DateTimeOffset.MinValue ? null : editTimestamp
             };
         }
     }

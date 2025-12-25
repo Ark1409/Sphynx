@@ -1,7 +1,6 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using Sphynx.Core;
 using Sphynx.Network.Packet.Broadcast;
 using Sphynx.Network.Packet.Request;
 using Sphynx.Network.Packet.Response;
@@ -12,13 +11,13 @@ namespace Sphynx.Network.Serialization.Packet
     {
         protected override void SerializeRequest(MessagePostRequest packet, ref BinarySerializer serializer)
         {
-            serializer.WriteSnowflakeId(packet.RoomId);
+            serializer.WriteGuid(packet.RoomId);
             serializer.WriteString(packet.Message);
         }
 
         protected override MessagePostRequest DeserializeRequest(ref BinaryDeserializer deserializer, in RequestInfo requestInfo)
         {
-            var roomId = deserializer.ReadSnowflakeId();
+            var roomId = deserializer.ReadGuid();
             string message = deserializer.ReadString() ?? string.Empty;
 
             return new MessagePostRequest(requestInfo.SessionId, roomId, message)
