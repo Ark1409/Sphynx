@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using Sphynx.Utils;
 
 namespace Sphynx.Server
 {
@@ -87,9 +88,7 @@ namespace Sphynx.Server
         {
             ThrowIfStopped();
 
-            await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-            try
+            using (await _startSemaphore.RentAsync(cancellationToken).ConfigureAwait(false))
             {
                 // Propagate exceptions to concurrent callers
                 var serverTask = _serverTask;
@@ -108,10 +107,6 @@ namespace Sphynx.Server
                     Logger.LogDebug("Stopping {ServerName}...", Name);
                 }
             }
-            finally
-            {
-                _startSemaphore.Release();
-            }
 
             await StopAsync().ConfigureAwait(false);
         }
@@ -126,17 +121,14 @@ namespace Sphynx.Server
 
             try
             {
-                if (!_serverCts.IsCancellationRequested)
+                try
                 {
-                    try
-                    {
-                        _isInsideServerTask.Value = true;
-                        await (_serverTask = OnStartAsync(_serverCts.Token)).ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        _isInsideServerTask.Value = false;
-                    }
+                    _isInsideServerTask.Value = true;
+                    await (_serverTask = OnStartAsync(_serverCts.Token)).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _isInsideServerTask.Value = false;
                 }
             }
             catch (OperationCanceledException ex) when (ex.CancellationToken == _serverCts.Token)

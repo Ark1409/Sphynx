@@ -10,6 +10,7 @@ using Sphynx.Network.Transport;
 using Sphynx.Server.Infrastructure.Routing;
 using Sphynx.Server.Extensions;
 using Sphynx.Server.Infrastructure.Handlers;
+using Sphynx.Utils;
 
 namespace Sphynx.Server.Client
 {
@@ -113,11 +114,9 @@ namespace Sphynx.Server.Client
         {
             ThrowIfStopped();
 
-            await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
             Exception? runtimeException = null;
 
-            try
+            using (await _startSemaphore.RentAsync(cancellationToken).ConfigureAwait(false))
             {
                 // Propagate exceptions to concurrent callers
                 var clientTask = _clientTask;
@@ -129,20 +128,16 @@ namespace Sphynx.Server.Client
                 {
                     Logger.LogDebug("Starting client run loop...");
 
-                    runtimeException = await StartInternalAsync(cancellationToken).ConfigureAwait(false);
+                    runtimeException = await RunAsync(cancellationToken).ConfigureAwait(false);
 
                     Logger.LogDebug("Stopping client run loop...");
                 }
-            }
-            finally
-            {
-                _startSemaphore.Release();
             }
 
             await StopAsync(runtimeException).ConfigureAwait(false);
         }
 
-        private async ValueTask<Exception?> StartInternalAsync(CancellationToken cancellationToken)
+        private async ValueTask<Exception?> RunAsync(CancellationToken cancellationToken)
         {
             Debug.Assert(_startSemaphore.CurrentCount == 0);
             Debug.Assert(_clientTask == null);
@@ -152,17 +147,14 @@ namespace Sphynx.Server.Client
 
             try
             {
-                if (!_clientCts.IsCancellationRequested)
+                try
                 {
-                    try
-                    {
-                        _isInsideClientTask.Value = true;
-                        await (_clientTask = RunAsync(_clientCts.Token)).ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        _isInsideClientTask.Value = false;
-                    }
+                    _isInsideClientTask.Value = true;
+                    await (_clientTask = ReadPacketsAsync(_clientCts.Token)).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _isInsideClientTask.Value = false;
                 }
             }
             catch (OperationCanceledException ex) when (ex.CancellationToken == _clientCts.Token)
@@ -178,7 +170,7 @@ namespace Sphynx.Server.Client
             return null;
         }
 
-        private async Task RunAsync(CancellationToken cancellationToken)
+        private async Task ReadPacketsAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
