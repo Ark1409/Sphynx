@@ -1,0 +1,4 @@
+[submodule "Sphynx.Client/lib/dotnet-curses"]
+	path = Sphynx.Client/lib/dotnet-curses
+	url = https://github.com/Ark1409/dotnet-curses.git
+	branch = sphynx
