@@ -44,7 +44,7 @@ namespace Sphynx.Bindables
     }
 
     /// <summary>
-    /// A covariant read-only representation of a bindable object which holds a singular value.
+    /// A co-variant read-only representation of a bindable object which holds a singular value.
     /// </summary>
     /// <typeparam name="T">The type of value encapsulated by this <see cref="IBindable{T}"/>.</typeparam>
     /// <seealso cref="IReadOnlyBindable{T}"/>

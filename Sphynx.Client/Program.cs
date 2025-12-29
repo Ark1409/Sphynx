@@ -1,4 +1,6 @@
 ﻿using Mindmagma.Curses;
+using Sphynx.Bindables;
+using Sphynx.Utils;
 
 namespace Sphynx.Client
 {
