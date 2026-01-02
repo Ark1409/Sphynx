@@ -1,6 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Sphynx.Storage
@@ -12,28 +13,29 @@ namespace Sphynx.Storage
     /// <remarks>The pool starts off empty, requiring items to enqueued before they can be taken from the pool.</remarks>
     public class FixedObjectPool<T> where T : class
     {
-        // Whether to perform lockless optimizations which can falsely report pool emptiness.
-        private readonly bool _fastChecks;
+        private readonly ConcurrentBag<T> _items = new();
+        private readonly int _size;
 
-        // We store the first item in its own field since we expect to be able to satisfy most requests with it.
-        private T? _firstItem;
-        private readonly T?[] _items;
+        // An upper bound on the current item count
+        private int _upperCount;
 
         /// <summary>
-        /// Returns the maximum capacity of this pool.
+        /// Creates a new fixed size pool.
         /// </summary>
-        public int Capacity => _items.Length + 1;
+        public FixedObjectPool() : this(Environment.ProcessorCount * 2)
+        {
+        }
 
         /// <summary>
-        /// Creates a new fixed size pool
+        /// Creates a new fixed size pool.
         /// </summary>
         /// <param name="size">The number of items of <typeparamref name="T"/> which the pool can hold at once.</param>
-        /// <param name="fastChecks">Whether to perform lockless optimizations which can falsely report pool emptiness,
-        /// but can increase performance.</param>
-        public FixedObjectPool(int size, bool fastChecks = true)
+        public FixedObjectPool(int size)
         {
-            _items = new T?[size - 1];
-            _fastChecks = fastChecks;
+            if (size <= 0)
+                throw new ArgumentOutOfRangeException(nameof(size), "Size must be greater than 0");
+
+            _size = size;
         }
 
         /// <summary>
@@ -43,73 +45,53 @@ namespace Sphynx.Storage
         /// <returns>Whether we could take from the pool.</returns>
         public bool TryTake([NotNullWhen(true)] out T? item)
         {
-            // If allowed, we de not synchronize our initial read.
-            // In the worst case, we miss some recently returned objects.
-            item = _fastChecks ? _firstItem : Volatile.Read(ref _firstItem);
-
-            if (item is null)
-                return TryTakeSlow(out item);
-
-            if (Interlocked.CompareExchange(ref _firstItem, null, item) == item)
-                return true;
-
-            return TryTakeSlow(out item);
-        }
-
-        private bool TryTakeSlow(out T? item)
-        {
-            for (int i = 0; i < _items.Length; i++)
+            // Optimistically perform a non-interlocked read
+            if (_upperCount <= 0)
             {
-                // If allowed, we de not synchronize our read. In the worst case, we miss some recently returned objects.
-                item = _fastChecks ? _items[i] : Volatile.Read(ref _items[i]);
-
-                if (item is null)
-                    continue;
-
-                if (Interlocked.CompareExchange(ref _items[i], null, item) == item)
-                    return true;
+                item = null;
+                return false;
             }
 
-            item = null;
-            return false;
+            if (_items.TryTake(out item))
+            {
+                Interlocked.Decrement(ref _upperCount);
+                return true;
+            }
+            else
+            {
+                // This either indicates that some item will be enqueued shortly, or that
+                // _upperCount is out-of-sync with the real item count. Let's leave this
+                // be for now, as it would be difficult to try and re-sync the _upperCount
+                // while also ensuring no other threads have updated it without any mutual
+                // exclusion.
+
+                item = null;
+                return false;
+            }
         }
 
         /// <summary>
-        /// Attempts to return an object to the pool
+        /// Attempts to return an object to the pool.
         /// </summary>
         /// <param name="obj">The object to return.</param>
         /// <returns>Whether the object could be returned, or if the pull was full.</returns>
         public bool Return(T obj)
         {
-            ArgumentNullException.ThrowIfNull(obj, nameof(obj));
+            ArgumentNullException.ThrowIfNull(obj);
 
-            var firstItem = _fastChecks ? _firstItem : Volatile.Read(ref _firstItem);
+            // Optimistically perform a non-interlocked read
+            if (_upperCount >= _size && _items.Count >= _size)
+                return false;
 
-            // The first slot is already full.
-            if (firstItem is not null)
-                return ReturnSlow(obj);
+            // We could have a situation where two threads increment the count but only one
+            // is able to enqueue their item. To avoid enforcing mutual exclusion, let us
+            // simply work with _upperCount as an upper-bound on the actual item count.
+            if (Interlocked.Increment(ref _upperCount) > _size)
+                return false;
 
-            // Try and reserve the first slot for ourselves.
-            if (Interlocked.CompareExchange(ref _firstItem, obj, firstItem) == firstItem)
-                return true;
+            _items.Add(obj);
 
-            return ReturnSlow(obj);
-        }
-
-        private bool ReturnSlow(T obj)
-        {
-            for (int i = 0; i < _items.Length; i++)
-            {
-                var itemRef = _fastChecks ? _items[i] : Volatile.Read(ref _items[i]);
-
-                if (itemRef is not null)
-                    continue;
-
-                if (Interlocked.CompareExchange(ref _items[i], obj, itemRef) == itemRef)
-                    return true;
-            }
-
-            return false;
+            return true;
         }
     }
 }

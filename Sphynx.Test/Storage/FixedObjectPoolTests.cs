@@ -9,10 +9,10 @@ namespace Sphynx.Test.Storage
     public class FixedObjectPoolTests
     {
         [Test]
-        public void FixedObjectPool_ShouldAdd_WHenPoolEmpty()
+        public void FixedObjectPool_ShouldAdd_WhenPoolEmpty()
         {
             // Arrange
-            var pool = new FixedObjectPool<TestObject>(16, fastChecks: false);
+            var pool = new FixedObjectPool<TestObject>(16);
             var obj = new TestObject
             {
                 Number = 10,
@@ -36,7 +36,7 @@ namespace Sphynx.Test.Storage
         {
             // Arrange
             const int POOL_SIZE = 16;
-            var pool = new FixedObjectPool<TestObject>(POOL_SIZE, fastChecks: false);
+            var pool = new FixedObjectPool<TestObject>(POOL_SIZE);
             var obj = new TestObject
             {
                 Number = 10,

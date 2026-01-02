@@ -29,7 +29,7 @@ namespace Sphynx.Storage
         }
 
         /// <summary>
-        /// Creates a new <see cref="MemoryCache{TKey,T}"/> with an initial cleanup period of <see cref="Ini"/>
+        /// Creates a new <see cref="MemoryCache{TKey,T}"/> with an initial cleanup period of <paramref name="initialCleanupPeriod"/>.
         /// </summary>
         /// <param name="initialCleanupPeriod">The initial cleanup period</param>
         /// <param name="adjustCleanupPeriod"></param>

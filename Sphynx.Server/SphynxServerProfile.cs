@@ -4,6 +4,7 @@
 #nullable disable
 
 using System.Net;
+using Microsoft;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 
@@ -14,7 +15,7 @@ namespace Sphynx.Server
     /// </summary>
     /// <remarks>The profile should be configured and <see cref="SphynxServer(SphynxServerProfile)">passed to a server</see>
     /// during the bootstrap process.</remarks>
-    public abstract class SphynxServerProfile : IDisposable
+    public abstract class SphynxServerProfile : IDisposableObservable
     {
         /// <summary>
         /// The default IP endpoint for a <see cref="SphynxServer"/>.

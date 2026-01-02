@@ -56,7 +56,7 @@ namespace Sphynx.Server
 
             Logger.LogDebug("Initializing socket pool");
 
-            _socketPool = new FixedObjectPool<Socket>(Profile.Backlog, fastChecks: false);
+            _socketPool = new FixedObjectPool<Socket>(Profile.Backlog);
 
             Logger.LogDebug("Initializing listening socket");
 
