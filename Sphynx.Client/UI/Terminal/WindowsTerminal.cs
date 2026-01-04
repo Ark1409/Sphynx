@@ -284,23 +284,31 @@ namespace Sphynx.Client.Tui.Terminal
                     switch (val)
                     {
                         case < 8:
-                            _escapeBuilder.Append($"{30 + ac.Color};");
+                        {
+                            int v = 30 + val;
+                            _escapeBuilder.Append(v).Append(';');
                             break;
+                        }
                         case < 16:
-                            _escapeBuilder.Append($"{90 + ac.Color - 8};");
+                        {
+                            int v = 90 + val - 8;
+                            _escapeBuilder.Append(v).Append(';');
                             break;
+                        }
                         case <= 255:
-                            _escapeBuilder.Append($"38;5;{ac.Color};");
+                        {
+                            _escapeBuilder.Append($"38;5;").Append(val).Append(';');
                             break;
+                        }
                     }
                     break;
                 case TerminalTrueColor tc:
                     if (currentColor.Foreground is TerminalTrueColor ctc && ctc.Equals(tc))
                         break;
-                    _escapeBuilder.Append($"38;2;{tc.R};{tc.G};{tc.B};");
+                    _escapeBuilder.Append($"38;2;").Append(tc.R).Append(';').Append(tc.G).Append(';').Append(tc.B).Append(';');
                     break;
                 default:
-                    if (cellColor.Foreground.Equals(ITerminalColor.DefaultForeground))
+                    if (cellColor.Foreground is ITerminalColor.TerminalDefaultColor)
                     {
                         _escapeBuilder.Append("39;");
                         break;
@@ -317,23 +325,31 @@ namespace Sphynx.Client.Tui.Terminal
                     switch (val)
                     {
                         case < 8:
-                            _escapeBuilder.Append($"{40 + ac.Color};");
+                        {
+                            int v = 40 + val;
+                            _escapeBuilder.Append(v).Append(';');
                             break;
+                        }
                         case < 16:
-                            _escapeBuilder.Append($"{100 + ac.Color - 8};");
+                        {
+                            int v = 100 + val - 8;
+                            _escapeBuilder.Append(v).Append(';');
                             break;
+                        }
                         case <= 255:
-                            _escapeBuilder.Append($"48;5;{ac.Color};");
+                        {
+                            _escapeBuilder.Append($"48;5;").Append(val).Append(';');
                             break;
+                        }
                     }
                     break;
                 case TerminalTrueColor tc:
                     if (currentColor.Background is TerminalTrueColor ctc && ctc.Equals(tc))
                         break;
-                    _escapeBuilder.Append($"48;2;{tc.R};{tc.G};{tc.B};");
+                    _escapeBuilder.Append($"48;2;").Append(tc.R).Append(';').Append(tc.G).Append(';').Append(tc.B).Append(';');
                     break;
                 default:
-                    if (cellColor.Foreground.Equals(ITerminalColor.DefaultBackground))
+                    if (cellColor.Background is ITerminalColor.TerminalDefaultColor)
                     {
                         _escapeBuilder.Append("49;");
                         break;
