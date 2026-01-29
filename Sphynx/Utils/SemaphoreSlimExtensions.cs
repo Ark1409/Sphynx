@@ -5,10 +5,27 @@ namespace Sphynx.Utils
 {
     public static class SemaphoreSlimExtensions
     {
-        public static async ValueTask<ValueInvokeOnDisposal<SemaphoreSlim>> RentAsync(this SemaphoreSlim sem, CancellationToken cancellationToken = default)
+        public static ValueTask<ValueInvokeOnDisposal<SemaphoreSlim>> RentAsync(this SemaphoreSlim sem, CancellationToken cancellationToken = default)
         {
-            await sem.WaitAsync(cancellationToken).ConfigureAwait(false);
-            return new ValueInvokeOnDisposal<SemaphoreSlim>(sem, static state => state.Release());
+            var waitAsync = sem.WaitAsync(cancellationToken);
+
+            if (waitAsync.IsCompleted)
+            {
+                if (waitAsync.IsCompletedSuccessfully)
+                    return ValueTask.FromResult(new ValueInvokeOnDisposal<SemaphoreSlim>(sem, static state => state.Release()));
+
+                return waitAsync.IsCanceled
+                    ? ValueTask.FromCanceled<ValueInvokeOnDisposal<SemaphoreSlim>>(cancellationToken)
+                    : ValueTask.FromException<ValueInvokeOnDisposal<SemaphoreSlim>>(waitAsync.Exception!);
+            }
+
+            return Core(sem, waitAsync);
+
+            static async ValueTask<ValueInvokeOnDisposal<SemaphoreSlim>> Core(SemaphoreSlim sem, Task waitTask)
+            {
+                await waitTask.ConfigureAwait(false);
+                return new ValueInvokeOnDisposal<SemaphoreSlim>(sem, static state => state.Release());
+            }
         }
 
         public static ValueInvokeOnDisposal<SemaphoreSlim> Rent(this SemaphoreSlim sem, CancellationToken cancellationToken = default)
