@@ -32,10 +32,7 @@ namespace Sphynx.Storage
         /// <param name="size">The number of items of <typeparamref name="T"/> which the pool can hold at once.</param>
         public FixedObjectPool(int size)
         {
-            if (size <= 0)
-                throw new ArgumentOutOfRangeException(nameof(size), "Size must be greater than 0");
-
-            _size = size;
+            ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(_size = size, 0);
         }
 
         /// <summary>
@@ -45,13 +42,6 @@ namespace Sphynx.Storage
         /// <returns>Whether we could take from the pool.</returns>
         public bool TryTake([NotNullWhen(true)] out T? item)
         {
-            // Optimistically perform a non-interlocked read
-            if (_upperCount <= 0)
-            {
-                item = null;
-                return false;
-            }
-
             if (_items.TryTake(out item))
             {
                 Interlocked.Decrement(ref _upperCount);
