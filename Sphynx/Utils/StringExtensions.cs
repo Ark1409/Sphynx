@@ -1,10 +1,20 @@
-﻿using System.Diagnostics.Contracts;
+// Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
+using System.Diagnostics.Contracts;
 using System.Runtime.CompilerServices;
 
-namespace Sphynx.Client.Utils
+namespace Sphynx.Utils
 {
-    internal static class StringExtensions
+    public static class StringExtensions
     {
+        /// <summary>
+        /// Constructs a string with exactly <paramref name="count"/> occurences of the specified string within it.
+        /// </summary>
+        /// <param name="str">The string to repeat.</param>
+        /// <param name="count">Total number of times <pararef name="str"/> should appear within the string. <c>0</c>
+        /// gives the empty string.</param>
+        /// <returns>The repeated string.</returns>
         public static string Repeat(this string str, int count)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(count);
@@ -23,7 +33,7 @@ namespace Sphynx.Client.Utils
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static int NumberOf(this string str, char ch)
+        public static int Count(this string str, char ch)
         {
             int count = 0;
             for (int i = 0; (i = str.IndexOf(ch, i)) != -1; count++, i++) { }

@@ -22,6 +22,6 @@ namespace Sphynx.Utils
 
         public static bool HasOverlap(int length, params Range[] ranges) => ranges.HasOverlap(length);
 
-        public static bool HasOverlap(this Range r, int length, params Range[] ranges) => HasOverlap([r, .. ranges], length);
+        public static bool HasOverlap(this Range r, int length, params Range[] ranges) => HasOverlap(ranges.Append(r), length);
     }
 }

@@ -3,7 +3,7 @@
 
 namespace Sphynx.Utils
 {
-    internal static class CollectionUtils
+    public static class CollectionUtils
     {
         public static ISet<T>? CreateNullableSet<T>(IEnumerable<T>? enumerable)
         {

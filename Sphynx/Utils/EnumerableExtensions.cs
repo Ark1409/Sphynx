@@ -11,6 +11,11 @@ namespace Sphynx.Utils
         {
             return new DualEnumerator<T>(@enum);
         }
+
+        public static IEnumerable<T> Yield<T>(this T item)
+        {
+            return [item];
+        }
     }
 
     public readonly struct DualEnumerator<T> : IEnumerable<T>, IAsyncEnumerable<T>

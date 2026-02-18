@@ -1,11 +1,12 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-namespace Sphynx.Client.Tui.Terminal
+
+namespace Sphynx.Client.Tui
 {
-    public class NCursesTerminal : Terminal, IStreamTerminal
+    public class NCursesTerminal : Terminal
     {
-        public override bool HasTrueColor => throw new NotImplementedException();
+        public override TerminalColorSupport ColorSupport => throw new NotImplementedException();
 
         public override bool HasMouseSupport => throw new NotImplementedException();
 
@@ -16,6 +17,9 @@ namespace Sphynx.Client.Tui.Terminal
         public override int Columns => throw new NotImplementedException();
 
         public override (int x, int y) CursorPosition { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public override ITerminalColor CursorColor { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public override TerminalCursorShape CursorShape { set => throw new NotImplementedException(); }
+        public override TerminalCursorVisibility CursorVisibility { set => throw new NotImplementedException(); }
 
         public override void Clear()
         {
@@ -32,12 +36,7 @@ namespace Sphynx.Client.Tui.Terminal
             throw new NotImplementedException();
         }
 
-        public void Flush()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void MoveCursor(int dx, int dy)
+        public override void Flush()
         {
             throw new NotImplementedException();
         }
@@ -47,22 +46,7 @@ namespace Sphynx.Client.Tui.Terminal
             throw new NotImplementedException();
         }
 
-        public override int ReadKey(TimeSpan timeout)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void SetCursorColor(ITerminalColor color)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void SetCursorShape(CursorShape shape)
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void SetCursorVisiblity(CursorVisibility visibility)
+        public override TerminalEvent PollEvent()
         {
             throw new NotImplementedException();
         }
@@ -73,6 +57,11 @@ namespace Sphynx.Client.Tui.Terminal
         }
 
         public override void Write(ColoredString str)
+        {
+            throw new NotImplementedException();
+        }
+
+        protected internal override bool CanPollEvent(Type t)
         {
             throw new NotImplementedException();
         }

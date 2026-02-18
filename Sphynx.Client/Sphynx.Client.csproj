@@ -6,7 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <LangVersion>default</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,5 +20,4 @@
   <ItemGroup>
     <InternalsVisibleTo Include="$(SolutionName).Test" />
   </ItemGroup>
-
 </Project>
