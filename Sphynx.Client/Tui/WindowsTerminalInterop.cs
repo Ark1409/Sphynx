@@ -9,7 +9,7 @@ using WORD = ushort;
 using DWORD = uint;
 using HANDLE = System.IntPtr;
 using BOOL = int;
-using COLORREF = int;
+using COLORREF = uint;
 using WCHAR = char;
 using CHAR = byte;
 
@@ -19,7 +19,7 @@ using System.ComponentModel;
 
 namespace Sphynx.Client.Tui
 {
-    internal static class WindowsTerminalInterop
+    internal static partial class WindowsTerminalInterop
     {
         public const DWORD STD_INPUT_HANDLE = unchecked((DWORD)(-10));
         public const DWORD STD_OUTPUT_HANDLE = unchecked((DWORD)(-11));
@@ -54,14 +54,14 @@ namespace Sphynx.Client.Tui
         public const DWORD MENU_EVENT = 0x0008;
         public const DWORD FOCUS_EVENT = 0x0010;
 
-        [DllImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
-        public static extern BOOL GetConsoleMode(HANDLE hConsoleHandle, out DWORD lpMode);
+        [LibraryImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
+        public static partial BOOL GetConsoleMode(HANDLE hConsoleHandle, out DWORD lpMode);
 
-        [DllImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
-        public static extern BOOL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
+        [LibraryImport("api-ms-win-core-console-l1-1-0.dll", SetLastError = true)]
+        public static partial BOOL SetConsoleMode(HANDLE hConsoleHandle, DWORD dwMode);
 
-        [DllImport("api-ms-win-core-processenvironment-l1-1-0.dll", SetLastError = true)]
-        public static extern HANDLE GetStdHandle(DWORD nStdHandle);
+        [LibraryImport("api-ms-win-core-processenvironment-l1-1-0.dll", SetLastError = true)]
+        public static partial HANDLE GetStdHandle(DWORD nStdHandle);
 
         public static bool AddConsoleModes(HANDLE hConsoleHandle, DWORD modes)
         {
@@ -163,11 +163,8 @@ namespace Sphynx.Client.Tui
             return true;
         }
 
-        [DllImport("api-ms-win-core-file-l1-1-0.dll", SetLastError = true)]
-        public static extern BOOL WriteFile(HANDLE hFile, IntPtr lpBuffer, DWORD nNumberOfBytesToWrite, out DWORD lpNumberOfBytesWritten, IntPtr lpOverlapped);
-
-        [DllImport("api-ms-win-core-file-l1-1-0.dll", SetLastError = true)]
-        public static extern DWORD SetFilePointer(HANDLE hFile, int lDistanceToMove, ref int lpDistanceToMoveHigh, DWORD dwMoveMethod);
+        [LibraryImport("api-ms-win-core-file-l1-1-0.dll", SetLastError = true)]
+        public static partial DWORD SetFilePointer(HANDLE hFile, int lDistanceToMove, ref int lpDistanceToMoveHigh, DWORD dwMoveMethod);
 
         public const DWORD FILE_BEGIN = 0;
         public const DWORD FILE_CURRENT = 1;
@@ -175,8 +172,8 @@ namespace Sphynx.Client.Tui
 
         public const DWORD INVALID_SET_FILE_POINTER = unchecked((DWORD)(-1));
 
-        [DllImport("api-ms-win-core-file-l1-1-0.dll", SetLastError = true)]
-        public static extern BOOL FlushFileBuffers(HANDLE hFile);
+        [LibraryImport("api-ms-win-core-file-l1-1-0.dll", SetLastError = true)]
+        public static partial BOOL FlushFileBuffers(HANDLE hFile);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void CheckWin32Return(BOOL ret)
@@ -220,11 +217,11 @@ namespace Sphynx.Client.Tui
             public COORD dwMaximumWindowSize;
         }
 
-        [DllImport("api-ms-win-core-console-l2-1-0.dll", SetLastError = true)]
-        public static extern BOOL GetConsoleScreenBufferInfo(HANDLE hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo);
+        [LibraryImport("api-ms-win-core-console-l2-1-0.dll", SetLastError = true)]
+        public static partial BOOL GetConsoleScreenBufferInfo(HANDLE hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo);
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct CONSOLE_SCREEN_BUFFER_INFOEX
+        public unsafe struct CONSOLE_SCREEN_BUFFER_INFOEX
         {
             public ULONG cbSize;
             public COORD dwSize;
@@ -235,12 +232,12 @@ namespace Sphynx.Client.Tui
             public WORD wPopupAttributes;
             public BOOL bFullscreenSupported;
 
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16, ArraySubType = UnmanagedType.I4)]
-            public COLORREF[] ColorTable;
+            public const int ColorTableLength = 16;
+            public fixed COLORREF ColorTable[ColorTableLength];
         }
 
-        [DllImport("api-ms-win-core-console-l2-1-0.dll", SetLastError = true)]
-        public static extern BOOL GetConsoleScreenBufferInfoEx(HANDLE hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFOEX lpConsoleScreenBufferInfoEx);
+        [LibraryImport("api-ms-win-core-console-l2-1-0.dll", SetLastError = true)]
+        public static partial BOOL GetConsoleScreenBufferInfoEx(HANDLE hConsoleOutput, out CONSOLE_SCREEN_BUFFER_INFOEX lpConsoleScreenBufferInfoEx);
 
         public static (byte R, byte G, byte B) GetRGB(COLORREF col)
         {
@@ -286,7 +283,6 @@ namespace Sphynx.Client.Tui
         [StructLayout(LayoutKind.Sequential)]
         public struct KEY_EVENT_RECORD
         {
-            [MarshalAs(UnmanagedType.Bool)]
             public BOOL bKeyDown;
 
             public WORD wRepeatCount;
@@ -312,9 +308,9 @@ namespace Sphynx.Client.Tui
         public struct MOUSE_EVENT_RECORD
         {
             public COORD dwMousePosition;
-            public uint dwButtonState;
-            public uint dwControlKeyState;
-            public uint dwEventFlags;
+            public DWORD dwButtonState;
+            public DWORD dwControlKeyState;
+            public DWORD dwEventFlags;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -332,22 +328,14 @@ namespace Sphynx.Client.Tui
         [StructLayout(LayoutKind.Sequential)]
         public struct FOCUS_EVENT_RECORD
         {
-            [MarshalAs(UnmanagedType.Bool)]
             public BOOL bSetFocus;
         }
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
-        public static extern BOOL ReadConsoleInputExW(
+        [LibraryImport("kernel32.dll", EntryPoint = "ReadConsoleInputExW", SetLastError = true)]
+        public static partial BOOL ReadConsoleInputEx(
                 HANDLE hConsoleInput,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] INPUT_RECORD[] lpBuffer,
+                [In, Out] INPUT_RECORD[] lpBuffer,
                 DWORD nLength,
                 out DWORD lpNumberOfEventsRead, USHORT wFlags);
-
-        [DllImport("api-ms-win-core-console-l1-2-0.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
-        public static extern BOOL PeekConsoleInputW(
-                HANDLE hConsoleInput,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 2)] INPUT_RECORD[] lpBuffer,
-                DWORD nLength,
-                out DWORD lpNumberOfEventsRead);
     }
 }

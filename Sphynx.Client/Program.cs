@@ -45,6 +45,7 @@ namespace Sphynx.Client
                         shouldRun = false;
                     }
                 }
+                term.Flush();
             }
             // term.WriteLine($"Lines: {term.Lines}");
             // term.WriteLine($"Columns: {term.Columns}");

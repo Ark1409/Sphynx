@@ -2,11 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
-using Sphynx.Storage;
 using Sphynx.Utils;
 
 namespace Sphynx.Client.Tui
@@ -102,8 +102,11 @@ namespace Sphynx.Client.Tui
             var ret = WindowsTerminalInterop.GetConsoleScreenBufferInfoEx(Output.DangerousGetHandle(), out var info);
             if (ret == 0) return base.TrueColorFor(color);
 
-            var colors = WindowsTerminalInterop.GetRGB(info.ColorTable[(int)color.Color]);
-            return new(colors.R, colors.G, colors.B);
+            unsafe
+            {
+                var colors = WindowsTerminalInterop.GetRGB(info.ColorTable[(int)color.Color]);
+                return new(colors.R, colors.G, colors.B);
+            }
         }
 
         public sealed override TerminalAnsiColor NearestAnsiColor(TerminalTrueColor color)
@@ -112,11 +115,16 @@ namespace Sphynx.Client.Tui
             var ret = WindowsTerminalInterop.GetConsoleScreenBufferInfoEx(Output.DangerousGetHandle(), out var info);
             if (ret == 0) return base.NearestAnsiColor(color);
 
-            return color.NearestAnsiColorFrom(info.ColorTable.Select((e, i) =>
+            unsafe
             {
-                var colors = WindowsTerminalInterop.GetRGB(e);
-                return ((TerminalAnsiColor.AnsiColors)i, new TerminalTrueColor(colors.R, colors.G, colors.B));
-            }).ToArray());
+                var arr = new ReadOnlySpan<uint>(info.ColorTable, WindowsTerminalInterop.CONSOLE_SCREEN_BUFFER_INFOEX.ColorTableLength)
+                    .ToImmutableArray();
+                return color.NearestAnsiColorFrom(arr.Select((e, i) =>
+                {
+                    var colors = WindowsTerminalInterop.GetRGB(e);
+                    return ((TerminalAnsiColor.AnsiColors)i, new TerminalTrueColor(colors.R, colors.G, colors.B));
+                }).ToArray());
+            }
         }
 
         public sealed override void Write(ColoredString str) => _strat.Write(str);
@@ -162,7 +170,7 @@ namespace Sphynx.Client.Tui
         {
             const int READ_COUNT = 1;
             using var evs = ArrayPool<WindowsTerminalInterop.INPUT_RECORD>.Shared.AutoRent(READ_COUNT);
-            var ret = WindowsTerminalInterop.ReadConsoleInputExW(Input.DangerousGetHandle(), evs, READ_COUNT, out var readCount, 0);
+            var ret = WindowsTerminalInterop.ReadConsoleInputEx(Input.DangerousGetHandle(), evs, READ_COUNT, out var readCount, 0);
             if (ret == 0) return null;
             if (readCount <= 0) return null;
             if (readCount != READ_COUNT) throw new Exception($"Error while reading from HandleWindowsTerminal: Expected {READ_COUNT} input record read(s), got {readCount}");
