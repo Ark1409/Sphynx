@@ -14,7 +14,7 @@ namespace Sphynx.Utils
 
         public static IEnumerable<T> Yield<T>(this T item)
         {
-            return [item];
+            return new[] { item };
         }
     }
 

@@ -12,12 +12,16 @@ namespace Sphynx.Utils
         /// Constructs a string with exactly <paramref name="count"/> occurences of the specified string within it.
         /// </summary>
         /// <param name="str">The string to repeat.</param>
-        /// <param name="count">Total number of times <pararef name="str"/> should appear within the string. <c>0</c>
-        /// gives the empty string.</param>
+        /// <param name="count">Total number of times <pararef name="str"/> should appear within the resulting string.
+        /// <c>0</c> gives the <see cref="string.Empty">empty string.</see></param>
         /// <returns>The repeated string.</returns>
         public static string Repeat(this string str, int count)
         {
-            ArgumentOutOfRangeException.ThrowIfNegative(count);
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(count), $"{nameof(count)} cannot be negative");
+            }
+
             if (count == 0) return string.Empty;
             if (count == 1) return str;
             if (str.Length == 1) return Repeat(str[0], count);

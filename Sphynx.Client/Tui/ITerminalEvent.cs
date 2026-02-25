@@ -2,6 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Collections.Concurrent;
+using System.Net.Http.Headers;
+using System.Threading.Channels;
 using Sphynx.Utils;
 
 namespace Sphynx.Client.Tui
@@ -51,24 +53,38 @@ namespace Sphynx.Client.Tui
     public class TerminalEventPoller
     {
         private readonly Terminal _term;
-        private ConcurrentQueue<TerminalEvent> _pendingEvents = new();
-        private Task? _task;
-        private bool _shouldRunTask = false;
+        private readonly BlockingCollection<TerminalEvent> _pendingEvents = new(new ConcurrentQueue<TerminalEvent>());
+
+        private Task? _pollTask;
+        private Task? _regularPollTask;
+        private bool _shouldRunPollTask = false;
+        private volatile bool _shouldRunRegularPollTask = false;
+        private readonly object _needEventCountLock = new();
+        private volatile int _needEventCount = 0;
+
         private static readonly Type[] _eventTypes
             = [typeof(TerminalKeyEvent), typeof(TerminalWindowEvent), typeof(TerminalMouseMoveEvent), typeof(TerminalMouseClickEvent), typeof(TerminalMouseScrollEvent)];
         private List<Type> _currentTypes = new(_eventTypes.Length);
         private readonly object _currentTypesLock = new();
+
+        public bool AutoRefresh { get; set; } = false;
 
         public TerminalEventPoller(Terminal term)
         {
             _term = term;
         }
 
+        /// <summary>
+        /// Begin polling for those tasks which the provided Terminal may be unable to handle.
+        /// </summary>
         public void Start()
         {
             Refresh();
         }
 
+        /// <summary>
+        /// Updates the list of tasks which the provided Terminal may be unable to handle.
+        /// </summary>
         public void Refresh()
         {
             lock (_currentTypesLock)
@@ -87,33 +103,96 @@ namespace Sphynx.Client.Tui
                     }
                 }
 
-                _shouldRunTask = _currentTypes.Count > 0;
+                _shouldRunPollTask = _currentTypes.Count > 0;
             }
 
-            if (_shouldRunTask)
+            if (_shouldRunPollTask)
             {
-                if (_task == null || _task.IsCompleted)
-                    _task = Task.Factory.StartNew(PollRunner, TaskCreationOptions.LongRunning);
+                if (_pollTask == null || _pollTask.IsCompleted)
+                    _pollTask = Task.Factory.StartNew(PollRunner, TaskCreationOptions.LongRunning);
             }
             else
-                _task = null;
+                _pollTask = AutoRefresh ? null : Task.CompletedTask;
+
+            _shouldRunRegularPollTask = _shouldRunPollTask;
+            if (_shouldRunRegularPollTask)
+            {
+                if (_regularPollTask == null || _regularPollTask.IsCompleted)
+                    _regularPollTask = Task.Factory.StartNew(RegularPollRunner, TaskCreationOptions.LongRunning);
+            }
+            else
+                _regularPollTask = AutoRefresh ? null : Task.CompletedTask;
+
+            if (!_shouldRunPollTask || !_shouldRunRegularPollTask)
+            {
+                lock (_needEventCountLock)
+                    Monitor.PulseAll(_needEventCountLock);
+            }
         }
 
         public TerminalEvent PollEvent()
         {
-            if (_task == null) Refresh();
-            if (_pendingEvents.TryDequeue(out var ev))
+            if (_pollTask == null || _regularPollTask == null) Refresh();
+
+            if (!_shouldRunRegularPollTask && !_shouldRunPollTask)
             {
-                return ev;
+                if (_pendingEvents.TryTake(out var v))
+                {
+                    lock (_needEventCountLock)
+                        _needEventCount++;
+                    return v;
+                }
+                return _term.PollEvent();
             }
 
-            return _term.PollEvent();
+            lock (_needEventCountLock)
+            {
+                _needEventCount++;
+                if (_needEventCount > 0)
+                    Monitor.PulseAll(_needEventCountLock);
+            }
+
+            return _pendingEvents.Take();
+        }
+
+        private void RegularPollRunner()
+        {
+            while (_shouldRunRegularPollTask)
+            {
+                lock (_needEventCountLock)
+                {
+                    while (_needEventCount <= 0 && _shouldRunRegularPollTask)
+                    {
+                        Monitor.Wait(_needEventCountLock);
+                    }
+                }
+
+                if (!_shouldRunRegularPollTask) break;
+
+                var ev = _term.PollEvent();
+                _pendingEvents.Add(ev);
+
+                lock (_needEventCountLock)
+                {
+                    _needEventCount--;
+                }
+            }
         }
 
         private void PollRunner()
         {
-            while (_shouldRunTask)
+            while (_shouldRunPollTask)
             {
+                lock (_needEventCountLock)
+                {
+                    while (_needEventCount <= 0 && _shouldRunPollTask)
+                    {
+                        Monitor.Wait(_needEventCountLock);
+                    }
+                }
+
+                if (!_shouldRunPollTask) break;
+
                 lock (_currentTypesLock)
                 {
                     foreach (var type in _currentTypes)
@@ -124,7 +203,8 @@ namespace Sphynx.Client.Tui
                         }
                     }
                 }
-                Thread.Sleep(1000 / 60);
+
+                Thread.Sleep(1000 / 120);
             }
         }
 
@@ -139,7 +219,11 @@ namespace Sphynx.Client.Tui
             {
                 var oldSize = _currentWindowSize.Value;
                 _currentWindowSize = newSize;
-                _pendingEvents.Enqueue(new TerminalWindowEvent(_term, oldSize, newSize));
+                _pendingEvents.Add(new TerminalWindowEvent(_term, oldSize, newSize));
+                lock (_needEventCountLock)
+                {
+                    _needEventCount--;
+                }
             }
         }
     }
