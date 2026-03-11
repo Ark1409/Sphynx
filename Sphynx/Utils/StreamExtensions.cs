@@ -81,7 +81,9 @@ namespace Sphynx.Utils
 
                     while (skipCount < count)
                     {
-                        int bytesRead = await stream.ReadAsync(skipMemory, CancellationToken.None).ConfigureAwait(false);
+                        int skipChunk = Math.Min(count - skipCount, skipSize);
+                        int bytesRead = await stream.ReadAsync(skipMemory[..skipChunk], CancellationToken.None)
+                            .ConfigureAwait(false);
 
                         if (bytesRead <= 0)
                             break;
