@@ -126,7 +126,7 @@ namespace Sphynx.Network.Transport
 
             private class PoolableFrameChannel : Channel<PooledChannelFrame>, IAsyncDisposable, IDisposable
             {
-                private static readonly FixedObjectPool<CancellationTokenSource> _ctsPool = new();
+                private static readonly ObjectPool<CancellationTokenSource> _ctsPool = new();
 
                 private TaskCompletionSource _tcs = new();
                 private CancellationTokenSource _cts = new();

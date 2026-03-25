@@ -27,7 +27,7 @@ namespace Sphynx.Server
         protected Socket? ServerSocket { get; private set; }
 
         private readonly ConcurrentDictionary<Guid, SphynxTcpClient> _connectedClients = new();
-        private FixedObjectPool<Socket>? _socketPool;
+        private ObjectPool<Socket>? _socketPool;
 
         private readonly SemaphoreSlim _disposeSemaphore = new(1, 1);
         private bool _disposed;
@@ -56,7 +56,7 @@ namespace Sphynx.Server
 
             Logger.LogDebug("Initializing socket pool");
 
-            _socketPool = new FixedObjectPool<Socket>(Profile.Backlog);
+            _socketPool = new ObjectPool<Socket>(Profile.Backlog);
 
             Logger.LogDebug("Initializing listening socket");
 
@@ -90,6 +90,13 @@ namespace Sphynx.Server
                     Logger.LogCritical(ex, "Unexpected error in server accept loop");
                 }
             }
+        }
+
+        private readonly struct StartClientState
+        {
+            public SphynxTcpServer Server { get; init; }
+            public Socket Socket { get; init; }
+            public CancellationToken Token { get; init; }
         }
 
         private void InitializeClient(Socket clientSocket, CancellationToken cancellationToken)
@@ -138,13 +145,6 @@ namespace Sphynx.Server
                     await server.DisposeClientAsync(client).ConfigureAwait(false);
                 }
             }, state, false);
-        }
-
-        private readonly struct StartClientState
-        {
-            public SphynxTcpServer Server { get; init; }
-            public Socket Socket { get; init; }
-            public CancellationToken Token { get; init; }
         }
 
         /// <summary>

@@ -6,13 +6,13 @@ using Sphynx.Storage;
 namespace Sphynx.Test.Storage
 {
     [TestFixture]
-    public class FixedObjectPoolTests
+    public class ObjectPoolTests
     {
         [Test]
         public void FixedObjectPool_ShouldAdd_WhenPoolEmpty()
         {
             // Arrange
-            var pool = new FixedObjectPool<TestObject>(16);
+            var pool = new ObjectPool<TestObject>(16);
             var obj = new TestObject
             {
                 Number = 10,
@@ -36,7 +36,7 @@ namespace Sphynx.Test.Storage
         {
             // Arrange
             const int POOL_SIZE = 16;
-            var pool = new FixedObjectPool<TestObject>(POOL_SIZE);
+            var pool = new ObjectPool<TestObject>(POOL_SIZE);
             var obj = new TestObject
             {
                 Number = 10,

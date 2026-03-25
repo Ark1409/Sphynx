@@ -26,7 +26,7 @@ namespace Sphynx.Server
         /// An event which fired before the server starts. This can be used as a last attempt to inject
         /// some configurations into the server.
         /// </summary>
-        public event Action<SphynxServer>? OnStart;
+        public event Action<SphynxServer>? OnStarting;
 
         /// <summary>
         /// The profile with which to configure the server.
@@ -67,7 +67,7 @@ namespace Sphynx.Server
         /// <param name="name">A user-friendly name for the server.</param>
         public SphynxServer(SphynxServerProfile profile, string? name)
         {
-            ArgumentNullException.ThrowIfNull(profile, nameof(profile));
+            ArgumentNullException.ThrowIfNull(profile);
 
             if (profile.IsDisposed)
                 throw new ArgumentException("Cannot use a disposed profile to configure a server", nameof(profile));
@@ -90,22 +90,19 @@ namespace Sphynx.Server
 
             using (await _startSemaphore.RentAsync(cancellationToken).ConfigureAwait(false))
             {
-                // Propagate exceptions to concurrent callers
                 var serverTask = _serverTask;
 
-                if (serverTask?.Exception is not null)
-                    throw serverTask.Exception;
+                if (serverTask != null)
+                    // Propagate exceptions to concurrent callers
+                    await serverTask.ConfigureAwait(false);
 
-                if (!_serverCts.IsCancellationRequested)
-                {
-                    OnStart?.Invoke(this);
+                ThrowIfStopped();
 
-                    Logger.LogDebug("Starting {ServerName}...", Name);
+                OnStarting?.Invoke(this);
 
-                    await RunAsync(cancellationToken).ConfigureAwait(false);
-
-                    Logger.LogDebug("Stopping {ServerName}...", Name);
-                }
+                Logger.LogDebug("Starting {ServerName}...", Name);
+                await RunAsync(cancellationToken).ConfigureAwait(false);
+                Logger.LogDebug("Stopping {ServerName}...", Name);
             }
 
             await StopAsync().ConfigureAwait(false);
@@ -254,7 +251,7 @@ namespace Sphynx.Server
             if (_disposed)
                 return;
 
-            OnStart = null;
+            OnStarting = null;
 
             await StopAsync().ConfigureAwait(false);
             await DisposeServerAsync().ConfigureAwait(false);
