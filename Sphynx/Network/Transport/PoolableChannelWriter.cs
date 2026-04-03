@@ -3,35 +3,30 @@
 
 using System.Diagnostics;
 using Sphynx.Storage;
-using Version = Sphynx.Core.Version;
+using Sphynx.Utils;
 
 namespace Sphynx.Network.Transport
 {
-    public class PoolingChannelWriter : SphynxChannelWriter
+    public class PoolableChannelWriter : SphynxChannelWriter
     {
-        /// <summary>
-        /// The currently supported protocol version.
-        /// </summary>
-        public new static Version ProtocolVersion => PoolableChannel.ProtocolVersion;
-
         protected readonly IObjectPool<PoolableChannel> PooledChannels;
 
-        public PoolingChannelWriter(Stream stream, bool ownsStream = false)
+        public PoolableChannelWriter(Stream stream, bool ownsStream = false)
             : this(stream, new ObjectPool<PoolableChannel>(), ownsStream)
         {
         }
 
-        public PoolingChannelWriter(Stream stream, int poolSize, bool ownsStream = false)
+        public PoolableChannelWriter(Stream stream, int poolSize, bool ownsStream = false)
             : this(stream, new ObjectPool<PoolableChannel>(poolSize), ownsStream)
         {
         }
 
-        protected PoolingChannelWriter(Stream stream, IObjectPool<PoolableChannel> pool, bool ownsStream = false) : base(stream, ownsStream)
+        protected PoolableChannelWriter(Stream stream, IObjectPool<PoolableChannel> pool, bool ownsStream = false) : base(stream, ownsStream)
         {
             PooledChannels = pool;
         }
 
-        protected override PoolableChannel NewChannel(long channelId)
+        protected override PoolableChannel NewChannel(ChannelId channelId)
         {
             if (PooledChannels.TryTake(out var channel))
             {
@@ -45,37 +40,53 @@ namespace Sphynx.Network.Transport
 
         protected override PoolableChannel NewChannel() => (PoolableChannel)base.NewChannel();
 
+        public void Reset(Stream stream, bool? ownsStream = null)
+        {
+            if (!IsDisposed)
+                // Since disposing requires potentially draining the reader's buffer,
+                // it's possible that calling Dispose() here would block, which is behaviour we
+                // probably want to avoid.
+                throw new InvalidOperationException($"{GetType().Name} must be disposed before resetting");
+
+            Stream = new StreamSynchronizer(stream);
+
+            if (ownsStream != null)
+                OwnsStream = ownsStream.Value;
+
+            IsDisposed = false;
+        }
+
         protected override void Dispose(bool disposing)
         {
+            base.Dispose(disposing);
+
             if (disposing)
             {
                 while (PooledChannels.TryTake(out var channel))
                     Debug.Assert(channel.IsDisposed);
             }
-
-            base.Dispose(disposing);
         }
 
-        public override ValueTask DisposeAsync()
+        protected override async ValueTask DisposeAsyncCore()
         {
+            await base.DisposeAsyncCore().ConfigureAwait(false);
+
             while (PooledChannels.TryTake(out var channel))
                 Debug.Assert(channel.IsDisposed);
-
-            return base.DisposeAsync();
         }
 
-        protected class PoolableChannel : V001Channel
+        protected class PoolableChannel : Channel
         {
             // Don't need to explicitly pool the stream; disposing the stream does nothing.
 
-            public PoolableChannel(PoolingChannelWriter writer, long channelId) : base(writer, channelId)
+            public PoolableChannel(PoolableChannelWriter writer, ChannelId channelId) : base(writer, channelId)
             {
             }
 
-            public virtual void Reset(long? newChannelId = null)
+            public virtual void Reset(ChannelId? newChannelId = null)
             {
                 if (!IsDisposed)
-                    // Since disposing requires potentially sending an END frame across the channel,
+                    // Since disposing requires potentially sending an DATA/ABORT frame across the channel,
                     // it's possible that calling Dispose() here would block, which is behaviour we
                     // probably want to avoid.
                     throw new InvalidOperationException($"{GetType().Name} ({nameof(ChannelId)}: {ChannelId}) must be disposed before resetting");
@@ -91,32 +102,23 @@ namespace Sphynx.Network.Transport
                 FramesWritten = 0;
                 BytesWritten = 0;
 
-                DisposeException = null;
-                IsDisposed = false;
+                CloseException = null;
             }
 
             protected override void Dispose(bool disposing)
             {
-                if (IsDisposed)
-                    return;
-
                 base.Dispose(disposing);
 
                 if (disposing)
                 {
-                    // Interlocked.MemoryBarrier();
-                    ((PoolingChannelWriter)Writer).PooledChannels.Return(this);
+                    ((PoolableChannelWriter)Writer).PooledChannels.Return(this);
                 }
             }
 
-            public override async ValueTask DisposeAsync()
+            public override async ValueTask DisposeAsyncCore()
             {
-                if (IsDisposed)
-                    return;
-
-                await base.DisposeAsync().ConfigureAwait(false);
-                // Interlocked.MemoryBarrier();
-                ((PoolingChannelWriter)Writer).PooledChannels.Return(this);
+                await base.DisposeAsyncCore().ConfigureAwait(false);
+                ((PoolableChannelWriter)Writer).PooledChannels.Return(this);
             }
         }
     }
