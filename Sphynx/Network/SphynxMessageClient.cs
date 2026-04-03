@@ -43,7 +43,7 @@ namespace Sphynx.Network
                 throw new ArgumentException("Stream must be readable or writable", nameof(stream));
 
             if (stream.CanRead)
-                _reader = new SphynxChannelReader(stream, OnChannelOpened);
+                _reader = new SphynxChannelReader(stream, null);
 
             if (stream.CanWrite)
                 _writer = new SphynxChannelWriter(stream);
@@ -57,8 +57,8 @@ namespace Sphynx.Network
             ArgumentNullException.ThrowIfNull(messageFormatter);
 
             _reader = inputChannel;
-            _reader.ChannelDropReceived = OnChannelDropReceived;
-            _reader.ChannelOpened = OnChannelOpened;
+            // _reader.ChannelDropReceived = OnChannelDropReceived;
+            // _reader.ChannelOpened = OnChannelOpened;
 
             _formatter = messageFormatter;
         }
@@ -79,8 +79,8 @@ namespace Sphynx.Network
             ArgumentNullException.ThrowIfNull(messageFormatter);
 
             _reader = inputChannel;
-            _reader.ChannelDropReceived = OnChannelDropReceived;
-            _reader.ChannelOpened = OnChannelOpened;
+            // _reader.ChannelDropReceived = OnChannelDropReceived;
+            // _reader.ChannelOpened = OnChannelOpened;
 
             _writer = outputChannel;
             _formatter = messageFormatter;
@@ -148,7 +148,7 @@ namespace Sphynx.Network
 
             [DoesNotReturn]
             [MethodImpl(MethodImplOptions.NoInlining)]
-            static void ThrowNonUniqueChannelException() => throw new ChannelClosedException("Could not generate a unique channel ID");
+            static void ThrowNonUniqueChannelException() => throw new Transport.ChannelClosedException("Could not generate a unique channel ID");
         }
 
         private void OnChannelOpened(SphynxChannelReader.Channel channel)
@@ -159,12 +159,6 @@ namespace Sphynx.Network
                 openTask.GetAwaiter().GetResult();
             else
                 openTask.GetAwaiter().OnCompleted(() => openTask.GetAwaiter().GetResult());
-        }
-
-        private readonly struct MessageCallbackState
-        {
-            public SphynxMessage Message { get; init; }
-            public Action<SphynxMessage> Callback { get; init; }
         }
 
         [AsyncStateMachine(typeof(PoolingAsyncValueTaskMethodBuilder))]
@@ -198,13 +192,17 @@ namespace Sphynx.Network
                 return;
             }
 
-            var state = new MessageCallbackState
+            ThreadPool.QueueUserWorkItem(static state =>
             {
-                Message = message,
-                Callback = MessageReceived
-            };
-
-            ThreadPool.QueueUserWorkItem(static state => state.Callback.Invoke(state.Message), state, preferLocal: false);
+                try
+                {
+                    state.callback.Invoke(state.message);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }, (message, callback: MessageReceived), preferLocal: false);
         }
 
         private void OnChannelDropReceived(long channelId)
@@ -213,7 +211,7 @@ namespace Sphynx.Network
             {
                 try
                 {
-                    _ = channel.DisposeAsync(new ChannelClosedException());
+                    _ = channel.DisposeAsync(new Transport.ChannelClosedException());
                 }
                 catch
                 {
