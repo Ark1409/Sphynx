@@ -14,7 +14,7 @@ using Version = Sphynx.Core.Version;
 namespace Sphynx.Network.Transport
 {
     /// <summary>
-    /// The transport header of a <see cref="SphynxPacket"/>.
+    /// The transport header of a <see cref="ISphynxMessage"/>.
     /// </summary>
     public readonly struct SphynxPacketHeader : IEquatable<SphynxPacketHeader>, IEquatable<SphynxPacketHeader?>
     {
@@ -100,7 +100,7 @@ namespace Sphynx.Network.Transport
                 {
                     var rentBuffer = rentArray.AsMemory()[..Size];
 
-                    await stream.FillAsync(rentBuffer, cancellationToken: token).ConfigureAwait(false);
+                    await stream.ReadExactlyAsync(rentBuffer, cancellationToken: token).ConfigureAwait(false);
 
                     SphynxPacketHeader? header;
 
@@ -110,7 +110,7 @@ namespace Sphynx.Network.Transport
 
                         rentBuffer.ShiftLeft(1);
 
-                        await stream.FillAsync(rentBuffer[^1..], cancellationToken: token).ConfigureAwait(false);
+                        await stream.ReadExactlyAsync(rentBuffer[^1..], cancellationToken: token).ConfigureAwait(false);
                     }
 
                     return header.Value;
