@@ -9,10 +9,11 @@ namespace Sphynx.Test.Storage
     public class ObjectPoolTests
     {
         [Test]
-        public void FixedObjectPool_ShouldAdd_WhenPoolEmpty()
+        public void Return_ShouldAddItem_WhenPoolIsEmpty()
         {
             // Arrange
-            var pool = new ObjectPool<TestObject>(16);
+            const int POOL_SIZE = 16;
+            var pool = new ObjectPool<TestObject>(POOL_SIZE);
             var obj = new TestObject
             {
                 Number = 10,
@@ -32,7 +33,7 @@ namespace Sphynx.Test.Storage
         }
 
         [Test]
-        public void FixedObjectPool_ShouldRemove_WhenPoolNotEmpty()
+        public void TryTake_ShouldRemoveItem_WhenPoolIsNotEmpty()
         {
             // Arrange
             const int POOL_SIZE = 16;
@@ -44,25 +45,41 @@ namespace Sphynx.Test.Storage
             };
 
             // Act
-            bool returned = true;
-
-            for (int i = 0; i < POOL_SIZE; i++)
-                returned &= pool.Return(obj);
-
-            bool taken = true;
-
-            for (int i = 0; i < POOL_SIZE; i++)
-                taken &= pool.TryTake(out _);
+            pool.Return(obj);
+            bool taken = pool.TryTake(out _);
 
             // Assert
-            Assert.That(returned, "Could not return object to pool");
             Assert.That(taken, "Took object from empty pool?");
+            Assert.That(pool.TryTake(out _), Is.False);
+        }
+
+        [Test]
+        public void Clear_ShouldRemoveAllItems_WhenPoolIsNotEmpty()
+        {
+            // Arrange
+            const int POOL_SIZE = 16;
+            var pool = new ObjectPool<TestObject>(POOL_SIZE);
+            var obj = new TestObject
+            {
+                Number = 0,
+                Text = "Test"
+            };
+
+            for (int i = 0; i < POOL_SIZE; i++)
+                pool.Return(obj);
+
+            // Act
+            int clearCount = 0;
+            pool.Clear(x => clearCount++);
+
+            // Assert
+            Assert.That(clearCount, Is.EqualTo(POOL_SIZE));
         }
 
         private class TestObject
         {
-            public int Number { get; init; }
-            public string Text { get; init; } = string.Empty;
+            public int Number { get; set; }
+            public string Text { get; set; } = string.Empty;
         }
     }
 }
