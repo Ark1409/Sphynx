@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 using Sphynx.Storage;
-using ChannelOpenedHandler = System.Func<Sphynx.Network.Transport.SphynxChannelReader.Channel, System.Threading.Tasks.ValueTask>;
 
 namespace Sphynx.Network.Transport
 {
@@ -13,19 +12,18 @@ namespace Sphynx.Network.Transport
     {
         protected readonly IObjectPool<PoolableChannel> PooledChannels;
 
-        public PoolableChannelReader(Stream stream, ChannelOpenedHandler onChannelOpened, bool ownsStream = false)
-            : this(stream, onChannelOpened, new ObjectPool<PoolableChannel>(), ownsStream)
+        public PoolableChannelReader(Stream stream, bool ownsStream = false)
+            : this(stream, new ObjectPool<PoolableChannel>(), ownsStream)
         {
         }
 
-        public PoolableChannelReader(Stream stream, ChannelOpenedHandler onChannelOpened, int poolSize, bool ownsStream = false)
-            : this(stream, onChannelOpened, new ObjectPool<PoolableChannel>(poolSize), ownsStream)
+        public PoolableChannelReader(Stream stream, int poolSize, bool ownsStream = false)
+            : this(stream, new ObjectPool<PoolableChannel>(poolSize), ownsStream)
         {
         }
 
-        protected PoolableChannelReader(Stream stream, ChannelOpenedHandler onChannelOpened, IObjectPool<PoolableChannel> pool,
-            bool ownsStream = false)
-            : base(stream, onChannelOpened, ownsStream)
+        protected PoolableChannelReader(Stream stream, IObjectPool<PoolableChannel> pool, bool ownsStream = false)
+            : base(stream, ownsStream)
         {
             PooledChannels = pool;
         }
@@ -42,7 +40,7 @@ namespace Sphynx.Network.Transport
             return new PoolableChannel(this, channelId);
         }
 
-        public void Reset(Stream stream, ChannelOpenedHandler? onChannelOpened = null, bool? ownsStream = null)
+        public void Reset(Stream stream, bool? ownsStream = null)
         {
             if (!IsDisposed)
                 // Since disposing requires potentially draining the reader's buffer,
@@ -53,15 +51,8 @@ namespace Sphynx.Network.Transport
             RunCts = new CancellationTokenSource();
             Stream = stream;
 
-            if (onChannelOpened != null)
-                ChannelOpened = onChannelOpened;
-
             if (ownsStream != null)
                 OwnsStream = ownsStream.Value;
-
-            ChannelRejectReceived = null;
-            ChannelFrameDropped = null;
-            OnChannelRejected = null;
 
             IsDisposed = false;
         }
@@ -89,7 +80,7 @@ namespace Sphynx.Network.Transport
         {
             // Don't need to explicitly pool the stream; disposing the stream does nothing.
 
-            public PoolableChannel(PoolableChannelReader reader, ChannelId channelId) : base(reader, channelId)
+            public PoolableChannel(PoolableChannelReader parent, ChannelId channelId) : base(parent, channelId)
             {
             }
 
@@ -122,7 +113,7 @@ namespace Sphynx.Network.Transport
                 if (disposing)
                 {
                     ((PoolableFrameChannel)FrameChannel).Dispose();
-                    ((PoolableChannelReader)Reader).PooledChannels.Return(this);
+                    ((PoolableChannelReader)Parent).PooledChannels.Return(this);
                 }
             }
 
@@ -131,14 +122,14 @@ namespace Sphynx.Network.Transport
                 await base.DisposeAsyncCore().ConfigureAwait(false);
 
                 await ((PoolableFrameChannel)FrameChannel).DisposeAsync().ConfigureAwait(false);
-                ((PoolableChannelReader)Reader).PooledChannels.Return(this);
+                ((PoolableChannelReader)Parent).PooledChannels.Return(this);
             }
 
             #region Custom Poolable Channel<T> Implementation
 
             private class PoolableFrameChannel : Channel<PooledDataFrame>, IAsyncDisposable, IDisposable
             {
-                private static readonly ObjectPool<CancellationTokenSource> _ctsPool = new(Environment.ProcessorCount * Environment.ProcessorCount);
+                private static readonly ObjectPool<CancellationTokenSource> _ctsPool = new(Environment.ProcessorCount * 4);
                 private static readonly Exception _successSentinel = new();
 
                 private volatile Exception? _doneWriting;
@@ -224,7 +215,7 @@ namespace Sphynx.Network.Transport
                             if (_channel._doneWriting != null)
                                 return false;
 
-                            // Need the write here, so readers can check the item count once _doneWritingCts is cancelled
+                            // Need the write here, so readers can check the item count once _doneWriting is non-null
                             _channel._itemCount = _channel._itemCount;
                             _channel._doneWriting = error ?? _successSentinel;
                         }
@@ -317,7 +308,7 @@ namespace Sphynx.Network.Transport
                     public override bool TryRead(out PooledDataFrame item)
                     {
                         // We are done for good
-                        if ((_channel._itemCount == 0 && _channel._doneWriting != null) || _channel._doneWriting != _successSentinel)
+                        if (_channel._doneWriting != null && _channel._itemCount == 0)
                         {
                             item = default;
                             return false;
@@ -325,7 +316,7 @@ namespace Sphynx.Network.Transport
 
                         lock (_channel.SyncLock)
                         {
-                            if ((_channel._itemCount == 0 && _channel._doneWriting != null) || _channel._doneWriting != _successSentinel)
+                            if (_channel._doneWriting != null && _channel._itemCount == 0)
                             {
                                 item = default;
                                 return false;
@@ -334,7 +325,7 @@ namespace Sphynx.Network.Transport
                             if (_reader.TryRead(out item))
                             {
                                 // ReSharper disable once NonAtomicCompoundOperator : We're protected by the lock
-                                _channel._itemCount++;
+                                _channel._itemCount--;
                                 return true;
                             }
                         }

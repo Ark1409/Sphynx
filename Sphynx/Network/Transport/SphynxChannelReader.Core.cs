@@ -17,46 +17,50 @@ namespace Sphynx.Network.Transport
 
     public partial class SphynxChannelReader
     {
-        /// <summary>
-        /// Callback for when a <see cref="SphynxFrameType.CHANNEL_REJECT"/> is received.
-        /// </summary>
-        /// <seealso cref="SphynxFrameType.CHANNEL_REJECT"/>
-        public Action<ChannelId>? ChannelRejectReceived
-        {
-            protected get => _channelRejectReceived;
-            set => _channelRejectReceived = value;
-        }
+        private object? _onChannelRejectReceivedState;
+        private volatile Action<object?, ChannelId>? _onChannelRejectReceived;
 
-        private volatile Action<ChannelId>? _channelRejectReceived;
+        private object? _onFrameDroppedState;
+        private volatile Action<object?, SphynxFrameHeader>? _onFrameDropped;
 
-        /// <summary>
-        /// Callback for when an incoming channel frame is dropped. This can occur if <see cref="MaxOpenChannels">too many</see> channels are open,
-        /// or invalid data is received. Under normal circumstances, existing channels should never lose any data.
-        /// </summary>
-        public Action<SphynxFrameHeader>? ChannelFrameDropped
-        {
-            protected get => _channelFrameDropped;
-            set => _channelFrameDropped = value;
-        }
-
-        private volatile Action<SphynxFrameHeader>? _channelFrameDropped;
-
-        /// <summary>
-        /// Callback for when an open channel is closed prematurely (i.e. there was still data left to be read).
-        /// </summary>
-        /// <remarks>This is when a <see cref="SphynxFrameType.CHANNEL_REJECT"/> should be sent to the remote peer.</remarks>
-        public Action<ChannelId>? OnChannelRejected
-        {
-            protected get => _onChannelRejected;
-            set => _onChannelRejected = value;
-        }
-
-        private volatile Action<ChannelId>? _onChannelRejected;
+        private object? _onChannelRejectedState;
+        private volatile Action<object?, ChannelId>? _onChannelRejected;
 
         /// <summary>
         /// Holds a mapping of all currently active reading channels.
         /// </summary>
         protected readonly ConcurrentDictionary<ChannelId, Channel> OpenChannels = new();
+
+        /// <summary>
+        /// Registers a callback that is called when an open channel is <see cref="Channel.Dispose()">disposed</see> before the remote peer finishes
+        /// sending all its data.
+        /// </summary>
+        /// <remarks>This is when a <see cref="SphynxFrameType.CHANNEL_REJECT"/> should be sent to the remote peer.</remarks>
+        public void OnChannelRejected(Action<object?, ChannelId> callback, object? state = null)
+        {
+            _onChannelRejectedState = state;
+            _onChannelRejected = callback;
+        }
+
+        /// <summary>
+        /// Register a callback for when an incoming channel frame is dropped. This can occur if <see cref="MaxOpenChannels">too many</see>
+        /// channels are open, or invalid data is received. Under normal circumstances, existing channels should never lose any data.
+        /// </summary>
+        public void OnFrameDropped(Action<object?, SphynxFrameHeader> callback, object? state = null)
+        {
+            _onFrameDroppedState = state;
+            _onFrameDropped = callback;
+        }
+
+        /// <summary>
+        /// Callback for when a <see cref="SphynxFrameType.CHANNEL_REJECT"/> is received.
+        /// </summary>
+        /// <seealso cref="SphynxFrameType.CHANNEL_REJECT"/>
+        public void OnChannelRejectReceived(Action<object?, ChannelId> callback, object? state = null)
+        {
+            _onChannelRejectReceivedState = state;
+            _onChannelRejectReceived = callback;
+        }
 
         protected virtual async Task ReadChannelsAsync(CancellationToken cancellationToken)
         {
@@ -79,7 +83,7 @@ namespace Sphynx.Network.Transport
                         DisposeChannel(channel, protocolException);
                     }
 
-                    InvokeChannelFrameDrop(in frameHeader);
+                    InvokeFrameDropped(in frameHeader);
 
                     // We'll still take the size hint, even if the frame itself is invalid
                     if (sameVersion && frameHeader.FrameSize > 0)
@@ -120,14 +124,23 @@ namespace Sphynx.Network.Transport
                         DisposeChannel(channel!, protocolException);
                     }
 
+                    if (_onChannelOpened == null)
+                    {
+                        InvokeChannelRejected(frameHeader.ChannelId);
+                        InvokeFrameDropped(in frameHeader);
+
+                        await Stream.SkipAsync(frameHeader.FrameSize, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
+
                     // If we're going to have to store this channel
                     if (!frameHeader.HasFlags(ChannelDataFlags.CHANNEL_END))
                     {
                         // Just drop it if we're at our max
                         if (OpenChannelCount >= MaxOpenChannels)
                         {
-                            InvokeOnChannelRejected(frameHeader.ChannelId);
-                            InvokeChannelFrameDrop(in frameHeader);
+                            InvokeChannelRejected(frameHeader.ChannelId);
+                            InvokeFrameDropped(in frameHeader);
 
                             await Stream.SkipAsync(frameHeader.FrameSize, cancellationToken).ConfigureAwait(false);
                             continue;
@@ -140,10 +153,27 @@ namespace Sphynx.Network.Transport
                         channel = NewChannel(frameHeader.ChannelId);
                     }
 
-                    InvokeChannelOpened(channel);
+                    channelExists = true;
+
+                    if (!InvokeChannelOpened(channel))
+                    {
+                        DisposeChannel(channel, null);
+                        InvokeFrameDropped(in frameHeader);
+
+                        await Stream.SkipAsync(frameHeader.FrameSize, cancellationToken).ConfigureAwait(false);
+                        continue;
+                    }
                 }
 
-                Debug.Assert(channel != null);
+                if (!channelExists)
+                {
+                    InvokeFrameDropped(in frameHeader);
+
+                    await Stream.SkipAsync(frameHeader.FrameSize, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                Debug.Assert(channelExists && channel != null);
 
                 // Now read the actual channel data
 
@@ -158,7 +188,7 @@ namespace Sphynx.Network.Transport
                     {
                         int bytesLeft = frameHeader.FrameSize - segment * SEGMENT_SIZE;
                         int readSize = Math.Min(SEGMENT_SIZE, bytesLeft);
-                        var memory = sequence.GetMemory(readSize);
+                        var memory = sequence.GetMemory(readSize)[..readSize];
 
                         await Stream.ReadExactlyAsync(memory, cancellationToken).ConfigureAwait(false);
                         sequence.Advance(readSize);
@@ -182,7 +212,7 @@ namespace Sphynx.Network.Transport
                 catch
                 {
                     dataFrame.Dispose();
-                    InvokeChannelFrameDrop(in frameHeader);
+                    InvokeFrameDropped(in frameHeader);
                 }
             }
         }
@@ -207,28 +237,38 @@ namespace Sphynx.Network.Transport
             }, (channel, disposeException), preferLocal: false);
         }
 
-        private void InvokeChannelOpened(Channel channel) => ThreadPool.QueueUserWorkItem(static async void (state) =>
+        private bool InvokeChannelOpened(Channel channel)
         {
-            try
-            {
-                await state.reader.ChannelOpened.Invoke(state.channel).ConfigureAwait(false);
-            }
-            catch
-            {
-                // ignore
-            }
-        }, (reader: this, channel), preferLocal: false);
+            object? stateArg = _onChannelOpenedState;
+            var callback = _onChannelOpened;
 
-        private void InvokeChannelFrameDrop(in SphynxFrameHeader header)
+            if (callback == null)
+                return false;
+
+            ThreadPool.QueueUserWorkItem(static async void (state) =>
+            {
+                try
+                {
+                    await state.callback.Invoke(state.stateArg, state.channel).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }, (callback, stateArg, channel), preferLocal: false);
+            return true;
+        }
+
+        private void InvokeFrameDropped(in SphynxFrameHeader header)
         {
-            if (ChannelFrameDropped == null)
+            if (_onFrameDropped == null)
                 return;
 
             ThreadPool.QueueUserWorkItem(static state =>
             {
                 try
                 {
-                    state.reader._channelFrameDropped!.Invoke(state.header);
+                    state.reader._onFrameDropped?.Invoke(state.reader._onFrameDroppedState, state.header);
                 }
                 catch
                 {
@@ -239,14 +279,14 @@ namespace Sphynx.Network.Transport
 
         private void InvokeChannelRejectReceived(ChannelId channelId)
         {
-            if (ChannelRejectReceived == null)
+            if (_onChannelRejectReceived == null)
                 return;
 
             ThreadPool.QueueUserWorkItem(static state =>
             {
                 try
                 {
-                    state.reader.ChannelRejectReceived!.Invoke(state.channelId);
+                    state.reader._onChannelRejectReceived?.Invoke(state.reader._onChannelRejectReceivedState, state.channelId);
                 }
                 catch
                 {
@@ -255,16 +295,16 @@ namespace Sphynx.Network.Transport
             }, (reader: this, channelId), preferLocal: false);
         }
 
-        private void InvokeOnChannelRejected(ChannelId channelId)
+        private void InvokeChannelRejected(ChannelId channelId)
         {
-            if (OnChannelRejected == null)
+            if (_onChannelRejected == null)
                 return;
 
             ThreadPool.QueueUserWorkItem(static state =>
             {
                 try
                 {
-                    state.reader.OnChannelRejected!.Invoke(state.channelId);
+                    state.reader._onChannelRejected?.Invoke(state.reader._onChannelRejectedState, state.channelId);
                 }
                 catch
                 {
@@ -279,6 +319,8 @@ namespace Sphynx.Network.Transport
         {
             if (disposing)
             {
+                UnregisterCallbacks();
+
                 foreach (var (_, channel) in OpenChannels)
                 {
                     try
@@ -297,6 +339,8 @@ namespace Sphynx.Network.Transport
 
         protected virtual async ValueTask DisposeAsyncCore()
         {
+            UnregisterCallbacks();
+
             foreach (var (_, channel) in OpenChannels)
             {
                 try
@@ -310,6 +354,16 @@ namespace Sphynx.Network.Transport
             }
 
             OpenChannels.Clear();
+        }
+
+        private void UnregisterCallbacks()
+        {
+            _onChannelRejected = null;
+            _onChannelRejectedState = null;
+            _onFrameDropped = null;
+            _onFrameDroppedState = null;
+            _onChannelRejectReceived = null;
+            _onChannelRejectReceivedState = null;
         }
 
         public struct PooledDataFrame : IDisposable
@@ -392,9 +446,9 @@ namespace Sphynx.Network.Transport
             private bool _channelStarted;
             private bool _channelEnded;
 
-            public Channel(SphynxChannelReader reader, ChannelId channelId)
+            public Channel(SphynxChannelReader parent, ChannelId channelId)
             {
-                Reader = reader;
+                Parent = parent;
                 ChannelId = channelId;
                 FrameChannel = CreateFrameChannel();
             }
@@ -553,6 +607,15 @@ namespace Sphynx.Network.Transport
                 }
             }
 
+            // OnReaderFinished
+            protected internal virtual ValueTask OnReaderEndAsync()
+            {
+                if (FrameChannel.Writer.TryComplete(Parent.GetDisposedException()))
+                    return DisposeAsync(Parent.GetDisposedException());
+
+                return ValueTask.CompletedTask;
+            }
+
             protected virtual Channel<PooledDataFrame> CreateFrameChannel()
             {
                 return System.Threading.Channels.Channel.CreateBounded<PooledDataFrame>(new BoundedChannelOptions(capacity: 8)
@@ -572,9 +635,9 @@ namespace Sphynx.Network.Transport
                     Debug.Assert(CloseException != null);
 
                     if (FrameChannel.Writer.TryComplete(CloseException))
-                        Reader.InvokeOnChannelRejected(ChannelId);
+                        Parent.InvokeChannelRejected(ChannelId);
 
-                    Reader.OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(ChannelId, this));
+                    Parent.OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(ChannelId, this));
                     FrameChannel.Reader.DrainAsync(frame => frame.Dispose()).Preserve().GetAwaiter().GetResult();
 
                     if (CurrentFrame != null)
@@ -593,9 +656,9 @@ namespace Sphynx.Network.Transport
                 Debug.Assert(CloseException != null);
 
                 if (FrameChannel.Writer.TryComplete(CloseException))
-                    Reader.InvokeOnChannelRejected(ChannelId);
+                    Parent.InvokeChannelRejected(ChannelId);
 
-                Reader.OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(ChannelId, this));
+                Parent.OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(ChannelId, this));
                 await FrameChannel.Reader.DrainAsync(frame => frame.Dispose()).ConfigureAwait(false);
 
                 if (CurrentFrame != null)

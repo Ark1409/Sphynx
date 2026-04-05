@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Microsoft;
 using Sphynx.Utils;
-using ChannelOpenedHandler = System.Func<Sphynx.Network.Transport.SphynxChannelReader.Channel, System.Threading.Tasks.ValueTask>;
+using ChannelOpenedHandler = System.Func<object?, Sphynx.Network.Transport.SphynxChannelReader.Channel, System.Threading.Tasks.ValueTask>;
 
 namespace Sphynx.Network.Transport
 {
@@ -28,33 +28,31 @@ namespace Sphynx.Network.Transport
         /// </summary>
         public int OpenChannelCount => OpenChannels.Count;
 
-        /// <summary>
-        /// Callback for when a new channel is opened.
-        /// </summary>
-        public ChannelOpenedHandler ChannelOpened
-        {
-            protected get => _channelOpened;
-            set => _channelOpened = value;
-        }
-
-        private volatile ChannelOpenedHandler _channelOpened;
+        private object? _onChannelOpenedState;
+        private volatile ChannelOpenedHandler? _onChannelOpened;
 
         /// <summary>
         /// A lock held while the reader is <see cref="RunAsync">running</see>.
         /// </summary>
         protected readonly SemaphoreSlim RunLock = new(1, 1);
-
         protected CancellationTokenSource RunCts = new();
 
         private Task? _runTask;
-
         private readonly AsyncLocal<bool> _isInsideRunTask = new();
 
-        public SphynxChannelReader(Stream stream, ChannelOpenedHandler onChannelOpened, bool ownsStream = false)
+        public SphynxChannelReader(Stream stream, bool ownsStream = false)
         {
             Stream = stream;
-            _channelOpened = onChannelOpened;
             OwnsStream = ownsStream;
+        }
+
+        /// <summary>
+        /// Callback for when a new channel is opened.
+        /// </summary>
+        public void OnChannelOpened(ChannelOpenedHandler callback, object? state = null)
+        {
+            _onChannelOpenedState = state;
+            _onChannelOpened = callback;
         }
 
         public async Task RunAsync(CancellationToken cancellationToken = default)
@@ -92,7 +90,24 @@ namespace Sphynx.Network.Transport
                 _isInsideRunTask.Value = false;
             }
 
-            await DisposeAsync().ConfigureAwait(false);
+            await CloseChannels().ConfigureAwait(false);
+        }
+
+        private async ValueTask CloseChannels()
+        {
+            Debug.Assert(!_isInsideRunTask.Value);
+
+            foreach(var (_, channel) in OpenChannels)
+            {
+                try
+                {
+                    await channel.OnReaderEndAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
         }
 
         public void Dispose()
@@ -112,6 +127,8 @@ namespace Sphynx.Network.Transport
 
             _disposeException = new ObjectDisposedException(GetType().Name, _runTask?.Exception);
             _runTask = null;
+            _onChannelOpened = null;
+            _onChannelOpenedState = null;
 
             GC.SuppressFinalize(this);
             Dispose(true);
@@ -135,8 +152,10 @@ namespace Sphynx.Network.Transport
                 RunLock.Release();
             }
 
-            _disposeException = new ObjectDisposedException(GetType().Name, _runTask?.Exception);
+            _disposeException = new ObjectDisposedException(GetType().Name, _runTask?.Exception?.GetBaseException());
             _runTask = null;
+            _onChannelOpened = null;
+            _onChannelOpenedState = null;
 
             GC.SuppressFinalize(this);
 
@@ -181,7 +200,7 @@ namespace Sphynx.Network.Transport
             public virtual long BytesRead { get; protected set; }
             public virtual long FramesRead { get; protected set; }
 
-            public SphynxChannelReader Reader { get; }
+            public SphynxChannelReader Parent { get; }
 
             public virtual void ReadExactly(Memory<byte> buffer)
             {
