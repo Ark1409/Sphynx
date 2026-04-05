@@ -1,3 +1,4 @@
+using NUnit.Framework.Legacy;
 using Sphynx.Network.Transport;
 
 namespace Sphynx.Test.Network.Transport
@@ -6,7 +7,7 @@ namespace Sphynx.Test.Network.Transport
     public class SphynxFrameHeaderTests
     {
         [Test]
-        public void SphynxFrameHeader_ShouldSerialize_WhenHeaderIsValid()
+        public void Serialize_ShouldNotThrow_WhenHeaderIsValid()
         {
             // Arrange
             var headers = new[]
@@ -48,22 +49,13 @@ namespace Sphynx.Test.Network.Transport
                 },
             };
 
-            // Act
-            byte[][] headerBytes = new byte[headers.Length][];
-
-            for (int i = 0; i < headerBytes.Length; i++)
-                Assert.DoesNotThrow(() => headerBytes[i] = headers[i].Serialize());
-
-            // Assert
-            for (int i = 0; i < headerBytes.Length; i++)
-            {
-                Assert.That(SphynxFrameHeader.TryDeserialize(headerBytes[i], out var deserializedHeader));
-                Assert.That(deserializedHeader, Is.EqualTo(headers[i]));
-            }
+            // Act + Assert
+            foreach (var header in headers)
+                Assert.DoesNotThrow(() => header.Serialize());
         }
 
         [Test]
-        public void SphynxFrameHeader_ShouldNotSerialize_WhenHeaderIsInvalid()
+        public void Serialize_ShouldThrow_WhenHeaderIsInvalid()
         {
             // Arrange
             var headers = new[]
@@ -92,7 +84,7 @@ namespace Sphynx.Test.Network.Transport
                 new SphynxFrameHeader
                 {
                     ChannelId = -10,
-                    FrameSize = 1,
+                    FrameSize = 0,
                     FrameType = SphynxFrameType.CHANNEL_REJECT,
                     Flags = 0,
                 },
@@ -121,7 +113,57 @@ namespace Sphynx.Test.Network.Transport
 
             // Act + Assert
             foreach (var header in headers)
-                Assert.Throws(Is.InstanceOf<Exception>(), () => header.Serialize());
+                Assert.Throws(Is.InstanceOf<InvalidOperationException>(), () => header.Serialize());
+        }
+
+        [Test]
+        public void TryDeserialize_ShouldNotFail_WhenHeaderIsValid()
+        {
+            // Arrange
+            var header = new SphynxFrameHeader
+            {
+                ChannelId = ChannelId.MaxValue,
+                FrameSize = short.MaxValue,
+                FrameType = SphynxFrameType.CHANNEL_DATA,
+                Flags = ChannelDataFlags.CHANNEL_END
+            };
+
+            Assert.That(header.IsValid());
+            byte[] headerBytes = header.Serialize();
+
+            // Act
+            bool deserialized = SphynxFrameHeader.TryDeserialize(headerBytes, out var deserializedHeader);
+
+            // Assert
+            Assert.That(deserialized);
+            Assert.That(deserializedHeader, Is.EqualTo(header));
+        }
+
+        [Test]
+        public void Serialize_ShouldProduceExpectedByteSequence_WhenInvoked()
+        {
+            // Arrange
+            var header = new SphynxFrameHeader
+            {
+                FrameType = SphynxFrameType.CHANNEL_DATA,
+                Flags = ChannelDataFlags.CHANNEL_START | ChannelDataFlags.CHANNEL_END,
+                ChannelId = ChannelId.MaxValue,
+                FrameSize = 0x00FF,
+            };
+
+            var expectedByteSequence = SphynxFrameHeader.Signature.ToArray().Concat(new byte[]
+            {
+                SphynxFrameHeader.ProtocolVersion.Major,
+                ((byte)SphynxFrameType.CHANNEL_DATA << 4) | (ChannelDataFlags.CHANNEL_START | ChannelDataFlags.CHANNEL_END),
+                0x7F, 0xFF, 0xFF, 0xFF,
+                0x00, 0xFF
+            });
+
+            // Act
+            byte[] byteSequence = header.Serialize();
+
+            // Assert
+            CollectionAssert.AreEqual(expectedByteSequence, byteSequence);
         }
     }
 }
