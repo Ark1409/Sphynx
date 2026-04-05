@@ -25,16 +25,72 @@ namespace Sphynx.Network.Transport
             OwnsStream = ownsStream;
         }
 
+        /// <summary>
+        /// Sends a protocol-level <see cref="SphynxFrameType.CHANNEL_REJECT"/> frame across to the remote peer.
+        /// </summary>
+        /// <param name="rejectId">The channel ID to reject</param>
+        public void SendReject(ChannelId rejectId)
+            => SendFrame(new SphynxFrameHeader(SphynxFrameType.CHANNEL_REJECT, rejectId, 0), ReadOnlySequence<byte>.Empty);
+
+        /// <summary>
+        /// Sends a protocol-level <see cref="SphynxFrameType.CHANNEL_REJECT"/> frame across to the remote peer.
+        /// </summary>
+        /// <param name="rejectId">The channel ID to reject</param>
+        /// <returns>A task representing the send operation.</returns>
+        public ValueTask SendRejectAsync(ChannelId rejectId)
+            => SendFrameAsync(new SphynxFrameHeader(SphynxFrameType.CHANNEL_REJECT, rejectId, 0), ReadOnlySequence<byte>.Empty);
+
+        private void SendFrame(in SphynxFrameHeader header, in ReadOnlySequence<byte> frameData)
+        {
+            Span<byte> frameHeaderBytes = stackalloc byte[SphynxFrameHeader.SIZE];
+            header.Serialize(frameHeaderBytes);
+
+            using (Stream.RentLock())
+            {
+                var stream = Stream.Stream;
+
+                stream.Write(frameHeaderBytes);
+
+                foreach (ReadOnlyMemory<byte> segment in frameData)
+                    stream.Write(segment.Span);
+            }
+        }
+
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+        private async ValueTask SendFrameAsync(SphynxFrameHeader header,
+            ReadOnlySequence<byte> frameData,
+            CancellationToken cancellationToken = default)
+        {
+            using (await Stream.RentLockAsync(cancellationToken).ConfigureAwait(false))
+            {
+                var stream = Stream.Stream;
+
+                await SphynxFrameHeader.SendAsync(in header, stream, cancellationToken).ConfigureAwait(false);
+
+                foreach (ReadOnlyMemory<byte> segment in frameData)
+                {
+                    // We already indicated the frame length in the header, so cancellation isn't an option anymore.
+                    await stream.WriteAsync(segment, CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+        }
+
         public partial class Channel
         {
-            public short MaxFrameSize { get; protected set; } = 4 * 1024; // 4KB
+            public short MaxFrameSize
+            {
+                get => _maxFrameSize;
+                set => _maxFrameSize = value > 0 ? value : throw new ArgumentOutOfRangeException(nameof(value));
+            }
+
+            private short _maxFrameSize = 4 * 1024; // 4KB
 
             protected ReadOnlySequence<byte> FrameBuffer => FrameBufferRental.Value?.AsReadOnlySequence ?? default;
             protected SequencePool.Rental FrameBufferRental;
 
-            public Channel(SphynxChannelWriter writer, ChannelId channelId)
+            public Channel(SphynxChannelWriter parent, ChannelId channelId)
             {
-                Writer = writer;
+                Parent = parent;
                 ChannelId = channelId;
                 FrameBufferRental = SequencePool.Shared.Rent();
             }
@@ -52,10 +108,10 @@ namespace Sphynx.Network.Transport
                     int frameLeft = (int)(MaxFrameSize - bufferLength);
                     long payloadLeft = span.Length - bytesWritten;
 
-                    int writeLength = (int)Math.Min(frameLeft, payloadLeft);
+                    int writeLength = (int)Math.Clamp(frameLeft, 1, payloadLeft);
 
                     // Only force a flush if we are actually going to write something
-                    if (writeLength > 0 && bufferLength >= MaxFrameSize)
+                    if (frameLeft == 0)
                     {
                         Flush();
                         Debug.Assert(buffer.Length == 0);
@@ -71,7 +127,7 @@ namespace Sphynx.Network.Transport
                 BytesWritten += bytesWritten;
             }
 
-            public virtual ValueTask WriteAsync(scoped ReadOnlySpan<byte> span, CancellationToken cancellationToken = default)
+            public virtual ValueTask WriteAsync(ReadOnlySpan<byte> span, CancellationToken cancellationToken = default)
             {
                 if (cancellationToken.IsCancellationRequested)
                     return ValueTask.FromCanceled(cancellationToken);
@@ -148,10 +204,10 @@ namespace Sphynx.Network.Transport
                     int frameLeft = (int)(MaxFrameSize - bufferLength);
                     long memoryLeft = memory.Length - bytesWritten;
 
-                    int writeLength = (int)Math.Min(frameLeft, memoryLeft);
+                    int writeLength = (int)Math.Clamp(frameLeft, 1, memoryLeft);
 
                     // Only force a flush if we are actually going to write something
-                    if (writeLength > 0 && bufferLength >= MaxFrameSize)
+                    if (frameLeft == 0)
                     {
                         await FlushAsync(CancellationToken.None).ConfigureAwait(false);
                         Debug.Assert(buffer.Length == 0);
@@ -178,7 +234,7 @@ namespace Sphynx.Network.Transport
 
                 Debug.Assert(buffer.Length <= MaxFrameSize);
 
-                SendFrame(GetDataFrameHeader(), buffer);
+                SendFrame(GetFrameHeader(), buffer);
 
                 buffer.Reset();
                 FramesWritten++;
@@ -203,49 +259,20 @@ namespace Sphynx.Network.Transport
                     var buffer = FrameBufferRental.Value;
                     Debug.Assert(buffer.Length <= MaxFrameSize);
 
-                    await SendFrameAsync(GetDataFrameHeader(), buffer.AsReadOnlySequence, token).ConfigureAwait(false);
+                    await SendFrameAsync(GetFrameHeader(), buffer.AsReadOnlySequence, token).ConfigureAwait(false);
 
                     buffer.Reset();
                     FramesWritten++;
                 }
             }
 
-            protected void SendFrame(in SphynxFrameHeader header, ReadOnlySequence<byte> frameData)
-            {
-                Span<byte> frameHeaderBytes = stackalloc byte[SphynxFrameHeader.SIZE];
-                header.Serialize(frameHeaderBytes);
+            protected void SendFrame(in SphynxFrameHeader header, in ReadOnlySequence<byte> frameData) => Parent.SendFrame(in header, in frameData);
 
-                using (Stream.RentLock())
-                {
-                    var stream = Stream.Stream;
-
-                    stream.Write(frameHeaderBytes);
-
-                    foreach (ReadOnlyMemory<byte> segment in frameData)
-                        stream.Write(segment.Span);
-                }
-            }
-
-            [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-            protected async ValueTask SendFrameAsync(SphynxFrameHeader header,
-                ReadOnlySequence<byte> frameData,
+            protected ValueTask SendFrameAsync(SphynxFrameHeader header, ReadOnlySequence<byte> frameData,
                 CancellationToken cancellationToken = default)
-            {
-                using (await Stream.RentLockAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    var stream = Stream.Stream;
+                => Parent.SendFrameAsync(header, frameData, cancellationToken);
 
-                    await SphynxFrameHeader.SendAsync(in header, stream, cancellationToken).ConfigureAwait(false);
-
-                    foreach (ReadOnlyMemory<byte> segment in frameData)
-                    {
-                        // We already indicated the frame length in the header, so cancellation isn't an option anymore.
-                        await stream.WriteAsync(segment, CancellationToken.None).ConfigureAwait(false);
-                    }
-                }
-            }
-
-            private SphynxFrameHeader GetDataFrameHeader() => new()
+            private SphynxFrameHeader GetFrameHeader() => new()
             {
                 FrameType = SphynxFrameType.CHANNEL_DATA,
                 Flags = FramesWritten == 0 ? ChannelDataFlags.CHANNEL_START : (byte)0,
@@ -274,15 +301,15 @@ namespace Sphynx.Network.Transport
                         FrameBufferRental = default;
                     }
 
-                    lock (Writer.OpenChannelsLock)
+                    lock (Parent.OpenChannelsLock)
                     {
-                        if (Writer.OpenChannels.Remove(ChannelId, out var channel))
+                        if (Parent.OpenChannels.Remove(ChannelId, out var channel))
                             Debug.Assert(channel == this);
                     }
                 }
             }
 
-            public virtual async ValueTask DisposeAsyncCore()
+            protected virtual async ValueTask DisposeAsyncCore()
             {
                 try
                 {
@@ -301,9 +328,9 @@ namespace Sphynx.Network.Transport
                     FrameBufferRental = default;
                 }
 
-                lock (Writer.OpenChannelsLock)
+                lock (Parent.OpenChannelsLock)
                 {
-                    if (Writer.OpenChannels.Remove(ChannelId, out var channel))
+                    if (Parent.OpenChannels.Remove(ChannelId, out var channel))
                         Debug.Assert(channel == this);
                 }
             }
@@ -326,8 +353,8 @@ namespace Sphynx.Network.Transport
                     return;
                 }
 
-                var header = GetDataFrameHeader().WithFlags(ChannelDataFlags.CHANNEL_END);
-                SendFrame(header, FrameBuffer);
+                var header = GetFrameHeader().WithFlags(ChannelDataFlags.CHANNEL_END);
+                SendFrame(in header, FrameBuffer);
             }
 
             private ValueTask SendCloseAsync(bool aborting = false, CancellationToken cancellationToken = default)
@@ -341,13 +368,12 @@ namespace Sphynx.Network.Transport
                     {
                         FrameType = SphynxFrameType.CHANNEL_ABORT,
                         ChannelId = ChannelId,
-                        FrameSize = 0
                     };
 
                     return SendFrameAsync(abortHeader, ReadOnlySequence<byte>.Empty, cancellationToken);
                 }
 
-                var header = GetDataFrameHeader().WithFlags(ChannelDataFlags.CHANNEL_END);
+                var header = GetFrameHeader().WithFlags(ChannelDataFlags.CHANNEL_END);
                 return SendFrameAsync(header, FrameBuffer, cancellationToken);
             }
         }

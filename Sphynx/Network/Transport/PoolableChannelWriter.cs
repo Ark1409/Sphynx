@@ -79,7 +79,7 @@ namespace Sphynx.Network.Transport
         {
             // Don't need to explicitly pool the stream; disposing the stream does nothing.
 
-            public PoolableChannel(PoolableChannelWriter writer, ChannelId channelId) : base(writer, channelId)
+            public PoolableChannel(PoolableChannelWriter parent, ChannelId channelId) : base(parent, channelId)
             {
             }
 
@@ -111,14 +111,14 @@ namespace Sphynx.Network.Transport
 
                 if (disposing)
                 {
-                    ((PoolableChannelWriter)Writer).PooledChannels.Return(this);
+                    ((PoolableChannelWriter)Parent).PooledChannels.Return(this);
                 }
             }
 
-            public override async ValueTask DisposeAsyncCore()
+            protected override async ValueTask DisposeAsyncCore()
             {
                 await base.DisposeAsyncCore().ConfigureAwait(false);
-                ((PoolableChannelWriter)Writer).PooledChannels.Return(this);
+                ((PoolableChannelWriter)Parent).PooledChannels.Return(this);
             }
         }
     }

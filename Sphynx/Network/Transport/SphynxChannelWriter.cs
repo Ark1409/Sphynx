@@ -134,8 +134,8 @@ namespace Sphynx.Network.Transport
             if (Interlocked.Exchange(ref _disposed, 1) != 0)
                 return;
 
-            GC.SuppressFinalize(this);
             Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         public async ValueTask DisposeAsync()
@@ -143,9 +143,9 @@ namespace Sphynx.Network.Transport
             if (Interlocked.Exchange(ref _disposed, 1) != 0)
                 return;
 
-            GC.SuppressFinalize(this);
             await DisposeAsyncCore().ConfigureAwait(false);
             Dispose(false);
+            GC.SuppressFinalize(this);
         }
 
         protected virtual async ValueTask DisposeAsyncCore()
@@ -204,8 +204,8 @@ namespace Sphynx.Network.Transport
             public virtual long BytesWritten { get; protected set; }
             public virtual long FramesWritten { get; protected set; }
 
-            public SphynxChannelWriter Writer { get; }
-            protected StreamSynchronizer Stream => Writer.Stream;
+            public SphynxChannelWriter Parent { get; }
+            protected StreamSynchronizer Stream => Parent.Stream;
 
             public virtual void Write(ReadOnlySequence<byte> payload)
             {
@@ -253,11 +253,10 @@ namespace Sphynx.Network.Transport
 
                 _channelStream?.Dispose();
 
-                GC.SuppressFinalize(this);
                 Dispose(true);
                 _channelStream?.Dispose();
+                GC.SuppressFinalize(this);
             }
-
 
             public ValueTask DisposeAsync() => DisposeAsync(null);
 
@@ -279,9 +278,9 @@ namespace Sphynx.Network.Transport
                 if (_channelStream != null)
                     await _channelStream.DisposeAsync().ConfigureAwait(false);
 
-                GC.SuppressFinalize(this);
                 await DisposeAsyncCore().ConfigureAwait(false);
                 Dispose(false);
+                GC.SuppressFinalize(this);
             }
 
             private bool TryReserveDispose(Exception? disposeException)
