@@ -517,12 +517,21 @@ namespace Sphynx.Network.Transport
                 return HandleReadResult(result, buffer);
             }
 
-            public virtual async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            public virtual ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             {
-                ThrowIfDisposed();
+                if (IsDisposed)
+                    return ValueTask.FromException<int>(GetDisposedException());
 
-                var result = await ChannelReader.ReadAsync(cancellationToken).ConfigureAwait(false);
-                return HandleReadResult(result, buffer.Span);
+                if (ChannelReader.TryRead(out var result))
+                    return ValueTask.FromResult(HandleReadResult(result, buffer.Span));
+
+                return Core(buffer, cancellationToken);
+
+                async ValueTask<int> Core(Memory<byte> memory, CancellationToken token)
+                {
+                    var readResult = await ChannelReader.ReadAsync(token).ConfigureAwait(false);
+                    return HandleReadResult(readResult, memory.Span);
+                }
             }
 
             private int HandleReadResult(ReadResult result, Span<byte> buffer)
@@ -544,6 +553,7 @@ namespace Sphynx.Network.Transport
                         consumed = slice.End;
                         slice.CopyTo(buffer);
 
+                        BytesRead += actual;
                         return actual;
                     }
 
@@ -622,9 +632,10 @@ namespace Sphynx.Network.Transport
                     using (var writer = RentChannelWriter())
                     {
                         if (!writer.IsCompleted)
+                        {
                             Parent.InvokeChannelRejecting(ChannelId);
-
-                        writer.Complete(CloseException);
+                            writer.Complete(CloseException);
+                        }
                     }
                 }
 
@@ -647,9 +658,10 @@ namespace Sphynx.Network.Transport
                 await using (var writer = await RentChannelWriterAsync().ConfigureAwait(false))
                 {
                     if (!writer.IsCompleted)
+                    {
                         Parent.InvokeChannelRejecting(ChannelId);
-
-                    await writer.CompleteAsync(CloseException).ConfigureAwait(false);
+                        await writer.CompleteAsync(CloseException).ConfigureAwait(false);
+                    }
                 }
 
                 _pipe = null;

@@ -209,7 +209,6 @@ namespace Sphynx.Network.Transport
             public virtual Action<Channel, Exception?>? OnDispose { protected get; set; }
 
             public virtual long BytesRead { get; protected set; }
-            public virtual long FramesRead { get; protected set; }
 
             public SphynxChannelReader Parent { get; }
 

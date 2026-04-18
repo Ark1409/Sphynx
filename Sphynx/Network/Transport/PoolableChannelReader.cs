@@ -100,7 +100,6 @@ namespace Sphynx.Network.Transport
                 if (channelId.HasValue)
                     ChannelId = channelId.Value;
 
-                FramesRead = 0;
                 BytesRead = 0;
 
                 CloseException = null;
