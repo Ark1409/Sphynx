@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Microsoft;
-using Sphynx.Utils;
 
 namespace Sphynx.Network.Transport
 {
@@ -194,18 +193,21 @@ namespace Sphynx.Network.Transport
 
             public virtual ChannelId ChannelId { get; protected set; }
 
-            public virtual Stream AsStream => _channelStream ??= new ChannelStream(this);
-            private Stream? _channelStream;
-
             public bool IsDisposed => CloseException != null;
             protected volatile ChannelClosedException? CloseException;
             public Action<Channel, Exception?>? OnDispose { protected get; set; }
 
+            /// <summary>
+            /// Number of bytes written to the underlying stream.
+            /// </summary>
             public virtual long BytesWritten { get; protected set; }
+
+            /// <summary>
+            /// Number of <see cref="SphynxFrameHeader">frames</see> written to the underlying stream.
+            /// </summary>
             public virtual long FramesWritten { get; protected set; }
 
             public SphynxChannelWriter Parent { get; }
-            protected StreamSynchronizer Stream => Parent.Stream;
 
             public virtual void Write(ReadOnlySequence<byte> payload)
             {
@@ -234,6 +236,17 @@ namespace Sphynx.Network.Transport
                 }
             }
 
+            private ChannelStream? _channelStream;
+
+            public virtual Stream AsStream(bool leaveOpen = true)
+            {
+                _channelStream ??= new ChannelStream(this);
+                _channelStream.LeaveOpen = leaveOpen;
+                return _channelStream;
+            }
+
+            public virtual IBufferWriter<byte> AsBufferWriter() => FrameBuffer;
+
             public void Dispose() => Dispose(null);
 
             public void Dispose(Exception? disposeException)
@@ -243,7 +256,7 @@ namespace Sphynx.Network.Transport
 
                 try
                 {
-                    OnDispose?.Invoke(this, CloseException?.InnerException);
+                    OnDispose?.Invoke(this, CloseException.InnerException ?? disposeException);
                     OnDispose = null;
                 }
                 catch
@@ -251,10 +264,7 @@ namespace Sphynx.Network.Transport
                     // ignore
                 }
 
-                _channelStream?.Dispose();
-
                 Dispose(true);
-                _channelStream?.Dispose();
                 GC.SuppressFinalize(this);
             }
 
@@ -267,7 +277,7 @@ namespace Sphynx.Network.Transport
 
                 try
                 {
-                    OnDispose?.Invoke(this, CloseException?.InnerException);
+                    OnDispose?.Invoke(this, CloseException.InnerException ?? disposeException);
                     OnDispose = null;
                 }
                 catch
@@ -275,14 +285,12 @@ namespace Sphynx.Network.Transport
                     // ignore
                 }
 
-                if (_channelStream != null)
-                    await _channelStream.DisposeAsync().ConfigureAwait(false);
-
                 await DisposeAsyncCore().ConfigureAwait(false);
                 Dispose(false);
                 GC.SuppressFinalize(this);
             }
 
+            [MemberNotNull(nameof(CloseException))]
             private bool TryReserveDispose(Exception? disposeException)
             {
                 if (CloseException is not null)
@@ -334,11 +342,19 @@ namespace Sphynx.Network.Transport
             }
 
             private readonly Channel _channel;
+            public bool LeaveOpen { get; set; }
 
-            public ChannelStream(Channel channel)
+            public ChannelStream(Channel channel, bool leaveOpen = true)
             {
                 _channel = channel;
+                LeaveOpen = leaveOpen;
             }
+
+            public sealed override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback? callback, object? state) =>
+                TaskToAsyncResult.Begin(WriteAsync(buffer, offset, count, default), callback, state);
+
+            public sealed override void EndWrite(IAsyncResult asyncResult) =>
+                TaskToAsyncResult.End(asyncResult);
 
             public override ValueTask WriteAsync(ReadOnlyMemory<byte> memory, CancellationToken cancellationToken = default)
             {
@@ -355,12 +371,6 @@ namespace Sphynx.Network.Transport
 
             public override Task FlushAsync(CancellationToken cancellationToken)
             {
-                if (_channel.IsDisposed)
-                    return Task.FromException(new ObjectDisposedException(_channel.GetType().Name));
-
-                if (_channel.BytesWritten == 0)
-                    return Task.CompletedTask;
-
                 return _channel.FlushAsync(cancellationToken).AsTask();
             }
 
@@ -375,7 +385,16 @@ namespace Sphynx.Network.Transport
 
             public override void SetLength(long value) => throw new NotSupportedException();
 
-            // Dispose does nothing
+            public override ValueTask DisposeAsync()
+            {
+                return LeaveOpen ? base.DisposeAsync() : _channel.DisposeAsync();
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing && LeaveOpen)
+                    _channel.Dispose();
+            }
         }
     }
 }

@@ -49,7 +49,7 @@ namespace Sphynx.Test.Network.Transport
 
             // Don't dispose or flush the channel - don't send any data
             var channel = writer.OpenChannel(channelId: 1);
-            await channel.WriteAsync([1]);
+            await channel.WriteAsync(new byte[] { 1 });
 
             Assert.That(stream.Length, Is.Zero);
 
@@ -69,7 +69,7 @@ namespace Sphynx.Test.Network.Transport
 
             // Don't dispose the channel - leave it unfinished
             var channel = writer.OpenChannel(channelId: 1);
-            await channel.WriteAsync([1, 2, 3, 4, 5]);
+            await channel.WriteAsync(new byte[] { 1, 2, 3, 4, 5 });
             await channel.FlushAsync();
 
             Array.Clear(stream.GetBuffer());
@@ -98,7 +98,7 @@ namespace Sphynx.Test.Network.Transport
                 using var stream = new MemoryStream();
                 await using var writer = new SphynxChannelWriter(stream);
                 await using var channel = writer.OpenChannel();
-                await channel.WriteAsync([1, 2, 3]);
+                await channel.WriteAsync(new byte[] { 1, 2, 3 });
 
                 Assert.That(stream.Length, Is.Zero);
 
@@ -119,7 +119,7 @@ namespace Sphynx.Test.Network.Transport
                 // Act
                 await using (var channel = writer.OpenChannel(channelId: 1))
                 {
-                    await channel.WriteAsync([1, 2, 3]);
+                    await channel.WriteAsync(new byte[] { 1, 2, 3 });
                 }
 
                 // Assert
@@ -135,6 +135,5 @@ namespace Sphynx.Test.Network.Transport
                 CollectionAssert.AreEqual(expectedFrame, stream.ToArray());
             }
         }
-
     }
 }
