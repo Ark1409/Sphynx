@@ -40,7 +40,34 @@ namespace Sphynx.Test.Network.Transport
         [Test]
         public async Task OnChannelRejecting_ShouldBeInvoked_WhenChannelIsPrematurelyDisposed()
         {
-            throw new NotImplementedException();
+            // Arrange
+            using var stream = new MemoryStream();
+            byte[] dataBytes = new SphynxFrameHeader(SphynxFrameType.CHANNEL_DATA, ChannelDataFlags.CHANNEL_START, channelId: 1, 0).Serialize();
+            await stream.WriteAsync(dataBytes);
+
+            stream.Position = 0;
+
+            // Act
+            await using var reader = new SphynxChannelReader(stream);
+            bool invoked = false;
+            var channelDone = new SemaphoreSlim(0, 1);
+
+            reader.OnChannelRejecting((_, channelId) =>
+            {
+                invoked = channelId == 1;
+                channelDone.Release();
+            });
+
+            reader.OnChannelOpened(async (_, channel) =>
+            {
+                await channel.DisposeAsync();
+            });
+
+            await reader.RunAsync();
+            await channelDone.WaitAsync();
+
+            // Assert
+            Assert.That(invoked);
         }
 
         [Test]
@@ -147,11 +174,6 @@ namespace Sphynx.Test.Network.Transport
             CollectionAssert.AreEqual(Enumerable.Repeat(new[] { 1, 2, 4, 8 }, frameCount).SelectMany(x => x), frameData.ToArray());
 
             await channel.DisposeAsync();
-        }
-
-        [TestFixture]
-        public class ChannelTests
-        {
         }
     }
 }
