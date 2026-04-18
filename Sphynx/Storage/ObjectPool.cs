@@ -17,12 +17,15 @@ namespace Sphynx.Storage
         private readonly ConcurrentBag<T> _items = new();
         private readonly int _maxSize;
 
-        // To avoid freezing the whole bag when returning to the pool
+        // To avoid freezing the whole bag when returning to the pool (in the fast path)
         private int _count;
         private readonly bool _hardLimit;
 
         private volatile Func<T>? _allocator;
 
+        /// <summary>
+        /// Item allocator to use when the pool is empty. <see cref="TryTake"/> will also return true when this is non-null.
+        /// </summary>
         public Func<T>? Allocator
         {
             get => _allocator;
@@ -30,9 +33,20 @@ namespace Sphynx.Storage
         }
 
         /// <summary>
+        /// Fast but possible inaccurate count of the number of items within the pool.
+        /// </summary>
+        public int FastCount => Volatile.Read(ref _count);
+
+        /// <summary>
+        /// Returns the number of items within the pool.
+        /// </summary>
+        public int Count => _items.Count;
+
+        /// <summary>
         /// Creates a new fixed size pool.
         /// </summary>
-        public ObjectPool() : this(Environment.ProcessorCount * 2)
+        /// <param name="allocator">The allocator for new items. If this is argument is non-null, <see cref="TryTake"/> will always return true.</param>
+        public ObjectPool(Func<T>? allocator = null) : this(Environment.ProcessorCount * 2, allocator)
         {
         }
 
@@ -40,11 +54,13 @@ namespace Sphynx.Storage
         /// Creates a new fixed size pool.
         /// </summary>
         /// <param name="maxSize">The maximum number of items of <typeparamref name="T"/> which the pool can hold at once.</param>
+        /// <param name="allocator">The allocator for new items. If this is argument is non-null, <see cref="TryTake"/> will always return true.</param>
         /// <param name="hardLimit">Whether to hard limit the maximum size, which could in turn decrease performance.</param>
-        public ObjectPool(int maxSize, bool hardLimit = false)
+        public ObjectPool(int maxSize, Func<T>? allocator = null, bool hardLimit = false)
         {
             ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxSize, 0);
             _maxSize = maxSize;
+            _allocator = allocator;
             _hardLimit = hardLimit;
         }
 
@@ -85,10 +101,10 @@ namespace Sphynx.Storage
             return !_hardLimit ? ReturnFast(obj) : ReturnSlow(obj);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private bool ReturnFast(T obj)
         {
             // Optimistically performed a non-interlocked read
+            // Will only rarely be incorrect
             if (_count >= _maxSize)
                 return false;
 

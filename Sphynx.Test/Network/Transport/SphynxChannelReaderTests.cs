@@ -1,6 +1,7 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using NUnit.Framework.Legacy;
 using Sphynx.Network.Transport;
 
 namespace Sphynx.Test.Network.Transport
@@ -23,7 +24,7 @@ namespace Sphynx.Test.Network.Transport
             bool invoked = false;
             var channelDone = new SemaphoreSlim(0, 1);
 
-            reader.OnFrameDropped((_, header) =>
+            reader.OnChannelFrameDropped((_, header) =>
             {
                 invoked = header.ChannelId == 1 && header.FrameSize == 0;
                 channelDone.Release();
@@ -37,13 +38,13 @@ namespace Sphynx.Test.Network.Transport
         }
 
         [Test]
-        public async Task OnChannelRejected_ShouldBeInvoked_WhenChannelIsPrematurelyDisposed()
+        public async Task OnChannelRejecting_ShouldBeInvoked_WhenChannelIsPrematurelyDisposed()
         {
             throw new NotImplementedException();
         }
 
         [Test]
-        public async Task OnChannelRejectReceived_ShouldBeInvoked_WhenRejectIsReceived()
+        public async Task OnChannelRejected_ShouldBeInvoked_WhenRejectIsReceived()
         {
             // Arrange
             using var stream = new MemoryStream();
@@ -57,7 +58,7 @@ namespace Sphynx.Test.Network.Transport
             bool invoked = false;
             var channelDone = new SemaphoreSlim(0, 1);
 
-            reader.OnChannelRejectReceived((_, channelId) =>
+            reader.OnChannelRejected((_, channelId) =>
             {
                 invoked = channelId == 1;
                 channelDone.Release();
@@ -100,39 +101,52 @@ namespace Sphynx.Test.Network.Transport
         }
 
         [Test]
-        public async Task SphynxChannelReader_ShouldNotDisposeChannel_WhenChannelCompleted()
+        public async Task RunAsync_ShouldNotDisposeChannel_WhenChannelCompleted()
         {
             // Arrange
-            // TODO: We need to use finishedData (throws ex) and unfinishedData (does not throw ex)
-            //  finishedData: START+END
-            //  unfinsehdData: START
             using var stream = new MemoryStream();
-            byte[] data = [1, 2, 3, 4, 5];
+            byte[] frameData = [1, 2, 4, 8];
+            int frameCount = 3;
 
-            await using (var writer = new SphynxChannelWriter(stream))
+            for (int i = 0; i < frameCount; i++)
             {
-                await using var channel = writer.OpenChannel();
-                channel.MaxFrameSize = (short)(data.Length / 2);
+                var frameHeader = new SphynxFrameHeader(SphynxFrameType.CHANNEL_DATA, 1, (short)frameData.Length);
 
-                await channel.WriteAsync(data.AsMemory());
+                if (i == 0)
+                    frameHeader = frameHeader.WithFlags(ChannelDataFlags.CHANNEL_START);
+
+                if (i == frameCount - 1)
+                    frameHeader = frameHeader.WithFlags(ChannelDataFlags.CHANNEL_END);
+
+                stream.Write(frameHeader.Serialize());
+                stream.Write(frameData);
             }
 
-            var doneReading = new SemaphoreSlim(0, 1);
-            data = new byte[data.Length];
             stream.Position = 0;
+            frameData = new byte[frameData.Length * frameCount];
+
+            var channelDone = new SemaphoreSlim(0, 1);
 
             // Act
-            var reader = new SphynxChannelReader(stream);
+            await using var reader = new SphynxChannelReader(stream);
+            SphynxChannelReader.Channel? channel = null;
 
-            reader.OnChannelOpened(async (_, channel) =>
+            reader.OnChannelOpened(async (_, ch) =>
             {
-                await channel.ReadExactlyAsync(new Memory<byte>(data, 0, data.Length));
-                doneReading.Release();
+                channel = ch;
+                await channel.ReadExactlyAsync(frameData.AsMemory());
+                channelDone.Release();
             });
 
             await reader.RunAsync();
-            await doneReading.WaitAsync();
-            await reader.DisposeAsync();
+            await channelDone.WaitAsync();
+
+            // Assert
+            Assert.That(channel, Is.Not.Null);
+            Assert.That(channel.IsDisposed, Is.False);
+            CollectionAssert.AreEqual(Enumerable.Repeat(new[] { 1, 2, 4, 8 }, frameCount).SelectMany(x => x), frameData.ToArray());
+
+            await channel.DisposeAsync();
         }
 
         [TestFixture]

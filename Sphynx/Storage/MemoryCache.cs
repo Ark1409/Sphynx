@@ -220,20 +220,8 @@ namespace Sphynx.Storage
         {
             ThrowIfDisposed();
 
-            var state = new GetOrAddState<TArg>
-            {
-                ValueFactory = valueFactory,
-                FactoryArgument = factoryArg,
-            };
-
-            var existing = _cache.GetOrAdd(key, (k, arg) => new Entry(arg.ValueFactory(k, arg.FactoryArgument)), state);
+            var existing = _cache.GetOrAdd(key, (k, arg) => new Entry(arg.valueFactory(k, arg.factoryArg)), (valueFactory, factoryArg));
             return existing.Item;
-        }
-
-        private readonly struct GetOrAddState<TArg>
-        {
-            public Func<TKey, TArg, CacheEntry> ValueFactory { get; init; }
-            public TArg FactoryArgument { get; init; }
         }
 
         public bool TryExpire(TKey key, [NotNullWhen(true)] out T? item)

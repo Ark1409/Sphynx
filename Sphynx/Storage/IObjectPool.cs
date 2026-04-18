@@ -11,4 +11,19 @@ namespace Sphynx.Storage
         bool Return(T item);
         void Clear(Action<T>? clearAction = null);
     }
+
+    public static class ObjectPoolExtensions
+    {
+        public static T Take<T>(this IObjectPool<T> pool)
+            where T : class
+        {
+            if (!pool.TryTake(out var item))
+                ThrowNoItemException();
+
+            return item;
+
+            [DoesNotReturn]
+            static void ThrowNoItemException() => throw new InvalidOperationException();
+        }
+    }
 }
