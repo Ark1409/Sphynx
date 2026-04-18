@@ -1,8 +1,10 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 using Microsoft;
 using Sphynx.Utils;
@@ -21,6 +23,10 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// The maximum number of concurrently open reading channels.
         /// </summary>
+        /// <remarks>
+        /// If this is set to a value at which we are currently above, we will simply not accept any more
+        /// channels until the <see cref="OpenChannelCount"/> drops below it.
+        /// </remarks>
         public int MaxOpenChannels { get; set; } = int.MaxValue;
 
         /// <summary>
@@ -35,6 +41,7 @@ namespace Sphynx.Network.Transport
         /// A lock held while the reader is <see cref="RunAsync">running</see>.
         /// </summary>
         protected readonly SemaphoreSlim RunLock = new(1, 1);
+
         protected CancellationTokenSource RunCts = new();
 
         private Task? _runTask;
@@ -55,6 +62,10 @@ namespace Sphynx.Network.Transport
             _onChannelOpened = callback;
         }
 
+        /// <summary>
+        /// Actively begins reading from the underlying stream.
+        /// </summary>
+        /// <exception cref="Exception">The exception which terminated the reading.</exception>
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
@@ -90,18 +101,20 @@ namespace Sphynx.Network.Transport
                 _isInsideRunTask.Value = false;
             }
 
-            await CloseChannels().ConfigureAwait(false);
+            await CloseChannelsAsync().ConfigureAwait(false);
         }
 
-        private async ValueTask CloseChannels()
+        private async ValueTask CloseChannelsAsync()
         {
             Debug.Assert(!_isInsideRunTask.Value);
 
-            foreach(var (_, channel) in OpenChannels)
+            foreach (var (_, channel) in OpenChannels)
             {
+                var closeException = GetDisposedException();
+
                 try
                 {
-                    await channel.OnReaderEndAsync().ConfigureAwait(false);
+                    await channel.DisposeAsync(closeException).ConfigureAwait(false);
                 }
                 catch
                 {
@@ -125,7 +138,7 @@ namespace Sphynx.Network.Transport
                 RunLock.Release();
             }
 
-            _disposeException = new ObjectDisposedException(GetType().Name, _runTask?.Exception);
+            _disposeException = new ObjectDisposedException(GetType().Name, _runTask?.Exception?.GetBaseException());
             _runTask = null;
             _onChannelOpened = null;
             _onChannelOpenedState = null;
@@ -181,17 +194,15 @@ namespace Sphynx.Network.Transport
 
         private ObjectDisposedException? _disposeException;
 
-        protected ObjectDisposedException GetDisposedException()
-            => _disposeException ??= new ObjectDisposedException(GetType().Name, _runTask?.Exception?.GetBaseException());
+        protected ObjectDisposedException GetDisposedException() =>
+            _disposeException ??= new ObjectDisposedException(GetType().Name, _runTask?.Exception?.GetBaseException());
 
         public partial class Channel : IAsyncDisposable, IDisposableObservable
         {
             private static readonly ChannelClosedException _closeSentinel = new();
+            private volatile bool _writerCompleted;
 
             public ChannelId ChannelId { get; protected set; }
-
-            public virtual Stream AsStream => _channelStream ??= new ChannelStream(this);
-            private Stream? _channelStream;
 
             public bool IsDisposed => CloseException != null;
             protected volatile ChannelClosedException? CloseException;
@@ -204,38 +215,34 @@ namespace Sphynx.Network.Transport
 
             public virtual void ReadExactly(Memory<byte> buffer)
             {
-                int bytesRead = 0;
+                var task = ReadExactlyAsync(buffer);
 
-                while (bytesRead < buffer.Length)
-                {
-                    int rc = Read(buffer.Span[bytesRead..]);
+                if (!task.IsCompleted)
+                    task = task.Preserve();
 
-                    if (rc <= 0)
-                        ThrowEndException();
-
-                    bytesRead += rc;
-                }
-
-                [DoesNotReturn]
-                void ThrowEndException() => throw CloseException ?? new ChannelClosedException();
+                task.GetAwaiter().GetResult();
             }
 
             public virtual async ValueTask ReadExactlyAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             {
-                int bytesRead = 0;
+                var result = await ChannelReader.ReadAtLeastAsync(buffer.Length, cancellationToken).ConfigureAwait(false);
 
-                while (bytesRead < buffer.Length)
-                {
-                    int rc = await ReadAsync(buffer[bytesRead..], cancellationToken).ConfigureAwait(false);
+                if (result.IsCanceled || result.IsCompleted)
+                    ThrowEndException();
 
-                    if (rc <= 0)
-                        ThrowEndException();
+                result.Buffer.CopyTo(buffer.Span);
+                ChannelReader.AdvanceTo(result.Buffer.End);
 
-                    bytesRead += rc;
-                }
+                void ThrowEndException() => throw CloseException ?? _closeSentinel;
+            }
 
-                [DoesNotReturn]
-                void ThrowEndException() => throw CloseException ?? new ChannelClosedException();
+            private ChannelStream? _channelStream;
+
+            public virtual Stream AsStream(bool leaveOpen = true)
+            {
+                _channelStream ??= new ChannelStream(this);
+                _channelStream.LeaveOpen = leaveOpen;
+                return _channelStream;
             }
 
             public void Dispose() => Dispose(null);
@@ -254,8 +261,6 @@ namespace Sphynx.Network.Transport
                 {
                     // ignore
                 }
-
-                _channelStream?.Dispose();
 
                 GC.SuppressFinalize(this);
                 Dispose(true);
@@ -278,14 +283,13 @@ namespace Sphynx.Network.Transport
                     // ignore
                 }
 
-                if (_channelStream is not null)
-                    await _channelStream.DisposeAsync().ConfigureAwait(false);
-
                 GC.SuppressFinalize(this);
                 await DisposeAsyncCore().ConfigureAwait(false);
                 Dispose(false);
+                _writerCompleted = false;
             }
 
+            [MemberNotNull(nameof(CloseException))]
             private bool TryReserveDispose(Exception? disposeException)
             {
                 if (CloseException is not null)
@@ -293,7 +297,7 @@ namespace Sphynx.Network.Transport
 
                 ChannelClosedException closeException;
 
-                if (disposeException is null)
+                if (disposeException is null || _writerCompleted)
                     closeException = _closeSentinel;
                 else if (disposeException is ChannelClosedException closedException)
                     closeException = closedException;
@@ -334,11 +338,19 @@ namespace Sphynx.Network.Transport
             }
 
             private readonly Channel _channel;
+            public bool LeaveOpen { get; set; }
 
-            public ChannelStream(Channel channel)
+            public ChannelStream(Channel channel, bool leaveOpen = true)
             {
                 _channel = channel;
+                LeaveOpen = leaveOpen;
             }
+
+            public sealed override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback? callback, object? state) =>
+                TaskToAsyncResult.Begin(ReadAsync(buffer, offset, count, default), callback, state);
+
+            public sealed override int EndRead(IAsyncResult asyncResult) =>
+                TaskToAsyncResult.End<int>(asyncResult);
 
             public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             {
@@ -363,7 +375,85 @@ namespace Sphynx.Network.Transport
             public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
             public override void SetLength(long value) => throw new NotSupportedException();
 
-            // Dispose does nothing
+            public override ValueTask DisposeAsync()
+            {
+                return LeaveOpen ? base.DisposeAsync() : _channel.DisposeAsync();
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing && LeaveOpen)
+                    _channel.Dispose();
+            }
+        }
+
+        protected class ChannelPipeReader : PipeReader
+        {
+            private readonly Channel _channel;
+            private readonly PipeReader _reader;
+            public bool LeaveOpen { get; set; }
+
+            public ChannelPipeReader(Channel channel, PipeReader? reader, bool leaveOpen = true)
+            {
+                _channel = channel;
+                _reader = reader ?? CreatePipeReader(channel, leaveOpen);
+                LeaveOpen = leaveOpen;
+            }
+
+            protected virtual PipeReader CreatePipeReader(Channel channel, bool leaveOpen)
+            {
+                var defaultOptions = Channel.DefaultPipeOptions;
+                var options = new StreamPipeReaderOptions(defaultOptions.Pool,
+                    defaultOptions.MinimumSegmentSize,
+                    minimumReadSize: 128,
+                    leaveOpen: true,
+                    useZeroByteReads: false);
+
+                return Create(channel.AsStream(), options);
+            }
+
+            public override bool TryRead(out ReadResult result) => _reader.TryRead(out result);
+
+            public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default) => _reader.ReadAsync(cancellationToken);
+
+            protected override ValueTask<ReadResult> ReadAtLeastAsyncCore(int minimumSize, CancellationToken cancellationToken) =>
+                _reader.ReadAtLeastAsync(minimumSize, cancellationToken);
+
+            public override void AdvanceTo(SequencePosition consumed) => _reader.AdvanceTo(consumed);
+
+            public override void AdvanceTo(SequencePosition consumed, SequencePosition examined) => _reader.AdvanceTo(consumed, examined);
+
+            public override void CancelPendingRead() => _reader.CancelPendingRead();
+
+            public override Task CopyToAsync(PipeWriter destination, CancellationToken cancellationToken = default) =>
+                _reader.CopyToAsync(destination, cancellationToken);
+
+            public override Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default) =>
+                _reader.CopyToAsync(destination, cancellationToken);
+
+            [Obsolete($"{nameof(OnWriterCompleted)} has been deprecated and may not be invoked on all implementations of PipeReader.")]
+            public override void OnWriterCompleted(Action<Exception?, object?> callback, object? state) => _reader.OnWriterCompleted(callback, state);
+
+            public override ValueTask CompleteAsync(Exception? exception = null)
+            {
+                if (LeaveOpen)
+                    return ValueTask.CompletedTask;
+
+                return _channel.DisposeAsync(exception);
+            }
+
+            public override Stream AsStream(bool leaveOpen = false)
+            {
+                return _channel.AsStream(leaveOpen);
+            }
+
+            public override void Complete(Exception? exception = null)
+            {
+                if (LeaveOpen)
+                    return;
+
+                _channel.Dispose(exception);
+            }
         }
     }
 }

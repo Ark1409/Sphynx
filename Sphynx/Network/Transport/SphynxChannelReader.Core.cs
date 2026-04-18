@@ -4,9 +4,8 @@
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
-using System.Threading.Channels;
-using Sphynx.Storage;
 using Sphynx.Utils;
 
 namespace Sphynx.Network.Transport
@@ -17,14 +16,14 @@ namespace Sphynx.Network.Transport
 
     public partial class SphynxChannelReader
     {
-        private object? _onChannelRejectReceivedState;
-        private volatile Action<object?, ChannelId>? _onChannelRejectReceived;
+        private object? _onChannelRejectedState;
+        private volatile Action<object?, ChannelId>? _onChannelRejected;
 
         private object? _onFrameDroppedState;
         private volatile Action<object?, SphynxFrameHeader>? _onFrameDropped;
 
-        private object? _onChannelRejectedState;
-        private volatile Action<object?, ChannelId>? _onChannelRejected;
+        private object? _onChannelRejectingState;
+        private volatile Action<object?, ChannelId>? _onChannelRejecting;
 
         /// <summary>
         /// Holds a mapping of all currently active reading channels.
@@ -36,30 +35,30 @@ namespace Sphynx.Network.Transport
         /// sending all its data.
         /// </summary>
         /// <remarks>This is when a <see cref="SphynxFrameType.CHANNEL_REJECT"/> should be sent to the remote peer.</remarks>
-        public void OnChannelRejected(Action<object?, ChannelId> callback, object? state = null)
+        public void OnChannelRejecting(Action<object?, ChannelId> callback, object? state = null)
         {
-            _onChannelRejectedState = state;
-            _onChannelRejected = callback;
+            _onChannelRejectingState = state;
+            _onChannelRejecting = callback;
         }
 
         /// <summary>
-        /// Register a callback for when an incoming channel frame is dropped. This can occur if <see cref="MaxOpenChannels">too many</see>
+        /// Registers a callback for when an incoming channel frame is dropped. This can occur if <see cref="MaxOpenChannels">too many</see>
         /// channels are open, or invalid data is received. Under normal circumstances, existing channels should never lose any data.
         /// </summary>
-        public void OnFrameDropped(Action<object?, SphynxFrameHeader> callback, object? state = null)
+        public void OnChannelFrameDropped(Action<object?, SphynxFrameHeader> callback, object? state = null)
         {
             _onFrameDroppedState = state;
             _onFrameDropped = callback;
         }
 
         /// <summary>
-        /// Callback for when a <see cref="SphynxFrameType.CHANNEL_REJECT"/> is received.
+        /// Callback for when a <see cref="SphynxFrameType.CHANNEL_REJECT"/> is received from the remote peer.
         /// </summary>
         /// <seealso cref="SphynxFrameType.CHANNEL_REJECT"/>
-        public void OnChannelRejectReceived(Action<object?, ChannelId> callback, object? state = null)
+        public void OnChannelRejected(Action<object?, ChannelId> callback, object? state = null)
         {
-            _onChannelRejectReceivedState = state;
-            _onChannelRejectReceived = callback;
+            _onChannelRejectedState = state;
+            _onChannelRejected = callback;
         }
 
         protected virtual async Task ReadChannelsAsync(CancellationToken cancellationToken)
@@ -83,7 +82,7 @@ namespace Sphynx.Network.Transport
                         DisposeChannel(channel, protocolException);
                     }
 
-                    InvokeFrameDropped(in frameHeader);
+                    InvokeChannelFrameDropped(in frameHeader);
 
                     // We'll still take the size hint, even if the frame itself is invalid
                     if (sameVersion && frameHeader.FrameSize > 0)
@@ -96,7 +95,7 @@ namespace Sphynx.Network.Transport
 
                 if (frameHeader.FrameType == SphynxFrameType.CHANNEL_REJECT)
                 {
-                    InvokeChannelRejectReceived(frameHeader.ChannelId);
+                    InvokeChannelRejected(frameHeader.ChannelId);
 
                     Debug.Assert(frameHeader.FrameSize == 0);
                     continue;
@@ -126,8 +125,8 @@ namespace Sphynx.Network.Transport
 
                     if (_onChannelOpened == null)
                     {
-                        InvokeChannelRejected(frameHeader.ChannelId);
-                        InvokeFrameDropped(in frameHeader);
+                        InvokeChannelRejecting(frameHeader.ChannelId);
+                        InvokeChannelFrameDropped(in frameHeader);
 
                         await Stream.SkipAsync(frameHeader.FrameSize, cancellationToken).ConfigureAwait(false);
                         continue;
@@ -139,8 +138,8 @@ namespace Sphynx.Network.Transport
                         // Just drop it if we're at our max
                         if (OpenChannelCount >= MaxOpenChannels)
                         {
-                            InvokeChannelRejected(frameHeader.ChannelId);
-                            InvokeFrameDropped(in frameHeader);
+                            InvokeChannelRejecting(frameHeader.ChannelId);
+                            InvokeChannelFrameDropped(in frameHeader);
 
                             await Stream.SkipAsync(frameHeader.FrameSize, cancellationToken).ConfigureAwait(false);
                             continue;
@@ -158,7 +157,7 @@ namespace Sphynx.Network.Transport
                     if (!InvokeChannelOpened(channel))
                     {
                         DisposeChannel(channel, null);
-                        InvokeFrameDropped(in frameHeader);
+                        InvokeChannelFrameDropped(in frameHeader);
 
                         await Stream.SkipAsync(frameHeader.FrameSize, cancellationToken).ConfigureAwait(false);
                         continue;
@@ -167,7 +166,7 @@ namespace Sphynx.Network.Transport
 
                 if (!channelExists)
                 {
-                    InvokeFrameDropped(in frameHeader);
+                    InvokeChannelFrameDropped(in frameHeader);
 
                     await Stream.SkipAsync(frameHeader.FrameSize, cancellationToken).ConfigureAwait(false);
                     continue;
@@ -177,42 +176,46 @@ namespace Sphynx.Network.Transport
 
                 // Now read the actual channel data
 
-                var sequenceRental = SequencePool.Shared.Rent();
-                var sequence = sequenceRental.Value;
+                await using var channelWriter = await channel.RentChannelWriterAsync(cancellationToken).ConfigureAwait(false);
 
-                try
+                if (channelWriter.IsCompleted)
                 {
-                    // Split the frame into 4KB segments
-                    const int SEGMENT_SIZE = 4096;
-                    for (int segment = 0; segment * SEGMENT_SIZE < frameHeader.FrameSize; segment++)
-                    {
-                        int bytesLeft = frameHeader.FrameSize - segment * SEGMENT_SIZE;
-                        int readSize = Math.Min(SEGMENT_SIZE, bytesLeft);
-                        var memory = sequence.GetMemory(readSize)[..readSize];
+                    InvokeChannelFrameDropped(in frameHeader);
+                    continue;
+                }
 
-                        await Stream.ReadExactlyAsync(memory, cancellationToken).ConfigureAwait(false);
-                        sequence.Advance(readSize);
+                // Split the frame into SEGMENT_SIZE segments
+                const int SEGMENT_SIZE = SphynxChannelWriter.Channel.DEFAULT_FRAME_SIZE;
+
+                for (int segment = 0; segment * SEGMENT_SIZE < frameHeader.FrameSize; segment++)
+                {
+                    int bytesLeft = frameHeader.FrameSize - segment * SEGMENT_SIZE;
+                    int readSize = Math.Min(SEGMENT_SIZE, bytesLeft);
+                    var memory = channelWriter.GetMemory(readSize)[..readSize];
+
+                    int readCount = await Stream.ReadAtLeastAsync(memory, memory.Length, false, cancellationToken).ConfigureAwait(false);
+                    channelWriter.Advance(readCount);
+
+                    if (readCount < memory.Length)
+                    {
+                        InvokeChannelFrameDropped(in frameHeader);
+
+                        var endException = new EndOfStreamException();
+                        await channelWriter.CompleteAsync(endException).ConfigureAwait(false);
+                        throw endException;
                     }
                 }
-                catch
-                {
-                    sequenceRental.Dispose();
-                    throw;
-                }
-
-                var dataFrame = new PooledDataFrame(sequenceRental, frameHeader.Flags);
 
                 try
                 {
-                    await channel.ReceiveFrameAsync(dataFrame, cancellationToken).ConfigureAwait(false);
+                    await channelWriter.FlushAsync(cancellationToken).ConfigureAwait(false);
 
                     if (frameHeader.HasFlags(ChannelDataFlags.CHANNEL_END))
-                        OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(channel.ChannelId, channel));
+                        await channelWriter.CompleteAsync().ConfigureAwait(false);
                 }
                 catch
                 {
-                    dataFrame.Dispose();
-                    InvokeFrameDropped(in frameHeader);
+                    InvokeChannelFrameDropped(in frameHeader);
                 }
             }
         }
@@ -239,8 +242,8 @@ namespace Sphynx.Network.Transport
 
         private bool InvokeChannelOpened(Channel channel)
         {
-            object? stateArg = _onChannelOpenedState;
             var callback = _onChannelOpened;
+            object? callbackState = _onChannelOpenedState;
 
             if (callback == null)
                 return false;
@@ -255,11 +258,11 @@ namespace Sphynx.Network.Transport
                 {
                     // ignore
                 }
-            }, (callback, stateArg, channel), preferLocal: false);
+            }, (callback, stateArg: callbackState, channel), preferLocal: false);
             return true;
         }
 
-        private void InvokeFrameDropped(in SphynxFrameHeader header)
+        private void InvokeChannelFrameDropped(in SphynxFrameHeader header)
         {
             if (_onFrameDropped == null)
                 return;
@@ -277,24 +280,6 @@ namespace Sphynx.Network.Transport
             }, (reader: this, header), preferLocal: false);
         }
 
-        private void InvokeChannelRejectReceived(ChannelId channelId)
-        {
-            if (_onChannelRejectReceived == null)
-                return;
-
-            ThreadPool.QueueUserWorkItem(static state =>
-            {
-                try
-                {
-                    state.reader._onChannelRejectReceived?.Invoke(state.reader._onChannelRejectReceivedState, state.channelId);
-                }
-                catch
-                {
-                    // ignore
-                }
-            }, (reader: this, channelId), preferLocal: false);
-        }
-
         private void InvokeChannelRejected(ChannelId channelId)
         {
             if (_onChannelRejected == null)
@@ -305,6 +290,24 @@ namespace Sphynx.Network.Transport
                 try
                 {
                     state.reader._onChannelRejected?.Invoke(state.reader._onChannelRejectedState, state.channelId);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }, (reader: this, channelId), preferLocal: false);
+        }
+
+        private void InvokeChannelRejecting(ChannelId channelId)
+        {
+            if (_onChannelRejecting == null)
+                return;
+
+            ThreadPool.QueueUserWorkItem(static state =>
+            {
+                try
+                {
+                    state.reader._onChannelRejecting?.Invoke(state.reader._onChannelRejectingState, state.channelId);
                 }
                 catch
                 {
@@ -358,274 +361,247 @@ namespace Sphynx.Network.Transport
 
         private void UnregisterCallbacks()
         {
-            _onChannelRejected = null;
-            _onChannelRejectedState = null;
+            _onChannelRejecting = null;
+            _onChannelRejectingState = null;
             _onFrameDropped = null;
             _onFrameDroppedState = null;
-            _onChannelRejectReceived = null;
-            _onChannelRejectReceivedState = null;
+            _onChannelRejected = null;
+            _onChannelRejectedState = null;
         }
 
-        public struct PooledDataFrame : IDisposable
+        public partial class Channel
         {
-            private SequencePool.Rental _bufferRental;
-            private ReadOnlySequence<byte> _buffer;
-
-            public byte DataFlags { get; }
-
-            public ReadOnlySequence<byte> Frame
+            protected internal readonly struct ChannelWriterRent : IDisposable, IAsyncDisposable, IBufferWriter<byte>
             {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => IsDisposed ? default : _buffer;
-            }
+                public bool IsCompleted => _channel._writerCompleted;
 
-            public ReadOnlySequence<byte> FrameLeft
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => IsDisposed ? default : _buffer.Slice(Position);
-            }
+                private readonly PipeWriter _writer;
+                private readonly Channel _channel;
+                private readonly SemaphoreSlim _writerLock;
 
-            public long Position { get; private set; }
+                internal ChannelWriterRent(Channel channel, SemaphoreSlim writerLock)
+                {
+                    _channel = channel;
+                    _writer = _channel.GetPipe().Writer;
 
-            private bool IsDisposed
-            {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => _bufferRental.Value == null;
-            }
+                    _writerLock = writerLock;
+                    Debug.Assert(writerLock.CurrentCount == 0);
+                }
 
-            public PooledDataFrame(SequencePool.Rental bufferRental, byte dataFlags)
-            {
-                _bufferRental = bufferRental;
-                _buffer = bufferRental.Value.AsReadOnlySequence;
-                DataFlags = dataFlags;
-            }
+                public void Advance(int count) => _writer.Advance(count);
+                public Memory<byte> GetMemory(int sizeHint = 0) => _writer.GetMemory(sizeHint);
+                public Span<byte> GetSpan(int sizeHint = 0) => _writer.GetSpan(sizeHint);
+                public ValueTask<FlushResult> FlushAsync(CancellationToken cancellationToken = default) => _writer.FlushAsync(cancellationToken);
 
-            public int Peek(Span<byte> span)
-            {
-                if (IsDisposed)
-                    return 0;
+                public void Complete(Exception? ex = null)
+                {
+                    _writer.Complete(ex);
+                    _channel.Parent.OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(_channel.ChannelId, _channel));
+                    _channel._writerCompleted = true;
+                }
 
-                var currentBuffer = FrameLeft;
-                int bytesRead = span.Length < currentBuffer.Length ? span.Length : (int)currentBuffer.Length;
+                public async ValueTask CompleteAsync(Exception? ex = null)
+                {
+                    await _writer.CompleteAsync(ex).ConfigureAwait(false);
+                    _channel.Parent.OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(_channel.ChannelId, _channel));
+                }
 
-                currentBuffer.Slice(0, bytesRead).CopyTo(span);
-                return bytesRead;
-            }
+                public void Dispose()
+                {
+                    if (IsCompleted)
+                    {
+                        _writerLock.Release();
+                        return;
+                    }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int Read(Span<byte> span)
-            {
-                int bytesRead = Peek(span);
-                Position += bytesRead;
-                return bytesRead;
-            }
+                    try
+                    {
+                        var flushTask = FlushAsync();
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public bool HasFlags(byte flags) => (DataFlags & flags) == flags;
+                        if (!flushTask.IsCompleted)
+                            flushTask = flushTask.Preserve();
 
-            public void Dispose()
-            {
-                if (IsDisposed)
-                    return;
+                        var result = flushTask.GetAwaiter().GetResult();
 
-                _bufferRental.Dispose();
-                _bufferRental = default;
-                _buffer = default;
-                Position = 0;
+                        if (result.IsCompleted && !_channel._writerCompleted)
+                            Complete(_channel.CloseException);
+                    }
+                    catch
+                    {
+                        // If we have problems flushing, we don't really care; it's likely the underlying pipe
+                        // is somehow "broken" anyway
+                    }
+                    finally
+                    {
+                        _writerLock.Release();
+                    }
+                }
+
+                public ValueTask DisposeAsync()
+                {
+                    if (IsCompleted)
+                    {
+                        _writerLock.Release();
+                        return ValueTask.CompletedTask;
+                    }
+
+                    return Core(this);
+
+                    static async ValueTask Core(ChannelWriterRent thisRef)
+                    {
+                        try
+                        {
+                            var result = await thisRef.FlushAsync().ConfigureAwait(false);
+
+                            if (result.IsCompleted)
+                                await thisRef.CompleteAsync(thisRef._channel.CloseException).ConfigureAwait(false);
+                        }
+                        catch
+                        {
+                            // If we have problems flushing, we don't really care; it's likely the underlying pipe
+                            // is somehow "broken" anyway
+                        }
+                        finally
+                        {
+                            thisRef._writerLock.Release();
+                        }
+                    }
+                }
             }
         }
 
         public partial class Channel
         {
-            /// <summary>
-            /// A <see cref="System.Threading.Channels.Channel{T}"/> holding incoming channel frames.
-            /// </summary>
-            protected Channel<PooledDataFrame> FrameChannel { get; }
+            protected internal static readonly PipeOptions DefaultPipeOptions = new(
+                pauseWriterThreshold: SphynxChannelWriter.Channel.DEFAULT_FRAME_SIZE * 4,
+                resumeWriterThreshold: SphynxChannelWriter.Channel.DEFAULT_FRAME_SIZE * 2,
+                minimumSegmentSize: SphynxChannelWriter.Channel.DEFAULT_FRAME_SIZE,
+                useSynchronizationContext: false);
 
-            protected PooledDataFrame? CurrentFrame;
-            private bool _channelStarted;
-            private bool _channelEnded;
+            private volatile Pipe? _pipe;
+            private readonly SemaphoreSlim _pipeWriterLock = new(1, 1);
+
+            /// <summary>
+            /// The <see cref="PipeReader"/> for incoming channel data.
+            /// </summary>
+            protected PipeReader ChannelReader => GetPipe().Reader;
 
             public Channel(SphynxChannelReader parent, ChannelId channelId)
             {
                 Parent = parent;
                 ChannelId = channelId;
-                FrameChannel = CreateFrameChannel();
             }
+
+            // Read semantics copied from: PipeReaderStream.cs
+            //
+            // Copyright (c) .NET Foundation and Contributors
+            //
+            // All rights reserved.
+            //
+            // Permission is hereby granted, free of charge, to any person obtaining a copy
+            // of this software and associated documentation files (the "Software"), to deal
+            // in the Software without restriction, including without limitation the rights
+            // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+            // copies of the Software, and to permit persons to whom the Software is
+            // furnished to do so, subject to the following conditions:
+            //
+            // The above copyright notice and this permission notice shall be included in all
+            // copies or substantial portions of the Software.
 
             public int Read(Span<byte> buffer)
             {
                 ThrowIfDisposed();
 
-                int bytesRead = 0;
+                var task = ChannelReader.ReadAsync();
+                var result = task.IsCompletedSuccessfully ? task.Result : task.Preserve().GetAwaiter().GetResult();
+                return HandleReadResult(result, buffer);
+            }
 
-                while (true)
+            public virtual async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                ThrowIfDisposed();
+
+                var result = await ChannelReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                return HandleReadResult(result, buffer.Span);
+            }
+
+            private int HandleReadResult(ReadResult result, Span<byte> buffer)
+            {
+                if (result.IsCanceled)
+                    throw new OperationCanceledException(null, CloseException);
+
+                ReadOnlySequence<byte> sequence = result.Buffer;
+                long bufferLength = sequence.Length;
+                SequencePosition consumed = sequence.Start;
+
+                try
                 {
-                    if (CurrentFrame != null)
+                    if (bufferLength != 0)
                     {
-                        var currentFrame = CurrentFrame.Value;
-                        int readCount = currentFrame.Read(buffer);
+                        int actual = (int)Math.Min(bufferLength, buffer.Length);
 
-                        if (currentFrame.Position == currentFrame.Frame.Length)
-                        {
-                            FramesRead++;
-                            currentFrame.Dispose();
-                            CurrentFrame = FrameChannel.Reader.TryRead(out var frame) ? frame : null;
-                        }
+                        ReadOnlySequence<byte> slice = actual == bufferLength ? sequence : sequence.Slice(0, actual);
+                        consumed = slice.End;
+                        slice.CopyTo(buffer);
 
-                        BytesRead += readCount;
-                        bytesRead += readCount;
-
-                        if (readCount != buffer.Length)
-                        {
-                            buffer = buffer[readCount..];
-                            continue;
-                        }
-
-                        return bytesRead;
+                        return actual;
                     }
 
-                    if (FrameChannel.Reader.TryRead(out var newFrame))
-                    {
-                        CurrentFrame = newFrame;
-                        continue;
-                    }
+                    if (result.IsCompleted)
+                        return 0;
+                }
+                finally
+                {
+                    ChannelReader.AdvanceTo(consumed);
+                }
 
-                    try
-                    {
-                        bool isCompleted = FrameChannel.Reader.WaitToReadAsync().Preserve().GetAwaiter().GetResult();
+                // This is a buggy PipeReader implementation that returns 0 byte reads even though the PipeReader
+                // isn't completed or canceled?
+                throw new InvalidOperationException("0 byte read occured when channel was not completed");
+            }
 
-                        if (isCompleted)
-                            return bytesRead;
-                    }
-                    catch
-                    {
-                        return bytesRead;
-                    }
+            /// <summary>
+            /// Rent exclusive access to this channel's <see cref="PipeWriter"/>.
+            /// </summary>
+            /// <param name="cancellationToken">A cancellation token for the wait operation.</param>
+            /// <returns>The rented channel writer. You should call <see cref="ChannelWriterRent.Dispose"/> once you are done.</returns>
+            protected internal ChannelWriterRent RentChannelWriter(CancellationToken cancellationToken = default)
+            {
+                _pipeWriterLock.Wait(cancellationToken);
+                return new ChannelWriterRent(this, _pipeWriterLock);
+            }
+
+            /// <summary>
+            /// Rent exclusive access to this channel's <see cref="PipeWriter"/>.
+            /// </summary>
+            /// <param name="cancellationToken">A cancellation token for the wait operation.</param>
+            /// <returns>The rented channel writer. You should call <see cref="ChannelWriterRent.DisposeAsync"/> once you are done.</returns>
+            protected internal ValueTask<ChannelWriterRent> RentChannelWriterAsync(CancellationToken cancellationToken = default)
+            {
+                var waitTask = _pipeWriterLock.WaitAsync(cancellationToken);
+
+                if (waitTask.IsCompletedSuccessfully)
+                    return ValueTask.FromResult(new ChannelWriterRent(this, _pipeWriterLock));
+
+                if (waitTask.IsCanceled)
+                    return ValueTask.FromCanceled<ChannelWriterRent>(cancellationToken);
+
+                return Core(waitTask);
+
+                async ValueTask<ChannelWriterRent> Core(Task task)
+                {
+                    await task.ConfigureAwait(false);
+                    return new ChannelWriterRent(this, _pipeWriterLock);
                 }
             }
 
-            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            private ChannelPipeReader? _channelPipeReader;
+
+            public virtual PipeReader AsPipeReader(bool leaveOpen = true)
             {
-                if (IsDisposed)
-                    return ValueTask.FromException<int>(GetDisposedException());
-
-                int bytesRead = 0;
-
-                while (true)
-                {
-                    if (CurrentFrame != null)
-                    {
-                        var currentFrame = CurrentFrame.Value;
-                        int readCount = currentFrame.Read(buffer.Span);
-
-                        if (currentFrame.Position == currentFrame.Frame.Length)
-                        {
-                            FramesRead++;
-                            currentFrame.Dispose();
-                            CurrentFrame = FrameChannel.Reader.TryRead(out var frame) ? frame : null;
-                        }
-
-                        BytesRead += readCount;
-                        bytesRead += readCount;
-
-                        if (readCount != buffer.Length)
-                        {
-                            buffer = buffer[readCount..];
-                            continue;
-                        }
-
-                        return ValueTask.FromResult(bytesRead);
-                    }
-
-                    if (FrameChannel.Reader.TryRead(out var newFrame))
-                    {
-                        CurrentFrame = newFrame;
-                        continue;
-                    }
-
-                    // Should be rare
-                    return WaitAndReadAsync(buffer, bytesRead, cancellationToken);
-                }
-
-                [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-                async ValueTask<int> WaitAndReadAsync(Memory<byte> memory, int readCount, CancellationToken token)
-                {
-                    try
-                    {
-                        bool isCompleted = await FrameChannel.Reader.WaitToReadAsync(token).ConfigureAwait(false);
-
-                        if (isCompleted)
-                            return readCount;
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        return readCount;
-                    }
-
-                    return readCount + await ReadAsync(memory, token).ConfigureAwait(false);
-                }
-            }
-
-            protected internal virtual ValueTask ReceiveFrameAsync(PooledDataFrame dataFrame, CancellationToken cancellationToken = default)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    return ValueTask.FromCanceled(cancellationToken);
-
-                if (IsDisposed)
-                    return ValueTask.FromException(GetDisposedException());
-
-                if (_channelEnded)
-                    return ValueTask.FromException(new SphynxProtocolException($"No more frames expected ({nameof(ChannelId)}: {ChannelId})"));
-
-                if (!_channelStarted && !dataFrame.HasFlags(ChannelDataFlags.CHANNEL_START))
-                    return ValueTask.FromException(new SphynxProtocolException(
-                        $"First frame of a channel should be CHANNEL_START ({nameof(ChannelId)}: {ChannelId})"));
-
-                if (dataFrame.HasFlags(ChannelDataFlags.CHANNEL_START))
-                {
-                    if (_channelStarted)
-                        return ValueTask.FromException(new SphynxProtocolException(
-                            $"Channel should only contain one CHANNEL_START frame ({nameof(ChannelId)}: {ChannelId})"));
-
-                    _channelStarted = true;
-                }
-
-                if (!dataFrame.HasFlags(ChannelDataFlags.CHANNEL_END))
-                    return FrameChannel.Writer.WriteAsync(dataFrame, cancellationToken);
-
-                return WriteFrameAndComplete(dataFrame, cancellationToken);
-
-                [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-                async ValueTask WriteFrameAndComplete(PooledDataFrame frame, CancellationToken ct)
-                {
-                    Debug.Assert(frame.HasFlags(ChannelDataFlags.CHANNEL_END));
-                    _channelEnded = true;
-
-                    await FrameChannel.Writer.WriteAsync(frame, ct).ConfigureAwait(false);
-                    FrameChannel.Writer.TryComplete();
-                }
-            }
-
-            // OnReaderFinished
-            protected internal virtual ValueTask OnReaderEndAsync()
-            {
-                if (FrameChannel.Writer.TryComplete(Parent.GetDisposedException()))
-                    return DisposeAsync(Parent.GetDisposedException());
-
-                return ValueTask.CompletedTask;
-            }
-
-            protected virtual Channel<PooledDataFrame> CreateFrameChannel()
-            {
-                return System.Threading.Channels.Channel.CreateBounded<PooledDataFrame>(new BoundedChannelOptions(capacity: 8)
-                {
-                    // False since the protocol reading thread can also call Dispose on this channel
-                    SingleWriter = false,
-                    SingleReader = true,
-                    AllowSynchronousContinuations = false,
-                    FullMode = BoundedChannelFullMode.Wait,
-                });
+                _channelPipeReader ??= new ChannelPipeReader(this, ChannelReader, leaveOpen);
+                _channelPipeReader.LeaveOpen = leaveOpen;
+                return _channelPipeReader;
             }
 
             protected virtual void Dispose(bool disposing)
@@ -634,41 +610,74 @@ namespace Sphynx.Network.Transport
                 {
                     Debug.Assert(CloseException != null);
 
-                    if (FrameChannel.Writer.TryComplete(CloseException))
-                        Parent.InvokeChannelRejected(ChannelId);
-
-                    Parent.OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(ChannelId, this));
-                    FrameChannel.Reader.DrainAsync(frame => frame.Dispose()).Preserve().GetAwaiter().GetResult();
-
-                    if (CurrentFrame != null)
+                    try
                     {
-                        CurrentFrame.Value.Dispose();
-                        CurrentFrame = null;
+                        ChannelReader.Complete(CloseException);
+                    }
+                    catch
+                    {
+                        // We don't care if (for some reason) it was completed elsewhere, only that it was
+                    }
+
+                    using (var writer = RentChannelWriter())
+                    {
+                        if (!writer.IsCompleted)
+                            Parent.InvokeChannelRejecting(ChannelId);
+
+                        writer.Complete(CloseException);
                     }
                 }
 
-                _channelEnded = false;
-                _channelStarted = false;
+                _pipe = null;
             }
 
             protected virtual async ValueTask DisposeAsyncCore()
             {
                 Debug.Assert(CloseException != null);
 
-                if (FrameChannel.Writer.TryComplete(CloseException))
-                    Parent.InvokeChannelRejected(ChannelId);
-
-                Parent.OpenChannels.TryRemove(new KeyValuePair<ChannelId, Channel>(ChannelId, this));
-                await FrameChannel.Reader.DrainAsync(frame => frame.Dispose()).ConfigureAwait(false);
-
-                if (CurrentFrame != null)
+                try
                 {
-                    CurrentFrame.Value.Dispose();
-                    CurrentFrame = null;
+                    await ChannelReader.CompleteAsync(CloseException).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // We don't care if (for some reason) it was completed elsewhere, only that it was
                 }
 
-                _channelEnded = false;
-                _channelStarted = false;
+                await using (var writer = await RentChannelWriterAsync().ConfigureAwait(false))
+                {
+                    if (!writer.IsCompleted)
+                        Parent.InvokeChannelRejecting(ChannelId);
+
+                    await writer.CompleteAsync(CloseException).ConfigureAwait(false);
+                }
+
+                _pipe = null;
+            }
+
+            protected virtual Pipe NewPipe()
+            {
+                return new Pipe(DefaultPipeOptions);
+            }
+
+            private object PipeInitLock => _pipeWriterLock;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private protected Pipe GetPipe()
+            {
+                if (_pipe != null)
+                    return _pipe;
+
+                return InitPipe();
+
+                [MethodImpl(MethodImplOptions.NoInlining)]
+                Pipe InitPipe()
+                {
+                    lock (PipeInitLock)
+                    {
+                        return _pipe ?? (_pipe = NewPipe());
+                    }
+                }
             }
         }
     }
