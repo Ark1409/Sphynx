@@ -22,7 +22,7 @@ namespace Sphynx.Network.Transport
 
         /// <summary>
         /// Indicates that the receiver will not be accepting any more frames from the specified channel until it is reset
-        /// (by sending <see cref="CHANNEL_DATA"/> with the <see cref="ChannelDataFlags.CHANNEL_START"/> flag).
+        /// (i.e. by sending <see cref="CHANNEL_DATA"/> with the <see cref="ChannelDataFlags.CHANNEL_START"/> flag).
         /// </summary>
         CHANNEL_REJECT = 2,
     }
@@ -33,6 +33,11 @@ namespace Sphynx.Network.Transport
     /// <seealso cref="SphynxFrameHeader.Flags"/>
     public static class ChannelDataFlags
     {
+        /// <summary>
+        /// Indicates no control flags are specified.
+        /// </summary>
+        public const byte NONE = 0x00;
+
         /// <summary>
         /// Indicates that this frame acts as the initiator of a new data channel. The frame may still contain application
         /// data within its body.
