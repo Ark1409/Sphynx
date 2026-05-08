@@ -7,36 +7,34 @@ using Sphynx.Network.Transport;
 namespace Sphynx.Test.Network.Transport
 {
     [TestFixture]
-    public class SphynxChannelWriterTests
+    public class DefaultChannelWriterTests
     {
         [Test]
-        public async Task SendRejectAsync_ShouldSendRejectFrame_WhenWriterIsNotDisposed()
+        public async Task SendReleaseAsync_ShouldSendReleaseFrame_WhenWriterIsNotDisposed()
         {
             // Arrange
             using var stream = new MemoryStream();
-            await using var writer = new SphynxChannelWriter(stream);
+            await using var writer = new DefaultChannelWriter(stream);
 
             // Act
-            await writer.SendRejectAsync(ChannelId.MaxValue);
+            await writer.SendReleaseAsync(ChannelId.MaxValue);
             stream.Position = 0;
 
             // Assert
-            var rejectFrame = new SphynxFrameHeader(SphynxFrameType.CHANNEL_REJECT, ChannelId.MaxValue, 0);
-            byte[] rejectBytes = rejectFrame.Serialize();
+            var releaseFrame = new SphynxFrameHeader(SphynxFrameType.CHANNEL_RELEASE, ChannelId.MaxValue, 0);
+            byte[] releaseBytes = releaseFrame.Serialize();
 
-            CollectionAssert.AreEqual(stream.ToArray(), rejectBytes);
+            CollectionAssert.AreEqual(stream.ToArray(), releaseBytes);
         }
 
         [Test]
         public async Task OpenChannel_ShouldThrow_WhenDuplicateChannelExists()
         {
             // Arrange
-            await using var writer = new SphynxChannelWriter(new MemoryStream());
-
-            // Act
+            await using var writer = new DefaultChannelWriter(new MemoryStream());
             await using var _ = writer.OpenChannel(ChannelId.MaxValue);
 
-            // Assert
+            // Act + Assert
             Assert.Throws(Is.InstanceOf<Exception>(), () => writer.OpenChannel(ChannelId.MaxValue));
         }
 
@@ -45,7 +43,7 @@ namespace Sphynx.Test.Network.Transport
         {
             // Arrange
             using var stream = new MemoryStream();
-            var writer = new SphynxChannelWriter(stream);
+            var writer = new DefaultChannelWriter(stream);
 
             // Don't dispose or flush the channel - don't send any data
             var channel = writer.OpenChannel(channelId: 1);
@@ -61,11 +59,11 @@ namespace Sphynx.Test.Network.Transport
         }
 
         [Test]
-        public async Task DisposeAsync_ShouldAbortUnfinishedChannels_WhenDataHasBeenSent()
+        public async Task DisposeAsync_ShouldAbortUnclosedChannels_WhenDataHasBeenSent()
         {
             // Arrange
             using var stream = new MemoryStream();
-            var writer = new SphynxChannelWriter(stream);
+            var writer = new DefaultChannelWriter(stream);
 
             // Don't dispose the channel - leave it unfinished
             var channel = writer.OpenChannel(channelId: 1);
@@ -96,7 +94,7 @@ namespace Sphynx.Test.Network.Transport
             {
                 // Arrange
                 using var stream = new MemoryStream();
-                await using var writer = new SphynxChannelWriter(stream);
+                await using var writer = new DefaultChannelWriter(stream);
                 await using var channel = writer.OpenChannel();
                 await channel.WriteAsync(new byte[] { 1, 2, 3 });
 
@@ -114,7 +112,7 @@ namespace Sphynx.Test.Network.Transport
             {
                 // Arrange
                 using var stream = new MemoryStream();
-                await using var writer = new SphynxChannelWriter(stream);
+                await using var writer = new DefaultChannelWriter(stream);
 
                 // Act
                 await using (var channel = writer.OpenChannel(channelId: 1))
@@ -131,6 +129,30 @@ namespace Sphynx.Test.Network.Transport
                         FrameSize = 3,
                     }.Serialize()
                     .Concat(new byte[] { 1, 2, 3 });
+
+                CollectionAssert.AreEqual(expectedFrame, stream.ToArray());
+            }
+
+            [Test]
+            public async Task DisposeAsync_ShouldWriteAbortFrame_WhenDisposingWithException()
+            {
+                // Arrange
+                using var stream = new MemoryStream();
+                await using var writer = new DefaultChannelWriter(stream);
+
+                // Act
+                var channel = writer.OpenChannel(channelId: 1);
+                await channel.WriteAsync(new byte[] { 1 });
+                await channel.FlushAsync();
+                stream.SetLength(0);
+                await channel.DisposeAsync(new ChannelClosedException());
+
+                // Assert
+                byte[] expectedFrame = new SphynxFrameHeader
+                {
+                    FrameType = SphynxFrameType.CHANNEL_ABORT,
+                    ChannelId = 1,
+                }.Serialize();
 
                 CollectionAssert.AreEqual(expectedFrame, stream.ToArray());
             }
