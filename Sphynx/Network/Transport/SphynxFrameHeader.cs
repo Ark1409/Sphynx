@@ -32,7 +32,7 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// The packet signature to identify Sphynx frames.
         /// </summary>
-        public static readonly ReadOnlyMemory<byte> Signature = new(new byte[] { 0x53, 0x50 }); // SP
+        public static readonly ReadOnlyMemory<byte> Signature = new byte[] { 0x53, 0x50 }; // SP
 
         /// <summary>
         /// The protocol version against which the frame was serialized.
@@ -97,16 +97,17 @@ namespace Sphynx.Network.Transport
         // so pooling should ease the allocation burden.
         private static readonly ArrayPool<byte> _networkArrayPool = ArrayPool<byte>.Create(SIZE, 50);
 
+        // TODO: Allow ReceiveAsync-ing from a PipeReader
+
         /// <summary>
         /// Continuously reads from a <paramref name="stream"/> until a <see cref="SphynxFrameHeader"/> has been successfully consumed.
         /// </summary>
         /// <param name="stream">The stream from which to consume the header.</param>
         /// <param name="cancellationToken">The cancellation token to abort the receive request.</param>
-        /// <param name="allowInvalid">Whether to allow <see cref="IsValid">invalid</see> frames to be read.</param>
+        /// <param name="skipInvalid">Whether to allow <see cref="IsValid">invalid</see> frames to be read.</param>
         /// <exception cref="ArgumentException">If <paramref name="stream"/> is not readable.</exception>
         /// <returns>The first successfully consumed <see cref="SphynxFrameHeader"/>.</returns>
-        public static ValueTask<SphynxFrameHeader> ReceiveAsync(Stream stream, bool allowInvalid = false,
-            CancellationToken cancellationToken = default)
+        public static ValueTask<SphynxFrameHeader> ReceiveAsync(Stream stream, bool skipInvalid = true, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
                 return ValueTask.FromCanceled<SphynxFrameHeader>(cancellationToken);
@@ -114,10 +115,10 @@ namespace Sphynx.Network.Transport
             if (!stream.CanRead)
                 return ValueTask.FromException<SphynxFrameHeader>(new ArgumentException("Stream must be readable", nameof(stream)));
 
-            return Core(stream, _networkArrayPool.Rent(SIZE), !allowInvalid, cancellationToken);
+            return Core(stream, _networkArrayPool.Rent(SIZE), skipInvalid, cancellationToken);
 
             [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder<>))]
-            static async ValueTask<SphynxFrameHeader> Core(Stream stream, byte[] rentArray, bool verify, CancellationToken token)
+            static async ValueTask<SphynxFrameHeader> Core(Stream stream, byte[] rentArray, bool skipInvalid, CancellationToken token)
             {
                 try
                 {
@@ -127,7 +128,7 @@ namespace Sphynx.Network.Transport
 
                     SphynxFrameHeader? header;
 
-                    while (!TryDeserialize(rentBuffer.Span, out header, verify))
+                    while (!TryDeserialize(rentBuffer.Span, out header, skipInvalid))
                     {
                         token.ThrowIfCancellationRequested();
 
@@ -167,7 +168,7 @@ namespace Sphynx.Network.Transport
             try
             {
                 if (!header.TrySerialize(rentArray.AsSpan()[..SIZE]))
-                    return ValueTask.FromException(new InvalidOperationException($"Could not serialize frame header: {header}"));
+                    return ValueTask.FromException(new InvalidOperationException($"Could not serialize invalid frame header: {header}"));
 
                 isSerialized = true;
             }
@@ -238,7 +239,7 @@ namespace Sphynx.Network.Transport
             byte version = deserializer.ReadUInt8();
             byte typeAndFlags = deserializer.ReadUInt8();
             Debug.Assert(Enum.GetUnderlyingType(typeof(SphynxFrameType)) == typeof(byte));
-            var frameType = (SphynxFrameType)((typeAndFlags >> 4) & 0xF0);
+            var frameType = (SphynxFrameType)((typeAndFlags >> 4) & 0x0F);
             byte flags = (byte)(typeAndFlags & 0x0F);
             Debug.Assert(ChannelId.SIZE == sizeof(int));
             int channelId = deserializer.ReadInt32();
@@ -295,7 +296,7 @@ namespace Sphynx.Network.Transport
             Serialize(ref serializer, verify);
 
             [DoesNotReturn]
-            static void ThrowSerializeException() => throw new ArgumentException($"Could not serialize frame header into serializer", nameof(buffer));
+            static void ThrowSerializeException() => throw new ArgumentException("Could not serialize frame header into buffer", nameof(buffer));
         }
 
         /// <summary>
@@ -326,7 +327,7 @@ namespace Sphynx.Network.Transport
                 bool insufficientSpace = bs.HasSpan && bs.Span[(int)bs.BytesWritten..].Length < SIZE;
 
                 if (insufficientSpace)
-                    throw new ArgumentException($"Could not serialize frame header into serializer", nameof(serializer));
+                    throw new ArgumentException("Could not serialize frame header into serializer", nameof(serializer));
 
                 Debug.Assert(verify);
                 throw new InvalidOperationException($"Could not serialize invalid frame header: {header}");
@@ -350,7 +351,7 @@ namespace Sphynx.Network.Transport
             serializer.WriteRaw(Signature.Span);
             serializer.WriteUInt8(Version.Major);
             Debug.Assert(Enum.GetUnderlyingType(typeof(SphynxFrameType)) == typeof(byte));
-            serializer.WriteUInt8((byte)((byte)FrameType | (Flags << 4)));
+            serializer.WriteUInt8((byte)(((byte)FrameType << 4) | Flags));
             Debug.Assert(ChannelId.SIZE == sizeof(int));
             serializer.WriteInt32(ChannelId);
             serializer.WriteInt16(FrameSize);
@@ -363,6 +364,9 @@ namespace Sphynx.Network.Transport
         public bool HasFlags(byte flags) => (Flags & flags) == flags;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool HasAnyFlag(byte flags) => (Flags & flags) != 0;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public SphynxFrameHeader WithFlags(byte flags) => this with { Flags = (byte)(Flags | flags) };
 
         /// <summary>
@@ -371,11 +375,15 @@ namespace Sphynx.Network.Transport
         /// <returns>Whether this header is valid.</returns>
         public bool IsValid()
         {
-            return Version == ProtocolVersion
-                   && ChannelId >= ChannelId.MinValue
-                   && ChannelId <= ChannelId.MaxValue
-                   && (Flags == 0 || (FrameType == SphynxFrameType.CHANNEL_DATA && Flags < ChannelDataFlags.CHANNEL_END))
-                   && (FrameSize == 0 || (FrameType == SphynxFrameType.CHANNEL_DATA && FrameSize >= 0));
+            if (Version != ProtocolVersion || ChannelId < ChannelId.MinValue || ChannelId > ChannelId.MaxValue)
+                return false;
+
+            return FrameType switch
+            {
+                SphynxFrameType.CHANNEL_DATA => Flags is 0 or <= (ChannelDataFlags.CHANNEL_END | ChannelDataFlags.CHANNEL_END - 1),
+                SphynxFrameType.CHANNEL_RELEASE => Flags is 0 or ChannelReleaseFlags.CHANNEL_REJECTED && FrameSize == 0,
+                _ => Flags == 0 && FrameSize == 0,
+            };
         }
 
         public bool Equals(in SphynxFrameHeader other) => Version == other.Version
@@ -393,8 +401,9 @@ namespace Sphynx.Network.Transport
         public override string ToString() =>
             "{ " +
             $"{nameof(Version)}: {Version}, " +
-            $"{nameof(FrameType)}: {FrameType}, " +
             $"{nameof(ChannelId)}: {ChannelId}, " +
+            $"{nameof(FrameType)}: {FrameType}, " +
+            $"{nameof(Flags)}: {Flags}, " +
             $"{nameof(FrameSize)}: {FrameSize}, " +
             "}";
     }

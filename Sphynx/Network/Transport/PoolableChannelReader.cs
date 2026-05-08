@@ -4,10 +4,8 @@ using Sphynx.Storage;
 
 namespace Sphynx.Network.Transport
 {
-    public class PoolableChannelReader : SphynxChannelReader
+    public class PoolableChannelReader : DefaultChannelReader
     {
-        public static readonly PipeOptions DefaultPipeOptions = Channel.DefaultPipeOptions;
-
         protected readonly IObjectPool<PoolableChannel> PooledChannels;
         protected readonly IObjectPool<Pipe>? PipePool;
 
@@ -21,8 +19,7 @@ namespace Sphynx.Network.Transport
         {
         }
 
-        protected PoolableChannelReader(Stream stream, IObjectPool<PoolableChannel> pool, IObjectPool<Pipe>? pipePool = null,
-            bool ownsStream = false)
+        protected PoolableChannelReader(Stream stream, IObjectPool<PoolableChannel> pool, IObjectPool<Pipe>? pipePool = null, bool ownsStream = false)
             : base(stream, ownsStream)
         {
             PooledChannels = pool;
@@ -49,6 +46,7 @@ namespace Sphynx.Network.Transport
                 // probably want to avoid.
                 throw new InvalidOperationException($"{GetType().Name} must be disposed before resetting");
 
+            RunTask = null;
             RunCts = new CancellationTokenSource();
             Stream = stream;
 
@@ -77,14 +75,16 @@ namespace Sphynx.Network.Transport
                 Debug.Assert(channel.IsDisposed);
         }
 
-        protected class PoolableChannel : Channel
+        protected class PoolableChannel : DefaultChannel
         {
-            private static ObjectPool<Pipe> _pipePool = new(() => new Pipe(DefaultPipeOptions));
-
+            private static readonly ObjectPool<Pipe> _pipePool = new(() => new Pipe(ChannelPipeReader.DefaultPipeOptions));
             private bool _usedParentPipe;
+
+            protected override PoolableChannelReader Parent { get; }
 
             public PoolableChannel(PoolableChannelReader parent, ChannelId channelId) : base(parent, channelId)
             {
+                Parent = parent;
             }
 
             public virtual void Reset(ChannelId? channelId = null)
@@ -101,22 +101,19 @@ namespace Sphynx.Network.Transport
                     ChannelId = channelId.Value;
 
                 BytesRead = 0;
-
                 CloseException = null;
             }
 
             protected override Pipe NewPipe()
             {
-                var parent = (PoolableChannelReader)Parent;
-
-                if (parent.PipePool?.TryTake(out var pipe) ?? false)
+                if (Parent.PipePool?.TryTake(out var pipe) ?? false)
                 {
                     _usedParentPipe = true;
                 }
                 else
                 {
-                    _usedParentPipe = false;
                     pipe = _pipePool.Take();
+                    _usedParentPipe = false;
                 }
 
                 try
@@ -139,14 +136,12 @@ namespace Sphynx.Network.Transport
 
                     base.Dispose(true);
 
-                    var parent = (PoolableChannelReader)Parent;
-
                     if (_usedParentPipe)
-                        parent.PipePool!.Return(pipe);
+                        Parent.PipePool!.Return(pipe);
                     else
                         _pipePool.Return(pipe);
 
-                    parent.PooledChannels.Return(this);
+                    Parent.PooledChannels.Return(this);
                 }
                 else
                 {
@@ -160,14 +155,12 @@ namespace Sphynx.Network.Transport
 
                 await base.DisposeAsyncCore().ConfigureAwait(false);
 
-                var parent = (PoolableChannelReader)Parent;
-
                 if (_usedParentPipe)
-                    parent.PipePool!.Return(pipe);
+                    Parent.PipePool!.Return(pipe);
                 else
                     _pipePool.Return(pipe);
 
-                parent.PooledChannels.Return(this);
+                Parent.PooledChannels.Return(this);
             }
         }
     }

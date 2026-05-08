@@ -8,7 +8,7 @@ using Sphynx.Utils;
 
 namespace Sphynx.Network.Transport
 {
-    public class PoolableChannelWriter : SphynxChannelWriter
+    public class PoolableChannelWriter : DefaultChannelWriter
     {
         protected readonly IObjectPool<PoolableChannel> PooledChannels;
         protected readonly SequencePool SequencePool;
@@ -41,8 +41,6 @@ namespace Sphynx.Network.Transport
 
             return new PoolableChannel(this, channelId);
         }
-
-        protected override PoolableChannel NewChannel() => (PoolableChannel)base.NewChannel();
 
         public void Reset(Stream stream, bool? ownsStream = null)
         {
@@ -79,13 +77,16 @@ namespace Sphynx.Network.Transport
                 Debug.Assert(channel.IsDisposed);
         }
 
-        protected class PoolableChannel : Channel
+        protected class PoolableChannel : DefaultChannel
         {
             protected override Sequence<byte> FrameBuffer => _frameBufferRental!.Value.Value;
             private SequencePool.Rental? _frameBufferRental;
 
+            protected override PoolableChannelWriter Parent { get; }
+
             public PoolableChannel(PoolableChannelWriter parent, ChannelId channelId) : base(parent, channelId)
             {
+                Parent = parent;
                 _frameBufferRental = parent.SequencePool.Rent();
             }
 
@@ -98,7 +99,7 @@ namespace Sphynx.Network.Transport
                     throw new InvalidOperationException($"{GetType().Name} ({nameof(ChannelId)}: {ChannelId}) must be disposed before resetting");
 
                 Debug.Assert(_frameBufferRental == null);
-                _frameBufferRental = ((PoolableChannelWriter)Parent).SequencePool.Rent();
+                _frameBufferRental = Parent.SequencePool.Rent();
 
                 if (newChannelId != null)
                     ChannelId = newChannelId.Value;
@@ -121,7 +122,7 @@ namespace Sphynx.Network.Transport
                         _frameBufferRental = null;
                     }
 
-                    ((PoolableChannelWriter)Parent).PooledChannels.Return(this);
+                    Parent.PooledChannels.Return(this);
                 }
             }
 
@@ -135,7 +136,7 @@ namespace Sphynx.Network.Transport
                     _frameBufferRental = null;
                 }
 
-                ((PoolableChannelWriter)Parent).PooledChannels.Return(this);
+                Parent.PooledChannels.Return(this);
             }
         }
     }

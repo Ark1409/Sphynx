@@ -6,126 +6,22 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Microsoft;
+using Nerdbank.Streams;
 
 namespace Sphynx.Network.Transport
 {
-    public partial class SphynxChannelWriter : IDisposable, IAsyncDisposable
+    public abstract class SphynxChannelWriter : IDisposable, IAsyncDisposable
     {
-        protected bool OwnsStream;
-
         protected bool IsDisposed { get => _disposed != 0; set => _disposed = value ? 1 : 0; }
         private volatile int _disposed;
 
-        /// <summary>
-        /// The current number of open writing channels.
-        /// </summary>
-        public int OpenChannelCount
-        {
-            get
-            {
-                lock (OpenChannelsLock)
-                {
-                    return OpenChannels.Count;
-                }
-            }
-        }
+        public abstract Channel OpenChannel();
+        public abstract Channel OpenChannel(ChannelId channelId);
+        public abstract bool TryGetChannel(ChannelId channelId, bool createIfNotExists, [NotNullWhen(true)] out Channel? channel);
 
-        private ChannelId _lastChannelId;
-
-        public Channel OpenChannel(ChannelId channelId)
-        {
-            ThrowIfDisposed();
-
-            lock (OpenChannelsLock)
-            {
-                ThrowIfDisposed();
-
-                if (OpenChannels.ContainsKey(channelId))
-                    throw new ArgumentException($"Channel '{channelId}' already opened");
-
-                return OpenChannels[channelId] = NewChannel(channelId);
-            }
-        }
-
-        public Channel OpenChannel()
-        {
-            ThrowIfDisposed();
-
-            lock (OpenChannelsLock)
-            {
-                ThrowIfDisposed();
-
-                var channel = NewChannel();
-                return OpenChannels[channel.ChannelId] = channel;
-            }
-        }
-
-        public bool TryGetChannel(ChannelId channelId, [NotNullWhen(true)] out Channel? channel)
+        public virtual bool TryGetChannel(ChannelId channelId, [NotNullWhen(true)] out Channel? channel)
         {
             return TryGetChannel(channelId, false, out channel);
-        }
-
-        public bool TryGetChannel(ChannelId channelId, bool createIfNotExists, [NotNullWhen(true)] out Channel? channel)
-        {
-            ThrowIfDisposed();
-
-            lock (OpenChannelsLock)
-            {
-                ThrowIfDisposed();
-
-                if (OpenChannels.TryGetValue(channelId, out channel))
-                    return true;
-
-                channel = createIfNotExists ? OpenChannel(channelId) : null;
-            }
-
-            return createIfNotExists;
-        }
-
-        protected virtual Channel NewChannel(ChannelId channelId) => new Channel(this, channelId);
-
-        protected virtual Channel NewChannel()
-        {
-            ChannelId channelId;
-
-            lock (OpenChannelsLock)
-            {
-                do
-                {
-                    _lastChannelId = (_lastChannelId + 1) & ChannelId.MaxValue;
-                    channelId = _lastChannelId;
-                } while (OpenChannels.ContainsKey(channelId));
-            }
-
-            return NewChannel(channelId);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                lock (OpenChannelsLock)
-                {
-                    var disposeException = new ObjectDisposedException(GetType().Name);
-
-                    foreach (var (_, channel) in OpenChannels)
-                    {
-                        try
-                        {
-                            channel.Dispose(disposeException);
-                        }
-                        catch
-                        {
-                            // ignore
-                        }
-                    }
-
-                    OpenChannels.Clear();
-                }
-
-                if (OwnsStream)
-                    Stream.Dispose();
-            }
         }
 
         public void Dispose()
@@ -135,6 +31,10 @@ namespace Sphynx.Network.Transport
 
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
         }
 
         public async ValueTask DisposeAsync()
@@ -147,33 +47,12 @@ namespace Sphynx.Network.Transport
             GC.SuppressFinalize(this);
         }
 
-        protected virtual async ValueTask DisposeAsyncCore()
+        protected virtual ValueTask DisposeAsyncCore()
         {
-            lock (OpenChannelsLock)
-            {
-                // Allow pending operations to finish.
-            }
-
-            var disposeException = new ObjectDisposedException(GetType().Name);
-
-            // ReSharper disable InconsistentlySynchronizedField
-            foreach (var (_, channel) in OpenChannels)
-            {
-                try
-                {
-                    await channel.DisposeAsync(disposeException).ConfigureAwait(false);
-                }
-                catch
-                {
-                    // ignore
-                }
-            }
-
-            OpenChannels.Clear();
-
-            if (OwnsStream)
-                await Stream.DisposeAsync().ConfigureAwait(false);
+            return ValueTask.CompletedTask;
         }
+
+        private ObjectDisposedException? _disposeException;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected void ThrowIfDisposed()
@@ -183,13 +62,15 @@ namespace Sphynx.Network.Transport
 
             [DoesNotReturn]
             [StackTraceHidden]
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            void ThrowDisposedException() => throw new ObjectDisposedException(GetType().Name);
+            void ThrowDisposedException() => throw GetDisposeException();
         }
 
-        public partial class Channel : IAsyncDisposable, IDisposableObservable
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected ObjectDisposedException GetDisposeException() => _disposeException ??= new ObjectDisposedException(GetType().Name);
+
+        public abstract class Channel : IAsyncDisposable, IDisposableObservable
         {
-            private static readonly ChannelClosedException _closeSentinel = new();
+            protected static readonly ChannelClosedException CloseSentinel = new();
 
             public virtual ChannelId ChannelId { get; protected set; }
 
@@ -207,7 +88,18 @@ namespace Sphynx.Network.Transport
             /// </summary>
             public virtual long FramesWritten { get; protected set; }
 
-            public SphynxChannelWriter Parent { get; }
+            protected virtual SphynxChannelWriter Parent { get; }
+
+            public Channel(SphynxChannelWriter parent, ChannelId channelId)
+            {
+                Parent = parent;
+                ChannelId = channelId;
+            }
+
+            public abstract void Write(ReadOnlySpan<byte> span);
+            public abstract ValueTask WriteAsync(ReadOnlyMemory<byte> memory, CancellationToken cancellationToken = default);
+            public abstract ValueTask FlushAsync(CancellationToken cancellationToken = default);
+            public abstract void Flush();
 
             public virtual void Write(ReadOnlySequence<byte> payload)
             {
@@ -217,7 +109,7 @@ namespace Sphynx.Network.Transport
 
             public void Write(ReadOnlyMemory<byte> memory) => Write(memory.Span);
 
-            public ValueTask WriteAsync(ReadOnlySequence<byte> payload, CancellationToken cancellationToken = default)
+            public virtual ValueTask WriteAsync(ReadOnlySequence<byte> payload, CancellationToken cancellationToken = default)
             {
                 if (cancellationToken.IsCancellationRequested)
                     return ValueTask.FromCanceled(cancellationToken);
@@ -245,7 +137,13 @@ namespace Sphynx.Network.Transport
                 return _channelStream;
             }
 
-            public virtual IBufferWriter<byte> AsBufferWriter() => FrameBuffer;
+            private ChannelBufferWriter? _channelBufferWriter;
+
+            public virtual IBufferWriter<byte> AsBufferWriter()
+            {
+                _channelBufferWriter ??= new ChannelBufferWriter(this);
+                return _channelBufferWriter;
+            }
 
             public void Dispose() => Dispose(null);
 
@@ -266,6 +164,10 @@ namespace Sphynx.Network.Transport
 
                 Dispose(true);
                 GC.SuppressFinalize(this);
+            }
+
+            protected virtual void Dispose(bool disposing)
+            {
             }
 
             public ValueTask DisposeAsync() => DisposeAsync(null);
@@ -290,23 +192,27 @@ namespace Sphynx.Network.Transport
                 GC.SuppressFinalize(this);
             }
 
-            [MemberNotNull(nameof(CloseException))]
-            private bool TryReserveDispose(Exception? disposeException)
+            protected virtual ValueTask DisposeAsyncCore()
             {
-                if (CloseException is not null)
+                return ValueTask.CompletedTask;
+            }
+
+            [MemberNotNullWhen(true, nameof(CloseException))]
+            protected virtual bool TryReserveDispose(Exception? disposeException)
+            {
+                if (IsDisposed)
                     return false;
 
-                ChannelClosedException closeException;
-
-                if (disposeException is null)
-                    closeException = _closeSentinel;
-                else if (disposeException is ChannelClosedException closedException)
-                    closeException = closedException;
-                else
-                    closeException = new ChannelClosedException(disposeException);
-
-                return Interlocked.CompareExchange(ref CloseException, closeException, null) == null;
+                CloseException = ToCloseException(disposeException);
+                return true;
             }
+
+            private protected static ChannelClosedException ToCloseException(Exception? ex) => ex switch
+            {
+                null => CloseSentinel,
+                ChannelClosedException closed => closed,
+                _ => new ChannelClosedException(ex)
+            };
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             protected void ThrowIfDisposed()
@@ -316,7 +222,6 @@ namespace Sphynx.Network.Transport
 
                 [DoesNotReturn]
                 [StackTraceHidden]
-                [MethodImpl(MethodImplOptions.NoInlining)]
                 void ThrowDisposedException() => throw GetDisposedException();
             }
 
@@ -331,22 +236,22 @@ namespace Sphynx.Network.Transport
         {
             public override bool CanRead => false;
             public override bool CanSeek => false;
-            public override bool CanWrite => !_channel.IsDisposed;
+            public override bool CanWrite => !Channel.IsDisposed;
             public override bool CanTimeout => false;
             public override long Length => throw new NotSupportedException();
 
             public override long Position
             {
-                get => _channel.BytesWritten;
+                get => Channel.BytesWritten;
                 set => throw new NotSupportedException();
             }
 
-            private readonly Channel _channel;
+            public Channel Channel { get; }
             public bool LeaveOpen { get; set; }
 
             public ChannelStream(Channel channel, bool leaveOpen = true)
             {
-                _channel = channel;
+                Channel = channel;
                 LeaveOpen = leaveOpen;
             }
 
@@ -358,7 +263,7 @@ namespace Sphynx.Network.Transport
 
             public override ValueTask WriteAsync(ReadOnlyMemory<byte> memory, CancellationToken cancellationToken = default)
             {
-                return _channel.WriteAsync(memory, cancellationToken);
+                return Channel.WriteAsync(memory, cancellationToken);
             }
 
             public override void Write(byte[] buffer, int offset, int count) => Write(new ReadOnlySpan<byte>(buffer, offset, count));
@@ -366,35 +271,55 @@ namespace Sphynx.Network.Transport
 
             public override void Write(ReadOnlySpan<byte> span)
             {
-                _channel.Write(span);
+                Channel.Write(span);
             }
 
             public override Task FlushAsync(CancellationToken cancellationToken)
             {
-                return _channel.FlushAsync(cancellationToken).AsTask();
+                return Channel.FlushAsync(cancellationToken).AsTask();
             }
 
             public override void Flush()
             {
-                _channel.Flush();
+                Channel.Flush();
             }
 
             public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
             public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-
             public override void SetLength(long value) => throw new NotSupportedException();
 
             public override ValueTask DisposeAsync()
             {
-                return LeaveOpen ? base.DisposeAsync() : _channel.DisposeAsync();
+                return LeaveOpen || Channel.IsDisposed ? base.DisposeAsync() : Channel.DisposeAsync();
             }
 
             protected override void Dispose(bool disposing)
             {
-                if (disposing && LeaveOpen)
-                    _channel.Dispose();
+                if (disposing && !LeaveOpen && !Channel.IsDisposed)
+                    Channel.Dispose();
             }
+        }
+
+        protected class ChannelBufferWriter : IBufferWriter<byte>
+        {
+            public Channel Channel { get; }
+            private readonly Sequence<byte> _writer = new();
+
+            public ChannelBufferWriter(Channel channel)
+            {
+                Channel = channel;
+            }
+
+            public void Advance(int count)
+            {
+                _writer.Advance(count);
+                var seq = _writer.AsReadOnlySequence;
+                Channel.Write(seq);
+                _writer.AdvanceTo(seq.End);
+            }
+
+            public Memory<byte> GetMemory(int sizeHint = 0) => _writer.GetMemory(sizeHint);
+            public Span<byte> GetSpan(int sizeHint = 0) => _writer.GetSpan(sizeHint);
         }
     }
 }
