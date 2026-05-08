@@ -44,7 +44,7 @@ namespace Sphynx.Test.Network.Transport
                 {
                     ChannelId = ChannelId.MaxValue / 2,
                     FrameSize = 0,
-                    FrameType = SphynxFrameType.CHANNEL_REJECT,
+                    FrameType = SphynxFrameType.CHANNEL_RELEASE,
                     Flags = 0,
                 },
             };
@@ -76,30 +76,23 @@ namespace Sphynx.Test.Network.Transport
                 },
                 new SphynxFrameHeader
                 {
-                    ChannelId = ChannelId.MinValue,
-                    FrameSize = 0,
-                    FrameType = SphynxFrameType.CHANNEL_REJECT,
-                    Flags = ChannelDataFlags.CHANNEL_START
-                },
-                new SphynxFrameHeader
-                {
                     ChannelId = -10,
                     FrameSize = 0,
-                    FrameType = SphynxFrameType.CHANNEL_REJECT,
+                    FrameType = SphynxFrameType.CHANNEL_RELEASE,
                     Flags = 0,
                 },
                 new SphynxFrameHeader
                 {
                     ChannelId = 5,
                     FrameSize = -1,
-                    FrameType = SphynxFrameType.CHANNEL_REJECT,
+                    FrameType = SphynxFrameType.CHANNEL_RELEASE,
                     Flags = 0,
                 },
                 new SphynxFrameHeader
                 {
                     ChannelId = 5,
                     FrameSize = 0,
-                    FrameType = SphynxFrameType.CHANNEL_REJECT,
+                    FrameType = SphynxFrameType.CHANNEL_RELEASE,
                     Flags = 10,
                 },
                 new SphynxFrameHeader
