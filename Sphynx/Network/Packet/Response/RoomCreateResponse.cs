@@ -3,16 +3,15 @@ using Sphynx.Model.Room;
 
 namespace Sphynx.Network.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.ROOM_CREATE_RES"/>
-    public sealed class RoomCreateResponse : SphynxResponse, IEquatable<RoomCreateResponse>
+    public class RoomCreateResponse : SphynxResponse, IEquatable<RoomCreateResponse>
     {
+        /// <inheritdoc/>
+        public override SphynxRequestType ResponseType => SphynxRequestType.CREATE_ROOM_REQ ;
+
         /// <summary>
         /// The newly created room.
         /// </summary>
         public SphynxRoomInfo? RoomInfo { get; set; }
-
-        /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_RES;
 
         public RoomCreateResponse()
         {

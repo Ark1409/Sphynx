@@ -4,11 +4,10 @@ using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.ADD_FRIEND_REQ"/>
-    public sealed class AddFriendRequest : SphynxRequest<AddFriendResponse>, IEquatable<AddFriendRequest>
+    public  class AddFriendRequest : SphynxRequest<AddFriendResponse>, IEquatable<AddFriendRequest>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ADD_FRIEND_REQ;
+        public override SphynxRequestType RequestType => SphynxRequestType.ADD_FRIEND_REQ;
 
         /// <summary>
         /// The user IDs of the users for which to retrieve information.
@@ -20,17 +19,9 @@ namespace Sphynx.Network.Packet.Request
         }
 
         /// <summary>
-        /// Creates a new <see cref="FetchUsersRequest"/>.
+        /// Creates a new <see cref="GetUsersRequest"/>.
         /// </summary>
-        public AddFriendRequest(Guid sessionId) : base(sessionId)
-        {
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="FetchUsersRequest"/>.
-        /// </summary>
-        /// <param name="sessionId">The JWT access token for this request.</param>
-        public AddFriendRequest(Guid sessionId, Guid otherId) : base(sessionId)
+        public AddFriendRequest(Guid otherId)
         {
             OtherId = otherId;
         }
@@ -38,9 +29,6 @@ namespace Sphynx.Network.Packet.Request
         /// <inheritdoc/>
         public bool Equals(AddFriendRequest? other) => base.Equals(other) && OtherId == other?.OtherId;
 
-        public override AddFriendResponse CreateResponse(SphynxErrorInfo errorInfo) => new AddFriendResponse(errorInfo)
-        {
-            RequestTag = RequestTag
-        };
+        public override AddFriendResponse CreateResponse(SphynxErrorInfo errorInfo) => new AddFriendResponse(errorInfo);
     }
 }

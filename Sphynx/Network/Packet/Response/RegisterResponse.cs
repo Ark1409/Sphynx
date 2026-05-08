@@ -3,15 +3,11 @@ using Sphynx.Model.User;
 
 namespace Sphynx.Network.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.REGISTER_RES"/>
-    public sealed class RegisterResponse : SphynxResponse, IEquatable<RegisterResponse>
+    public class RegisterResponse : SphynxResponse, IEquatable<RegisterResponse>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.REGISTER_RES;
+        public override SphynxRequestType ResponseType => SphynxRequestType.REGISTER_REQ;
 
-        /// <summary>
-        /// Holds the authenticated user's information.
-        /// </summary>
         public SphynxSelfInfo? UserInfo { get; set; }
 
         public Guid? SessionId { get; set; }
@@ -20,19 +16,10 @@ namespace Sphynx.Network.Packet.Response
         {
         }
 
-        /// <summary>
-        /// Creates a new <see cref="LoginResponse"/>.
-        /// </summary>
-        /// <param name="errorInfo">Error code for login attempt.</param>
         public RegisterResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 
-        /// <summary>
-        /// Creates a new <see cref="LoginResponse"/>.
-        /// </summary>
-        /// <param name="userInfo">Holds the authenticated user's information.</param>
-        /// <param name="sessionId">The identifier the user's session.</param>
         public RegisterResponse(SphynxSelfInfo userInfo, Guid sessionId) : this(SphynxErrorCode.SUCCESS)
         {
             UserInfo = userInfo;

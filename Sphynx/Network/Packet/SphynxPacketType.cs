@@ -1,6 +1,32 @@
 ﻿namespace Sphynx.Network.Packet
 {
     /// <summary>
+    /// A byte code indicating the type of the current message.
+    /// </summary>
+    public enum SphynxMessageType : byte
+    {
+        /// <summary>
+        /// Indicates that this is an application-level request message. These messages are typically
+        /// sent from client to server, and we expect a reciprocating <see cref="Response"/> to be exchanged
+        /// back.
+        /// </summary>
+        Request,
+
+        /// <summary>
+        /// Indicates that this is an application-level response message. These messages are typically generated
+        /// from the server in response to reciprocating <see cref="Request"/>.
+        /// </summary>
+        Response,
+
+        /// <summary>
+        /// Indicates that this is an application-level broadcast or "push" message. When communicating with push
+        /// servers (servers that can communicate with the clients autonomously), all server-initiated
+        /// messages will be of this type.
+        /// </summary>
+        Broadcast,
+    }
+
+    /// <summary>
     /// An unsigned integer enum code representing the packet type.
     /// </summary>
     public enum SphynxPacketType : uint

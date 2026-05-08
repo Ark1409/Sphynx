@@ -3,8 +3,7 @@ using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.ROOM_LEAVE_REQ"/>
-    public sealed class LeaveRoomRequest : SphynxRequest<LeaveRoomResponse>, IEquatable<LeaveRoomRequest>
+    public class LeaveRoomRequest : SphynxRequest<LeaveRoomResponse>, IEquatable<LeaveRoomRequest>
     {
         /// <summary>
         /// Room ID of the room to leave.
@@ -12,21 +11,13 @@ namespace Sphynx.Network.Packet.Request
         public Guid RoomId { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_LEAVE_REQ;
+        public override SphynxRequestType RequestType => SphynxRequestType.LEAVE_ROOM_REQ;
 
-        /// <summary>
-        /// Creates a new <see cref="LeaveRoomRequest"/>.
-        /// </summary>
-        /// <param name="roomId">Room ID of the room to leave.</param>
-        public LeaveRoomRequest(Guid roomId) : this(default, roomId)
+        public LeaveRoomRequest()
         {
         }
 
-        /// <summary>
-        /// Creates a new <see cref="LeaveRoomRequest"/>.
-        /// </summary>
-        /// <param name="roomId">Room ID of the room to leave.</param>
-        public LeaveRoomRequest(Guid sessionId, Guid roomId) : base(sessionId)
+        public LeaveRoomRequest(Guid roomId)
         {
             RoomId = roomId;
         }
@@ -34,9 +25,6 @@ namespace Sphynx.Network.Packet.Request
         /// <inheritdoc/>
         public bool Equals(LeaveRoomRequest? other) => base.Equals(other) && RoomId == other?.RoomId;
 
-        public override LeaveRoomResponse CreateResponse(SphynxErrorInfo errorInfo) => new LeaveRoomResponse(errorInfo)
-        {
-            RequestTag = RequestTag
-        };
+        public override LeaveRoomResponse CreateResponse(SphynxErrorInfo errorInfo) => new LeaveRoomResponse(errorInfo);
     }
 }

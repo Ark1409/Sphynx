@@ -4,9 +4,11 @@ using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.ROOM_INFO_REQ"/>
-    public sealed class FetchRoomsRequest : SphynxRequest<FetchRoomsResponse>, IEquatable<FetchRoomsRequest>
+    public class GetRoomsRequest : SphynxRequest<GetRoomsResponse>, IEquatable<GetRoomsRequest>
     {
+        /// <inheritdoc/>
+        public override SphynxRequestType RequestType => SphynxRequestType.GET_ROOM_REQ;
+
         /// <summary>
         /// The maximum number of rooms which can be requested at once.
         /// </summary>
@@ -37,37 +39,23 @@ namespace Sphynx.Network.Packet.Request
 
         private Guid[] _roomIds = Array.Empty<Guid>();
 
-        /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_INFO_REQ;
 
-        public FetchRoomsRequest()
+        public GetRoomsRequest()
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="FetchRoomsRequest"/>.
+        /// Creates a new <see cref="GetRoomsRequest"/>.
         /// </summary>
-        /// <param name="sessionId">The JWT access token for this request.</param>
-        public FetchRoomsRequest(Guid sessionId) : base(sessionId)
-        {
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="FetchRoomsRequest"/>.
-        /// </summary>
-        /// <param name="sessionId">The JWT access token for this request.</param>
         /// <param name="roomIds">The ID of the room to get the information of.</param>
-        public FetchRoomsRequest(Guid sessionId, params Guid[] roomIds) : base(sessionId)
+        public GetRoomsRequest( params Guid[] roomIds)
         {
             RoomIds = roomIds;
         }
 
         /// <inheritdoc/>
-        public bool Equals(FetchRoomsRequest? other) => base.Equals(other) && MemoryUtils.SequenceEqual(RoomIds, other?.RoomIds);
+        public bool Equals(GetRoomsRequest? other) => base.Equals(other) && MemoryUtils.SequenceEqual(RoomIds, other?.RoomIds);
 
-        public override FetchRoomsResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchRoomsResponse(errorInfo)
-        {
-            RequestTag = RequestTag
-        };
+        public override GetRoomsResponse CreateResponse(SphynxErrorInfo errorInfo) => new GetRoomsResponse(errorInfo);
     }
 }

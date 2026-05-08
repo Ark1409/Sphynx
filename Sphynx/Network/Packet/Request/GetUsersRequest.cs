@@ -4,8 +4,7 @@ using Sphynx.Utils;
 
 namespace Sphynx.Network.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.USER_INFO_REQ"/>
-    public sealed class FetchUsersRequest : SphynxRequest<FetchUsersResponse>, IEquatable<FetchUsersRequest>
+    public class GetUsersRequest : SphynxRequest<GetUsersResponse>, IEquatable<GetUsersRequest>
     {
         /// <summary>
         /// The maximum number of users which can be requested at once.
@@ -13,7 +12,7 @@ namespace Sphynx.Network.Packet.Request
         public const int MAX_USER_COUNT = 50;
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.USER_INFO_REQ;
+        public override SphynxRequestType RequestType => SphynxRequestType.GET_USER_REQ;
 
         /// <summary>
         /// The user IDs of the users for which to retrieve information.
@@ -40,34 +39,22 @@ namespace Sphynx.Network.Packet.Request
 
         private Guid[] _userIds = Array.Empty<Guid>();
 
-        public FetchUsersRequest()
+        public GetUsersRequest()
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="FetchUsersRequest"/>.
+        /// Creates a new <see cref="GetUsersRequest"/>.
         /// </summary>
-        public FetchUsersRequest(Guid sessionId) : base(sessionId)
-        {
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="FetchUsersRequest"/>.
-        /// </summary>
-        /// <param name="sessionId">The JWT access token for this request.</param>
         /// <param name="userIds">The user IDs of the users for which to retrieve information.</param>
-        public FetchUsersRequest(Guid sessionId, params Guid[] userIds) : base(sessionId)
+        public GetUsersRequest(params Guid[] userIds)
         {
             UserIds = userIds;
         }
 
         /// <inheritdoc/>
-        public bool Equals(FetchUsersRequest? other) =>
-            base.Equals(other) && MemoryUtils.SequenceEqual(UserIds, other?.UserIds);
+        public bool Equals(GetUsersRequest? other) => base.Equals(other) && MemoryUtils.SequenceEqual(UserIds, other?.UserIds);
 
-        public override FetchUsersResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchUsersResponse(errorInfo)
-        {
-            RequestTag = RequestTag
-        };
+        public override GetUsersResponse CreateResponse(SphynxErrorInfo errorInfo) => new GetUsersResponse(errorInfo);
     }
 }

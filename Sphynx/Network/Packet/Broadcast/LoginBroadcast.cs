@@ -2,8 +2,7 @@ using Sphynx.Model.User;
 
 namespace Sphynx.Network.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.LOGIN_BCAST"/>
-    public sealed class LoginBroadcast : SphynxPacket, IEquatable<LoginBroadcast>
+    public class LoginBroadcast : SphynxBroadcast, IEquatable<LoginBroadcast>
     {
         /// <summary>
         /// User ID of the user who went online.
@@ -16,7 +15,7 @@ namespace Sphynx.Network.Packet.Broadcast
         public SphynxUserStatus UserStatus { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_BCAST;
+        public override SphynxBroadcastType BroadcastType => SphynxBroadcastType.LOGIN_BCAST;
 
         public LoginBroadcast()
         {
@@ -34,7 +33,6 @@ namespace Sphynx.Network.Packet.Broadcast
         }
 
         /// <inheritdoc/>
-        public bool Equals(LoginBroadcast? other) =>
-            base.Equals(other) && UserId == other?.UserId && UserStatus == other?.UserStatus;
+        public bool Equals(LoginBroadcast? other) => base.Equals(other) && UserId == other?.UserId && UserStatus == other?.UserStatus;
     }
 }

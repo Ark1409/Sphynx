@@ -3,11 +3,10 @@ using Sphynx.Model.User;
 
 namespace Sphynx.Network.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.ADD_FRIEND_RES"/>
-    public sealed class AddFriendResponse : SphynxResponse, IEquatable<AddFriendResponse>
+    public class AddFriendResponse : SphynxResponse, IEquatable<AddFriendResponse>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ADD_FRIEND_RES;
+        public override SphynxRequestType ResponseType => SphynxRequestType.ADD_FRIEND_REQ;
 
         public SphynxFriendRequest? FriendRequest { get; set; }
 

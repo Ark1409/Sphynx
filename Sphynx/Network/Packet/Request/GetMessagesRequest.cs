@@ -3,16 +3,15 @@ using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.MSG_INFO_REQ"/>
-    public sealed class FetchMessagesRequest : SphynxRequest<FetchMessagesResponse>, IEquatable<FetchMessagesRequest>
+    public class GetMessagesRequest : SphynxRequest<GetMessagesResponse>, IEquatable<GetMessagesRequest>
     {
+        /// <inheritdoc/>
+        public override SphynxRequestType RequestType => SphynxRequestType.GET_MSG_REQ;
+
         /// <summary>
         /// The maximum number of messages which can be requested at once.
         /// </summary>
         public const int MAX_MESSAGES_COUNT = 100;
-
-        /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.MSG_INFO_REQ;
 
         /// <summary>
         /// The message from which older messages should be retrieved.
@@ -41,29 +40,19 @@ namespace Sphynx.Network.Packet.Request
         /// </summary>
         public bool Inclusive { get; set; }
 
-        public FetchMessagesRequest()
+        public GetMessagesRequest()
         {
         }
 
         /// <summary>
-        /// Creates a new <see cref="FetchMessagesRequest"/>.
+        /// Creates a new <see cref="GetMessagesRequest"/>.
         /// </summary>
-        /// <param name="sessionId">The JWT access token for this request.</param>
-        public FetchMessagesRequest(Guid sessionId) : base(sessionId)
-        {
-        }
-
-        /// <summary>
-        /// Creates a new <see cref="FetchMessagesRequest"/>.
-        /// </summary>
-        /// <param name="sessionId">The JWT access token for this request.</param>
         /// <param name="beforeId">The message from which older messages should be retrieved.</param>
         /// <param name="roomId">The room ID from which the message belongs.</param>
         /// <param name="count">The number of messages to retrieve, starting from <see cref="BeforeId"/>.</param>
         /// <param name="inclusive">Whether to include the message with id <see cref="BeforeId"/> (if it exists) in the
         /// response.</param>
-        public FetchMessagesRequest(Guid sessionId, SnowflakeId beforeId, Guid roomId, int count, bool inclusive = false)
-            : base(sessionId)
+        public GetMessagesRequest(SnowflakeId beforeId, Guid roomId, int count, bool inclusive = false)
         {
             BeforeId = beforeId;
             Count = count;
@@ -72,15 +61,12 @@ namespace Sphynx.Network.Packet.Request
         }
 
         /// <inheritdoc/>
-        public bool Equals(FetchMessagesRequest? other) => base.Equals(other)
+        public bool Equals(GetMessagesRequest? other) => base.Equals(other)
                                                            && BeforeId == other?.BeforeId
                                                            && RoomId == other?.RoomId
                                                            && Count == other.Count
                                                            && Inclusive == other.Inclusive;
 
-        public override FetchMessagesResponse CreateResponse(SphynxErrorInfo errorInfo) => new FetchMessagesResponse(errorInfo)
-        {
-            RequestTag = RequestTag
-        };
+        public override GetMessagesResponse CreateResponse(SphynxErrorInfo errorInfo) => new GetMessagesResponse(errorInfo);
     }
 }

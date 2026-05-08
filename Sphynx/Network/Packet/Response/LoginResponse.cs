@@ -3,39 +3,22 @@ using Sphynx.Model.User;
 
 namespace Sphynx.Network.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.LOGIN_RES"/>
-    public sealed class LoginResponse : SphynxResponse, IEquatable<LoginResponse>
+    public class LoginResponse : SphynxResponse, IEquatable<LoginResponse>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.LOGIN_RES;
+        public override SphynxRequestType ResponseType => SphynxRequestType.LOGIN_REQ;
 
-        /// <summary>
-        /// Holds the authenticated user's information.
-        /// </summary>
         public SphynxSelfInfo? UserInfo { get; set; }
-
-        /// <summary>
-        /// Identifier for the current session.
-        /// </summary>
         public Guid? SessionId { get; set; }
 
         public LoginResponse()
         {
         }
 
-        /// <summary>
-        /// Creates a new <see cref="LoginResponse"/>.
-        /// </summary>
-        /// <param name="errorInfo">Error code for login attempt. Cannot be <see cref="SphynxErrorCode.SUCCESS"/>.</param>
         public LoginResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
         }
 
-        /// <summary>
-        /// Creates a new <see cref="LoginResponse"/>.
-        /// </summary>
-        /// <param name="userInfo">Holds the authenticated user's information.</param>
-        /// <param name="sessionId">The identifier for the user's session.</param>
         public LoginResponse(SphynxSelfInfo userInfo, Guid sessionId)
             : this(SphynxErrorCode.SUCCESS)
         {

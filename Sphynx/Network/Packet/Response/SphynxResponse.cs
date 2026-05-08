@@ -2,32 +2,36 @@
 
 namespace Sphynx.Network.Packet.Response
 {
+    public record struct SphynxResponseHeader
+    {
+        public SphynxRequestType ResponseType { get; init; }
+        public Guid RequestId { get; set; }
+        public SphynxErrorInfo ErrorInfo { get; set; }
+    }
+
     /// <summary>
     /// Represents a response packet.
     /// </summary>
-    public abstract class SphynxResponse : SphynxPacket
+    /// <seealso cref="SphynxMessageType.Response"/>
+    public abstract class SphynxResponse : SphynxMessage, IEquatable<SphynxResponse>
     {
         /// <summary>
-        /// An identifier for this request-response exchange.
+        /// The request type for which this response was made.
         /// </summary>
-        public Guid RequestTag { get; set; }
+        public abstract SphynxRequestType ResponseType { get; }
 
-        /// <summary>
-        /// <inheritdoc cref="SphynxErrorInfo"/>
-        /// </summary>
-        public SphynxErrorInfo ErrorInfo { get; init; }
+        /// <inheritdoc/>
+        public sealed override SphynxMessageType MessageType => SphynxMessageType.Response;
+
+        public SphynxResponseHeader Header;
 
         public SphynxResponse() : this(SphynxErrorCode.SUCCESS)
         {
         }
 
-        /// <summary>
-        /// Creates a new <see cref="SphynxResponse"/>.
-        /// </summary>
-        /// <param name="errorInfo">The error code for the response packet.</param>
         public SphynxResponse(SphynxErrorInfo errorInfo)
         {
-            ErrorInfo = errorInfo;
+            Header = new SphynxResponseHeader { ResponseType = ResponseType, ErrorInfo = errorInfo };
         }
 
         /// <summary>
@@ -35,14 +39,10 @@ namespace Sphynx.Network.Packet.Response
         /// </summary>
         /// <param name="packet">The packet to check.</param>
         /// <returns>true if this packet is a <see cref="SphynxErrorCode.SUCCESS"/>, false otherwise.</returns>
-        public static implicit operator bool(SphynxResponse packet) =>
-            packet.ErrorInfo == SphynxErrorCode.SUCCESS;
+        public static explicit operator bool(SphynxResponse packet) => packet.Header.ErrorInfo == SphynxErrorCode.SUCCESS;
 
-        /// <summary>
-        /// Indicates whether the current packet has the same user and session ID as another request packet.
-        /// </summary>
-        /// <param name="other">A request packet to compare with this request packet.</param>
-        /// <returns>true if the current packet is equal to the other parameter; otherwise, false.</returns>
-        protected bool Equals(SphynxResponse? other) => base.Equals(other) && RequestTag == other?.RequestTag && ErrorInfo == other?.ErrorInfo;
+        /// <inheritdoc/>
+        public bool Equals(SphynxResponse? other) =>
+            base.Equals(other) && ResponseType == other?.ResponseType && Header.ErrorInfo == other?.Header.ErrorInfo;
     }
 }
