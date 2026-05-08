@@ -8,6 +8,7 @@ namespace Sphynx.Utils
 {
     internal static class StreamExtensions
     {
+        // TODO: Skip into custom memory?
         public static ValueTask<int> SkipAsync(this Stream stream, int count, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -52,8 +53,7 @@ namespace Sphynx.Utils
                     while (skipCount < count)
                     {
                         int skipChunk = Math.Min(count - skipCount, skipSize);
-                        int bytesRead = await stream.ReadAsync(skipMemory[..skipChunk], CancellationToken.None)
-                            .ConfigureAwait(false);
+                        int bytesRead = await stream.ReadAsync(skipMemory[..skipChunk], CancellationToken.None).ConfigureAwait(false);
 
                         if (bytesRead <= 0)
                             break;

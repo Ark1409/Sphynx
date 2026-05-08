@@ -1,13 +1,27 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Buffers;
+using System.Runtime.CompilerServices;
 
 namespace Sphynx.Utils
 {
     public static class MemoryUtils
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ShiftLeft<T>(this Memory<T> memory, int amount) => ShiftLeft(memory.Span, amount);
+        public static bool TryCopyTo<T>(this in ReadOnlySequence<T> seq, Span<T> span)
+        {
+            if (span.Length < seq.Length)
+                return false;
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+            seq.CopyTo(span);
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Memory<T> ShiftLeft<T>(this Memory<T> memory, int amount)
+        {
+            ShiftLeft(memory.Span, amount);
+            return memory;
+        }
+
         public static Span<T> ShiftLeft<T>(this Span<T> span, int amount)
         {
             if (amount == 0)
@@ -33,7 +47,6 @@ namespace Sphynx.Utils
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Span<T> ShiftRight<T>(this Memory<T> memory, int amount) => ShiftRight(memory.Span, amount);
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
         public static Span<T> ShiftRight<T>(this Span<T> span, int amount)
         {
             if (amount == 0)
