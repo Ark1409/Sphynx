@@ -76,13 +76,6 @@ namespace Sphynx.Test.Network.Transport
                 },
                 new SphynxFrameHeader
                 {
-                    ChannelId = -10,
-                    FrameSize = 0,
-                    FrameType = SphynxFrameType.CHANNEL_RELEASE,
-                    Flags = 0,
-                },
-                new SphynxFrameHeader
-                {
                     ChannelId = 5,
                     FrameSize = -1,
                     FrameType = SphynxFrameType.CHANNEL_RELEASE,
@@ -148,7 +141,7 @@ namespace Sphynx.Test.Network.Transport
             {
                 SphynxFrameHeader.ProtocolVersion.Major,
                 ((byte)SphynxFrameType.CHANNEL_DATA << 4) | (ChannelDataFlags.CHANNEL_START | ChannelDataFlags.CHANNEL_END),
-                0x7F, 0xFF, 0xFF, 0xFF,
+                0xFF, 0xFF,
                 0x00, 0xFF
             });
 

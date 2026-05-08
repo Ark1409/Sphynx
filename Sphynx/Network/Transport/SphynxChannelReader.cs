@@ -37,7 +37,7 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// The maximum number of concurrently open reading channels.
         /// </summary>
-        public virtual int MaxOpenChannels { get; set; } = int.MaxValue;
+        public virtual int MaxOpenChannels { get; set; } = ChannelId.MaxValue;
 
         /// <summary>
         /// Callback for when a new channel is opened.

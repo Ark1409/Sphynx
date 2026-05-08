@@ -27,7 +27,7 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// The (exact) serialization size of this header in bytes.
         /// </summary>
-        public const int SIZE = 10; // SP (2), Version (1), FrameType + Flags (1), ChannelId (4), FrameSize (2)
+        public const int SIZE = 8; // SP (2), Version (1), FrameType + Flags (1), ChannelId (2), FrameSize (2)
 
         /// <summary>
         /// The packet signature to identify Sphynx frames.
@@ -48,6 +48,7 @@ namespace Sphynx.Network.Transport
         /// The control flags for this frame type.
         /// </summary>
         /// <seealso cref="ChannelDataFlags"/>
+        /// <seealso cref="ChannelReleaseFlags"/>
         public byte Flags { get; init; }
 
         /// <summary>
@@ -241,8 +242,8 @@ namespace Sphynx.Network.Transport
             Debug.Assert(Enum.GetUnderlyingType(typeof(SphynxFrameType)) == typeof(byte));
             var frameType = (SphynxFrameType)((typeAndFlags >> 4) & 0x0F);
             byte flags = (byte)(typeAndFlags & 0x0F);
-            Debug.Assert(ChannelId.SIZE == sizeof(int));
-            int channelId = deserializer.ReadInt32();
+            Debug.Assert(ChannelId.SIZE == sizeof(ushort));
+            ushort channelId = deserializer.ReadUInt16();
             short frameSize = deserializer.ReadInt16();
 
             Debug.Assert(deserializer.Offset - oldOffset == SIZE);
@@ -352,8 +353,8 @@ namespace Sphynx.Network.Transport
             serializer.WriteUInt8(Version.Major);
             Debug.Assert(Enum.GetUnderlyingType(typeof(SphynxFrameType)) == typeof(byte));
             serializer.WriteUInt8((byte)(((byte)FrameType << 4) | Flags));
-            Debug.Assert(ChannelId.SIZE == sizeof(int));
-            serializer.WriteInt32(ChannelId);
+            Debug.Assert(ChannelId.SIZE == sizeof(ushort));
+            serializer.WriteUInt16(ChannelId);
             serializer.WriteInt16(FrameSize);
 
             Debug.Assert(serializer.BytesWritten - oldOffset == SIZE);
