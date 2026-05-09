@@ -169,6 +169,7 @@ namespace Sphynx.Network.Transport
 
             public ChannelId ChannelId { get; protected set; }
 
+            [MemberNotNullWhen(true, nameof(CloseException))]
             public bool IsDisposed => CloseException != null;
             protected volatile ChannelClosedException? CloseException;
             public virtual Action<Channel, Exception?>? OnDispose { protected get; set; }
@@ -427,36 +428,41 @@ namespace Sphynx.Network.Transport
 
             public Channel Channel { get; }
             public bool LeaveOpen { get; set; }
+            protected virtual PipeReader Reader { get; }
 
-            private readonly PipeReader _reader;
+            protected ChannelPipeReader(Channel channel, bool leaveOpen)
+            {
+                Channel = channel;
+                LeaveOpen = leaveOpen;
+            }
 
             public ChannelPipeReader(Channel channel, PipeReader? internalReader = null, bool leaveOpen = true)
             {
                 Channel = channel;
                 LeaveOpen = leaveOpen;
-                _reader = internalReader ?? CreatePipeReader(channel, leaveOpen);
+                Reader = internalReader ?? CreatePipeReader(channel, leaveOpen);
             }
 
             protected virtual PipeReader CreatePipeReader(Channel channel, bool leaveOpen) => Create(channel.AsStream(), DefaultStreamPipeOptions);
 
-            public override bool TryRead(out ReadResult result) => _reader.TryRead(out result);
-            public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default) => _reader.ReadAsync(cancellationToken);
+            public override bool TryRead(out ReadResult result) => Reader.TryRead(out result);
+            public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default) => Reader.ReadAsync(cancellationToken);
 
             protected override ValueTask<ReadResult> ReadAtLeastAsyncCore(int minimumSize, CancellationToken cancellationToken) =>
-                _reader.ReadAtLeastAsync(minimumSize, cancellationToken);
+                Reader.ReadAtLeastAsync(minimumSize, cancellationToken);
 
-            public override void AdvanceTo(SequencePosition consumed) => _reader.AdvanceTo(consumed);
-            public override void AdvanceTo(SequencePosition consumed, SequencePosition examined) => _reader.AdvanceTo(consumed, examined);
-            public override void CancelPendingRead() => _reader.CancelPendingRead();
+            public override void AdvanceTo(SequencePosition consumed) => Reader.AdvanceTo(consumed);
+            public override void AdvanceTo(SequencePosition consumed, SequencePosition examined) => Reader.AdvanceTo(consumed, examined);
+            public override void CancelPendingRead() => Reader.CancelPendingRead();
 
             public override Task CopyToAsync(PipeWriter destination, CancellationToken cancellationToken = default) =>
-                _reader.CopyToAsync(destination, cancellationToken);
+                Reader.CopyToAsync(destination, cancellationToken);
 
             public override Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default) =>
-                _reader.CopyToAsync(destination, cancellationToken);
+                Reader.CopyToAsync(destination, cancellationToken);
 
             [Obsolete($"{nameof(OnWriterCompleted)} has been deprecated and may not be invoked on all implementations of PipeReader.")]
-            public override void OnWriterCompleted(Action<Exception?, object?> callback, object? state) => _reader.OnWriterCompleted(callback, state);
+            public override void OnWriterCompleted(Action<Exception?, object?> callback, object? state) => Reader.OnWriterCompleted(callback, state);
 
             public override ValueTask CompleteAsync(Exception? exception = null)
             {

@@ -237,7 +237,7 @@ namespace Sphynx.Network.Transport
             }
         }
 
-        private async Task CompleteChannels(Exception? ex)
+        private async ValueTask CompleteChannels(Exception? ex)
         {
             foreach (var (_, channel) in OpenChannels)
             {
@@ -245,7 +245,7 @@ namespace Sphynx.Network.Transport
                 if (channel.IsDisposed)
                     continue;
 
-                await using var writer = await channel.RentChannelWriterAsync(CancellationToken.None).ConfigureAwait(false);
+                await using var writer = await channel.RentChannelWriterAsync().ConfigureAwait(false);
 
                 if (!writer.IsCompleted)
                     await writer.CompleteAsync(ex);
@@ -345,7 +345,7 @@ namespace Sphynx.Network.Transport
             if (channel.IsDisposed)
                 return;
 
-            channel.SignalDispose(disposeException);
+            channel.ForceClose(disposeException);
         }
 
         protected override void Dispose(bool disposing)
@@ -628,11 +628,11 @@ namespace Sphynx.Network.Transport
 
             public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             {
-                if (cancellationToken.IsCancellationRequested)
-                    return ValueTask.FromCanceled<int>(cancellationToken);
-
                 if (IsDisposed)
                     return ValueTask.FromException<int>(GetDisposedException());
+
+                if (cancellationToken.IsCancellationRequested)
+                    return ValueTask.FromCanceled<int>(cancellationToken);
 
                 if (ChannelReader.TryRead(out var result))
                     return ValueTask.FromResult(HandleReadResult(result, buffer.Span));
@@ -732,38 +732,32 @@ namespace Sphynx.Network.Transport
                 }
             }
 
-            private ChannelPipeReader? _channelPipeReader;
+            private DefaultPipeReader? _defaultPipeReader;
 
             public override PipeReader AsPipeReader(bool leaveOpen = true)
             {
-                _channelPipeReader ??= new ChannelPipeReader(this, ChannelReader, leaveOpen);
-                _channelPipeReader.LeaveOpen = leaveOpen;
-                return _channelPipeReader;
+                _defaultPipeReader ??= new DefaultPipeReader(this, leaveOpen);
+                _defaultPipeReader.LeaveOpen = leaveOpen;
+                return _defaultPipeReader;
             }
 
-            private static readonly ChannelClosedException _signaledDisposeSentinel = new();
-            private Exception? _signalDisposeException;
-
-            protected internal virtual bool SignalDispose(Exception? disposeException)
+            protected internal virtual bool ForceClose(Exception? closeException)
             {
-                return Interlocked.CompareExchange(ref _signalDisposeException, disposeException ?? CloseSentinel, null) == null &&
-                       TryReserveDispose(_signaledDisposeSentinel);
-            }
-
-            protected override bool TryReserveDispose(Exception? disposeException)
-            {
-                var oldValue = Interlocked.CompareExchange(ref CloseException, ToCloseException(disposeException), null);
-
-                if (oldValue == null)
-                    return true;
-
-                if (oldValue == _signaledDisposeSentinel)
+                if (Interlocked.CompareExchange(ref CloseException, ToCloseException(closeException), null) == null)
                 {
-                    CloseException = ToCloseException(_signalDisposeException);
+                    ChannelReader.CancelPendingRead();
                     return true;
                 }
 
                 return false;
+            }
+
+            protected int IsDisposeReserved;
+
+            protected override bool TryReserveDispose(Exception? disposeException)
+            {
+                Interlocked.CompareExchange(ref CloseException, ToCloseException(disposeException), null);
+                return Interlocked.Exchange(ref IsDisposeReserved, 1) == 0;
             }
 
             protected override void Dispose(bool disposing)
@@ -776,6 +770,7 @@ namespace Sphynx.Network.Transport
                     {
                         ChannelReader.Complete(CloseException == CloseSentinel ? null : CloseException);
                         ChannelReader.CancelPendingRead();
+                        GetPipe().Writer.CancelPendingFlush();
                     }
                     catch
                     {
@@ -793,7 +788,6 @@ namespace Sphynx.Network.Transport
 
                 _pipe = null;
                 _pipeWriterCompleted = false;
-                _signalDisposeException = null;
             }
 
             protected override async ValueTask DisposeAsyncCore()
@@ -804,6 +798,7 @@ namespace Sphynx.Network.Transport
                 {
                     await ChannelReader.CompleteAsync(CloseException == CloseSentinel ? null : CloseException).ConfigureAwait(false);
                     ChannelReader.CancelPendingRead();
+                    GetPipe().Writer.CancelPendingFlush();
                 }
                 catch
                 {
@@ -820,7 +815,6 @@ namespace Sphynx.Network.Transport
 
                 _pipe = null;
                 _pipeWriterCompleted = false;
-                _signalDisposeException = null;
             }
 
             protected virtual Pipe NewPipe()
@@ -842,6 +836,23 @@ namespace Sphynx.Network.Transport
                     {
                         return _pipe ?? (_pipe = NewPipe());
                     }
+                }
+            }
+
+            private class DefaultPipeReader : ChannelPipeReader
+            {
+                protected override PipeReader Reader
+                {
+                    get
+                    {
+                        var channel = (DefaultChannel)Channel;
+                        channel.ThrowIfDisposed();
+                        return channel.ChannelReader;
+                    }
+                }
+
+                public DefaultPipeReader(DefaultChannel channel, bool leaveOpen) : base(channel, leaveOpen)
+                {
                 }
             }
         }

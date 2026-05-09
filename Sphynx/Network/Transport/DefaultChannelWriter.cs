@@ -105,11 +105,11 @@ namespace Sphynx.Network.Transport
                 // until it is released. Since we acquired the ChannelsLock (which the channel instance also does before returning itself to
                 // the pool), the channel cannot already be disposed by the time we make it here (since we checked for disposal above). In that
                 // case, we could even make the claim that this call shall always return true.
-                return channel.SignalDispose(_channelRejectedException);
+                return channel.ForceClose(_channelRejectedException);
             }
         }
 
-        private static readonly ChannelClosedException _channelRejectedException = new("Channel was rejected by the remote peer");
+        private static readonly ChannelClosedException _channelRejectedException = new("The channel was rejected by the remote peer");
 
         public override Channel OpenChannel(ChannelId channelId)
         {
@@ -566,29 +566,17 @@ namespace Sphynx.Network.Transport
 
             public override IBufferWriter<byte> AsBufferWriter() => FrameBuffer;
 
-            private static readonly ChannelClosedException _signaledDisposeSentinel = new();
-            private Exception? _signalDisposeException;
-
-            protected internal virtual bool SignalDispose(Exception? disposeException)
+            protected internal virtual bool ForceClose(Exception? closeException)
             {
-                return Interlocked.Exchange(ref _signalDisposeException, disposeException ?? CloseSentinel) == null &&
-                       TryReserveDispose(_signaledDisposeSentinel);
+                return Interlocked.CompareExchange(ref CloseException, ToCloseException(closeException), null) == null;
             }
+
+            protected int IsDisposeReserved;
 
             protected override bool TryReserveDispose(Exception? disposeException)
             {
-                var oldValue = Interlocked.CompareExchange(ref CloseException, ToCloseException(disposeException), null);
-
-                if (oldValue == null)
-                    return true;
-
-                if (oldValue == _signaledDisposeSentinel)
-                {
-                    CloseException = ToCloseException(_signalDisposeException);
-                    return true;
-                }
-
-                return false;
+                Interlocked.CompareExchange(ref CloseException, ToCloseException(disposeException), null);
+                return Interlocked.Exchange(ref IsDisposeReserved, 1) == 0;
             }
 
             protected override void Dispose(bool disposing)

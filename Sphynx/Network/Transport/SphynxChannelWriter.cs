@@ -74,6 +74,7 @@ namespace Sphynx.Network.Transport
 
             public virtual ChannelId ChannelId { get; protected set; }
 
+            [MemberNotNullWhen(true, nameof(CloseException))]
             public bool IsDisposed => CloseException != null;
             protected volatile ChannelClosedException? CloseException;
             public Action<Channel, Exception?>? OnDispose { protected get; set; }

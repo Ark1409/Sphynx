@@ -107,6 +107,7 @@ namespace Sphynx.Network.Transport
                 FramesWritten = 0;
                 BytesWritten = 0;
 
+                IsDisposeReserved = 0;
                 CloseException = null;
             }
 

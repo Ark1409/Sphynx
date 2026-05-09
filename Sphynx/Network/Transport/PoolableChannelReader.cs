@@ -101,6 +101,8 @@ namespace Sphynx.Network.Transport
                     ChannelId = channelId.Value;
 
                 BytesRead = 0;
+
+                IsDisposeReserved = 0;
                 CloseException = null;
             }
 
@@ -126,6 +128,15 @@ namespace Sphynx.Network.Transport
                 }
 
                 return pipe;
+            }
+
+            private ChannelPipeReader? _channelPipeReader;
+
+            public override PipeReader AsPipeReader(bool leaveOpen = true)
+            {
+                _channelPipeReader ??= new ChannelPipeReader(this, ChannelReader, leaveOpen);
+                _channelPipeReader.LeaveOpen = leaveOpen;
+                return _channelPipeReader;
             }
 
             protected override void Dispose(bool disposing)
@@ -162,6 +173,7 @@ namespace Sphynx.Network.Transport
 
                 Parent.PooledChannels.Return(this);
             }
+
         }
     }
 }
