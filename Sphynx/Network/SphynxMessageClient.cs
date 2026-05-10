@@ -1,23 +1,22 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 using Sphynx.Network.Packet;
 using Sphynx.Network.Serialization;
 using Sphynx.Network.Transport;
+using Sphynx.Utils;
 
 namespace Sphynx.Network
 {
+    public delegate void MessageReceivedHandler(object? state, SphynxMessage message);
+    public delegate void MessageDroppedHandler(object? state, SphynxMessage? message, Exception? error);
+
     public class SphynxMessageClient : IDisposable, IAsyncDisposable
     {
-        private readonly ConcurrentDictionary<long, SphynxChannelWriter.Channel> _openWriteChannels = new();
-
-        private readonly SphynxChannelReader? _reader;
-        private readonly SphynxChannelWriter? _writer;
+        protected SphynxChannelReader? Reader;
+        protected SphynxChannelWriter? Writer;
         private volatile IMessageFormatter _formatter;
 
         public IMessageFormatter MessageFormatter
@@ -26,64 +25,90 @@ namespace Sphynx.Network
             set => _formatter = value;
         }
 
-        public Action<SphynxMessage>? MessageReceived { private get; set; }
+        private volatile MessageReceivedHandler? _messageReceived;
+        private object? _messageReceivedState;
 
-        public bool CanRead => _reader != null;
-        public bool CanWrite => _writer != null;
+        private volatile MessageDroppedHandler? _messageDropped;
+        private object? _messageDroppedState;
 
-        private readonly CancellationTokenSource _disposeCts = new();
-        private bool IsDisposed => _disposeCts.IsCancellationRequested;
+        [MemberNotNullWhen(true, nameof(Reader))]
+        public bool CanRead => Reader != null;
 
-        public SphynxMessageClient(Stream stream, IMessageFormatter messageFormatter)
+        [MemberNotNullWhen(true, nameof(Writer))]
+        public bool CanWrite => Writer != null;
+
+        protected CancellationTokenSource DisposeCts = new();
+        protected bool IsDisposed => DisposeCts.IsCancellationRequested;
+
+        public SphynxMessageClient(Stream stream, bool ownsStream, IMessageFormatter formatter)
         {
-            ArgumentNullException.ThrowIfNull(stream);
-            ArgumentNullException.ThrowIfNull(messageFormatter);
-
-            if (!stream.CanRead && !stream.CanWrite)
-                throw new ArgumentException("Stream must be readable or writable", nameof(stream));
+            if (stream.CanWrite)
+                Writer = new DefaultChannelWriter(stream, ownsStream);
 
             if (stream.CanRead)
-                _reader = new SphynxChannelReader(stream, null);
+                Reader = new DefaultChannelReader(stream, ownsStream && !CanWrite);
 
-            if (stream.CanWrite)
-                _writer = new SphynxChannelWriter(stream);
+            if (CanWrite && CanRead)
+                SphynxChannel.ConnectChannel((DefaultChannelWriter)Writer, (DefaultChannelReader)Reader);
 
-            _formatter = messageFormatter;
+            _formatter = formatter;
         }
 
-        public SphynxMessageClient(SphynxChannelReader inputChannel, IMessageFormatter messageFormatter)
+        public SphynxMessageClient(SphynxChannel channel, IMessageFormatter formatter) : this(channel.Writer, channel.Reader, formatter)
         {
-            ArgumentNullException.ThrowIfNull(inputChannel);
-            ArgumentNullException.ThrowIfNull(messageFormatter);
-
-            _reader = inputChannel;
-            // _reader.ChannelDropReceived = OnChannelDropReceived;
-            // _reader.ChannelOpened = OnChannelOpened;
-
-            _formatter = messageFormatter;
+            ArgumentNullException.ThrowIfNull(channel);
+            ArgumentNullException.ThrowIfNull(formatter);
         }
 
-        public SphynxMessageClient(SphynxChannelWriter outputChannel, IMessageFormatter messageFormatter)
+        public SphynxMessageClient(SphynxChannelWriter writer, IMessageFormatter formatter) : this(writer, null, formatter)
         {
-            ArgumentNullException.ThrowIfNull(outputChannel);
-            ArgumentNullException.ThrowIfNull(messageFormatter);
-
-            _writer = outputChannel;
-            _formatter = messageFormatter;
+            ArgumentNullException.ThrowIfNull(writer);
+            ArgumentNullException.ThrowIfNull(formatter);
         }
 
-        public SphynxMessageClient(SphynxChannelReader inputChannel, SphynxChannelWriter outputChannel, IMessageFormatter messageFormatter)
+        public SphynxMessageClient(SphynxChannelReader reader, IMessageFormatter formatter) : this(null, reader, formatter)
         {
-            ArgumentNullException.ThrowIfNull(inputChannel);
-            ArgumentNullException.ThrowIfNull(outputChannel);
-            ArgumentNullException.ThrowIfNull(messageFormatter);
+            ArgumentNullException.ThrowIfNull(reader);
+            ArgumentNullException.ThrowIfNull(formatter);
+        }
 
-            _reader = inputChannel;
-            // _reader.ChannelDropReceived = OnChannelDropReceived;
-            // _reader.ChannelOpened = OnChannelOpened;
+        private SphynxMessageClient(SphynxChannelWriter? writer, SphynxChannelReader? reader, IMessageFormatter formatter)
+        {
+            // No argument checking done here; must be performed by the caller
+            Writer = writer;
+            Reader = reader;
+            Reader?.OnChannelOpened(OnChannelOpened, this);
+            _formatter = formatter;
+        }
 
-            _writer = outputChannel;
-            _formatter = messageFormatter;
+        public static SphynxMessageClient FromSimplex(DefaultChannelWriter writer, DefaultChannelReader reader, IMessageFormatter formatter)
+        {
+            ArgumentNullException.ThrowIfNull(reader);
+            ArgumentNullException.ThrowIfNull(writer);
+            ArgumentNullException.ThrowIfNull(formatter);
+
+            SphynxChannel.ConnectChannel(writer, reader);
+            return new SphynxMessageClient(writer, reader, formatter);
+        }
+
+        public void OnMessageReceived(MessageReceivedHandler callback, object? state = null)
+        {
+            _messageReceivedState = state;
+            _messageReceived = callback;
+        }
+
+        public void OnMessageDropped(MessageDroppedHandler callback, object? state = null)
+        {
+            _messageDroppedState = state;
+            _messageDropped = callback;
+        }
+
+        public void Start(CancellationToken cancellationToken = default)
+        {
+            if (!CanRead)
+                throw new InvalidOperationException("Message client is not readable");
+
+            Reader.Start(cancellationToken);
         }
 
         public Task RunAsync(CancellationToken cancellationToken = default)
@@ -91,10 +116,7 @@ namespace Sphynx.Network
             if (!CanRead)
                 return Task.FromException(new InvalidOperationException("Message client is not readable"));
 
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
-
-            return _reader!.RunAsync(cancellationToken);
+            return Reader.RunAsync(cancellationToken);
         }
 
         public ValueTask SendMessageAsync(SphynxMessage message, CancellationToken cancellationToken = default)
@@ -111,54 +133,28 @@ namespace Sphynx.Network
             return Core(message, cancellationToken);
 
             [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
-            async ValueTask Core(SphynxMessage msg, CancellationToken ct)
+            async ValueTask Core(SphynxMessage msg, CancellationToken token)
             {
-                var channel = _writer!.OpenChannel();
+                var channel = Writer.OpenChannel();
 
                 try
                 {
-                    if (!_openWriteChannels.TryAdd(channel.ChannelId, channel))
-                        ThrowNonUniqueChannelException();
+                    await _formatter.SerializeAsync(msg, channel, token).ConfigureAwait(false);
 
-                    await _formatter.SerializeAsync(msg, channel, ct).ConfigureAwait(false);
-
-                    // Ideally we'd only want to remove it once the channel's been disposed, so that CHANNEL_DROPs are still acted upon,
-                    // but that would require an extra delegate allocation for each serialize call.
-                    _openWriteChannels.TryRemove(new KeyValuePair<long, SphynxChannelWriter.Channel>(channel.ChannelId, channel));
-
-                    if (_formatter.OwnsWriter || channel.IsDisposed)
-                        return;
-
-                    await channel.DisposeAsync().ConfigureAwait(false);
+                    if (!_formatter.OwnsWriter && !channel.IsDisposed)
+                        await channel.DisposeAsync().ConfigureAwait(false);
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!_formatter.OwnsWriter && !channel.IsDisposed)
                 {
-                    _openWriteChannels.TryRemove(new KeyValuePair<long, SphynxChannelWriter.Channel>(channel.ChannelId, channel));
-
-                    if (!channel.IsDisposed)
-                        await channel.DisposeAsync(ex).ConfigureAwait(false);
-
-                    Throw(ex);
+                    await channel.DisposeAsync(ex).ConfigureAwait(false);
+                    throw;
                 }
             }
-
-            [DoesNotReturn]
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            static void Throw(Exception ex) => throw ex;
-
-            [DoesNotReturn]
-            [MethodImpl(MethodImplOptions.NoInlining)]
-            static void ThrowNonUniqueChannelException() => throw new Transport.ChannelClosedException("Could not generate a unique channel ID");
         }
 
-        private void OnChannelOpened(SphynxChannelReader.Channel channel)
+        private static ValueTask OnChannelOpened(object? state, SphynxChannelReader.Channel channel)
         {
-            var openTask = OnChannelOpenedAsync(channel);
-
-            if (openTask.IsCompleted)
-                openTask.GetAwaiter().GetResult();
-            else
-                openTask.GetAwaiter().OnCompleted(() => openTask.GetAwaiter().GetResult());
+            return ((SphynxMessageClient)state!).OnChannelOpenedAsync(channel);
         }
 
         [AsyncStateMachine(typeof(PoolingAsyncValueTaskMethodBuilder))]
@@ -168,56 +164,91 @@ namespace Sphynx.Network
 
             try
             {
-                message = await _formatter.DeserializeAsync(channel, _disposeCts.Token).ConfigureAwait(false);
+                message = await _formatter.DeserializeAsync(channel, DisposeCts.Token).ConfigureAwait(false);
+
+                if (!_formatter.OwnsReader && !channel.IsDisposed)
+                    await channel.DisposeAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                if (!channel.IsDisposed)
+                InvokeMessageDropped(null, ex);
+
+                if (!_formatter.OwnsReader && !channel.IsDisposed)
                     await channel.DisposeAsync(ex).ConfigureAwait(false);
 
                 throw;
             }
 
-            if (!_formatter.OwnsReader)
-                await channel.DisposeAsync().ConfigureAwait(false);
-
-            if (MessageReceived == null)
+            if (!InvokeMessageReceived(message))
             {
-                // Discard the message in this case. If needed, we can expose an API for this.
-                if (message is IAsyncDisposable asyncDisposable)
-                    await asyncDisposable.DisposeAsync().ConfigureAwait(false);
-                else if (message is IDisposable disposable)
-                    disposable.Dispose();
-
-                return;
+                if (!InvokeMessageDropped(message, null))
+                {
+                    // Default behaviour for uncaught messages
+                    await DisposeMessageAsync(message).ConfigureAwait(false);
+                }
             }
 
-            ThreadPool.QueueUserWorkItem(static state =>
+            static ValueTask DisposeMessageAsync(SphynxMessage msg)
             {
-                try
+                if (msg is IAsyncDisposable asyncDisposable)
+                    return asyncDisposable.DisposeAsync();
+
+                if (msg is IDisposable disposable)
                 {
-                    state.callback.Invoke(state.message);
+                    try
+                    {
+                        disposable.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        return ValueTask.FromException(ex);
+                    }
                 }
-                catch
-                {
-                    // ignore
-                }
-            }, (message, callback: MessageReceived), preferLocal: false);
+
+                return ValueTask.CompletedTask;
+            }
         }
 
-        private void OnChannelDropReceived(long channelId)
+        private bool InvokeMessageReceived(SphynxMessage message)
         {
-            if (_openWriteChannels.TryRemove(channelId, out var channel) && !channel.IsDisposed)
+            var callback = _messageReceived;
+            object? callbackState = _messageReceivedState;
+
+            if (callback == null)
+                return false;
+
+            return ThreadPoolHelper.QueueUserWorkItem(static void (state) =>
             {
                 try
                 {
-                    _ = channel.DisposeAsync(new Transport.ChannelClosedException());
+                    state.callback.Invoke(state.callbackState, state.message);
                 }
                 catch
                 {
                     // ignore
                 }
-            }
+            }, (message, callback, callbackState));
+        }
+
+        private bool InvokeMessageDropped(SphynxMessage? message, Exception? error)
+        {
+            var callback = _messageDropped;
+            object? callbackState = _messageDroppedState;
+
+            if (callback == null)
+                return false;
+
+            return ThreadPoolHelper.QueueUserWorkItem(static void (state) =>
+            {
+                try
+                {
+                    state.callback.Invoke(state.callbackState, state.message, state.error);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }, (message, error, callback, callbackState));
         }
 
         private ObjectDisposedException GetDisposedException() => new(GetType().Name);
@@ -227,14 +258,15 @@ namespace Sphynx.Network
             if (IsDisposed)
                 return;
 
-            _disposeCts.Cancel();
-            _reader?.Dispose();
-            _writer?.Dispose();
+            DisposeCts.Cancel();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            foreach (var (_, channel) in _openWriteChannels)
-                Debug.Assert(channel.IsDisposed);
-
-            _openWriteChannels.Clear();
+        protected virtual void Dispose(bool disposing)
+        {
+            Reader?.Dispose();
+            Writer?.Dispose();
         }
 
         public async ValueTask DisposeAsync()
@@ -242,15 +274,50 @@ namespace Sphynx.Network
             if (IsDisposed)
                 return;
 
-            await _disposeCts.CancelAsync().ConfigureAwait(false);
+            await DisposeCts.CancelAsync().ConfigureAwait(false);
+            await DisposeAsyncCore().ConfigureAwait(false);
+            Dispose(false);
+            GC.SuppressFinalize(this);
+        }
 
-            if (_reader != null) await _reader.DisposeAsync().ConfigureAwait(false);
-            if (_writer != null) await _writer.DisposeAsync().ConfigureAwait(false);
+        protected virtual async ValueTask DisposeAsyncCore()
+        {
+            if (Writer != null) await Writer.DisposeAsync().ConfigureAwait(false);
+            if (Reader != null) await Reader.DisposeAsync().ConfigureAwait(false);
+        }
+    }
 
-            foreach (var (_, channel) in _openWriteChannels)
-                Debug.Assert(channel.IsDisposed);
+    public class PoolableMessageClient : SphynxMessageClient
+    {
+        private PoolableSphynxChannel _channel;
 
-            _openWriteChannels.Clear();
+        public PoolableMessageClient(PoolableSphynxChannel channel, IMessageFormatter formatter)
+            : base(channel, formatter)
+        {
+            _channel = channel;
+        }
+
+        public void Reset(PoolableSphynxChannel channel)
+        {
+            DisposeCts = new CancellationTokenSource();
+            _channel = channel;
+        }
+
+        public void Reset(Stream stream, bool? ownsStream = null)
+        {
+            DisposeCts = new CancellationTokenSource();
+            _channel.Reset(stream, ownsStream);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                _channel.Dispose();
+        }
+
+        protected override ValueTask DisposeAsyncCore()
+        {
+            return _channel.DisposeAsync();
         }
     }
 }
