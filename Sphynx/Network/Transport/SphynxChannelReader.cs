@@ -10,6 +10,8 @@ using Sphynx.Utils;
 
 namespace Sphynx.Network.Transport
 {
+    public delegate ValueTask ChannelOpenedHandler(object? state, SphynxChannelReader.Channel channel);
+
     public abstract class SphynxChannelReader : IDisposable, IAsyncDisposable
     {
         protected bool IsDisposed
@@ -47,6 +49,7 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// Actively begins reading from the underlying stream.
         /// </summary>
+        [MemberNotNull(nameof(RunTask))]
         public void Start(CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
@@ -59,13 +62,17 @@ namespace Sphynx.Network.Transport
         /// Actively begins reading from the underlying stream. Blocks until the reader finishes.
         /// </summary>
         /// <exception cref="Exception">The exception which terminated the reading.</exception>
+        [MemberNotNull(nameof(RunTask))]
         public async Task RunAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
 
             // Prevent any accidental deadlocks
             if (_isInsideRunTask.Value)
+            {
+                Debug.Assert(RunTask != null);
                 return;
+            }
 
             using (await RunLock.RentAsync(cancellationToken).ConfigureAwait(false))
             {
@@ -86,9 +93,9 @@ namespace Sphynx.Network.Transport
 
                     await (RunTask = ReadChannelsAsync(RunCts.Token)).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // ignore, caught by the RunTask
+                    RunTask ??= Task.FromException(ex);
                 }
 
                 _isInsideRunTask.Value = false;
@@ -171,6 +178,7 @@ namespace Sphynx.Network.Transport
 
             [MemberNotNullWhen(true, nameof(CloseException))]
             public bool IsDisposed => CloseException != null;
+
             protected volatile ChannelClosedException? CloseException;
             public virtual Action<Channel, Exception?>? OnDispose { protected get; set; }
 

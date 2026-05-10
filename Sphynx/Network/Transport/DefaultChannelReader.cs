@@ -11,7 +11,6 @@ using Sphynx.Utils;
 
 namespace Sphynx.Network.Transport
 {
-    public delegate ValueTask ChannelOpenedHandler(object? state, SphynxChannelReader.Channel channel);
     public delegate ValueTask ChannelReleasedHandler(object? state, ChannelId channelId, byte releasedFlags);
     public delegate ValueTask ChannelReleasingHandler(object? state, ChannelId channelId, byte releasingFlags);
     public delegate ValueTask ChannelFrameDroppedHandler(object? state, SphynxFrameHeader header);
