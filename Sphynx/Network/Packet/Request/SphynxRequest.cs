@@ -35,6 +35,8 @@ namespace Sphynx.Network.Packet.Request
         public virtual bool Equals(SphynxRequest? other) => base.Equals(other) && RequestType == other?.RequestType;
 
         public abstract SphynxResponse CreateResponse(SphynxErrorInfo errorInfo);
+
+        public override string ToString() => $"{MessageType}, {RequestType}";
     }
 
     public abstract class SphynxRequest<TResponse> : SphynxRequest where TResponse : SphynxResponse

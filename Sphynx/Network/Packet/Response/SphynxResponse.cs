@@ -44,5 +44,7 @@ namespace Sphynx.Network.Packet.Response
         /// <inheritdoc/>
         public bool Equals(SphynxResponse? other) =>
             base.Equals(other) && ResponseType == other?.ResponseType && Header.ErrorInfo == other?.Header.ErrorInfo;
+
+        public override string ToString() => $"{MessageType}, {ResponseType}";
     }
 }

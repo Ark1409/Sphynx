@@ -12,5 +12,7 @@
 
         /// <inheritdoc/>
         public virtual bool Equals(SphynxMessage? other) => MessageType == other?.MessageType;
+
+        public override string ToString() => $"{MessageType}";
     }
 }
