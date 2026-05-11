@@ -5,7 +5,7 @@ using Sphynx.Utils;
 
 namespace Sphynx.Client.Tui
 {
-    public abstract class Terminal : IDisposable
+    public abstract class Terminal : IAsyncDisposable
     {
         public abstract TerminalColorSupport ColorSupport { get; }
         public bool HasTrueColor => (ColorSupport & TerminalColorSupport.TrueColor) == TerminalColorSupport.TrueColor;
@@ -27,11 +27,23 @@ namespace Sphynx.Client.Tui
 
         /// <summary>
         /// Erases <paramref name="count" /> cell(s) from the current position backwards.
+        /// With positive <paramref name="count" />, you get
+        /// <ul>
+        /// <li>Old: Hello█ World</li>
+        /// <li>New: Hell█ World</li>
+        /// </ul>
+        /// Otherwise, you get
+        /// <ul>
+        /// <li>Old: Hello█ World</li>
+        /// <li>New: Hello█World</li>
+        /// </ul>
+        /// with the first space being deleted.
         /// </summary>
-        /// <param name="count">The number of characters to erase.</param>
+        /// <param name="count">The number of characters to erase. Positive indicates erasing to the left (backspace),
+        /// negative indicates erasing to the right (delete).</param>
         public abstract void Erase(int count = 1);
 
-        public abstract (int x, int y) CursorPosition { get; set; }
+        public abstract (int X, int Y) CursorPosition { get; set; }
 
         public virtual void MoveCursor(int dx, int dy)
         {
@@ -51,19 +63,20 @@ namespace Sphynx.Client.Tui
         public abstract void Clear();
 
         public virtual void Init() { }
-        public virtual void Dispose() { GC.SuppressFinalize(this); }
+        public virtual ValueTask DisposeAsync() { GC.SuppressFinalize(this); return ValueTask.CompletedTask; }
 
         public abstract void Flush();
 
-        public abstract TerminalEvent PollEvent();
-        protected internal abstract bool CanPollEvent(Type t);
+        public abstract TerminalEvent PollEvent(TimeSpan timeout);
+        public TerminalEvent PollEvent() => PollEvent(Timeout.InfiniteTimeSpan);
+        public abstract bool CanPollEvent(Type t);
     }
 
     public enum TerminalCursorShape : byte
     {
-        DefaultShape = 1,
+        DefaultShape = 255,
         UserShape = DefaultShape,
-        BlinkingBlock,
+        BlinkingBlock = 1,
         SteadyBlock,
         BlinkingUnderline,
         SteadyUnderline,
@@ -95,11 +108,15 @@ namespace Sphynx.Client.Tui
         public static void MoveCursorLeft(this Terminal term, int count = 1) => term.MoveCursor(-count, 0);
         public static void MoveCursorRight(this Terminal term, int count = 1) => term.MoveCursor(count, 0);
 
-        public static void MoveCursorUp(this Terminal term, int count = 1) => term.MoveCursor(0, -count);
-        public static void MoveCursorDown(this Terminal term, int count = 1) => term.MoveCursor(0, count);
+        public static void MoveCursorUp(this Terminal term, int count = 1) => term.MoveCursor(0, count);
+        public static void MoveCursorDown(this Terminal term, int count = 1) => term.MoveCursor(0, -count);
 
         public static void Write(this Terminal term, params ColoredString[] strs) => term.Write((IEnumerable<ColoredString>)strs);
 
+        public static void WriteLine(this Terminal term)
+        {
+            term.Write("\r\n");
+        }
         public static void WriteLine(this Terminal term, ColoredString str)
         {
             term.Write(str);
@@ -122,27 +139,51 @@ namespace Sphynx.Client.Tui
             while (true)
             {
                 var ev = term.PollEvent();
-                if (type == typeof(TerminalKeyEvent) && ev.KeyEvent.HasValue)
-                {
-                    return ev;
-                }
-                else if (type == typeof(TerminalWindowEvent) && ev.WindowEvent.HasValue)
-                {
-                    return ev;
-                }
-                else if (type == typeof(TerminalMouseMoveEvent) && ev.MouseMoveEvent.HasValue)
-                {
-                    return ev;
-                }
-                else if (type == typeof(TerminalMouseClickEvent) && ev.MouseClickEvent.HasValue)
-                {
-                    return ev;
-                }
-                else if (type == typeof(TerminalMouseScrollEvent) && ev.MouseScrollEvent.HasValue)
-                {
-                    return ev;
-                }
+                if (ev.EventType == type) return ev;
             }
         }
+
+        public static List<TerminalEvent> PollAllUntil<T>(this Terminal term) where T : ITerminalEvent
+        {
+            var items = new List<TerminalEvent>();
+            var type = typeof(T);
+            bool found = false;
+            while (!found)
+            {
+                var ev = term.PollEvent();
+                if (ev.EventType == type)
+                {
+                    found = true;
+                }
+                items.Add(ev);
+            }
+            return items;
+        }
+
+
+        /// <summary>
+        /// Erases <paramref name="count" /> cell(s) from the current position backwards.
+        /// With <paramref name="forward" /> as <c>true</c>, you get
+        /// <ul>
+        /// <li>Old: Hello█ World</li>
+        /// <li>New: Hello█World</li>
+        /// </ul>
+        /// with the first space being deleted.
+        /// Otherwise, you get
+        /// <ul>
+        /// <li>Old: Hello█ World</li>
+        /// <li>New: Hell█ World</li>
+        /// </ul>
+        /// </summary>
+        /// <param name="count">The number of characters to erase.</param>
+        /// <param name="forward">Whether to erase characters forward or backwards.</param>
+        public static void Erase(this Terminal term, int count = 1, bool forward = false)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(count);
+            term.Erase(forward ? -count : count);
+        }
+
+        public static void Delete(this Terminal term, int count = 1) => term.Erase(count, true);
+        public static void Backspace(this Terminal term, int count = 1) => term.Erase(count, false);
     }
 }

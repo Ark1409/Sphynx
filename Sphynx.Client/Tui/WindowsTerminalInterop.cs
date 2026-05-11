@@ -125,7 +125,7 @@ namespace Sphynx.Client.Tui
 
                 DWORD newMode = currentMode;
 
-                newMode |= newMode | ENABLE_EXTENDED_FLAGS | ENABLE_INSERT_MODE;
+                newMode |= ENABLE_EXTENDED_FLAGS | ENABLE_INSERT_MODE;
                 newMode &= ~(ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT);
 
                 if (newMode != currentMode)
@@ -146,7 +146,7 @@ namespace Sphynx.Client.Tui
 
                 DWORD newMode = currentMode;
 
-                newMode |= newMode | ENABLE_WRAP_AT_EOL_OUTPUT | DISABLE_NEWLINE_AUTO_RETURN;
+                newMode |= ENABLE_WRAP_AT_EOL_OUTPUT | DISABLE_NEWLINE_AUTO_RETURN;
 
                 if (newMode != currentMode)
                 {

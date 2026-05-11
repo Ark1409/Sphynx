@@ -5,8 +5,8 @@ namespace Sphynx.Client.Tui
 {
     public readonly struct TerminalCellColor
     {
-        public ITerminalColor Foreground { get; init; } = ITerminalColor.DefaultForeground;
-        public ITerminalColor Background { get; init; } = ITerminalColor.DefaultBackground;
+        public ITerminalColor Foreground { get; init; } = ITerminalColor.DefaultColor;
+        public ITerminalColor Background { get; init; } = ITerminalColor.DefaultColor;
 
         public CellAttributes Attributes { get; init; } = CellAttributes.None;
 
@@ -22,18 +22,19 @@ namespace Sphynx.Client.Tui
             Underline = 0x4,
             Italic = 0x8,
             Reverse = 0x10,
+            Blink = 0x20,
 
             // Supported only in certain terminals e.g. kitty
             // Default back to regular underline style if not avaiable
-            DoubleUnderline = 0x20,
-            CurlyUnderline = 0x40,
-            DottedUnderline = 0x80,
+            DoubleUnderline = 0x100,
+            CurlyUnderline = 0x200,
+            DottedUnderline = 0x400,
         }
 
         public static readonly TerminalCellColor Default = new()
         {
-            Foreground = ITerminalColor.DefaultForeground,
-            Background = ITerminalColor.DefaultBackground,
+            Foreground = ITerminalColor.DefaultColor,
+            Background = ITerminalColor.DefaultColor,
             Attributes = CellAttributes.None,
         };
 

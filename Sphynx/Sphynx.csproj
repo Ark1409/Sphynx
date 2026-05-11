@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net8.0;net6.0</TargetFrameworks>
+        <TargetFrameworks>net8.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -39,7 +39,6 @@
     <ItemGroup>
         <PackageReference Include="FastEnum" Version="1.8.0" />
         <PackageReference Include="Nerdbank.Streams" Version="2.11.92" />
-        <PackageReference Include="Nito.Collections.Deque" Version="1.2.1" />
     </ItemGroup>
 
 </Project>

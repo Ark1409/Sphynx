@@ -1,4 +1,7 @@
-﻿using System.Buffers.Binary;
+﻿// Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
+// See the LICENCE file in the repository root for full licence text.
+
+using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 
 namespace Sphynx.Utils

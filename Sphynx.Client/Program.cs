@@ -7,27 +7,25 @@ namespace Sphynx.Client
 {
     internal static class Program
     {
-        // static int Main(string[] args)
-        // {
-        //     var scr = NCurses.InitScreen();
-        //     Console.WriteLine("Hello World");
-        //     NCurses.WindowAddString(scr, "Hello World");
-        //     NCurses.Refresh();
-        //     NCurses.Raw();
-        //     NCurses.GetChar();
-        //     NCurses.EndWin();
-        //     return 0;
-        // }
-
-        private static int Main(string[] args)
+        private static async Task<int> Run()
         {
-            var term = WindowsTerminal.StandardTerminal;
+            await using Terminal term = NCursesTerminal.Default;
+            term.Init();
+
             var poller = new TerminalEventPoller(term);
 
             bool shouldRun = true;
+            term.WriteLine("Gonna poll event");
+            term.Flush();
+
+            var col = TerminalAnsiColor.BrightRed;
+            int i = 0;
             while (shouldRun)
             {
+                i = (i + 1) % 256;
+                col = TerminalAnsiColor.FromColor((TerminalAnsiColor.AnsiColors)i);
                 var ev = poller.PollEvent();
+
                 if (ev.WindowEvent is not null)
                 {
                     var wv = ev.WindowEvent.Value;
@@ -36,8 +34,51 @@ namespace Sphynx.Client
                 else if (ev.KeyEvent is not null)
                 {
                     var kv = ev.KeyEvent.Value;
-                    var str = kv.Key.AsciiChar is null ? "INVALID" : kv.Key.AsciiChar.Value.ToString();
-                    term.WriteLine($"Just got your key: {str}");
+                    var val = kv.Key.UnicodeChar?.Value;
+                    var str = kv.Key.KeyString;
+                    if (val is < 0x20 or < 256 and > 0x7e)
+                    {
+                        str = "UNPRINT";
+                    }
+                    else if (str is null)
+                    {
+                        str = $"{kv.Key.Key!}";
+                        val = (int)kv.Key.Key!;
+                    }
+
+                    if (kv.Key.Key == TerminalKey.SpecialKey.Left)
+                    {
+                        term.MoveCursorLeft(2);
+                    }
+                    else if (kv.Key.Key == TerminalKey.SpecialKey.Right)
+                    {
+                        term.MoveCursorRight(2);
+                    }
+                    else if (kv.Key.Key == TerminalKey.SpecialKey.Up)
+                    {
+                        term.MoveCursorUp();
+                    }
+                    else if (kv.Key.Key == TerminalKey.SpecialKey.Down)
+                    {
+                        term.MoveCursorDown();
+                    }
+                    else if (kv.Key.AsciiChar == 0x7f)
+                    {
+                        term.Erase();
+                    }
+                    else if (kv.Key.Key == TerminalKey.SpecialKey.Delete)
+                    {
+                        term.Erase(-1);
+                    }
+                    else if (kv.Key.KeyString == "z")
+                    {
+                        term.Write(term.CursorPosition.ToString());
+                    }
+                    else
+                    {
+                        term.Write(str.WithColor(ITerminalColor.DefaultColor, col));
+                    }
+
 
                     if (kv.Key.AsciiChar == 'c' && kv.Key.HasModifiers(TerminalKeyModifiers.Control))
                     {
@@ -45,21 +86,29 @@ namespace Sphynx.Client
                         shouldRun = false;
                     }
                 }
+                else if (ev.MouseClickEvent is { } clickEv)
+                {
+                    term.WriteLine($"{clickEv.Position} {clickEv.Buttons} V: {clickEv.ClickCount} (Mods: {clickEv.Mods})");
+                }
+                else if (ev.MouseMoveEvent is { } moveEv)
+                {
+                    term.WriteLine($"{moveEv.OldPos} -> {moveEv.Position}");
+                }
+                else if (ev.MouseScrollEvent is { } scrollEv)
+                {
+                    term.WriteLine($"Scroll: {scrollEv.Position} {scrollEv.Direction} {scrollEv.Delta} (Mods: {scrollEv.Mods})");
+                }
+
                 term.Flush();
             }
-            // term.WriteLine($"Lines: {term.Lines}");
-            // term.WriteLine($"Columns: {term.Columns}");
-            // term.Write($"ansi 8 text: ", "Hello".WithColor(TerminalAnsiColor.Green), "\r\n");
-            // term.Write($"ansi 16 text: ", "Hello".WithColor(TerminalAnsiColor.BrightCyan), "\r\n");
-            // term.Write($"ansi 231 text: ", "Hello".WithColor(TerminalAnsiColor.Color102), "\r\n");
-            // term.Write($"ansi 255 text: ", "Hello".WithColor(TerminalAnsiColor.Color254), "\r\n");
-            // _ = TerminalTrueColor.TryParseHex("5865f2", out var col);
-            // term.Write($"TrueColor text: ", "Hello".WithColor(col), "\r\n");
-            // term.Write($"Attributed text: ", "Hello".WithColor(new TerminalCellColor { Foreground = col, Attributes = TerminalCellColor.CellAttributes.Underline }),
-            //         " Bye".WithColor(new TerminalCellColor { Foreground = col, Attributes = TerminalCellColor.CellAttributes.Underline }),
-            //         " New".WithColor(new TerminalCellColor { Foreground = TerminalAnsiColor.Blue, Attributes = TerminalCellColor.CellAttributes.Underline }),
-            //         "\r\n");
             return 0;
+        }
+
+        private static int Main(string[] args)
+        {
+            var t = Run();
+            t.Wait();
+            return t.Result;
         }
     }
 }

@@ -10,7 +10,9 @@ namespace Sphynx.Client.Tui
         MouseLeft = 0x1,
         MouseRight = 0x2,
         MouseMiddle = 0x4,
+        // Back Mouse Button
         Mouse4 = 0x8,
+        // Forward Mouse Button
         Mouse5 = 0x10,
     }
 }

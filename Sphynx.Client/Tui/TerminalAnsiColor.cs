@@ -3,7 +3,8 @@
 
 namespace Sphynx.Client.Tui
 {
-    public sealed class TerminalAnsiColor : ITerminalColor, IEquatable<TerminalAnsiColor>, IEquatable<TerminalAnsiColor.AnsiColors>
+    public sealed class TerminalAnsiColor : ITerminalColor, IEquatable<TerminalAnsiColor>, IEquatable<TerminalAnsiColor.AnsiColors>,
+                                            IComparable<TerminalAnsiColor.AnsiColors>
     {
         public AnsiColors Color { get; private init; }
 
@@ -20,7 +21,7 @@ namespace Sphynx.Client.Tui
         /// normally be returning their max component values if not for the non-standard bright versions we have to
         /// accomodate. Instead, we let the bright versions emit a full color component value with the darker versions
         /// emitting half of said value (128). This behaviour is inherited from Windows Console/PowerShell. For the 6x6x6 color
-        /// gradient/24 grayscale colors using the formula used (most?) by terminals such as e.g. xterm (see
+        /// gradient/24 grayscale colors we use the formula used by (most?) terminals such as e.g. xterm (see
         /// https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit).
         /// </remarks>
         /// <returns>Nearest true (direct) color value.</returns>
@@ -37,7 +38,7 @@ namespace Sphynx.Client.Tui
 
                 if (Color is >= AnsiColors.BrightBlack and <= AnsiColors.BrightWhite)
                 {
-                    // no standard color definition for these 8 bright versions
+                    // No standard color definition for these 8 bright versions
                     byte val = (byte)Color;
                     return new((byte)((val & 0x1) * 255), (byte)(((val >> 1) & 0x1) * 255), (byte)(((val >> 2) & 0x1) * 255));
                 }
@@ -68,9 +69,11 @@ namespace Sphynx.Client.Tui
             }
         }
 
+        private TerminalAnsiColor() { }
+
         private static readonly TerminalAnsiColor[] _defaultColors = Enum.GetValues<AnsiColors>()
             .Order()
-            .Select(a => new TerminalAnsiColor { Color = a })
+            .Select(static a => new TerminalAnsiColor { Color = a })
             .ToArray();
 
         public static TerminalAnsiColor FromColor(AnsiColors color) => _defaultColors[(int)color];
@@ -81,8 +84,9 @@ namespace Sphynx.Client.Tui
         public bool Equals(AnsiColors other) => other == Color;
         public override bool Equals(object? obj) => Equals(obj as TerminalAnsiColor);
 
-        public override int GetHashCode() => (int)Color;
+        public int CompareTo(AnsiColors other) => Color - other;
 
+        public override int GetHashCode() => (int)Color;
         public enum AnsiColors : byte
         {
             // Basic 8 colors
@@ -97,14 +101,14 @@ namespace Sphynx.Client.Tui
 
             // Bright versions of basic 8 colors
             // Apparently not a part of ANSI, added by aixterm (https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
-            BrightBlack,
-            BrightRed,
-            BrightGreen,
-            BrightYellow,
-            BrightBlue,
-            BrightMagenta,
-            BrightCyan,
-            BrightWhite,
+            BrightBlack = 8,
+            BrightRed = 9,
+            BrightGreen = 10,
+            BrightYellow = 11,
+            BrightBlue = 12,
+            BrightMagenta = 13,
+            BrightCyan = 14,
+            BrightWhite = 15,
 
             // 216 extended colors (6, 6x6 gradient squares)
             Color16 = 16,
@@ -349,6 +353,22 @@ namespace Sphynx.Client.Tui
             Color253,
             Color254,
             Color255,
+            Color0 = Black,
+            Color1 = Red,
+            Color2 = Green,
+            Color3 = Yellow,
+            Color4 = Blue,
+            Color5 = Magenta,
+            Color6 = Cyan,
+            Color7 = White,
+            Color8 = BrightBlack,
+            Color9 = BrightRed,
+            Color10 = BrightGreen,
+            Color11 = BrightYellow,
+            Color12 = BrightBlue,
+            Color13 = BrightMagenta,
+            Color14 = BrightCyan,
+            Color15 = BrightWhite,
         }
 
         public static readonly TerminalAnsiColor Black = FromColor(AnsiColors.Black);
@@ -367,6 +387,24 @@ namespace Sphynx.Client.Tui
         public static readonly TerminalAnsiColor BrightMagenta = FromColor(AnsiColors.BrightMagenta);
         public static readonly TerminalAnsiColor BrightCyan = FromColor(AnsiColors.BrightCyan);
         public static readonly TerminalAnsiColor BrightWhite = FromColor(AnsiColors.BrightWhite);
+
+        public static readonly TerminalAnsiColor Color0 = FromColor((AnsiColors)0);
+        public static readonly TerminalAnsiColor Color1 = FromColor((AnsiColors)1);
+        public static readonly TerminalAnsiColor Color2 = FromColor((AnsiColors)2);
+        public static readonly TerminalAnsiColor Color3 = FromColor((AnsiColors)3);
+        public static readonly TerminalAnsiColor Color4 = FromColor((AnsiColors)4);
+        public static readonly TerminalAnsiColor Color5 = FromColor((AnsiColors)5);
+        public static readonly TerminalAnsiColor Color6 = FromColor((AnsiColors)6);
+        public static readonly TerminalAnsiColor Color7 = FromColor((AnsiColors)7);
+        public static readonly TerminalAnsiColor Color8 = FromColor((AnsiColors)8);
+        public static readonly TerminalAnsiColor Color9 = FromColor((AnsiColors)9);
+        public static readonly TerminalAnsiColor Color10 = FromColor((AnsiColors)10);
+        public static readonly TerminalAnsiColor Color11 = FromColor((AnsiColors)11);
+        public static readonly TerminalAnsiColor Color12 = FromColor((AnsiColors)12);
+        public static readonly TerminalAnsiColor Color13 = FromColor((AnsiColors)13);
+        public static readonly TerminalAnsiColor Color14 = FromColor((AnsiColors)14);
+        public static readonly TerminalAnsiColor Color15 = FromColor((AnsiColors)15);
+
         public static readonly TerminalAnsiColor Color16 = FromColor(AnsiColors.Color16);
         public static readonly TerminalAnsiColor Color17 = FromColor(AnsiColors.Color17);
         public static readonly TerminalAnsiColor Color18 = FromColor(AnsiColors.Color18);

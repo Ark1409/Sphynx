@@ -1,36 +1,84 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Diagnostics;
+using System.Text;
+
 namespace Sphynx.Client.Tui
 {
-    public readonly struct TerminalKey
+    public struct TerminalKey : IEquatable<TerminalKey>
     {
+        public readonly TerminalKeyModifiers Mods { get; init; }
+
         /// <summary>
-        /// The 1-byte ASCII representation of the key, if available.
+        /// The entire grapheme cluster represented by this key, if available.
         /// </summary>
-        public readonly byte? AsciiChar { get; init; }
+        public readonly Grapheme? Grapheme { get; }
+
+        /// <summary>
+        /// If this key is not representable as a grapheme or code point, then this stores the resulting key.
+        /// </summary>
+        public readonly SpecialKey? Key { get; }
 
         /// <summary>
         /// The Unicode code point for the key, if available.
         /// </summary>
-        public readonly int? UnicodeChar { get; init; }
-        public readonly SpecialKey? Key { get; init; }
-        public readonly TerminalKeyModifiers Mods { get; init; }
-
-        public TerminalKey(byte c, TerminalKeyModifiers mods = TerminalKeyModifiers.None)
+        public readonly Rune? UnicodeChar
         {
-            AsciiChar = c;
-            UnicodeChar = c;
-            Mods = mods;
+            get
+            {
+                if (Grapheme is null) return null;
+                if (Grapheme.Value.Length != 1) return null;
+                return Grapheme.Value[0];
+            }
         }
 
-        public TerminalKey(int c, TerminalKeyModifiers mods = TerminalKeyModifiers.None)
+        private byte? _asciiCharCache;
+        public byte? AsciiChar
         {
-            UnicodeChar = c;
-            if (c is >= 0 and <= 0xff)
+            get
             {
-                AsciiChar = (byte)c;
+                if (_asciiCharCache is not null) return _asciiCharCache;
+                if (UnicodeChar is null || !UnicodeChar.Value.IsAscii) return null;
+                Span<byte> b = stackalloc byte[1];
+                var count = UnicodeChar.Value.EncodeToUtf8(b);
+                Debug.Assert(count == 1);
+                return _asciiCharCache = b[0];
             }
+        }
+
+        private string? _keyStringCache;
+        public string? KeyString
+        {
+            get
+            {
+                if (_keyStringCache is not null) return _keyStringCache;
+                if (Grapheme is not null) _keyStringCache = Grapheme.Value.ToString();
+                return _keyStringCache;
+            }
+        }
+
+
+        public TerminalKey(byte c, TerminalKeyModifiers mods = TerminalKeyModifiers.None) : this(new Rune(c), mods)
+        {
+        }
+
+        public TerminalKey(char c, TerminalKeyModifiers mods = TerminalKeyModifiers.None) : this(new Rune(c), mods)
+        {
+
+        }
+
+        public TerminalKey(int c, TerminalKeyModifiers mods = TerminalKeyModifiers.None) : this(new Rune(c), mods)
+        {
+        }
+
+        public TerminalKey(Rune r, TerminalKeyModifiers mods = TerminalKeyModifiers.None) : this(new Grapheme([r]), mods)
+        {
+        }
+
+        public TerminalKey(in Grapheme g, TerminalKeyModifiers mods = TerminalKeyModifiers.None)
+        {
+            Grapheme = g;
             Mods = mods;
         }
 
@@ -40,10 +88,15 @@ namespace Sphynx.Client.Tui
             Mods = mods;
         }
 
+        public bool HasModifiers(TerminalKeyModifiers mods)
+        {
+            return (Mods & mods) == mods;
+        }
+
         public bool HasModifiers(params TerminalKeyModifiers[] mods)
         {
             TerminalKeyModifiers aggr = mods.Aggregate(TerminalKeyModifiers.None, (a, c) => a |= c);
-            return (Mods & aggr) == aggr;
+            return HasModifiers(aggr);
         }
 
         public enum SpecialKey
@@ -53,13 +106,17 @@ namespace Sphynx.Client.Tui
             Left,
             Right,
             PageUp,
+            PgUp = PageUp,
             PageDown,
+            PgDn = PageDown,
             Home,
+            Begin,
             End,
             NumLock,
             Insert,
             Delete,
             PrintScreen,
+            F0,
             F1,
             F2,
             F3,
@@ -84,6 +141,15 @@ namespace Sphynx.Client.Tui
             F22,
             F23,
             F24,
+            Pause,
+        }
+        public bool Equals(TerminalKey other)
+        {
+            bool b =Key == other.Key && Mods == other.Mods;
+            b &= other.Grapheme is null == Grapheme is null;
+            if (!b) return false;
+            if (Grapheme is not null) b &= Grapheme.Value.Equals(other.Grapheme!.Value);
+            return b;
         }
     }
 }

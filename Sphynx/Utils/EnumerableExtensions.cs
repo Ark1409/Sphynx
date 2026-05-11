@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Collections;
+using System.Text;
 
 namespace Sphynx.Utils
 {
@@ -12,9 +13,14 @@ namespace Sphynx.Utils
             return new DualEnumerator<T>(@enum);
         }
 
-        public static IEnumerable<T> Yield<T>(this T item)
+        public static string FromUtf32String(this IEnumerable<int> en)
         {
-            return new[] { item };
+            var sb = new StringBuilder();
+            foreach (var i in en)
+            {
+                sb.Append(char.ConvertFromUtf32(i));
+            }
+            return sb.ToString();
         }
     }
 

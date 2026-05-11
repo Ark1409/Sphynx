@@ -57,7 +57,6 @@ namespace Sphynx.Utils
         public static byte HighByte(this ushort s) => !BitConverter.IsLittleEndian ? (byte)(s & byte.MaxValue) : (byte)((s >> 8) & byte.MaxValue);
         public static sbyte HighSByte(this ushort s) => !BitConverter.IsLittleEndian ? (sbyte)(s & sbyte.MaxValue) : (sbyte)((s >> 8) & sbyte.MaxValue);
 
-        [Pure]
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         public static bool IsPowerOfTwo(this int i) => BitOperations.IsPow2(i);
 

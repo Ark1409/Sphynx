@@ -29,14 +29,14 @@ namespace Sphynx.Client.Tui
         /// <seealso cref="Terminal.NearestAnsiColor(TerminalTrueColor)"/>
         public TerminalAnsiColor NearestAnsiColor
             => NearestAnsiColorFrom(_defaultColors ??=
-                    [.. Enum.GetValues<TerminalAnsiColor.AnsiColors>().Select(a => (a, TerminalAnsiColor.FromColor(a).NearestTrueColor))]);
+                    Enum.GetValues<TerminalAnsiColor.AnsiColors>().Select(static a => (a, TerminalAnsiColor.FromColor(a).NearestTrueColor)).ToArray());
 
-        internal TerminalAnsiColor NearestAnsiColorFrom((TerminalAnsiColor.AnsiColors, TerminalTrueColor)[] colorMappings)
+        internal TerminalAnsiColor NearestAnsiColorFrom(IEnumerable<(TerminalAnsiColor.AnsiColors, TerminalTrueColor)> colorMappings)
         {
             var obj = this;
             return colorMappings
                         .Select(mapping => (col: mapping.Item1, distance: TrueColorDistance(mapping.Item2, obj)))
-                        .MinBy(pair => pair.distance).col;
+                        .MinBy(static pair => pair.distance).col;
         }
 
 
@@ -44,7 +44,7 @@ namespace Sphynx.Client.Tui
 
         public static TerminalTrueColor FromNormalized(double r, double g, double b) => new((byte)(255 * r), (byte)(255 * g), (byte)(255 * b));
 
-        public static bool TryParseHex(string hex, [NotNullWhen(true)] out TerminalTrueColor color)
+        public static bool TryParseHex(string hex, [MaybeNullWhen(false)] out TerminalTrueColor color)
         {
             int col;
             try

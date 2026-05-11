@@ -5,12 +5,9 @@ namespace Sphynx.Client.Tui
 {
     public interface ITerminalColor
     {
-        private static ITerminalColor? _defaultForeground;
-        static ITerminalColor DefaultForeground => _defaultForeground ?? new TerminalDefaultColor();
+        private static ITerminalColor? _defaultColor;
+        public static ITerminalColor DefaultColor => _defaultColor ??= new TerminalDefaultColor();
 
-        private static ITerminalColor? _defaultBackground;
-        static ITerminalColor DefaultBackground => _defaultBackground ?? new TerminalDefaultColor();
-
-        internal struct TerminalDefaultColor : ITerminalColor { }
+        internal sealed class TerminalDefaultColor : ITerminalColor { }
     }
 }

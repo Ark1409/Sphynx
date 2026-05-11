@@ -29,7 +29,7 @@ namespace Sphynx.Client.Tui
 
     public static class ColoredStringExtensions
     {
-        public static ColoredString WithColor(this string s, TerminalCellColor color) => new(color, s);
+        public static ColoredString WithColor(this string s, in TerminalCellColor color) => new(color, s);
         public static ColoredString WithColor<T>(this string s, T fg)
             where T : ITerminalColor => new(new TerminalCellColor(fg), s);
         public static ColoredString WithColor<T, U>(this string s, T fg, U bg)

@@ -2,14 +2,20 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers;
+using System.Collections;
 
 namespace Sphynx.Utils
 {
     public static class PoolExtensions
     {
-        public static ValueInvokeOnDisposal<T[]> CreateReturner<T>(this ArrayPool<T> arrayPool, T[] arr)
+        public static ArrayPoolRent<T> CreateReturner<T>(this ArrayPool<T> arrayPool, T[] arr)
         {
-            return new(arr, arr => arrayPool.Return(arr));
+            return new(arrayPool, arr);
+        }
+
+        public static ArrayPoolRent<T> CreateReturner<T>(this T[] arr, ArrayPool<T> arrayPool)
+        {
+            return new(arrayPool, arr);
         }
 
         public static ArrayPoolRent<T> AutoRent<T>(this ArrayPool<T> arrayPool, int minimumLength)
@@ -21,7 +27,7 @@ namespace Sphynx.Utils
         /// Automates the process of returning a rented array from an <see cref="ArrayPool{T}"/>.
         /// </summary>
         /// <typeparam name="T">The type of the times within the array.</typeparam>
-        public struct ArrayPoolRent<T> : IDisposable
+        public struct ArrayPoolRent<T> : IDisposable, IEnumerable<T>
         {
             private readonly ArrayPool<T> _pool;
             public readonly T[] Array;
@@ -38,6 +44,9 @@ namespace Sphynx.Utils
                 _pool = pool;
                 Array = _pool.Rent(minimumLength);
             }
+
+            public readonly int Length => Array.Length;
+            public readonly long LongLength => Array.LongLength;
 
             /// <summary>
             /// Returns the managed array to the <see cref="ArrayPool{T}"/>
@@ -59,8 +68,19 @@ namespace Sphynx.Utils
                 Return();
             }
 
-            public readonly T this[int index] => Array[index];
+            public readonly Span<T> AsSpan() => Array.AsSpan();
+            public readonly Memory<T> AsMemory() => Array.AsMemory();
+
+            public readonly IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)Array).GetEnumerator();
+            readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+            public readonly ref T this[int index] => ref Array[index];
+            public readonly ref T this[Index index] => ref Array[index];
             public static implicit operator T[](ArrayPoolRent<T> a) => a.Array;
+            public static implicit operator Span<T>(ArrayPoolRent<T> a) => a.AsSpan();
+            public static implicit operator Memory<T>(ArrayPoolRent<T> a) => a.AsMemory();
+            public static implicit operator ReadOnlySpan<T>(ArrayPoolRent<T> a) => a.AsSpan();
+            public static implicit operator ReadOnlyMemory<T>(ArrayPoolRent<T> a) => a.AsMemory();
         }
     }
 }

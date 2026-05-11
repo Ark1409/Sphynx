@@ -5,9 +5,12 @@ using System.Buffers;
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Numerics;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
+using Sphynx.Client.Utils;
 using Sphynx.Utils;
+using DWORD = uint;
 
 namespace Sphynx.Client.Tui
 {
@@ -16,14 +19,17 @@ namespace Sphynx.Client.Tui
     {
         protected internal SafeFileHandle Input { get; }
         protected internal SafeFileHandle Output { get; }
+        protected internal Encoding OutputEncoding { get; }
 
-        private readonly TerminalColorSupport _colorSupportCache;
+        private readonly SafeWaitHandle _waitHandle;
+        private readonly AutoResetEvent _readEvent;
+        private TerminalColorSupport _colorSupportCache;
         public override TerminalColorSupport ColorSupport => _colorSupportCache;
 
-        private readonly bool _hasMouseSupportCache;
+        private bool _hasMouseSupportCache;
         public override bool HasMouseSupport => _hasMouseSupportCache;
 
-        private readonly IHandleWindowsTerminalStrategy _strat;
+        private IHandleWindowsTerminalStrategy? _strat;
 
         public sealed override int Lines
         {
@@ -45,7 +51,7 @@ namespace Sphynx.Client.Tui
             }
         }
 
-        public sealed override (int x, int y) CursorPosition
+        public sealed override (int X, int Y) CursorPosition
         {
             get
             {
@@ -53,14 +59,38 @@ namespace Sphynx.Client.Tui
                 WindowsTerminalInterop.CheckWin32Return(WindowsTerminalInterop.GetConsoleScreenBufferInfo(Output.DangerousGetHandle(), out var info));
                 return (info.dwCursorPosition.X, info.dwCursorPosition.Y);
             }
-            set => _strat.CursorPosition = value;
+            set => EnsureStratInit().CursorPosition = value;
+        }
+
+        // TODO: Check if this is even possible on Windows...
+        public override ITerminalColor CursorColor { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public override TerminalCursorShape CursorShape { set => EnsureStratInit().CursorShape = value; }
+        public override TerminalCursorVisibility CursorVisibility { set => EnsureStratInit().CursorVisibility = value; }
+
+        public HandleWindowsTerminal(SafeFileHandle input, SafeFileHandle output) : this(input, output, Encodings.UTF8)
+        {
         }
 
         // Caller must make sure stream is same as output
-        public HandleWindowsTerminal(SafeFileHandle input, SafeFileHandle output)
+        public HandleWindowsTerminal(SafeFileHandle input, SafeFileHandle output, Encoding outputEncoding)
         {
             Input = input;
             Output = output;
+            OutputEncoding = outputEncoding;
+            _waitHandle = new SafeWaitHandle(input.DangerousGetHandle(), false);
+            _readEvent = new AutoResetEvent(false) { SafeWaitHandle = _waitHandle };
+        }
+
+        private DWORD? _oldInputConsoleMode, _oldOutputConsoleMode;
+        public override void Init()
+        {
+            base.Init();
+
+            WindowsTerminalInterop.CheckWin32Return(WindowsTerminalInterop.GetConsoleMode(Input.DangerousGetHandle(), out var currentInputMode));
+            WindowsTerminalInterop.CheckWin32Return(WindowsTerminalInterop.GetConsoleMode(Output.DangerousGetHandle(), out var currentOutputMode));
+
+            _oldInputConsoleMode = currentInputMode;
+            _oldOutputConsoleMode = currentOutputMode;
 
             if (!WindowsTerminalInterop.SetupConsoleBase(Input.DangerousGetHandle(), Output.DangerousGetHandle()))
             {
@@ -74,25 +104,31 @@ namespace Sphynx.Client.Tui
                 throw new Win32Exception("Failed to setup window input on HandleWindowsTerminal");
             }
 
-            if (WindowsTerminalInterop.AddAnsiEscapeOutput(Output.DangerousGetHandle()))
-            {
-                _colorSupportCache = TerminalColorSupport.TrueColor | TerminalColorSupport.Ansi8 | TerminalColorSupport.Ansi16 | TerminalColorSupport.XTerm256;
-                _strat = new StreamHandleWindowsTerminalStrategy(this);
-            }
-            else
-            {
-                _colorSupportCache = TerminalColorSupport.Ansi8 | TerminalColorSupport.Ansi16;
-                _strat = null; // TODO: Implement
-            }
+            EnsureStratInit();
 
             _hasMouseSupportCache = WindowsTerminalInterop.AddMouseInput(Input.DangerousGetHandle());
             _oldTermSize = (Lines, Columns);
         }
 
-        // TODO: Check if this is even possible on Windows...
-        public override ITerminalColor CursorColor { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public override TerminalCursorShape CursorShape { set => _strat.CursorShape = value; }
-        public override TerminalCursorVisibility CursorVisibility { set => _strat.CursorVisibility = value; }
+        public override ValueTask DisposeAsync()
+        {
+            if (_oldInputConsoleMode is not null)
+            {
+                WindowsTerminalInterop.CheckWin32Return(WindowsTerminalInterop.SetConsoleMode(Input.DangerousGetHandle(), _oldInputConsoleMode.Value));
+                _oldInputConsoleMode = null;
+            }
+
+            if (_oldOutputConsoleMode is not null)
+            {
+                WindowsTerminalInterop.CheckWin32Return(WindowsTerminalInterop.SetConsoleMode(Output.DangerousGetHandle(), _oldOutputConsoleMode.Value));
+                _oldOutputConsoleMode = null;
+            }
+
+            _strat?.Dispose();
+            _strat = null;
+
+            return base.DisposeAsync();
+        }
 
         public sealed override TerminalTrueColor TrueColorFor(TerminalAnsiColor color)
         {
@@ -127,14 +163,14 @@ namespace Sphynx.Client.Tui
             }
         }
 
-        public sealed override void Write(ColoredString str) => _strat.Write(str);
-        public sealed override void Write(IEnumerable<ColoredString> strs) => _strat.Write(strs);
+        public sealed override void Write(ColoredString str) => EnsureStratInit().Write(str);
+        public sealed override void Write(IEnumerable<ColoredString> strs) => EnsureStratInit().Write(strs);
 
-        public sealed override void Erase(int count = 1) => _strat.Erase(count);
+        public sealed override void Erase(int count = 1) => EnsureStratInit().Erase(count);
 
-        public sealed override void ClearLine() => _strat.ClearLine();
+        public sealed override void ClearLine() => EnsureStratInit().ClearLine();
 
-        public sealed override void Clear() => _strat.Clear();
+        public sealed override void Clear() => EnsureStratInit().Clear();
 
         public sealed override void MoveCursor(int dx, int dy)
         {
@@ -152,38 +188,59 @@ namespace Sphynx.Client.Tui
             _strat?.Flush();
         }
 
-        private Queue<TerminalEvent> _pendingEvents = new();
-        public override TerminalEvent PollEvent()
+        private readonly Queue<TerminalEvent> _pendingEvents = new();
+        public override TerminalEvent PollEvent(TimeSpan timeout)
         {
-            if (_pendingEvents.Count > 0)
-            {
-                return _pendingEvents.Dequeue();
-            }
+            if (_pendingEvents.TryDequeue(out var item)) return item;
 
-            var rec = ReadInputRecord();
-            if (rec is null) return new();
-            var realEv = ConsumeEvent(rec.Value);
+            var rec = ReadInputRecord(ref timeout);
+            if (rec is null)
+            {
+                if (IsReaderEof) throw new EndOfStreamException("Reached end of terminal stream");
+                return new();
+            }
+            var realEv = ConsumeEvent(rec.Value, ref timeout);
             return realEv ?? default;
         }
 
-        private WindowsTerminalInterop.INPUT_RECORD? ReadInputRecord()
+        private readonly Stopwatch _readTimer = new();
+        private readonly WindowsTerminalInterop.INPUT_RECORD[] _recordBuffer = new WindowsTerminalInterop.INPUT_RECORD[1];
+        private bool IsReaderEof { get; set; } = false;
+
+        private WindowsTerminalInterop.INPUT_RECORD? ReadInputRecord(ref TimeSpan timeout)
         {
-            const int READ_COUNT = 1;
-            using var evs = ArrayPool<WindowsTerminalInterop.INPUT_RECORD>.Shared.AutoRent(READ_COUNT);
-            var ret = WindowsTerminalInterop.ReadConsoleInputEx(Input.DangerousGetHandle(), evs, READ_COUNT, out var readCount, 0);
+            if (IsReaderEof) return null;
+
+            if (timeout != Timeout.InfiniteTimeSpan)
+            {
+                timeout = timeout < TimeSpan.Zero ? TimeSpan.Zero : timeout;
+                _readTimer.Restart();
+                var gotEvent = _readEvent.WaitOne(timeout);
+                _readTimer.Stop();
+                var elapsed = _readTimer.Elapsed;
+                timeout = elapsed >= timeout ? TimeSpan.Zero : timeout - elapsed;
+                if (!gotEvent) return null;
+            }
+
+            var ret = WindowsTerminalInterop.ReadConsoleInputEx(Input.DangerousGetHandle(), _recordBuffer, (uint)_recordBuffer.Length, out var readCount, 0);
             if (ret == 0) return null;
-            if (readCount <= 0) return null;
-            if (readCount != READ_COUNT) throw new Exception($"Error while reading from HandleWindowsTerminal: Expected {READ_COUNT} input record read(s), got {readCount}");
-            return evs[0];
+            if (readCount <= 0)
+            {
+                IsReaderEof = true;
+                return null;
+            }
+            if (readCount != _recordBuffer.Length) throw new Exception($"Error while reading from HandleWindowsTerminal: Expected {_recordBuffer.Length} input record read(s), got {readCount}");
+            return _recordBuffer[0];
         }
 
         private TerminalKeyModifiers _currentMods = TerminalKeyModifiers.None;
         private (int, int)? _oldTermSize;
         private (int, int)? _oldMousePos;
+        private TerminalMouseButtons _oldMouseState = 0;
 
         private char? _highPair;
         private TerminalKeyModifiers _highPairMods = TerminalKeyModifiers.None;
-        private TerminalEvent? ConsumeEvent(in WindowsTerminalInterop.INPUT_RECORD ev)
+        private TerminalEvent? ConsumeEvent(in WindowsTerminalInterop.INPUT_RECORD ev, ref TimeSpan timeout)
         {
             switch (ev.EventType)
             {
@@ -203,7 +260,7 @@ namespace Sphynx.Client.Tui
                                 _currentMods |= TerminalKeyModifiers.Super;
                             else
                                 _currentMods &= ~TerminalKeyModifiers.Super;
-                            return PollEvent();
+                            return PollEvent(timeout);
                         case >= 0x70 and <= 0x87:
                             special = TerminalKey.SpecialKey.F1 + (kv.wVirtualKeyCode - 0x70);
                             break;
@@ -250,40 +307,14 @@ namespace Sphynx.Client.Tui
                         var cachedMods = _currentMods;
                         if (char.IsHighSurrogate(kv.uChar.UnicodeChar))
                         {
-                            var searchingPair = true;
-                            while (searchingPair)
-                            {
-                                var newRec = ReadInputRecord();
-                                if (newRec is null) return default;
-                                switch (newRec.Value.EventType)
-                                {
-                                    case WindowsTerminalInterop.InputEventType.KEY_EVENT:
-                                    {
-                                        var secondPair = newRec.Value.Event.KeyEvent.uChar.UnicodeChar;
-                                        if (!char.IsLowSurrogate(secondPair))
-                                        {
-                                            goto default;
-                                        }
-                                        ch = (((kv.uChar.UnicodeChar & 0x3FF) << 10) | (secondPair & 0x3FF)) + 0x10000;
-                                        searchingPair = false;
-                                        break;
-                                    }
-                                    default:
-                                        var cev = ConsumeEvent(newRec.Value);
-                                        if (cev is not null)
-                                        {
-                                            _highPair = kv.uChar.UnicodeChar;
-                                            _highPairMods = cachedMods;
-                                            return cev;
-                                        }
-                                        break;
-                                }
-                            }
+                            _highPair = kv.uChar.UnicodeChar;
+                            _highPairMods = cachedMods;
+                            return PollEvent(timeout);
                         }
                         else if (char.IsLowSurrogate(kv.uChar.UnicodeChar))
                         {
                             if (_highPair is null)
-                                return default;
+                                return PollEvent(timeout);
 
                             ch = (((_highPair.Value & 0x3FF) << 10) | (kv.uChar.UnicodeChar & 0x3FF)) + 0x10000;
                             cachedMods = _highPairMods;
@@ -297,7 +328,7 @@ namespace Sphynx.Client.Tui
                         realEv = new TerminalKeyEvent(this, new TerminalKey(ch, cachedMods));
                     }
 
-                    for (uint i = 0; i < Math.Max(kv.wRepeatCount - 1, 0u); i++)
+                    for (uint i = 0; i < Math.Min(kv.wRepeatCount, 1u) - 1; i++)
                     {
                         _pendingEvents.Enqueue(realEv);
                     }
@@ -336,7 +367,7 @@ namespace Sphynx.Client.Tui
 
                     if ((mv.dwEventFlags & MOUSE_WHEELED) == MOUSE_WHEELED)
                     {
-                        eventList.Add(new TerminalMouseScrollEvent(this, newPos, mv.dwButtonState.HighUShort(), TerminalScrollDirection.Vertical, _currentMods));
+                        eventList.Add(new TerminalMouseScrollEvent(this, newPos, -mv.dwButtonState.HighUShort(), TerminalScrollDirection.Vertical, _currentMods));
                     }
                     else if ((mv.dwEventFlags & MOUSE_HWHEELED) == MOUSE_HWHEELED)
                     {
@@ -366,11 +397,37 @@ namespace Sphynx.Client.Tui
                         {
                             buttons |= TerminalMouseButtons.Mouse5;
                         }
-                        if (buttons != TerminalMouseButtons.None)
+                        if (_oldMouseState != buttons)
+                        {
+                            int diff = (int)(_oldMouseState ^ buttons);
+                            var releaseButtons = TerminalMouseButtons.None;
+                            var pressButtons = TerminalMouseButtons.None;
+                            while (diff != 0)
+                            {
+                                int b = diff & (1 << BitOperations.TrailingZeroCount(diff));
+                                if ((b & (int)buttons) != 0)
+                                {
+                                    pressButtons |= (TerminalMouseButtons)b;
+                                }
+                                else
+                                {
+                                    releaseButtons |= (TerminalMouseButtons)b;
+                                }
+                                diff &= ~b;
+                            }
+
+                            if (releaseButtons != TerminalMouseButtons.None)
+                                eventList.Add(new TerminalMouseClickEvent(this, newPos, releaseButtons, _currentMods, -1));
+
+                            if (pressButtons != TerminalMouseButtons.None)
+                                eventList.Add(new TerminalMouseClickEvent(this, newPos, pressButtons, _currentMods, 1));
+                        }
+                        else if (buttons != TerminalMouseButtons.None)
                         {
                             int clickCount = (mv.dwEventFlags & DOUBLE_CLICK) == DOUBLE_CLICK ? 2 : 1;
                             eventList.Add(new TerminalMouseClickEvent(this, newPos, buttons, _currentMods, clickCount));
                         }
+                        _oldMouseState = buttons;
                     }
 
                     _oldMousePos = newPos;
@@ -417,7 +474,7 @@ namespace Sphynx.Client.Tui
             _currentMods |= mods;
         }
 
-        protected internal override bool CanPollEvent(Type t)
+        public override bool CanPollEvent(Type t)
         {
             Debug.Assert(t.IsAssignableTo(typeof(ITerminalEvent)));
 
@@ -438,9 +495,28 @@ namespace Sphynx.Client.Tui
 
             return false;
         }
+
+        private IHandleWindowsTerminalStrategy EnsureStratInit()
+        {
+            if (_strat is null)
+            {
+                if (WindowsTerminalInterop.AddAnsiEscapeOutput(Output.DangerousGetHandle()))
+                {
+                    _colorSupportCache = TerminalColorSupport.TrueColor | TerminalColorSupport.Ansi8 | TerminalColorSupport.Ansi16 | TerminalColorSupport.XTerm256;
+                    _strat = new StreamHandleWindowsTerminalStrategy(this);
+                }
+                else
+                {
+                    _colorSupportCache = TerminalColorSupport.Ansi8 | TerminalColorSupport.Ansi16;
+                    _strat = null; // TODO: Implement
+                    throw new NotImplementedException();
+                }
+            }
+            return _strat;
+        }
     }
 
-    internal interface IHandleWindowsTerminalStrategy
+    internal interface IHandleWindowsTerminalStrategy : IDisposable
     {
         void Write(ColoredString str) => Write(str.Yield());
         void Write(IEnumerable<ColoredString> s);
@@ -456,18 +532,16 @@ namespace Sphynx.Client.Tui
 
     internal sealed class StreamHandleWindowsTerminalStrategy : IHandleWindowsTerminalStrategy
     {
-        private readonly Encoding _outputEncoding;
-        private readonly Stream _outputStream;
+        private readonly TextWriter _output;
         private readonly Terminal _term;
 
         private readonly StringBuilder _escapeBuilder = new(32);
 
-        public StreamHandleWindowsTerminalStrategy(HandleWindowsTerminal terminal) : this(terminal, Encoding.UTF8) { }
+        public StreamHandleWindowsTerminalStrategy(HandleWindowsTerminal terminal) : this(terminal, terminal.OutputEncoding) { }
         public StreamHandleWindowsTerminalStrategy(HandleWindowsTerminal terminal, Encoding encoding)
         {
             _term = terminal;
-            _outputStream = new FileStream(terminal.Output, FileAccess.Write);
-            _outputEncoding = encoding;
+            _output = new StreamWriter(new FileStream(terminal.Output, FileAccess.Write), encoding);
         }
 
         public (int x, int y) CursorPosition
@@ -545,7 +619,12 @@ namespace Sphynx.Client.Tui
         public void Clear() => WriteOutput("\x1b[2J");
         public void ClearLine() => WriteOutput("\x1b[2K");
 
-        public void Erase(int count = 1) => WriteOutput($"\x1b[{count}X");
+        public void Erase(int count = 1)
+        {
+            if (count == 0) return;
+            if (count > 0) MoveCursor(-count, 0);
+            WriteOutput($"\x1b[{Math.Abs(count)}P");
+        }
 
         public void MoveCursor(int dx, int dy)
         {
@@ -588,6 +667,7 @@ namespace Sphynx.Client.Tui
 
         public void Write(ColoredString str)
         {
+            if (str.Text.Length <= 0) return;
             WriteOutput(GetEscapeCodeFor(str.Color));
             WriteOutput(str.Text);
             WriteOutput("\x1b[0;39;49m");
@@ -601,6 +681,7 @@ namespace Sphynx.Client.Tui
 
             foreach (var str in strings)
             {
+                if (str.Text.Length <= 0) continue;
                 WriteOutput(GetEscapeCodeFor(str.Color, currentColor: currentColor));
                 WriteOutput(str.Text);
                 currentColor = str.Color;
@@ -745,23 +826,30 @@ namespace Sphynx.Client.Tui
         private void WriteOutput(string s)
         {
             if (s.Length <= 0) return;
-            byte[] bytes = _outputEncoding.GetBytes(s);
-            if (bytes.Length <= 0) return;
-            _outputStream.Write(bytes);
+            _output.Write(s);
         }
 
         public void Flush()
         {
-            _outputStream.Flush();
+            _output.Flush();
+        }
+
+        public void Dispose()
+        {
+            Flush();
+            _output.Dispose();
         }
     }
 
     internal sealed class StandardWindowsTerminal : HandleWindowsTerminal
     {
-        internal StandardWindowsTerminal() : base(new SafeFileHandle(WindowsTerminalInterop.StdIn, false), new SafeFileHandle(WindowsTerminalInterop.StdOut, false))
+        private StandardWindowsTerminal() : base(new SafeFileHandle(WindowsTerminalInterop.StdIn, false), new SafeFileHandle(WindowsTerminalInterop.StdOut, false))
         {
-            Console.InputEncoding = Encoding.UTF8;
-            Console.OutputEncoding = Encoding.UTF8;
+            Console.InputEncoding = OutputEncoding;
+            Console.OutputEncoding = OutputEncoding;
         }
+
+        private static StandardWindowsTerminal? _instance;
+        public static StandardWindowsTerminal Instance => _instance ??= new StandardWindowsTerminal();
     }
 }

@@ -61,6 +61,7 @@ namespace Sphynx.Utils
                 }
             }
         }
+
         public void Dispose()
         {
             Execute();

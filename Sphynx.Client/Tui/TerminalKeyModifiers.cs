@@ -7,7 +7,8 @@ namespace Sphynx.Client.Tui
     public enum TerminalKeyModifiers
     {
         Control = 0x1,
-        Alt = 0x2,
+        Meta = 0x2,
+        Alt = Meta,
         Shift = 0x4,
         Super = 0x8,
         None = 0x0

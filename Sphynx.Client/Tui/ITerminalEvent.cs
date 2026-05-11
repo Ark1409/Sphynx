@@ -2,8 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Collections.Concurrent;
-using System.Net.Http.Headers;
-using System.Threading.Channels;
+using System.Diagnostics;
 using Sphynx.Utils;
 
 namespace Sphynx.Client.Tui
@@ -11,33 +10,46 @@ namespace Sphynx.Client.Tui
     public interface ITerminalEvent
     {
         internal Terminal Terminal { get; }
+        TerminalEvent AsEvent { get; }
+    }
+
+    public interface ITerminalMouseEvent : ITerminalEvent
+    {
+        (int X, int Y) Position { get; }
     }
 
     public readonly record struct TerminalKeyEvent(Terminal Terminal, TerminalKey Key) : ITerminalEvent
     {
+        public TerminalEvent AsEvent => (TerminalEvent)this;
         public static implicit operator TerminalEvent(TerminalKeyEvent e) => new() { KeyEvent = e };
     }
 
     public readonly record struct TerminalWindowEvent(Terminal Terminal, (int Lines, int Columns) OldSize, (int Lines, int Columns) NewSize) : ITerminalEvent
     {
+        public TerminalEvent AsEvent => (TerminalEvent)this;
         public static implicit operator TerminalEvent(TerminalWindowEvent e) => new() { WindowEvent = e };
     }
 
     public readonly record struct TerminalMouseMoveEvent(Terminal Terminal, (int X, int Y) OldPos, (int X, int Y) NewPos,
-            TerminalKeyModifiers Mods = TerminalKeyModifiers.None) : ITerminalEvent
+            TerminalKeyModifiers Mods = TerminalKeyModifiers.None) : ITerminalMouseEvent
     {
+        public TerminalEvent AsEvent => (TerminalEvent)this;
+        public (int X, int Y) Position => NewPos;
+
         public static implicit operator TerminalEvent(TerminalMouseMoveEvent e) => new() { MouseMoveEvent = e };
     }
 
     public readonly record struct TerminalMouseClickEvent(Terminal Terminal, (int X, int Y) Position,
-            TerminalMouseButtons Buttons, TerminalKeyModifiers Mods = TerminalKeyModifiers.None, int ClickCount = 1) : ITerminalEvent
+            TerminalMouseButtons Buttons, TerminalKeyModifiers Mods = TerminalKeyModifiers.None, int ClickCount = 1) : ITerminalMouseEvent
     {
+        public TerminalEvent AsEvent => (TerminalEvent)this;
         public static implicit operator TerminalEvent(TerminalMouseClickEvent e) => new() { MouseClickEvent = e };
     }
 
     public readonly record struct TerminalMouseScrollEvent(Terminal Terminal, (int X, int Y) Position, int Delta, TerminalScrollDirection Direction,
-            TerminalKeyModifiers Mods = TerminalKeyModifiers.None) : ITerminalEvent
+            TerminalKeyModifiers Mods = TerminalKeyModifiers.None) : ITerminalMouseEvent
     {
+        public TerminalEvent AsEvent => (TerminalEvent)this;
         public static implicit operator TerminalEvent(TerminalMouseScrollEvent e) => new() { MouseScrollEvent = e };
     }
 
@@ -48,26 +60,36 @@ namespace Sphynx.Client.Tui
         public readonly TerminalMouseMoveEvent? MouseMoveEvent { get; init; }
         public readonly TerminalMouseClickEvent? MouseClickEvent { get; init; }
         public readonly TerminalMouseScrollEvent? MouseScrollEvent { get; init; }
+
+        public Type? EventType
+        {
+            get
+            {
+                if (KeyEvent is not null) return typeof(TerminalKeyEvent);
+                if (WindowEvent is not null) return typeof(TerminalWindowEvent);
+                if (MouseMoveEvent is not null) return typeof(TerminalMouseMoveEvent);
+                if (MouseClickEvent is not null) return typeof(TerminalMouseClickEvent);
+                if (MouseScrollEvent is not null) return typeof(TerminalMouseScrollEvent);
+                return null;
+            }
+        }
+
+        public bool IsEmpty => EventType is null;
     }
 
-    public class TerminalEventPoller
+    public sealed class TerminalEventPoller
     {
         private readonly Terminal _term;
         private readonly BlockingCollection<TerminalEvent> _pendingEvents = new(new ConcurrentQueue<TerminalEvent>());
 
-        private Task? _pollTask;
-        private Task? _regularPollTask;
-        private bool _shouldRunPollTask = false;
-        private volatile bool _shouldRunRegularPollTask = false;
-        private readonly object _needEventCountLock = new();
-        private volatile int _needEventCount = 0;
-
         private static readonly Type[] _eventTypes
             = [typeof(TerminalKeyEvent), typeof(TerminalWindowEvent), typeof(TerminalMouseMoveEvent), typeof(TerminalMouseClickEvent), typeof(TerminalMouseScrollEvent)];
         private List<Type> _currentTypes = new(_eventTypes.Length);
-        private readonly object _currentTypesLock = new();
 
-        public bool AutoRefresh { get; set; } = false;
+        /// <summary>
+        /// Poll rate for events which must be polled manually.
+        /// </summary>
+        public TimeSpan PollRate { get; set; } = TimeSpan.FromMilliseconds(1000.0 / 60);
 
         public TerminalEventPoller(Terminal term)
         {
@@ -75,19 +97,11 @@ namespace Sphynx.Client.Tui
         }
 
         /// <summary>
-        /// Begin polling for those tasks which the provided Terminal may be unable to handle.
-        /// </summary>
-        public void Start()
-        {
-            Refresh();
-        }
-
-        /// <summary>
         /// Updates the list of tasks which the provided Terminal may be unable to handle.
         /// </summary>
-        public void Refresh()
+        public void RefreshPollableTypes()
         {
-            lock (_currentTypesLock)
+            lock (_currentTypes)
             {
                 _currentTypes.Clear();
                 _currentTypes.AddRange(_eventTypes);
@@ -96,118 +110,67 @@ namespace Sphynx.Client.Tui
                 {
                     foreach (var eventType in _eventTypes)
                     {
+                        var isMouseEvent = eventType.IsAssignableTo(typeof(ITerminalMouseEvent));
                         if (_term.CanPollEvent(eventType))
                         {
+                            if (isMouseEvent)
+                                Debug.Assert(_term.HasMouseSupport);
                             remover.Enqueue(eventType);
                         }
-                    }
-                }
-
-                _shouldRunPollTask = _currentTypes.Count > 0;
-            }
-
-            if (_shouldRunPollTask)
-            {
-                if (_pollTask == null || _pollTask.IsCompleted)
-                    _pollTask = Task.Factory.StartNew(PollRunner, TaskCreationOptions.LongRunning);
-            }
-            else
-                _pollTask = AutoRefresh ? null : Task.CompletedTask;
-
-            _shouldRunRegularPollTask = _shouldRunPollTask;
-            if (_shouldRunRegularPollTask)
-            {
-                if (_regularPollTask == null || _regularPollTask.IsCompleted)
-                    _regularPollTask = Task.Factory.StartNew(RegularPollRunner, TaskCreationOptions.LongRunning);
-            }
-            else
-                _regularPollTask = AutoRefresh ? null : Task.CompletedTask;
-
-            if (!_shouldRunPollTask || !_shouldRunRegularPollTask)
-            {
-                lock (_needEventCountLock)
-                    Monitor.PulseAll(_needEventCountLock);
-            }
-        }
-
-        public TerminalEvent PollEvent()
-        {
-            if (_pollTask == null || _regularPollTask == null) Refresh();
-
-            if (!_shouldRunRegularPollTask && !_shouldRunPollTask)
-            {
-                if (_pendingEvents.TryTake(out var v))
-                {
-                    lock (_needEventCountLock)
-                        _needEventCount++;
-                    return v;
-                }
-                return _term.PollEvent();
-            }
-
-            lock (_needEventCountLock)
-            {
-                _needEventCount++;
-                if (_needEventCount > 0)
-                    Monitor.PulseAll(_needEventCountLock);
-            }
-
-            return _pendingEvents.Take();
-        }
-
-        private void RegularPollRunner()
-        {
-            while (_shouldRunRegularPollTask)
-            {
-                lock (_needEventCountLock)
-                {
-                    while (_needEventCount <= 0 && _shouldRunRegularPollTask)
-                    {
-                        Monitor.Wait(_needEventCountLock);
-                    }
-                }
-
-                if (!_shouldRunRegularPollTask) break;
-
-                var ev = _term.PollEvent();
-                _pendingEvents.Add(ev);
-
-                lock (_needEventCountLock)
-                {
-                    _needEventCount--;
-                }
-            }
-        }
-
-        private void PollRunner()
-        {
-            while (_shouldRunPollTask)
-            {
-                lock (_needEventCountLock)
-                {
-                    while (_needEventCount <= 0 && _shouldRunPollTask)
-                    {
-                        Monitor.Wait(_needEventCountLock);
-                    }
-                }
-
-                if (!_shouldRunPollTask) break;
-
-                lock (_currentTypesLock)
-                {
-                    foreach (var type in _currentTypes)
-                    {
-                        if (type == typeof(TerminalWindowEvent))
+                        else
                         {
-                            PollWindowSize();
+                            if (isMouseEvent && !_term.HasMouseSupport)
+                            {
+                                remover.Enqueue(eventType);
+                            }
                         }
                     }
                 }
-
-                Thread.Sleep(1000 / 120);
             }
         }
 
+        public TerminalEvent PollEvent() => PollEvent(Timeout.InfiniteTimeSpan);
+
+        public TerminalEvent PollEvent(TimeSpan timeout)
+        {
+            if (timeout != Timeout.InfiniteTimeSpan) timeout = timeout < TimeSpan.Zero ? TimeSpan.Zero : timeout;
+            TerminalEvent ev = default;
+            var sp = new SpinWait();
+            while (ev.IsEmpty)
+            {
+                PollCurrentTypes();
+                if (_pendingEvents.TryTake(out var item)) return item;
+
+                var waitTime = PollRate;
+                if (timeout != Timeout.InfiniteTimeSpan)
+                    waitTime = waitTime < timeout ? waitTime : timeout;
+
+                ev = _term.PollEvent(waitTime);
+
+                if (timeout != Timeout.InfiniteTimeSpan)
+                {
+                    timeout -= waitTime;
+                    if (timeout <= TimeSpan.Zero) break;
+                }
+
+                sp.SpinOnce();
+            }
+            return ev;
+        }
+
+        private void PollCurrentTypes()
+        {
+            lock (_currentTypes)
+            {
+                foreach (var type in _currentTypes)
+                {
+                    if (type == typeof(TerminalWindowEvent))
+                    {
+                        PollWindowSize();
+                    }
+                }
+            }
+        }
         private (int Lines, int Columns)? _currentWindowSize;
         private void PollWindowSize()
         {
@@ -220,10 +183,6 @@ namespace Sphynx.Client.Tui
                 var oldSize = _currentWindowSize.Value;
                 _currentWindowSize = newSize;
                 _pendingEvents.Add(new TerminalWindowEvent(_term, oldSize, newSize));
-                lock (_needEventCountLock)
-                {
-                    _needEventCount--;
-                }
             }
         }
     }
