@@ -11,7 +11,6 @@ using Sphynx.Utils;
 
 namespace Sphynx.Client.Tui
 {
-    [StructLayout(LayoutKind.Auto)]
     public struct Grapheme : IEquatable<Grapheme>
     {
         private const int LOCAL_LENGTH = 8;
@@ -110,7 +109,6 @@ namespace Sphynx.Client.Tui
     }
 
     // TODO: Replace with sso'd List<T>
-    [StructLayout(LayoutKind.Sequential)]
     public struct GraphemeBuilder
     {
         private const int LOCAL_LENGTH = 8;

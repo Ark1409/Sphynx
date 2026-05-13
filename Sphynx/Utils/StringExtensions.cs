@@ -93,7 +93,8 @@ namespace Sphynx.Utils
             return count;
         }
 
-        public static List<int> ToCodePoints(this string str)
+        public static List<int> ToCodePoints(this string str) => ToCodePoints(str.AsSpan());
+        public static List<int> ToCodePoints(this ReadOnlySpan<char> str)
         {
             var cps = new List<int>(str.Length);
             for (int i = 0; i < str.Length; i++)
@@ -116,7 +117,10 @@ namespace Sphynx.Utils
             return cps;
         }
 
-        public static int ToCodePoints(this string str, Span<int> codePoints)
+
+        public static int ToCodePoints(this string str, Span<int> codePoints) => ToCodePoints(str.AsSpan(), codePoints);
+
+        public static int ToCodePoints(this ReadOnlySpan<char> str, Span<int> codePoints)
         {
             int cps = 0;
             for (int i = 0; cps < codePoints.Length && i < str.Length; i++)
@@ -138,6 +142,81 @@ namespace Sphynx.Utils
             }
             return cps;
         }
+
+        public static int ToCodePoints(this string str, Span<Rune> codePoints) => ToCodePoints(str.AsSpan(), codePoints);
+        public static int ToCodePoints(this ReadOnlySpan<char> str, Span<Rune> codePoints)
+        {
+            int cps = 0;
+            for (int i = 0; cps < codePoints.Length && i < str.Length; i++)
+            {
+                int cp;
+                var ch = str[i];
+                if (char.IsSurrogate(ch))
+                {
+                    if (i >= str.Length - 1) throw new InvalidOperationException();
+                    var nextCh = str[++i];
+                    Debug.Assert(char.IsSurrogatePair(ch, nextCh));
+                    cp = char.ConvertToUtf32(ch, nextCh);
+                }
+                else
+                {
+                    cp = ch;
+                }
+                codePoints[cps++] = new(cp);
+            }
+            return cps;
+        }
+
+        public static int ToCodePoints(this string str, ICollection<Rune> codePoints) => ToCodePoints(str.AsSpan(), codePoints);
+        public static int ToCodePoints(this ReadOnlySpan<char> str, ICollection<Rune> codePoints)
+        {
+            int cps = 0;
+            for (int i = 0; i < str.Length; i++)
+            {
+                int cp;
+                var ch = str[i];
+                if (char.IsSurrogate(ch))
+                {
+                    if (i >= str.Length - 1) throw new InvalidOperationException();
+                    var nextCh = str[++i];
+                    Debug.Assert(char.IsSurrogatePair(ch, nextCh));
+                    cp = char.ConvertToUtf32(ch, nextCh);
+                }
+                else
+                {
+                    cp = ch;
+                }
+                codePoints.Add(new(cp));
+                cps++;
+            }
+            return cps;
+
+        }
+        public static int ToCodePoints(this string str, ICollection<int> codePoints) => ToCodePoints(str.AsSpan(), codePoints);
+        public static int ToCodePoints(this ReadOnlySpan<char> str, ICollection<int> codePoints)
+        {
+            int cps = 0;
+            for (int i = 0; i < str.Length; i++)
+            {
+                int cp;
+                var ch = str[i];
+                if (char.IsSurrogate(ch))
+                {
+                    if (i >= str.Length - 1) throw new InvalidOperationException();
+                    var nextCh = str[++i];
+                    Debug.Assert(char.IsSurrogatePair(ch, nextCh));
+                    cp = char.ConvertToUtf32(ch, nextCh);
+                }
+                else
+                {
+                    cp = ch;
+                }
+                codePoints.Add(cp);
+                cps++;
+            }
+            return cps;
+        }
+
 
         /// <summary>
         /// Determines the (maximum) number of (contiguous) chars the can be safely taken from the string to create a
@@ -182,5 +261,14 @@ namespace Sphynx.Utils
         }
 
         public static byte? GetAscii(this in Rune? r) => r?.GetAscii();
+
+        public static bool ContainsSurrogate(this string s)
+        {
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (char.IsSurrogate(s[i])) return true;
+            }
+            return false;
+        }
     }
 }

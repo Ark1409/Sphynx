@@ -38,10 +38,10 @@ namespace Sphynx.Client.Tui
         {
             get
             {
-                if (_asciiCharCache is not null) return _asciiCharCache;
-                if (UnicodeChar is null || !UnicodeChar.Value.IsAscii) return null;
+                if (_asciiCharCache is { } ch) return ch;
+                if (UnicodeChar is not { } unicodeCh || !unicodeCh.IsAscii) return null;
                 Span<byte> b = stackalloc byte[1];
-                var count = UnicodeChar.Value.EncodeToUtf8(b);
+                var count = unicodeCh.EncodeToUtf8(b);
                 Debug.Assert(count == 1);
                 return _asciiCharCache = b[0];
             }
@@ -88,7 +88,7 @@ namespace Sphynx.Client.Tui
             Mods = mods;
         }
 
-        public bool HasModifiers(TerminalKeyModifiers mods)
+        public readonly bool HasModifiers(TerminalKeyModifiers mods)
         {
             return (Mods & mods) == mods;
         }
@@ -143,13 +143,24 @@ namespace Sphynx.Client.Tui
             F24,
             Pause,
         }
-        public bool Equals(TerminalKey other)
+        public readonly bool Equals(TerminalKey other)
         {
-            bool b =Key == other.Key && Mods == other.Mods;
+            bool b = Key == other.Key && Mods == other.Mods;
             b &= other.Grapheme is null == Grapheme is null;
             if (!b) return false;
             if (Grapheme is not null) b &= Grapheme.Value.Equals(other.Grapheme!.Value);
             return b;
+        }
+
+        public readonly override bool Equals(object? obj) => obj is TerminalKey key && Equals(key);
+
+        public static bool operator ==(TerminalKey left, TerminalKey right) => left.Equals(right);
+        public static bool operator !=(TerminalKey left, TerminalKey right) => !(left == right);
+
+        public readonly override int GetHashCode()
+        {
+            if (Key is { } k) return (int)k;
+            else return 256 + Grapheme.GetHashCode();
         }
     }
 }

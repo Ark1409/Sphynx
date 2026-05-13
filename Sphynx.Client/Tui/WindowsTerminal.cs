@@ -10,6 +10,6 @@ namespace Sphynx.Client.Tui
         public override TerminalTrueColor TrueColorFor(TerminalAnsiColor color) => color.NearestTrueColor;
         public override TerminalAnsiColor NearestAnsiColor(TerminalTrueColor color) => color.NearestAnsiColor;
 
-        public static WindowsTerminal StandardTerminal => StandardWindowsTerminal.Instance;
+        public static WindowsTerminal Default => StandardWindowsTerminal.Instance;
     }
 }

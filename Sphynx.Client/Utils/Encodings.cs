@@ -7,9 +7,9 @@ namespace Sphynx.Client.Utils
 {
     internal static class Encodings
     {
-        public static readonly UTF32Encoding UTF32LE = new UTF32Encoding(false, false);
-        public static readonly UTF32Encoding UTF32BE = new UTF32Encoding(true, false);
+        public static readonly UTF32Encoding UTF32LE = new(false, false);
+        public static readonly UTF32Encoding UTF32BE = new(true, false);
         public static readonly UTF32Encoding UTF32 = UTF32LE;
-        public static readonly UTF8Encoding UTF8 = new (false);
+        public static readonly UTF8Encoding UTF8 = new(false);
     }
 }

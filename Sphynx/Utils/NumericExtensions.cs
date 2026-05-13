@@ -21,17 +21,17 @@ namespace Sphynx.Utils
         public static byte LowByte(this short s) => BitConverter.IsLittleEndian ? (byte)(s & byte.MaxValue) : (byte)((s >> 8) & byte.MaxValue);
         public static sbyte LowSByte(this short s) => BitConverter.IsLittleEndian ? (sbyte)(s & sbyte.MaxValue) : (sbyte)((s >> 8) & sbyte.MaxValue);
 
-        public static int HighInt(this long l) => !BitConverter.IsLittleEndian ? (int)(l & int.MaxValue) : (int)((l >> 32) & int.MaxValue);
-        public static short HighShort(this long l) => !BitConverter.IsLittleEndian ? (short)(l & short.MaxValue) : (short)((l >> 48) & short.MaxValue);
-        public static byte HighByte(this long l) => !BitConverter.IsLittleEndian ? (byte)(l & byte.MaxValue) : (byte)((l >> 56) & byte.MaxValue);
-        public static sbyte HighSByte(this long l) => !BitConverter.IsLittleEndian ? (sbyte)(l & sbyte.MaxValue) : (sbyte)((l >> 56) & sbyte.MaxValue);
+        public static int HighInt(this long l) => BitConverter.IsLittleEndian ? (int)((l >> 32) & int.MaxValue) : (int)(l & int.MaxValue);
+        public static short HighShort(this long l) => BitConverter.IsLittleEndian ? (short)((l >> 48) & short.MaxValue) : (short)(l & short.MaxValue);
+        public static byte HighByte(this long l) => BitConverter.IsLittleEndian ? (byte)((l >> 56) & byte.MaxValue) : (byte)(l & byte.MaxValue);
+        public static sbyte HighSByte(this long l) => BitConverter.IsLittleEndian ? (sbyte)((l >> 56) & sbyte.MaxValue) : (sbyte)(l & sbyte.MaxValue);
 
-        public static short HighShort(this int i) => !BitConverter.IsLittleEndian ? (short)(i & short.MaxValue) : (short)((i >> 16) & short.MaxValue);
-        public static byte HighByte(this int i) => !BitConverter.IsLittleEndian ? (byte)(i & byte.MaxValue) : (byte)((i >> 24) & byte.MaxValue);
-        public static sbyte HighSByte(this int i) => !BitConverter.IsLittleEndian ? (sbyte)(i & sbyte.MaxValue) : (sbyte)((i >> 24) & sbyte.MaxValue);
+        public static short HighShort(this int i) => BitConverter.IsLittleEndian ? (short)((i >> 16) & short.MaxValue) : (short)(i & short.MaxValue);
+        public static byte HighByte(this int i) => BitConverter.IsLittleEndian ? (byte)((i >> 24) & byte.MaxValue) : (byte)(i & byte.MaxValue);
+        public static sbyte HighSByte(this int i) => BitConverter.IsLittleEndian ? (sbyte)((i >> 24) & sbyte.MaxValue) : (sbyte)(i & sbyte.MaxValue);
 
-        public static byte HighByte(this short s) => !BitConverter.IsLittleEndian ? (byte)(s & byte.MaxValue) : (byte)((s >> 8) & byte.MaxValue);
-        public static sbyte HighSByte(this short s) => !BitConverter.IsLittleEndian ? (sbyte)(s & sbyte.MaxValue) : (sbyte)((s >> 8) & sbyte.MaxValue);
+        public static byte HighByte(this short s) => BitConverter.IsLittleEndian ? (byte)((s >> 8) & byte.MaxValue) : (byte)(s & byte.MaxValue);
+        public static sbyte HighSByte(this short s) => BitConverter.IsLittleEndian ? (sbyte)((s >> 8) & sbyte.MaxValue) : (sbyte)(s & sbyte.MaxValue);
 
         public static uint LowUInt(this ulong l) => BitConverter.IsLittleEndian ? (uint)(l & uint.MaxValue) : (uint)((l >> 32) & uint.MaxValue);
         public static ushort LowUShort(this ulong l) => BitConverter.IsLittleEndian ? (ushort)(l & ushort.MaxValue) : (ushort)((l >> 48) & ushort.MaxValue);
@@ -45,17 +45,17 @@ namespace Sphynx.Utils
         public static byte LowByte(this ushort s) => BitConverter.IsLittleEndian ? (byte)(s & byte.MaxValue) : (byte)((s >> 8) & byte.MaxValue);
         public static sbyte LowSByte(this ushort s) => BitConverter.IsLittleEndian ? (sbyte)(s & sbyte.MaxValue) : (sbyte)((s >> 8) & sbyte.MaxValue);
 
-        public static uint HighUInt(this ulong l) => !BitConverter.IsLittleEndian ? (uint)(l & uint.MaxValue) : (uint)((l >> 32) & uint.MaxValue);
-        public static ushort HighUShort(this ulong l) => !BitConverter.IsLittleEndian ? (ushort)(l & ushort.MaxValue) : (ushort)((l >> 48) & ushort.MaxValue);
-        public static byte HighByte(this ulong l) => !BitConverter.IsLittleEndian ? (byte)(l & byte.MaxValue) : (byte)((l >> 56) & byte.MaxValue);
-        public static sbyte HighSByte(this ulong l) => !BitConverter.IsLittleEndian ? (sbyte)(l & byte.MaxValue) : (sbyte)((l >> 56) & byte.MaxValue);
+        public static uint HighUInt(this ulong l) => BitConverter.IsLittleEndian ? (uint)((l >> 32) & uint.MaxValue) : (uint)(l & uint.MaxValue);
+        public static ushort HighUShort(this ulong l) => BitConverter.IsLittleEndian ? (ushort)((l >> 48) & ushort.MaxValue) : (ushort)(l & ushort.MaxValue);
+        public static byte HighByte(this ulong l) => BitConverter.IsLittleEndian ? (byte)((l >> 56) & byte.MaxValue) : (byte)(l & byte.MaxValue);
+        public static sbyte HighSByte(this ulong l) => BitConverter.IsLittleEndian ? (sbyte)((l >> 56) & byte.MaxValue) : (sbyte)(l & byte.MaxValue);
 
-        public static ushort HighUShort(this uint i) => !BitConverter.IsLittleEndian ? (ushort)(i & ushort.MaxValue) : (ushort)((i >> 16) & ushort.MaxValue);
-        public static byte HighByte(this uint i) => !BitConverter.IsLittleEndian ? (byte)(i & byte.MaxValue) : (byte)((i >> 24) & byte.MaxValue);
-        public static sbyte HighSByte(this uint i) => !BitConverter.IsLittleEndian ? (sbyte)(i & sbyte.MaxValue) : (sbyte)((i >> 24) & sbyte.MaxValue);
+        public static ushort HighUShort(this uint i) => BitConverter.IsLittleEndian ? (ushort)((i >> 16) & ushort.MaxValue) : (ushort)(i & ushort.MaxValue);
+        public static byte HighByte(this uint i) => BitConverter.IsLittleEndian ? (byte)((i >> 24) & byte.MaxValue) : (byte)(i & byte.MaxValue);
+        public static sbyte HighSByte(this uint i) => BitConverter.IsLittleEndian ? (sbyte)((i >> 24) & sbyte.MaxValue) : (sbyte)(i & sbyte.MaxValue);
 
-        public static byte HighByte(this ushort s) => !BitConverter.IsLittleEndian ? (byte)(s & byte.MaxValue) : (byte)((s >> 8) & byte.MaxValue);
-        public static sbyte HighSByte(this ushort s) => !BitConverter.IsLittleEndian ? (sbyte)(s & sbyte.MaxValue) : (sbyte)((s >> 8) & sbyte.MaxValue);
+        public static byte HighByte(this ushort s) => BitConverter.IsLittleEndian ? (byte)((s >> 8) & byte.MaxValue) : (byte)(s & byte.MaxValue);
+        public static sbyte HighSByte(this ushort s) => BitConverter.IsLittleEndian ? (sbyte)((s >> 8) & sbyte.MaxValue) : (sbyte)(s & sbyte.MaxValue);
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization | MethodImplOptions.AggressiveInlining)]
         public static bool IsPowerOfTwo(this int i) => BitOperations.IsPow2(i);

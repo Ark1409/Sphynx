@@ -2,10 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Buffers;
-using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.Win32.SafeHandles;
 using Sphynx.Client.Utils;
@@ -97,21 +98,25 @@ namespace Sphynx.Client.Tui
                 throw new Win32Exception("Failed to setup input and output on HandleWindowsTerminal");
             }
 
-            // TODO: For now, window size polling from console is the only thing we require.
+            // FIXME: For now, window size polling from console is the only thing we require.
             // Maybe later add ability to switch to polling method if can't get window rezizes from console
             if (!WindowsTerminalInterop.AddWindowInput(Input.DangerousGetHandle()))
             {
                 throw new Win32Exception("Failed to setup window input on HandleWindowsTerminal");
             }
 
-            EnsureStratInit();
-
             _hasMouseSupportCache = WindowsTerminalInterop.AddMouseInput(Input.DangerousGetHandle());
+
+            EnsureStratInit().Init();
+
             _oldTermSize = (Lines, Columns);
         }
 
         public override ValueTask DisposeAsync()
         {
+            _strat?.Dispose();
+            _strat = null;
+
             if (_oldInputConsoleMode is not null)
             {
                 WindowsTerminalInterop.CheckWin32Return(WindowsTerminalInterop.SetConsoleMode(Input.DangerousGetHandle(), _oldInputConsoleMode.Value));
@@ -124,43 +129,47 @@ namespace Sphynx.Client.Tui
                 _oldOutputConsoleMode = null;
             }
 
-            _strat?.Dispose();
-            _strat = null;
-
             return base.DisposeAsync();
         }
 
+        private uint[]? _colorTable;
+        private void LoadColorTable()
+        {
+            if (_colorTable is not null) return;
+
+            var ret = WindowsTerminalInterop.GetConsoleScreenBufferInfoEx(Output.DangerousGetHandle(), out var info);
+            if (ret == 0) return;
+            unsafe
+            {
+                var sp = new Span<uint>(info.ColorTable, WindowsTerminalInterop.CONSOLE_SCREEN_BUFFER_INFOEX.ColorTableLength);
+                _colorTable = sp.ToArray();
+            }
+        }
         public sealed override TerminalTrueColor TrueColorFor(TerminalAnsiColor color)
         {
             if (color.Color >= TerminalAnsiColor.AnsiColors.Color16) return base.TrueColorFor(color);
 
             Flush();
-            var ret = WindowsTerminalInterop.GetConsoleScreenBufferInfoEx(Output.DangerousGetHandle(), out var info);
-            if (ret == 0) return base.TrueColorFor(color);
+            LoadColorTable();
 
-            unsafe
-            {
-                var colors = WindowsTerminalInterop.GetRGB(info.ColorTable[(int)color.Color]);
-                return new(colors.R, colors.G, colors.B);
-            }
+            if (_colorTable is null) return base.TrueColorFor(color);
+
+            var colors = WindowsTerminalInterop.GetRGB(_colorTable[(int)color.Color]);
+            return new(colors.R, colors.G, colors.B);
         }
 
         public sealed override TerminalAnsiColor NearestAnsiColor(TerminalTrueColor color)
         {
             Flush();
-            var ret = WindowsTerminalInterop.GetConsoleScreenBufferInfoEx(Output.DangerousGetHandle(), out var info);
-            if (ret == 0) return base.NearestAnsiColor(color);
+            LoadColorTable();
 
-            unsafe
-            {
-                var arr = new ReadOnlySpan<uint>(info.ColorTable, WindowsTerminalInterop.CONSOLE_SCREEN_BUFFER_INFOEX.ColorTableLength)
-                    .ToImmutableArray();
-                return color.NearestAnsiColorFrom(arr.Select((e, i) =>
-                {
-                    var colors = WindowsTerminalInterop.GetRGB(e);
-                    return ((TerminalAnsiColor.AnsiColors)i, new TerminalTrueColor(colors.R, colors.G, colors.B));
-                }).ToArray());
-            }
+            if (_colorTable is null) return base.NearestAnsiColor(color);
+
+            return color.NearestAnsiColorFrom(_colorTable.Select((e, i) =>
+                            {
+                                var colors = WindowsTerminalInterop.GetRGB(e);
+                                return ((TerminalAnsiColor.AnsiColors)i, new TerminalTrueColor(colors.R, colors.G, colors.B));
+                            }).ToArray());
         }
 
         public sealed override void Write(ColoredString str) => EnsureStratInit().Write(str);
@@ -193,9 +202,39 @@ namespace Sphynx.Client.Tui
         {
             if (_pendingEvents.TryDequeue(out var item)) return item;
 
-            var rec = ReadInputRecord(ref timeout);
+            WindowsTerminalInterop.INPUT_RECORD? rec = null;
+            do
+            {
+                rec = ReadInputRecord(ref timeout);
+            } while (rec is { } rc
+                    && (rc.EventType & (WindowsTerminalInterop.InputEventType.FOCUS_EVENT | WindowsTerminalInterop.InputEventType.MENU_EVENT)) != 0);
+
             if (rec is null)
             {
+                if (_graphemeCharStorage.Count > 0)
+                {
+                    var graphemeStorageSp = CollectionsMarshal.AsSpan(_graphemeCharStorage);
+                    var graphemeLen = StringInfo.GetNextTextElementLength(graphemeStorageSp);
+                    if (graphemeLen < graphemeStorageSp.Length || IsReaderEof)
+                    {
+                        AddGraphemeEvent(graphemeLen);
+                        return PollEvent(timeout);
+                    }
+                    if (timeout == TimeSpan.Zero)
+                    {
+                        ReadOnlySpan<char> sp = graphemeStorageSp[..graphemeLen];
+                        sp.ToCodePoints(_graphemeCodePoints);
+
+                        var graphemeCodePointsSp = CollectionsMarshal.AsSpan(_graphemeCodePoints);
+                        bool incomplete = GraphemeUtils.IsIncomplete(graphemeCodePointsSp, true);
+                        _graphemeCodePoints.Clear();
+                        if (!incomplete)
+                        {
+                            AddGraphemeEvent(graphemeLen);
+                            return PollEvent(timeout);
+                        }
+                    }
+                }
                 if (IsReaderEof) throw new EndOfStreamException("Reached end of terminal stream");
                 return new();
             }
@@ -214,12 +253,16 @@ namespace Sphynx.Client.Tui
             if (timeout != Timeout.InfiniteTimeSpan)
             {
                 timeout = timeout < TimeSpan.Zero ? TimeSpan.Zero : timeout;
-                _readTimer.Restart();
-                var gotEvent = _readEvent.WaitOne(timeout);
-                _readTimer.Stop();
-                var elapsed = _readTimer.Elapsed;
-                timeout = elapsed >= timeout ? TimeSpan.Zero : timeout - elapsed;
-                if (!gotEvent) return null;
+
+                if (!_readEvent.WaitOne(0))
+                {
+                    _readTimer.Restart();
+                    var gotEvent = _readEvent.WaitOne(timeout);
+                    _readTimer.Stop();
+                    var elapsed = _readTimer.Elapsed;
+                    timeout = elapsed >= timeout ? TimeSpan.Zero : timeout - elapsed;
+                    if (!gotEvent) return null;
+                }
             }
 
             var ret = WindowsTerminalInterop.ReadConsoleInputEx(Input.DangerousGetHandle(), _recordBuffer, (uint)_recordBuffer.Length, out var readCount, 0);
@@ -238,8 +281,27 @@ namespace Sphynx.Client.Tui
         private (int, int)? _oldMousePos;
         private TerminalMouseButtons _oldMouseState = 0;
 
+        private readonly List<Rune> _graphemeCodePoints = new(8);
+        private readonly List<char> _graphemeCharStorage = new(8 * 2);
+        private TerminalKeyModifiers _graphemeMods = TerminalKeyModifiers.None;
         private char? _highPair;
         private TerminalKeyModifiers _highPairMods = TerminalKeyModifiers.None;
+
+        private void AddGraphemeEvent(int? graphemeLen = null)
+        {
+            var graphemeStorageSp = CollectionsMarshal.AsSpan(_graphemeCharStorage);
+            graphemeLen ??= StringInfo.GetNextTextElementLength(graphemeStorageSp);
+
+            ReadOnlySpan<char> sp = graphemeStorageSp[..graphemeLen.Value];
+            sp.ToCodePoints(_graphemeCodePoints);
+
+            var graphemeCodePointsSp = CollectionsMarshal.AsSpan(_graphemeCodePoints);
+            _pendingEvents.Enqueue(new TerminalKeyEvent(this, new TerminalKey(new Grapheme(graphemeCodePointsSp), _graphemeMods)));
+
+            _graphemeCharStorage.RemoveRange(0, graphemeLen.Value);
+            _graphemeMods = TerminalKeyModifiers.None;
+            _graphemeCodePoints.Clear();
+        }
         private TerminalEvent? ConsumeEvent(in WindowsTerminalInterop.INPUT_RECORD ev, ref TimeSpan timeout)
         {
             switch (ev.EventType)
@@ -249,7 +311,7 @@ namespace Sphynx.Client.Tui
                     var kv = ev.Event.KeyEvent;
                     ConsumeMods(kv.dwControlKeyState);
 
-                    TerminalKeyEvent realEv = default;
+                    TerminalKeyEvent? realEv = null;
 
                     TerminalKey.SpecialKey? special = null;
                     switch (kv.wVirtualKeyCode)
@@ -261,28 +323,50 @@ namespace Sphynx.Client.Tui
                             else
                                 _currentMods &= ~TerminalKeyModifiers.Super;
                             return PollEvent(timeout);
+                        case 0x10:
+                        case 0x11:
+                        case 0x12:
+                        case 0x14:
+                        case 0xA0:
+                        case 0xA1:
+                        case 0xA2:
+                        case 0xA3:
+                        case 0xA4:
+                        case 0xA5:
+                            // shift, ctrl alt, (L/R)+shift,ctrl,alt
+                            return PollEvent(timeout);
                         case >= 0x70 and <= 0x87:
                             special = TerminalKey.SpecialKey.F1 + (kv.wVirtualKeyCode - 0x70);
                             break;
+                        case 0x65: // Numpad5
+                            special = TerminalKey.SpecialKey.Begin;
+                            break;
+                        case 0x61: // Numpad1
                         case 0x23:
                             special = TerminalKey.SpecialKey.End;
                             break;
+                        case 0x67: // Numpad7
                         case 0x24:
                             special = TerminalKey.SpecialKey.Home;
                             break;
                         case 0x25:
+                        case 0x64: // Numpad4
                             special = TerminalKey.SpecialKey.Left;
                             break;
                         case 0x26:
+                        case 0x68: // Numpad8
                             special = TerminalKey.SpecialKey.Up;
                             break;
                         case 0x27:
+                        case 0x66: // Numpad6
                             special = TerminalKey.SpecialKey.Right;
                             break;
                         case 0x28:
+                        case 0x62: // Numpad2
                             special = TerminalKey.SpecialKey.Down;
                             break;
                         case 0x2D:
+                        case 0x60: // Numpad0
                             special = TerminalKey.SpecialKey.Insert;
                             break;
                         case 0x2C:
@@ -294,43 +378,162 @@ namespace Sphynx.Client.Tui
                         case 0x22:
                             special = TerminalKey.SpecialKey.PageDown;
                             break;
-                        default: break;
-                    }
-
-                    if (special is not null)
-                    {
-                        realEv = new TerminalKeyEvent(this, new TerminalKey(special.Value, _currentMods));
-                    }
-                    else
-                    {
-                        int ch = 0x0;
-                        var cachedMods = _currentMods;
-                        if (char.IsHighSurrogate(kv.uChar.UnicodeChar))
+                        case 0x2e:
+                            special = TerminalKey.SpecialKey.Delete;
+                            break;
+                        case 0x20:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey(' ', _currentMods));
+                            break;
+                        case >= 0x30 and <= 0x39:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey('0' + (kv.wVirtualKeyCode - 0x30), _currentMods));
+                            break;
+                        case >= 0x41 and <= 0x5A:
+                            char start = _currentMods == TerminalKeyModifiers.Shift ? 'A' : 'a';
+                            realEv = new TerminalKeyEvent(this, new TerminalKey(start + (kv.wVirtualKeyCode - 0x41), _currentMods));
+                            break;
+                        case 0x08:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey('\x7f', _currentMods));
+                            break;
+                        case 0x0D:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey('\r', _currentMods));
+                            break;
+                        case 0x6A:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey('*', _currentMods));
+                            break;
+                        case 0x6B:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey('+', _currentMods));
+                            break;
+                        case 0x6D:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey('-', _currentMods));
+                            break;
+                        case 0x6F:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey('/', _currentMods));
+                            break;
+                        case 0xBB:
                         {
-                            _highPair = kv.uChar.UnicodeChar;
-                            _highPairMods = cachedMods;
-                            return PollEvent(timeout);
+                            var key = _currentMods == TerminalKeyModifiers.Shift ? '+' : '=';
+                            realEv = new TerminalKeyEvent(this, new TerminalKey(key, _currentMods));
+                            break;
                         }
-                        else if (char.IsLowSurrogate(kv.uChar.UnicodeChar))
+                        case 0xBC:
                         {
-                            if (_highPair is null)
+                            var key = _currentMods == TerminalKeyModifiers.Shift ? '<' : ',';
+                            realEv = new TerminalKeyEvent(this, new TerminalKey(key, _currentMods));
+                            break;
+                        }
+                        case 0xBD:
+                        {
+                            var key = _currentMods == TerminalKeyModifiers.Shift ? '_' : '-';
+                            realEv = new TerminalKeyEvent(this, new TerminalKey(key, _currentMods));
+                            break;
+                        }
+                        case 0xBE:
+                        {
+                            var key = _currentMods == TerminalKeyModifiers.Shift ? '>' : '.';
+                            realEv = new TerminalKeyEvent(this, new TerminalKey(key, _currentMods));
+                            break;
+                        }
+                        case 0x69: // Numpad9
+                            special = TerminalKey.SpecialKey.PageUp;
+                            break;
+                        case 0x63: // Numpad3
+                            special = TerminalKey.SpecialKey.PageDown;
+                            break;
+                        case 0x05:
+                            realEv = new TerminalKeyEvent(this, new TerminalKey('\\', _currentMods));
+                            break;
+                        default:
+                            if (kv.uChar.UnicodeChar == 0x0)
+                            {
                                 return PollEvent(timeout);
+                            }
+                            switch (kv.uChar.UnicodeChar)
+                            {
+                                case '\x1c':
+                                    realEv = new TerminalKeyEvent(this, new TerminalKey('\\', _currentMods));
+                                    break;
+                                case '\x1d':
+                                    realEv = new TerminalKeyEvent(this, new TerminalKey(']', _currentMods));
+                                    break;
+                                case '\x1e':
+                                    realEv = new TerminalKeyEvent(this, new TerminalKey('^', _currentMods));
+                                    break;
+                                case '\x1f':
+                                    realEv = new TerminalKeyEvent(this, new TerminalKey('/', _currentMods));
+                                    break;
+                                default: break;
+                            }
+                            break;
+                    }
 
-                            ch = (((_highPair.Value & 0x3FF) << 10) | (kv.uChar.UnicodeChar & 0x3FF)) + 0x10000;
-                            cachedMods = _highPairMods;
-                            _highPairMods = TerminalKeyModifiers.None;
-                            _highPair = null;
+                    if (kv.bKeyDown == 0) return PollEvent(timeout);
+
+                    if (realEv is null)
+                    {
+                        if (special is not null)
+                        {
+                            realEv = new TerminalKeyEvent(this, new TerminalKey(special.Value, _currentMods));
                         }
                         else
                         {
-                            ch = kv.uChar.UnicodeChar;
+                            if (char.IsHighSurrogate(kv.uChar.UnicodeChar))
+                            {
+                                _highPair = kv.uChar.UnicodeChar;
+                                _highPairMods = _currentMods;
+                                return PollEvent(timeout);
+                            }
+                            else if (char.IsLowSurrogate(kv.uChar.UnicodeChar))
+                            {
+                                if (_highPair is null)
+                                    return PollEvent(timeout);
+
+                                _graphemeCharStorage.Add((char)_highPair.Value);
+                                _graphemeCharStorage.Add((char)kv.uChar.UnicodeChar);
+
+                                _graphemeMods |= _highPairMods;
+
+                                _highPairMods = TerminalKeyModifiers.None;
+                                _highPair = null;
+
+                                var graphemeStorageSp = CollectionsMarshal.AsSpan(_graphemeCharStorage);
+                                var graphemeLen = StringInfo.GetNextTextElementLength(graphemeStorageSp);
+
+                                if (graphemeLen < graphemeStorageSp.Length || IsReaderEof)
+                                {
+                                    AddGraphemeEvent(graphemeLen);
+                                }
+                                return PollEvent(timeout);
+                            }
+                            else if (_graphemeCharStorage.Count > 0)
+                            {
+                                int ch = kv.uChar.UnicodeChar;
+
+                                _graphemeCharStorage.Add((char)ch);
+                                _graphemeMods |= _currentMods;
+
+                                var graphemeStorageSp = CollectionsMarshal.AsSpan(_graphemeCharStorage);
+                                var graphemeLen = StringInfo.GetNextTextElementLength(graphemeStorageSp);
+
+                                if (graphemeLen < graphemeStorageSp.Length || IsReaderEof)
+                                {
+                                    AddGraphemeEvent(graphemeLen);
+                                }
+                                return PollEvent(timeout);
+                            }
+                            else
+                            {
+                                int ch = kv.uChar.UnicodeChar;
+                                realEv = new TerminalKeyEvent(this, new TerminalKey(ch, _currentMods));
+                            }
                         }
-                        realEv = new TerminalKeyEvent(this, new TerminalKey(ch, cachedMods));
                     }
 
-                    for (uint i = 0; i < Math.Min(kv.wRepeatCount, 1u) - 1; i++)
+                    if (realEv is not null)
                     {
-                        _pendingEvents.Enqueue(realEv);
+                        for (uint i = 0; i < Math.Max(kv.wRepeatCount, 1u) - 1; i++)
+                        {
+                            _pendingEvents.Enqueue(realEv.Value);
+                        }
                     }
                     return realEv;
                 }
@@ -364,17 +567,17 @@ namespace Sphynx.Client.Tui
                     {
                         eventList.Add(new TerminalMouseMoveEvent(this, _oldMousePos.Value, newPos, _currentMods));
                     }
-
-                    if ((mv.dwEventFlags & MOUSE_WHEELED) == MOUSE_WHEELED)
+                    else if ((mv.dwEventFlags & MOUSE_WHEELED) == MOUSE_WHEELED)
                     {
-                        eventList.Add(new TerminalMouseScrollEvent(this, newPos, -mv.dwButtonState.HighUShort(), TerminalScrollDirection.Vertical, _currentMods));
+                        var val = (short)mv.dwButtonState.HighUShort() > 0 ? 1 : -1;
+                        eventList.Add(new TerminalMouseScrollEvent(this, newPos, val, TerminalScrollDirection.Vertical, _currentMods));
                     }
                     else if ((mv.dwEventFlags & MOUSE_HWHEELED) == MOUSE_HWHEELED)
                     {
-                        eventList.Add(new TerminalMouseScrollEvent(this, newPos, mv.dwButtonState.HighUShort(), TerminalScrollDirection.Horizontal, _currentMods));
+                        var val = (short)mv.dwButtonState.HighUShort() > 0 ? 1 : -1;
+                        eventList.Add(new TerminalMouseScrollEvent(this, newPos, val, TerminalScrollDirection.Horizontal, _currentMods));
                     }
-
-                    if ((mv.dwEventFlags & DOUBLE_CLICK) == DOUBLE_CLICK || mv.dwEventFlags == 0)
+                    else if ((mv.dwEventFlags & DOUBLE_CLICK) == DOUBLE_CLICK || mv.dwEventFlags == 0)
                     {
                         var buttons = TerminalMouseButtons.None;
                         if ((mv.dwButtonState & FROM_LEFT_1ST_BUTTON_PRESSED) == FROM_LEFT_1ST_BUTTON_PRESSED)
@@ -416,6 +619,7 @@ namespace Sphynx.Client.Tui
                                 diff &= ~b;
                             }
 
+                            // TODO: May want to split up here if it makes parsing easier
                             if (releaseButtons != TerminalMouseButtons.None)
                                 eventList.Add(new TerminalMouseClickEvent(this, newPos, releaseButtons, _currentMods, -1));
 
@@ -424,6 +628,7 @@ namespace Sphynx.Client.Tui
                         }
                         else if (buttons != TerminalMouseButtons.None)
                         {
+                            // TODO: May just want to pass on as single click since "The first click is returned as a regular button-press event."
                             int clickCount = (mv.dwEventFlags & DOUBLE_CLICK) == DOUBLE_CLICK ? 2 : 1;
                             eventList.Add(new TerminalMouseClickEvent(this, newPos, buttons, _currentMods, clickCount));
                         }
@@ -518,6 +723,7 @@ namespace Sphynx.Client.Tui
 
     internal interface IHandleWindowsTerminalStrategy : IDisposable
     {
+        void Init();
         void Write(ColoredString str) => Write(str.Yield());
         void Write(IEnumerable<ColoredString> s);
         (int x, int y) CursorPosition { set; }
@@ -643,7 +849,8 @@ namespace Sphynx.Client.Tui
                     else _escapeBuilder.Append($"\x1b[{dx}C");
                     break;
                 case < 0:
-                    _escapeBuilder.Append($"\x1b[{-dx}D");
+                    if (dx == -1) _escapeBuilder.Append($"\x1b[D");
+                    else _escapeBuilder.Append($"\x1b[{-dx}D");
                     break;
                 case 0:
                     break;
@@ -651,12 +858,13 @@ namespace Sphynx.Client.Tui
 
             switch (dy)
             {
-                case > 0:
-                    if (dy == 1) _escapeBuilder.Append("\x1b[B");
-                    else _escapeBuilder.Append($"\x1b[{dy}B");
-                    break;
                 case < 0:
-                    _escapeBuilder.Append($"\x1b[{-dy}A");
+                    if (dy == -1) _escapeBuilder.Append($"\x1b[B");
+                    else _escapeBuilder.Append($"\x1b[{-dy}B");
+                    break;
+                case > 0:
+                    if (dy == 1) _escapeBuilder.Append("\x1b[A");
+                    else _escapeBuilder.Append($"\x1b[{dy}A");
                     break;
                 case 0:
                     break;
@@ -665,11 +873,16 @@ namespace Sphynx.Client.Tui
             WriteOutput(_escapeBuilder.ToString());
         }
 
+        private TerminalCellColor? _currentColor;
         public void Write(ColoredString str)
         {
             if (str.Text.Length <= 0) return;
-            WriteOutput(GetEscapeCodeFor(str.Color));
+            WriteOutput(GetEscapeCodeFor(str.Color, ref _currentColor));
             WriteOutput(str.Text);
+
+            // FIXME: Use a cached cursor position to determine if str will overflow onto the next line
+
+            _currentColor = TerminalCellColor.Default;
             WriteOutput("\x1b[0;39;49m");
         }
 
@@ -677,20 +890,18 @@ namespace Sphynx.Client.Tui
 
         public void Write(IEnumerable<ColoredString> strings)
         {
-            var currentColor = TerminalCellColor.Default;
-
             foreach (var str in strings)
             {
                 if (str.Text.Length <= 0) continue;
-                WriteOutput(GetEscapeCodeFor(str.Color, currentColor: currentColor));
+                WriteOutput(GetEscapeCodeFor(str.Color, ref _currentColor));
                 WriteOutput(str.Text);
-                currentColor = str.Color;
             }
 
+            _currentColor = TerminalCellColor.Default;
             WriteOutput("\x1b[0;39;49m");
         }
 
-        private string GetEscapeCodeFor(TerminalCellColor cellColor, TerminalCellColor? currentColor)
+        private string GetEscapeCodeFor(TerminalCellColor cellColor, ref TerminalCellColor? currentColor)
         {
             _escapeBuilder.Clear();
             _escapeBuilder.Append("\x1b[");
@@ -818,10 +1029,9 @@ namespace Sphynx.Client.Tui
                 Debug.Assert(_escapeBuilder.ToString() == "\x1b[");
                 return string.Empty;
             }
+            _currentColor = cellColor;
             return _escapeBuilder.Append('m').ToString();
         }
-
-        private string GetEscapeCodeFor(TerminalCellColor cellColor) => GetEscapeCodeFor(cellColor, TerminalCellColor.Default);
 
         private void WriteOutput(string s)
         {
@@ -836,8 +1046,18 @@ namespace Sphynx.Client.Tui
 
         public void Dispose()
         {
+            WriteOutput("\x1b[0;39;49m");
+            WriteOutput("\x1b[?1049l");
             Flush();
             _output.Dispose();
+        }
+
+        public void Init()
+        {
+            WriteOutput("\x1b[?1049h");
+            WriteOutput("\x1b[H");
+            WriteOutput("\x1b[0;39;49m");
+            _currentColor = TerminalCellColor.Default;
         }
     }
 

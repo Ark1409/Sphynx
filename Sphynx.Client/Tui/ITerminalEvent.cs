@@ -94,6 +94,7 @@ namespace Sphynx.Client.Tui
         public TerminalEventPoller(Terminal term)
         {
             _term = term;
+            RefreshPollableTypes();
         }
 
         /// <summary>
@@ -149,8 +150,8 @@ namespace Sphynx.Client.Tui
 
                 if (timeout != Timeout.InfiniteTimeSpan)
                 {
-                    timeout -= waitTime;
                     if (timeout <= TimeSpan.Zero) break;
+                    timeout = waitTime >= timeout ? TimeSpan.Zero : timeout - waitTime;
                 }
 
                 sp.SpinOnce();

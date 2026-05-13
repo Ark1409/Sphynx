@@ -63,51 +63,29 @@ namespace Sphynx.Client.Tui
         [LibraryImport("api-ms-win-core-processenvironment-l1-1-0.dll", SetLastError = true)]
         public static partial HANDLE GetStdHandle(DWORD nStdHandle);
 
-        public static bool AddConsoleModes(HANDLE hConsoleHandle, DWORD modes)
+        public static bool AddConsoleModes(HANDLE hConsoleHandle, DWORD modes) => ChangeConsoleModes(hConsoleHandle, modes, 0);
+
+        public static bool RemoveConsoleModes(HANDLE hConsoleHandle, DWORD modes) => ChangeConsoleModes(hConsoleHandle, 0, modes);
+
+        public static bool ChangeConsoleModes(HANDLE hConsoleHandle, DWORD addMode, DWORD removeModes)
         {
             BOOL ret = 0;
             ret = GetConsoleMode(hConsoleHandle, out var currentMode);
             if (ret == 0) return false;
 
-            if ((currentMode & modes) == modes) return true;
-            currentMode |= modes;
-            ret = SetConsoleMode(hConsoleHandle, currentMode);
-            if (ret == 0) return false;
-
-            return true;
-        }
-
-        public static bool RemoveConsoleModes(HANDLE hConsoleHandle, DWORD modes)
-        {
-            BOOL ret = 0;
-            ret = GetConsoleMode(hConsoleHandle, out var currentMode);
-            if (ret == 0) return false;
-
-            if ((currentMode & ~modes) == 0x0) return true;
-            currentMode &= ~modes;
-            ret = SetConsoleMode(hConsoleHandle, currentMode);
-            if (ret == 0) return false;
-
-            return true;
-        }
-
-        public static bool AddAnsiEscapeOutput(HANDLE h) => AddConsoleModes(h, ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-        public static bool AddAnsiEscapeInput(HANDLE h) => AddConsoleModes(h, ENABLE_VIRTUAL_TERMINAL_INPUT);
-
-        public static bool AddMouseInput(HANDLE hConsoleHandle)
-        {
-            BOOL ret = 0;
-            ret = GetConsoleMode(hConsoleHandle, out var currentMode);
-            if (ret == 0) return false;
-
-            DWORD newMode = currentMode;
-            newMode = (newMode | ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS) & ~ENABLE_QUICK_EDIT_MODE;
+            var newMode = currentMode;
+            newMode |= addMode;
+            newMode &= ~removeModes;
             if (newMode == currentMode) return true;
             ret = SetConsoleMode(hConsoleHandle, newMode);
             if (ret == 0) return false;
 
             return true;
         }
+        public static bool AddAnsiEscapeOutput(HANDLE h) => AddConsoleModes(h, ENABLE_PROCESSED_OUTPUT | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+        public static bool AddAnsiEscapeInput(HANDLE h) => AddConsoleModes(h, ENABLE_VIRTUAL_TERMINAL_INPUT);
+
+        public static bool AddMouseInput(HANDLE hConsoleHandle) => ChangeConsoleModes(hConsoleHandle, ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS, ENABLE_QUICK_EDIT_MODE);
 
         public static bool AddWindowInput(HANDLE h) => AddConsoleModes(h, ENABLE_WINDOW_INPUT);
 
@@ -147,6 +125,7 @@ namespace Sphynx.Client.Tui
                 DWORD newMode = currentMode;
 
                 newMode |= ENABLE_WRAP_AT_EOL_OUTPUT | DISABLE_NEWLINE_AUTO_RETURN;
+                // newMode &= ~;
 
                 if (newMode != currentMode)
                 {
@@ -183,6 +162,7 @@ namespace Sphynx.Client.Tui
 
         public const DWORD ERROR_SUCCESS = 0;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void ThrowLastWin32Error()
         {
             var lastError = Marshal.GetLastWin32Error();
