@@ -95,7 +95,7 @@ namespace Sphynx.Network.Transport
                 if (channel.IsDisposed)
                     return true;
 
-                bool isRejecting = (releaseFlags & ChannelReleaseFlags.CHANNEL_REJECTED) > 0;
+                bool isRejecting = (releaseFlags & ChannelReleaseFlags.CHANNEL_REJECTED) != 0;
 
                 if (!isRejecting)
                     throw new SphynxProtocolException(channel.ChannelId,
@@ -103,8 +103,7 @@ namespace Sphynx.Network.Transport
 
                 // There are no race conditions here (in the pooling case) because a channel instance with the same channel ID cannot be reused
                 // until it is released. Since we acquired the ChannelsLock (which the channel instance also does before returning itself to
-                // the pool), the channel cannot already be disposed by the time we make it here (since we checked for disposal above). In that
-                // case, we could even make the claim that this call shall always return true.
+                // the pool), the channel cannot already be disposed by the time we make it here (since we checked for disposal above).
                 return channel.ForceClose(_channelRejectedException);
             }
         }
@@ -359,6 +358,7 @@ namespace Sphynx.Network.Transport
                     return _frameBufferRental.Value.Value;
                 }
             }
+
             private SequencePool.Rental? _frameBufferRental;
 
             protected override DefaultChannelWriter Parent { get; }
@@ -488,7 +488,9 @@ namespace Sphynx.Network.Transport
                     };
 
                     bool isLastFlush = closing && (frame + 1) * MaxFrameSize >= bufferLength;
-                    header = isLastFlush ? header.WithFlags(ChannelDataFlags.CHANNEL_END) : header;
+
+                    if (isLastFlush)
+                        header = header.WithFlags(ChannelDataFlags.CHANNEL_END);
 
                     SendFrame(in header, bufferSeq.Slice(0, frameSize));
                     buffer.AdvanceTo(bufferSeq.GetPosition(frameSize));
@@ -524,7 +526,7 @@ namespace Sphynx.Network.Transport
                 long bufferLength = buffer.Length;
 
                 // Write the data in chunks of MaxFrameSize
-                for (int frame = 0; frame * MaxFrameSize < bufferLength; frame++)
+                for (long frame = 0; frame * MaxFrameSize < bufferLength; frame++)
                 {
                     var bufferSeq = buffer.AsReadOnlySequence;
                     short frameSize = (short)Math.Min(buffer.Length, MaxFrameSize);
@@ -538,7 +540,9 @@ namespace Sphynx.Network.Transport
                     };
 
                     bool isLastFlush = closing && (frame + 1) * MaxFrameSize >= bufferLength;
-                    header = isLastFlush ? header.WithFlags(ChannelDataFlags.CHANNEL_END) : header;
+
+                    if (isLastFlush)
+                        header = header.WithFlags(ChannelDataFlags.CHANNEL_END);
 
                     await SendFrameAsync(header, bufferSeq.Slice(0, frameSize), CancellationToken.None).ConfigureAwait(false);
                     buffer.AdvanceTo(bufferSeq.GetPosition(frameSize));
@@ -551,7 +555,7 @@ namespace Sphynx.Network.Transport
             protected void SendFrame(in SphynxFrameHeader header, in ReadOnlySequence<byte> frameData)
             {
                 Parent.SendFrame(in header, in frameData);
-                BytesWritten += frameData.Length;
+                BytesWritten += SphynxFrameHeader.SIZE + frameData.Length;
                 FramesWritten++;
             }
 
@@ -560,7 +564,7 @@ namespace Sphynx.Network.Transport
                 CancellationToken cancellationToken = default)
             {
                 await Parent.SendFrameAsync(header, frameData, cancellationToken).ConfigureAwait(false);
-                BytesWritten += frameData.Length;
+                BytesWritten += SphynxFrameHeader.SIZE + frameData.Length;
                 FramesWritten++;
             }
 
