@@ -47,7 +47,7 @@ namespace Sphynx.Network.Transport
         public abstract void OnChannelOpened(ChannelOpenedHandler callback, object? state = null);
 
         /// <summary>
-        /// Actively begins reading from the underlying stream.
+        /// Passively begins reading from the underlying stream.
         /// </summary>
         [MemberNotNull(nameof(RunTask))]
         public void Start(CancellationToken cancellationToken = default)

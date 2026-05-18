@@ -17,7 +17,7 @@ namespace Sphynx.Network.Transport
         /// <summary>
         /// The maximum size of a frame.
         /// </summary>
-        public const int MAX_FRAME_SIZE = short.MaxValue; // ~32KB
+        public const int MAX_FRAME_SIZE = short.MaxValue; // 32KB
 
         /// <summary>
         /// The currently supported protocol version.
