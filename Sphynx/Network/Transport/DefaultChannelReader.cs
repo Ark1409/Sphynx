@@ -769,7 +769,6 @@ namespace Sphynx.Network.Transport
                     {
                         ChannelReader.Complete(CloseException == CloseSentinel ? null : CloseException);
                         ChannelReader.CancelPendingRead();
-                        GetPipe().Writer.CancelPendingFlush();
                     }
                     catch
                     {
@@ -797,7 +796,6 @@ namespace Sphynx.Network.Transport
                 {
                     await ChannelReader.CompleteAsync(CloseException == CloseSentinel ? null : CloseException).ConfigureAwait(false);
                     ChannelReader.CancelPendingRead();
-                    GetPipe().Writer.CancelPendingFlush();
                 }
                 catch
                 {
