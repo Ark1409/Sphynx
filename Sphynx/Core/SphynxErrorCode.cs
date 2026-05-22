@@ -3,7 +3,7 @@
     /// <summary>
     /// Error codes used within the <see cref="Sphynx"/> application.
     /// </summary>
-    public enum SphynxErrorCode : byte
+    public enum SphynxErrorCode : ushort
     {
         /// <summary>
         /// Action has been completed successfully.
