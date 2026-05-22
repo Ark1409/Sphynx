@@ -38,7 +38,7 @@ namespace Sphynx.Network.Transport
             return new PoolableChannel(this, channelId);
         }
 
-        public void Reset(Stream stream, bool? ownsStream = null)
+        public virtual void Reset(Stream stream, bool? ownsStream = null)
         {
             if (!IsDisposed)
                 // Since disposing requires potentially draining the reader's buffer,
@@ -128,15 +128,6 @@ namespace Sphynx.Network.Transport
                 }
 
                 return pipe;
-            }
-
-            private ChannelPipeReader? _channelPipeReader;
-
-            public override PipeReader AsPipeReader(bool leaveOpen = true)
-            {
-                _channelPipeReader ??= new ChannelPipeReader(this, ChannelReader, leaveOpen);
-                _channelPipeReader.LeaveOpen = leaveOpen;
-                return _channelPipeReader;
             }
 
             protected override void Dispose(bool disposing)

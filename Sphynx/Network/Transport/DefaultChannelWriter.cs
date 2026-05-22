@@ -335,7 +335,7 @@ namespace Sphynx.Network.Transport
             public static implicit operator ChannelEntry(DefaultChannel channel) => new(channel);
         }
 
-        public class DefaultChannel : Channel
+        protected internal class DefaultChannel : Channel
         {
             protected const short DEFAULT_FRAME_SIZE = 1024; // 1KB
 
