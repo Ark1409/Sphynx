@@ -74,8 +74,6 @@ namespace Sphynx.Server.Infrastructure.Services
             }
         }
 
-        // The MIT License (MIT)
-        //
         // Copyright (c) .NET Foundation and Contributors
         //
         // All rights reserved.
