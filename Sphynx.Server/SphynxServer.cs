@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Sphynx.Utils;
 
@@ -87,14 +88,16 @@ namespace Sphynx.Server
         public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfStopped();
+            cancellationToken.ThrowIfCancellationRequested();
 
             using (await _startSemaphore.RentAsync(cancellationToken).ConfigureAwait(false))
             {
-                var serverTask = _serverTask;
-
-                if (serverTask != null)
+                if (_serverTask != null)
+                {
                     // Propagate exceptions to concurrent callers
-                    await serverTask.ConfigureAwait(false);
+                    _serverTask.GetAwaiter().GetResult();
+                    return;
+                }
 
                 ThrowIfStopped();
 
@@ -108,12 +111,24 @@ namespace Sphynx.Server
             await StopAsync().ConfigureAwait(false);
         }
 
+        [MemberNotNull(nameof(_serverTask))]
         private async Task RunAsync(CancellationToken cancellationToken)
         {
             Debug.Assert(_startSemaphore.CurrentCount == 0);
             Debug.Assert(_serverTask == null);
 
-            if (cancellationToken.CanBeCanceled)
+            try
+            {
+                Profile.ConfigureProfile();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogCritical(ex, "An exception occured whilst configuring the server profile");
+                _serverTask = Task.CompletedTask;
+                return;
+            }
+
+            if (cancellationToken.CanBeCanceled && !_serverCts.IsCancellationRequested)
                 _serverCts = CancellationTokenSource.CreateLinkedTokenSource(_serverCts.Token, cancellationToken);
 
             try
@@ -128,12 +143,16 @@ namespace Sphynx.Server
                     _isInsideServerTask.Value = false;
                 }
             }
-            catch (OperationCanceledException ex) when (ex.CancellationToken == _serverCts.Token)
+            catch (Exception ex) when (_serverCts.IsCancellationRequested)
             {
                 // Server stopped
+                // ReSharper disable once NonAtomicCompoundOperator
+                _serverTask ??= Task.FromException(ex);
             }
             catch (Exception ex)
             {
+                // ReSharper disable once NonAtomicCompoundOperator
+                _serverTask ??= Task.FromException(ex);
                 Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
         }
@@ -146,11 +165,7 @@ namespace Sphynx.Server
                 throw new OperationCanceledException("The operation was canceled.");
         }
 
-        private void ThrowIfDisposed()
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(GetType().FullName);
-        }
+        private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
         /// <summary>
         /// Called once the server has been instructed to start and should begin running.
@@ -203,6 +218,8 @@ namespace Sphynx.Server
         /// </summary>
         private async ValueTask WaitAsync()
         {
+            Debug.Assert(!_isInsideServerTask.Value);
+
             if (_disposed)
                 return;
 
@@ -250,6 +267,9 @@ namespace Sphynx.Server
             // Concurrent disposal should be fine
             if (_disposed)
                 return;
+
+            if (_isInsideServerTask.Value)
+                throw new InvalidOperationException($"Cannot dispose from within the client. Call {nameof(StopAsync)}() instead.");
 
             OnStarting = null;
 

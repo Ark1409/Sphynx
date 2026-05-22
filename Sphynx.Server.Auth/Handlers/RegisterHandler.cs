@@ -12,7 +12,7 @@ using Sphynx.Server.Infrastructure.Handlers;
 
 namespace Sphynx.Server.Auth.Handlers
 {
-    public class RegisterHandler : IPacketHandler<RegisterRequest>
+    public class RegisterHandler : IMessageHandler<RegisterRequest>
     {
         private readonly IAuthService _authService;
         private readonly ILogger _logger;
@@ -23,7 +23,7 @@ namespace Sphynx.Server.Auth.Handlers
             _logger = logger;
         }
 
-        public async Task HandlePacketAsync(ISphynxClient client, RegisterRequest request, CancellationToken cancellationToken = default)
+        public async Task HandleMessageAsync(ISphynxClient client, RegisterRequest request, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(request.UserName))
             {

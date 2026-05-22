@@ -9,7 +9,7 @@ using Sphynx.Server.Infrastructure.Middleware;
 
 namespace Sphynx.Server.Auth.Middleware
 {
-    public class AuthPacketMiddleware : IPacketMiddleware
+    public class AuthPacketMiddleware : IMessageMiddleware
     {
         private readonly ILogger _logger;
 
@@ -18,7 +18,7 @@ namespace Sphynx.Server.Auth.Middleware
             _logger = logger;
         }
 
-        public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token = default)
+        public Task InvokeAsync(ISphynxClient client, SphynxMessage packet, NextDelegate<SphynxMessage> next, CancellationToken token = default)
         {
             if (token.IsCancellationRequested)
                 return Task.FromCanceled(token);
@@ -26,7 +26,7 @@ namespace Sphynx.Server.Auth.Middleware
             if (packet is not LoginRequest && packet is not RegisterRequest && packet is not LogoutRequest)
             {
                 if (_logger.IsEnabled(LogLevel.Warning))
-                    _logger.LogWarning("Rejecting packet of type {PacketType} received from {EndPoint}", packet.PacketType, client.EndPoint);
+                    _logger.LogWarning("Rejecting packet of type {MessageType} received from {EndPoint}", packet.MessageType, client.EndPoint);
 
                 // TODO: Respond with invalid request?
                 return Task.CompletedTask;

@@ -13,7 +13,7 @@ using Sphynx.Server.Infrastructure.Services;
 
 namespace Sphynx.Server.Chat.Handlers
 {
-    public class FetchUsersHandler : RequestHandler<FetchUsersRequest, FetchUsersResponse>
+    public class FetchUsersHandler : RequestHandler<GetUsersRequest, GetUsersResponse>
     {
         private readonly IUserService _userService;
 
@@ -23,15 +23,15 @@ namespace Sphynx.Server.Chat.Handlers
             _userService = userService;
         }
 
-        protected override async Task<FetchUsersResponse> HandleRequestAsync(RequestContext ctx, CancellationToken cancellationToken = default)
+        protected override async Task<GetUsersResponse> HandleRequestAsync(RequestContext ctx, CancellationToken cancellationToken = default)
         {
             var usersResult = await _userService.GetUsersAsync(ctx.Request.UserIds, cancellationToken).ConfigureAwait(false);
 
             if (usersResult.ErrorCode != SphynxErrorCode.SUCCESS)
-                return new FetchUsersResponse(usersResult.MaskServerError());
+                return new GetUsersResponse(usersResult.MaskServerError());
 
             var users = usersResult.Data!.Select(user => user.ToDto()).ToArray();
-            return new FetchUsersResponse(users);
+            return new GetUsersResponse(users);
         }
     }
 }

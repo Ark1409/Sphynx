@@ -15,7 +15,7 @@ namespace Sphynx.Server.Chat.Handlers
 {
     // TODO: Put this class into Sphynx.Server (for request tag) (so auth server can use it)
     // TODO: Put server things into Core package (for chat and auth sser
-    public abstract class RequestHandler<TRequest, TResponse> : IPacketHandler<TRequest>
+    public abstract class RequestHandler<TRequest, TResponse> : IMessageHandler<TRequest>
         where TRequest : SphynxRequest<TResponse>
         where TResponse : SphynxResponse
     {
@@ -28,9 +28,9 @@ namespace Sphynx.Server.Chat.Handlers
             Logger = logger;
         }
 
-        public async Task HandlePacketAsync(ISphynxClient client, TRequest request, CancellationToken cancellationToken = default)
+        public async Task HandleMessageAsync(ISphynxClient client, TRequest request, CancellationToken cancellationToken = default)
         {
-            if (request.SessionId == default)
+            if (request.Header.SessionId == default)
             {
                 await client.SendAsync(request.CreateResponse(SphynxErrorCode.INVALID_TOKEN), cancellationToken).ConfigureAwait(false);
                 return;
@@ -38,7 +38,7 @@ namespace Sphynx.Server.Chat.Handlers
 
             // TODO: Write behind/through on intervals
             var reviveResult = await _sessionService
-                .ReviveSessionAsync(request.SessionId, SessionUpdatePolicy.Ephemeral, cancellationToken)
+                .ReviveSessionAsync(request.Header.SessionId, SessionUpdatePolicy.Ephemeral, cancellationToken)
                 .ConfigureAwait(false);
 
             if (reviveResult.ErrorCode != SphynxErrorCode.SUCCESS)
@@ -46,6 +46,9 @@ namespace Sphynx.Server.Chat.Handlers
                 await client.SendAsync(request.CreateResponse(reviveResult.MaskServerError()), cancellationToken).ConfigureAwait(false);
                 return;
             }
+
+            // TODO: If the client's IP Address doesn't match the SesionInfo's IPAddress, we've got something wrong (hacker?). Erorr out.
+            //  (what about DHCP tho...)
 
             var requestContext = new RequestContext
             {
@@ -68,12 +71,12 @@ namespace Sphynx.Server.Chat.Handlers
             catch (Exception ex)
             {
                 if (Logger?.IsEnabled(LogLevel.Error) ?? false)
-                    Logger.LogError(ex, "Request handling for packet {Packet} failed with exception", context.Request.PacketType);
+                    Logger.LogError(ex, "Request handling for packet {Packet} failed with exception", context.Request.MessageType);
 
                 response = context.Request.CreateResponse(SphynxErrorCode.SERVER_ERROR);
             }
 
-            response.RequestTag = context.Request.RequestTag;
+            // response.RequestTag = context.Request.RequestTag;
 
             await context.Client.SendAsync(response, cancellationToken).ConfigureAwait(false);
         }

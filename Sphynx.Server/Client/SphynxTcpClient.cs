@@ -1,28 +1,70 @@
 // Copyright (c) Ark -α- & Specyy. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System.Buffers;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
-using Nerdbank.Streams;
+using Sphynx.Network;
 using Sphynx.Network.Packet;
-using Sphynx.Network.Transport;
 using Sphynx.Server.Infrastructure.Routing;
-using Sphynx.Server.Extensions;
-using Sphynx.Server.Infrastructure.Handlers;
 using Sphynx.Utils;
 
 namespace Sphynx.Server.Client
 {
+    public class SphynxTcpClientOptions
+    {
+        /// <summary>
+        /// The unique ID for this client.
+        /// </summary>
+        public Guid ClientId { get; init; }
+
+        /// <summary>
+        /// The <see cref="SphynxMessageClient"/> which is used to send and receive <see cref="SphynxMessage"/>s.
+        /// </summary>
+        public MessageClientFactory MessageClientFactory { get; init; }
+
+        /// <summary>
+        /// The packet router which is used to route incoming packets to handlers.
+        /// </summary>
+        public IMessageRouter MessageRouter { get; init; }
+
+        /// <summary>
+        /// The logger factory to use to create the client's logger.
+        /// </summary>
+        public ILoggerFactory LoggerFactory { get; init; }
+
+        /// <summary>
+        /// Event that is fired when this client disconnects from the server. This may run concurrently
+        /// with <see cref="SphynxTcpClient.DisposeAsync()"/>.
+        /// </summary>
+        public Func<SphynxTcpClient, Exception?, ValueTask>? OnDisconnect { get; init; }
+
+        public SphynxTcpClientOptions(Guid? clientId, MessageClientFactory messageClientFactory, IMessageRouter messageRouter,
+            ILoggerFactory loggerFactory, Func<SphynxTcpClient, Exception?, ValueTask>? onDisconnect)
+        {
+            ClientId = clientId ?? Guid.NewGuid();
+            MessageClientFactory = messageClientFactory;
+            MessageRouter = messageRouter;
+            LoggerFactory = loggerFactory;
+            OnDisconnect = onDisconnect;
+        }
+
+        public SphynxTcpClientOptions(SphynxTcpServerProfile profile)
+            : this(null, profile.MessageClientFactory, profile.MessageRouter, profile.LoggerFactory, null)
+        {
+        }
+    }
+
     /// <summary>
     /// Represents a TCP client socket connection to a <see cref="SphynxTcpServer"/>.
     /// </summary>
     public class SphynxTcpClient : ISphynxClient, IAsyncDisposable
     {
         /// <inheritdoc/>
-        public Guid ClientId { get; }
+        public Guid ClientId => Options.ClientId;
 
         /// <inheritdoc/>
         public IPEndPoint EndPoint { get; }
@@ -30,250 +72,202 @@ namespace Sphynx.Server.Client
         /// <summary>
         /// Retrieves the running state of the client.
         /// </summary>
-        public bool IsRunning => !_clientTask?.IsCompleted ?? false;
+        public bool IsRunning => !_runTask?.IsCompleted ?? false;
 
-        /// <summary>
-        /// The read task for the client's read loop.
-        /// </summary>
-        protected Task? ClientTask => _clientTask;
-
-        private volatile Task? _clientTask;
-
-        /// <summary>
-        /// A reference to the accepted client socket.
-        /// </summary>
-        internal Socket Socket { get; private set; }
-
-        /// <summary>
-        /// Event that is fired when this client disconnects from the server. This may run concurrently
-        /// with <see cref="DisposeAsync()"/>.
-        /// </summary>
-        public event Func<SphynxTcpClient, Exception?, Task>? OnDisconnect;
-
-        /// <summary>
-        /// The logger created for this client.
-        /// </summary>
-        protected internal ILogger Logger { get; }
-
-        /// <summary>
-        /// The packet transporter which is used to send and receive <see cref="SphynxPacket"/>s.
-        /// </summary>
-        protected IPacketTransporter PacketTransporter { get; }
-
-        /// <summary>
-        /// The packet router which is used to route incoming packets to handlers.
-        /// </summary>
-        protected IPacketRouter PacketRouter { get; }
-
-        private readonly NetworkStream _stream;
+        protected readonly SphynxTcpClientOptions Options;
+        protected ILogger Logger = null!;
+        private IDisposable? _loggerScope;
+        protected SphynxMessageClient MessageClient = null!;
 
         private CancellationTokenSource _clientCts = new();
-        private readonly AsyncLocal<bool> _isInsideClientTask = new();
-        private readonly SemaphoreSlim _startSemaphore = new(1, 1);
-        private readonly SemaphoreSlim _disposeSemaphore = new(0, 1);
+        private readonly AsyncLocal<bool> _isInsideRunTask = new();
+        private readonly SemaphoreSlim _runLock = new(1, 1);
+        private volatile Task? _runTask;
+        private Socket _socket;
+        private readonly NetworkStream _stream;
 
-        private volatile bool _disposed;
+        protected bool IsDisposed => _state == 2;
+        protected bool IsStopped => _state >= 1;
 
-        // 0 = not stopped; 1 = stopping/stopped
-        private int _stopped;
+        // 0 = init, 1 = stopped, 2 = disposed
+        private volatile int _state;
 
-        public SphynxTcpClient(Socket socket, SphynxTcpServerProfile profile)
+        public SphynxTcpClient(Socket socket, SphynxTcpClientOptions options)
         {
-            Socket = socket;
-            EndPoint = (IPEndPoint)Socket.RemoteEndPoint!;
-            _stream = new NetworkStream(Socket, false);
-
-            ClientId = Guid.NewGuid();
-
-            PacketTransporter = profile.PacketTransporter;
-            PacketRouter = profile.PacketRouter;
-            Logger = profile.LoggerFactory.CreateLogger(GetType());
+            _socket = socket;
+            _stream = new NetworkStream(_socket, false);
+            Options = options;
+            EndPoint = (IPEndPoint)_socket.RemoteEndPoint!;
         }
 
-        public SphynxTcpClient(Socket socket, IPacketTransporter packetTransporter, IPacketRouter router, ILogger logger)
-            : this(socket, Guid.NewGuid(), packetTransporter, router, logger)
+        protected virtual void OnStarting()
         {
-        }
+            Debug.Assert(Logger == null);
+            Debug.Assert(MessageClient == null);
 
-        public SphynxTcpClient(Socket socket,
-            Guid clientId,
-            IPacketTransporter packetTransporter,
-            IPacketRouter router,
-            ILogger logger)
-        {
-            Socket = socket;
-            EndPoint = (IPEndPoint)Socket.RemoteEndPoint!;
-            _stream = new NetworkStream(Socket, false);
+            Logger = Options.LoggerFactory.CreateLogger(GetType());
+            _loggerScope = Logger.BeginScope(this);
 
-            ClientId = clientId;
-
-            PacketTransporter = packetTransporter;
-            PacketRouter = router;
-            Logger = logger;
-        }
-
-        public async Task StartAsync(CancellationToken cancellationToken = default)
-        {
-            ThrowIfStopped();
-
-            Exception? runtimeException = null;
-
-            using (await _startSemaphore.RentAsync(cancellationToken).ConfigureAwait(false))
+            MessageClient = Options.MessageClientFactory(_stream);
+            MessageClient.OnMessageReceived(static async void (state, msg) =>
             {
-                // Propagate exceptions to concurrent callers
-                var clientTask = _clientTask;
+                var client = (SphynxTcpClient)state!;
+                await client.RouteMessageAsync(msg, client._clientCts.Token).ConfigureAwait(false);
+            }, this);
+            MessageClient.OnMessageDropped(static async void (state, msg, ex) =>
+            {
+                var client = (SphynxTcpClient)state!;
+                await client.OnMessageDroppedAsync(msg, ex).ConfigureAwait(false);
+            });
+        }
 
-                if (clientTask?.Exception is not null)
-                    throw clientTask.Exception;
+        private ValueTask OnMessageDroppedAsync(SphynxMessage? message, Exception? error = null)
+        {
+            // TODO: Log to metrics
 
-                if (!_clientCts.IsCancellationRequested)
+            if (error != null)
+            {
+                if (Logger.IsEnabled(LogLevel.Error))
                 {
-                    Logger.LogDebug("Starting client run loop...");
-
-                    runtimeException = await RunAsync(cancellationToken).ConfigureAwait(false);
-
-                    Logger.LogDebug("Stopping client run loop...");
+                    if (message == null)
+                        Logger.LogError(error, "An unexpected exception occured while reading a message");
+                    else
+                        Logger.LogError(error, "An unexpected exception occured while reading a message ({Message})", message.ToString());
                 }
             }
 
-            await StopAsync(runtimeException).ConfigureAwait(false);
+            if (message == null)
+                return ValueTask.CompletedTask;
+
+            return DisposeMessageAsync(message);
+
+            async ValueTask DisposeMessageAsync(SphynxMessage msg)
+            {
+                try
+                {
+                    if (msg is IAsyncDisposable asyncDisposable)
+                        await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                    else if (msg is IDisposable disposable)
+                        disposable.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    if (Logger.IsEnabled(LogLevel.Trace))
+                        Logger.LogTrace(ex, "An unexpected exception occured while disposing a dropped message ({Message})", msg.ToString());
+                }
+            }
         }
 
-        private async ValueTask<Exception?> RunAsync(CancellationToken cancellationToken)
+        public void Start(CancellationToken cancellationToken)
         {
-            Debug.Assert(_startSemaphore.CurrentCount == 0);
-            Debug.Assert(_clientTask == null);
+            ThrowIfStopped();
+            cancellationToken.ThrowIfCancellationRequested();
 
-            if (cancellationToken.CanBeCanceled)
+            _ = RunAsync(cancellationToken);
+        }
+
+        public async Task RunAsync(CancellationToken cancellationToken = default)
+        {
+            ThrowIfStopped();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // Prevent any accidental deadlocks
+            if (_isInsideRunTask.Value)
+            {
+                Debug.Assert(_runTask != null);
+                return;
+            }
+
+            using (await _runLock.RentAsync(cancellationToken).ConfigureAwait(false))
+            {
+                if (_runTask != null)
+                    // Don't propagate exceptions this time as we catch and log them all
+                    return;
+
+                ThrowIfStopped();
+
+                OnStarting();
+
+                Logger.LogDebug("Starting client read loop...");
+                await RunAsyncInternal(cancellationToken).ConfigureAwait(false);
+                Logger.LogDebug("Stopping client read loop...");
+            }
+
+            await StopAsync(_runTask?.Exception?.GetBaseException()).ConfigureAwait(false);
+        }
+
+        [MemberNotNull(nameof(_runTask))]
+        private async Task RunAsyncInternal(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.CanBeCanceled && !_clientCts.IsCancellationRequested)
                 _clientCts = CancellationTokenSource.CreateLinkedTokenSource(_clientCts.Token, cancellationToken);
 
             try
             {
                 try
                 {
-                    _isInsideClientTask.Value = true;
-                    await (_clientTask = ReadPacketsAsync(_clientCts.Token)).ConfigureAwait(false);
+                    _isInsideRunTask.Value = true;
+                    await (_runTask = ReadMessagesAsync(_clientCts.Token)).ConfigureAwait(false);
                 }
                 finally
                 {
-                    _isInsideClientTask.Value = false;
+                    _isInsideRunTask.Value = false;
                 }
             }
-            catch (OperationCanceledException ex) when (ex.CancellationToken == _clientCts.Token)
+            catch (Exception ex) when (_clientCts.IsCancellationRequested)
             {
                 // Client stopped
+                // ReSharper disable once NonAtomicCompoundOperator
+                _runTask ??= Task.FromException(ex);
             }
             catch (Exception ex)
             {
+                // ReSharper disable once NonAtomicCompoundOperator
+                _runTask ??= Task.FromException(ex);
                 Logger.LogError(ex, "An unhandled exception occured during client execution");
-                return ex;
             }
-
-            return null;
         }
 
-        private async Task ReadPacketsAsync(CancellationToken cancellationToken)
+        private Task ReadMessagesAsync(CancellationToken cancellationToken)
         {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                var packet = await ReadPacketAsync(cancellationToken).ConfigureAwait(false);
-
-                if (packet is null)
-                    continue;
-
-                await HandlePacketAsync(packet, cancellationToken).ConfigureAwait(false);
-            }
+            return MessageClient.RunAsync(cancellationToken);
         }
 
-        private async ValueTask<SphynxPacket?> ReadPacketAsync(CancellationToken cancellationToken)
-        {
-            // TODO: PoolingAsyncValueTaskMethodBuilder
-
-            try
-            {
-                // TODO: Handle transient errors
-                return await PacketTransporter.ReceiveAsync(_stream, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex.IsCancellationException())
-            {
-                Logger.LogWarning("Aborted packet read (cancelled)");
-            }
-            catch (Exception ex) when (ex.IsConnectionResetException())
-            {
-                Logger.LogTrace(ex, "Connection aborted while reading packet");
-
-                await StopAsync(ex).ConfigureAwait(false);
-            }
-            // This might happen if the client forcibly closes the connection
-            catch (Exception ex) when (ex is EndOfStreamException or ObjectDisposedException or ArgumentException)
-            {
-                await StopAsync(ex).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Unexpected exception occured while reading packet");
-
-                await StopAsync(ex).ConfigureAwait(false);
-            }
-
-            return null;
-        }
-
-        private async ValueTask HandlePacketAsync(SphynxPacket packet, CancellationToken cancellationToken)
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+        private async ValueTask RouteMessageAsync(SphynxMessage message, CancellationToken cancellationToken)
         {
             try
             {
-                await PacketRouter.ExecuteAsync(this, packet, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                if (Logger.IsEnabled(LogLevel.Warning))
-                    Logger.LogWarning("Packet handling cancelled for packet {PacketType}", packet.PacketType);
+                await Options.MessageRouter.ExecuteAsync(this, message, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 if (Logger.IsEnabled(LogLevel.Error))
-                    Logger.LogError(ex, "Unhandled exception in packet pipeline for packet {PacketType}", packet.PacketType);
+                    Logger.LogError(ex, "Unhandled exception in message pipeline for message ({Message})", message.ToString());
+
+                await OnMessageDroppedAsync(message).ConfigureAwait(false);
             }
         }
 
-        /// <inheritdoc/>
-        public async ValueTask SendAsync(SphynxPacket packet, CancellationToken cancellationToken = default)
+        [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+        public async ValueTask SendAsync(SphynxMessage message, CancellationToken cancellationToken = default)
         {
             ThrowIfStopped();
 
-            // TODO: PoolingAsyncValueTaskMethodBuilder
-
             try
             {
-                // TODO: Handle transient errors
-                // TODO: Verify send atomicity (maybe queue packet sends)
-
                 // Don't think creating a CTS for each send operation would be very wise. Simply passing
-                // the provided cancellationToken should be fine; in the worse case, the PacketTransporter
+                // the provided cancellationToken should be fine; in the worse case, the MessageClient
                 // throws when trying to write to the underlying stream if this client has already started
                 // its disposal process.
-                await PacketTransporter.SendAsync(_stream, packet, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex.IsCancellationException())
-            {
-                if (Logger.IsEnabled(LogLevel.Warning))
-                    Logger.LogWarning("Aborted packet sending for packet {PacketType} (cancelled)", packet.PacketType);
-            }
-            // This might happen if the client forcibly closes the connection
-            catch (Exception ex) when (ex is EndOfStreamException or ObjectDisposedException or ArgumentException)
-            {
-                if (Logger.IsEnabled(LogLevel.Warning))
-                    Logger.LogWarning("Abandoning packet send request for packet {PacketType}", packet.PacketType);
-
-                await StopAsync(ex).ConfigureAwait(false);
+                await MessageClient.SendMessageAsync(message, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 if (Logger.IsEnabled(LogLevel.Error))
-                    Logger.LogError(ex, "Unexpected exception occured while sending packet {PacketType}", packet.PacketType);
+                    Logger.LogError(ex, "An unexpected exception occured while sending a message ({Message})", message.ToString());
 
-                await StopAsync(ex).ConfigureAwait(false);
+                await OnMessageDroppedAsync(message).ConfigureAwait(false);
             }
         }
 
@@ -281,46 +275,36 @@ namespace Sphynx.Server.Client
         {
             ThrowIfDisposed();
 
-            if (_clientCts.IsCancellationRequested)
-                throw new OperationCanceledException("The operation was canceled.");
+            if (IsStopped)
+                ThrowStoppedException();
+
+            [DoesNotReturn]
+            [StackTraceHidden]
+            void ThrowStoppedException() => throw GetStopException();
         }
+
+        private Exception GetStopException() => new OperationCanceledException("The client was stopped.",
+            _clientCts.IsCancellationRequested ? _clientCts.Token : new CancellationToken(true));
 
         private void ThrowIfDisposed()
         {
-            if (_disposed)
-                throw new ObjectDisposedException(GetType().FullName);
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
         }
 
-        /// <summary>
-        /// Called once the underlying socket has been disconnected.
-        /// </summary>
-        /// <param name="disconnectException">The disconnection exception, or null if it was a graceful disconnection.</param>
-        protected virtual ValueTask OnDisconnectAsync(Exception? disconnectException)
-        {
-            return ValueTask.CompletedTask;
-        }
-
-        /// <summary>
-        /// Signals a wish to disconnect the client from the server, with the given exception.
-        /// </summary>
-        /// <param name="disconnectException">The disconnection exception.</param>
-        /// <param name="waitForFinish">Whether to wait for the client to finish execution.</param>
-        /// <returns>A task representing the stop operation. If <paramref name="waitForFinish"/> is true, this task will not
-        /// complete until the client has been disconnected; else, it will return after sending a stop signal.</returns>
-        /// <remarks>Client resources are not freed until <see cref="DisposeAsync()"/> is called.</remarks>
+        /// <inheritdoc/>
         public ValueTask StopAsync(Exception? disconnectException = null, bool waitForFinish = true)
         {
             // We allow the client to be stopped even when disposed. Just makes our lives easier.
-            if (_disposed)
+            if (IsStopped)
                 return ValueTask.CompletedTask;
 
             // Try and reserve ourselves
-            if (Interlocked.CompareExchange(ref _stopped, 1, 0) != 0)
+            if (Interlocked.CompareExchange(ref _state, 1, 0) != 0)
             {
-                if (!waitForFinish || _isInsideClientTask.Value)
-                    return ValueTask.CompletedTask;
+                if (waitForFinish && !_isInsideRunTask.Value)
+                    return WaitAsync();
 
-                return WaitAsync();
+                return ValueTask.CompletedTask;
             }
 
             return DisconnectAsync(disconnectException, waitForFinish);
@@ -328,8 +312,6 @@ namespace Sphynx.Server.Client
 
         private ValueTask DisconnectAsync(Exception? disconnectException, bool waitForFinish)
         {
-            Debug.Assert(Volatile.Read(ref _stopped) != 0);
-
             // Signal for stop
             if (!_clientCts.IsCancellationRequested)
             {
@@ -347,52 +329,36 @@ namespace Sphynx.Server.Client
                 }
             }
 
-            if (!waitForFinish || _isInsideClientTask.Value)
+            if (!waitForFinish || _isInsideRunTask.Value)
             {
-                QueueDisconnect(disconnectException);
+                ThreadPoolHelper.QueueUserWorkItem(static async void (state) =>
+                {
+                    try
+                    {
+                        await state.client.DisconnectSocketAsync(state.disconnectException).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        state.client.Logger.LogError(ex, "An exception occured while disconnecting the client");
+                    }
+                }, (client: this, disconnectException));
+
                 return ValueTask.CompletedTask;
             }
 
-            return DoDisconnect(disconnectException);
-
-            async ValueTask DoDisconnect(Exception? exception)
-            {
-                await WaitAsync().ConfigureAwait(false);
-                await PerformDisconnectAsync(exception).ConfigureAwait(false);
-            }
+            return DisconnectSocketAsync(disconnectException);
         }
 
-        private void QueueDisconnect(Exception? disconnectException)
+        private async ValueTask DisconnectSocketAsync(Exception? disconnectException = null)
         {
-            var state = new DisconnectState
-            {
-                Client = this,
-                DisconnectException = disconnectException
-            };
+            Debug.Assert(IsStopped);
 
-            ThreadPool.QueueUserWorkItem(static async void (s) =>
-            {
-                await s.Client.WaitAsync().ConfigureAwait(false);
-                await s.Client.PerformDisconnectAsync(s.DisconnectException).ConfigureAwait(false);
-            }, state, false);
-        }
-
-        private readonly struct DisconnectState
-        {
-            public SphynxTcpClient Client { get; init; }
-            public Exception? DisconnectException { get; init; }
-        }
-
-        private async ValueTask PerformDisconnectAsync(Exception? disconnectException = null)
-        {
-            Debug.Assert(_clientTask?.IsCompleted ?? true, "Run loop should complete before disconnecting client");
-            // We should implicitly have hold of this semaphore to ensure there are no race conditions during disconnection.
-            Debug.Assert(_disposeSemaphore.CurrentCount == 0);
+            await WaitAsync().ConfigureAwait(false);
 
             try
             {
-                await Socket.DisconnectAsync(true).ConfigureAwait(false);
-                Logger.LogInformation("Client disconnected");
+                await _socket.DisconnectAsync(true).ConfigureAwait(false);
+                Logger.LogInformation("The client socket was disconnected");
             }
             catch (Exception ex)
             {
@@ -402,14 +368,30 @@ namespace Sphynx.Server.Client
             try
             {
                 await OnDisconnectAsync(disconnectException).ConfigureAwait(false);
-                _ = OnDisconnect?.Invoke(this, disconnectException);
             }
             catch
             {
-                // Just ignore for now
+                // ignore
             }
 
-            _disposeSemaphore.Release();
+            try
+            {
+            if (Options.OnDisconnect != null)
+                await Options.OnDisconnect.Invoke(this, disconnectException).ConfigureAwait(false);
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        /// <summary>
+        /// Called once the underlying socket has been disconnected.
+        /// </summary>
+        /// <param name="disconnectException">The disconnection exception, or null if it was a graceful disconnection.</param>
+        protected virtual ValueTask OnDisconnectAsync(Exception? disconnectException)
+        {
+            return ValueTask.CompletedTask;
         }
 
         /// <summary>
@@ -417,58 +399,67 @@ namespace Sphynx.Server.Client
         /// </summary>
         private async ValueTask WaitAsync()
         {
-            if (_disposed)
+            Debug.Assert(!_isInsideRunTask.Value);
+
+            if (IsDisposed)
                 return;
 
-            if (_clientTask?.IsCompleted ?? false)
+            if (!IsRunning)
                 return;
 
-            await _startSemaphore.WaitAsync().ConfigureAwait(false);
-            _startSemaphore.Release();
+            await _runLock.WaitAsync().ConfigureAwait(false);
+            _runLock.Release();
+        }
+
+        /// <summary>
+        /// Detaches the internal client socket so that it can be reused.
+        /// </summary>
+        public Socket? DetachSocket()
+        {
+            if (!IsStopped || _socket.Connected)
+                throw new InvalidOperationException("Client must be stopped before detaching its socket");
+
+            return Interlocked.Exchange(ref _socket, null!);
         }
 
         /// <summary>
         /// Asynchronously disposes of all resources held by this <see cref="SphynxTcpClient"/>.
         /// </summary>
-        public ValueTask DisposeAsync() => DisposeAsync(true);
-
-        /// <summary>
-        /// Asynchronously disposes of all resources held by this <see cref="SphynxTcpClient"/>.
-        /// </summary>
-        /// <param name="disposeSocket">Whether to dispose of the socket used by the client.</param>
-        public virtual async ValueTask DisposeAsync(bool disposeSocket)
+        public virtual async ValueTask DisposeAsync()
         {
-            if (_disposed)
+            if (IsDisposed)
                 return;
+
+            if (_isInsideRunTask.Value)
+                throw new InvalidOperationException($"Cannot dispose from within the client. Call {nameof(StopAsync)}() instead.");
 
             await StopAsync(waitForFinish: true).ConfigureAwait(false);
-            await DisposeClientAsync(disposeSocket).ConfigureAwait(false);
+            await DisposeClientAsync().ConfigureAwait(false);
         }
 
-        private async ValueTask DisposeClientAsync(bool disposeSocket)
+        private async ValueTask DisposeClientAsync()
         {
-            Debug.Assert(Volatile.Read(ref _stopped) != 0, "Client should have been stopped before disposing");
+            Debug.Assert(IsStopped, "Client should have been stopped before disposing");
 
-            await _disposeSemaphore.WaitAsync().ConfigureAwait(false);
+            if (Interlocked.Exchange(ref _state, 2) == 2)
+                return;
 
             try
             {
-                if (_disposed)
-                    return;
-
-                OnDisconnect = null;
-
                 await _stream.DisposeAsync().ConfigureAwait(false);
-                _clientCts.Dispose();
+                await MessageClient.DisposeAsync().ConfigureAwait(false);
+                _loggerScope?.Dispose();
 
-                if (disposeSocket)
-                    Socket.Dispose();
+                // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+                _socket?.Dispose();
             }
-            finally
+            catch
             {
-                _disposed = true;
-                _disposeSemaphore.Release();
+                // ignore
             }
         }
+
+        private string? _scopeString;
+        public override string ToString() => _scopeString ??= $"{EndPoint} ({ClientId})";
     }
 }

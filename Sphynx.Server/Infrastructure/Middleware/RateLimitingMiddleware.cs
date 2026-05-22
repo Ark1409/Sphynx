@@ -15,7 +15,7 @@ namespace Sphynx.Server.Infrastructure.Middleware
         }
     }
 
-    public class RateLimitingMiddleware<TPartition> : IPacketMiddleware, IDisposable, IAsyncDisposable where TPartition : notnull
+    public class RateLimitingMiddleware<TPartition> : IMessageMiddleware, IDisposable, IAsyncDisposable where TPartition : notnull
     {
         private readonly Func<IRateLimiter> _rateLimiterFactory;
         private readonly MemoryCache<TPartition, IRateLimiter> _rateLimiterCache = new();
@@ -29,7 +29,7 @@ namespace Sphynx.Server.Infrastructure.Middleware
             _clientPartitioner = clientPartitioner;
         }
 
-        public async Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token = default)
+        public async Task InvokeAsync(ISphynxClient client, SphynxMessage packet, NextDelegate<SphynxMessage> next, CancellationToken token = default)
         {
             var partitionKey = _clientPartitioner(client);
 
@@ -80,7 +80,7 @@ namespace Sphynx.Server.Infrastructure.Middleware
         {
             public TPartition Partition { get; init; }
             public ISphynxClient Client { get; init; }
-            public SphynxPacket Packet { get; init; }
+            public SphynxMessage Packet { get; init; }
             public TimeSpan WaitTime { get; init; }
         }
     }

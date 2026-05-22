@@ -31,7 +31,5 @@ namespace Sphynx.Server.Auth
             Profile = profile;
             Name = GetType().Name;
         }
-
-        protected override SphynxTcpClient CreateTcpClient(Socket clientSocket) => new SphynxClient(clientSocket, Profile);
     }
 }

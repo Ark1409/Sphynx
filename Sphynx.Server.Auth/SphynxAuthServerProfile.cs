@@ -34,7 +34,12 @@ namespace Sphynx.Server.Auth
 {
     public sealed class SphynxAuthServerProfile : SphynxTcpServerProfile
     {
-        public override ILogger Logger => _logger ??= LoggerFactory.CreateLogger(typeof(SphynxAuthServer));
+        public SphynxAuthServerProfile(bool isDevelopment = true)
+        {
+            throw new NotImplementedException();
+        }
+
+/*        public override ILogger Logger => _logger ??= LoggerFactory.CreateLogger(typeof(SphynxAuthServer));
         private ILogger _logger;
 
         public IAuthService AuthService { get; private set; }
@@ -45,7 +50,7 @@ namespace Sphynx.Server.Auth
         private IMongoClient _mongoClient;
         private IConnectionMultiplexer _redisClient;
 
-        public SphynxAuthServerProfile(bool isDevelopment = true) : base(configure: false)
+        public SphynxAuthServerProfile(bool isDevelopment = true)
         {
             ConfigureBase(isDevelopment);
             ConfigureServices(isDevelopment);
@@ -262,6 +267,6 @@ namespace Sphynx.Server.Auth
             }
 
             base.Dispose(disposing);
-        }
+        }*/
     }
 }

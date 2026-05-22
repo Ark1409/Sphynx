@@ -15,13 +15,13 @@ using Sphynx.Server.Infrastructure.Routing;
 namespace Sphynx.Server.Test.Infrastructure
 {
     [TestFixture]
-    public class PacketRouterTests
+    public class MessageRouterTests
     {
         [Test]
         public async Task UseMiddleware_ShouldRegisterMiddleware_InOrder()
         {
             // Arrange
-            var router = new PacketRouter();
+            var router = new MessageRouter();
 
             // Act
             router.UseMiddleware(new OrderedMiddleware(1))
@@ -41,7 +41,7 @@ namespace Sphynx.Server.Test.Infrastructure
         public async Task UseMiddleware_ShouldImplicitlyRegisterHandler_WhenPacketIsUnregistered()
         {
             // Arrange
-            var router = new PacketRouter { ThrowOnUnregistered = true };
+            var router = new MessageRouter { ThrowOnUnregistered = true };
             await Assert.ThatAsync(() => router.ExecuteAsync(new TestClient(), new TestPacket()), Throws.Exception);
 
             // Act
@@ -55,7 +55,7 @@ namespace Sphynx.Server.Test.Infrastructure
         public async Task UseHandler_ShouldReplaceHandler_WhenInvokedTwiceOnSamePacketType()
         {
             // Arrange
-            var router = new PacketRouter();
+            var router = new MessageRouter();
             router.UseHandler(new OrderedHandler(1));
 
             // Act
@@ -73,7 +73,7 @@ namespace Sphynx.Server.Test.Infrastructure
         public async Task ExecuteAsync_ShouldThrowException_WhenInvokedWithUnregisteredPacket()
         {
             // Arrange
-            var router = new PacketRouter { ThrowOnUnregistered = true };
+            var router = new MessageRouter { ThrowOnUnregistered = true };
 
             // Act
             AsyncTestDelegate executeTask = Task () => router.ExecuteAsync(new TestClient(), new TestPacket());
@@ -86,7 +86,7 @@ namespace Sphynx.Server.Test.Infrastructure
         public async Task ExecuteAsync_ShouldInvokeNonGenericHandler_WhenHandlerIsNotRegistered()
         {
             // Arrange
-            var router = new PacketRouter { ThrowOnUnregistered = true };
+            var router = new MessageRouter { ThrowOnUnregistered = true };
             await Assert.ThatAsync(() => router.ExecuteAsync(new TestClient(), new TestPacket()), Throws.Exception);
 
             var nonGenericHandler = new TestHandler();
@@ -105,7 +105,7 @@ namespace Sphynx.Server.Test.Infrastructure
         public async Task ExecuteAsync_ShouldAlwaysInvokeNonGenericMiddleware_WhenExecuted()
         {
             // Arrange
-            var router = new PacketRouter { ThrowOnUnregistered = true };
+            var router = new MessageRouter { ThrowOnUnregistered = true };
 
             var nonGenericMiddleware = new TestMiddleware();
             router.UseMiddleware(nonGenericMiddleware);
@@ -119,7 +119,7 @@ namespace Sphynx.Server.Test.Infrastructure
             Assert.That(nonGenericMiddleware.IsExecuted);
         }
 
-        private class OrderedMiddleware : IPacketMiddleware<OrderTrackingPacket>
+        private class OrderedMiddleware : IMessageMiddleware<OrderTrackingPacket>
         {
             public int Order { get; }
 
@@ -136,7 +136,7 @@ namespace Sphynx.Server.Test.Infrastructure
             }
         }
 
-        private class OrderedHandler : IPacketHandler<OrderTrackingPacket>
+        private class OrderedHandler : IMessageHandler<OrderTrackingPacket>
         {
             public int Order { get; }
 
@@ -145,7 +145,7 @@ namespace Sphynx.Server.Test.Infrastructure
                 Order = order;
             }
 
-            public Task HandlePacketAsync(ISphynxClient client, OrderTrackingPacket packet, CancellationToken cancellationToken = default)
+            public Task HandleMessageAsync(ISphynxClient client, OrderTrackingPacket packet, CancellationToken cancellationToken = default)
             {
                 packet.ExecutionOrder.Add(Order);
                 return Task.CompletedTask;
@@ -175,36 +175,36 @@ namespace Sphynx.Server.Test.Infrastructure
             }
         }
 
-        private class TestHandler : IPacketHandler
+        private class TestHandler : IMessageHandler
         {
             public bool IsExecuted { get; private set; }
 
-            public Task HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
+            public Task HandleMessageAsync(ISphynxClient client, SphynxMessage packet, CancellationToken cancellationToken = default)
             {
                 IsExecuted = true;
                 return Task.CompletedTask;
             }
         }
 
-        private class TestMiddleware : IPacketMiddleware
+        private class TestMiddleware : IMessageMiddleware
         {
             public bool IsExecuted { get; private set; }
 
-            public Task InvokeAsync(ISphynxClient client, SphynxPacket packet, NextDelegate<SphynxPacket> next, CancellationToken token = default)
+            public Task InvokeAsync(ISphynxClient client, SphynxMessage packet, NextDelegate<SphynxMessage> next, CancellationToken token = default)
             {
                 IsExecuted = true;
                 return next(client, packet, token);
             }
         }
 
-        private class TestPacket : SphynxPacket
+        private class TestPacket : SphynxMessage
         {
-            public override SphynxPacketType PacketType => SphynxPacketType.NOP;
+            public override SphynxMessageType MessageType { get; }
         }
 
         private class TestRequestPacket : SphynxRequest
         {
-            public override SphynxPacketType PacketType => SphynxPacketType.NOP;
+            public override SphynxRequestType RequestType { get; }
             public override TestResponsePacket CreateResponse(SphynxErrorInfo errorInfo) => new TestResponsePacket(errorInfo);
         }
 
@@ -214,7 +214,7 @@ namespace Sphynx.Server.Test.Infrastructure
             {
             }
 
-            public override SphynxPacketType PacketType => SphynxPacketType.NOP;
+            public override SphynxRequestType ResponseType { get; }
         }
 
         private class TestClient : ISphynxClient
@@ -222,9 +222,14 @@ namespace Sphynx.Server.Test.Infrastructure
             public Guid ClientId { get; } = Guid.NewGuid();
             public IPEndPoint EndPoint { get; } = new(IPAddress.Any, SphynxServerProfile.DEFAULT_PORT);
 
-            public ValueTask SendAsync(SphynxPacket packet, CancellationToken cancellationToken = default)
+            public ValueTask SendAsync(SphynxMessage packet, CancellationToken cancellationToken = default)
             {
                 return ValueTask.CompletedTask;
+            }
+
+            public ValueTask StopAsync(Exception? disconnectException = null, bool waitForFinish = true)
+            {
+                throw new NotImplementedException();
             }
         }
     }

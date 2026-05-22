@@ -6,7 +6,6 @@
 using System.Net;
 using Microsoft;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Console;
 
 namespace Sphynx.Server
 {
@@ -20,53 +19,69 @@ namespace Sphynx.Server
         /// <summary>
         /// The default IP endpoint for a <see cref="SphynxServer"/>.
         /// </summary>
-        public static readonly IPEndPoint DefaultEndPoint = new(IPAddress.Any, DEFAULT_PORT);
+        private static readonly IPEndPoint _defaultEndPoint = new(IPAddress.Any, DEFAULT_PORT);
 
         /// <summary>
         /// The default port for socket information exchange between client and server.
         /// </summary>
-        public const short DEFAULT_PORT = 2000;
+        public const short DEFAULT_PORT = 0x5350; // SP
 
         /// <summary>
         /// Returns the endpoint to be associated with the server.
         /// </summary>
-        public virtual IPEndPoint EndPoint { get; set; }
+        public IPEndPoint EndPoint { get; set; }
 
         /// <summary>
         /// The primary logger factory which will be used by the server.
         /// </summary>
-        public virtual ILoggerFactory LoggerFactory { get; set; }
+        public ILoggerFactory LoggerFactory { get; set; }
 
         /// <summary>
         /// Retrieves the default server logging instance.
         /// </summary>
-        public virtual ILogger Logger => _logger ??= LoggerFactory.CreateLogger(typeof(SphynxServer));
-
-        private ILogger _logger;
+        public ILogger Logger { get; set; }
 
         /// <summary>
         /// Whether this profile has been disposed. The profile should no longer be used to configure a <see cref="SphynxServer"/> once disposed.
         /// </summary>
-        public bool IsDisposed { get; private set; }
+        public virtual bool IsDisposed { get; set; }
 
-        protected SphynxServerProfile(bool configure = false)
+        private readonly object _syncLock = new();
+        private bool _configured;
+
+        protected SphynxServerProfile()
         {
-            if (configure)
-                ConfigureServices();
         }
 
-        private void ConfigureServices()
+        public virtual bool ConfigureProfile()
         {
-            EndPoint = DefaultEndPoint;
-            LoggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
+            lock (_syncLock)
             {
-                builder.AddSimpleConsole(options =>
-                {
-                    options.IncludeScopes = true;
-                    options.TimestampFormat = "[MM-dd-yyyy HH:mm:ss] ";
-                });
-            });
+                ObjectDisposedException.ThrowIf(IsDisposed, this);
+
+                if (_configured)
+                    return false;
+
+                EndPoint ??= GetDefaultEndPoint();
+                LoggerFactory ??= GetDefaultLoggerFactory();
+                Logger ??= GetDefaultLogger(LoggerFactory);
+                return _configured = true;
+            }
         }
+
+        public static ILogger GetDefaultLogger(ILoggerFactory factory) => factory.CreateLogger(typeof(SphynxServer));
+
+        /// <inheritdoc cref="_defaultEndPoint"/>
+        public static IPEndPoint GetDefaultEndPoint() => _defaultEndPoint;
+
+        public static ILoggerFactory GetDefaultLoggerFactory() => Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
+        {
+            builder.AddSimpleConsole(options =>
+            {
+                options.IncludeScopes = true;
+                options.TimestampFormat = "[MM-dd-yyyy HH:mm:ss] ";
+            });
+        });
 
         /// <summary>
         /// Disposes of this server profile.
@@ -78,11 +93,13 @@ namespace Sphynx.Server
             if (IsDisposed)
                 return;
 
-            IsDisposed = true;
-
-            if (disposing)
+            lock (_syncLock)
             {
-                LoggerFactory?.Dispose();
+                if (IsDisposed)
+                    return;
+
+                if (disposing)
+                    LoggerFactory?.Dispose();
             }
         }
 

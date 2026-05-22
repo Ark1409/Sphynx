@@ -7,17 +7,17 @@ using Sphynx.Server.Client;
 namespace Sphynx.Server.Infrastructure.Handlers
 {
     /// <summary>
-    /// An <see cref="IPacketHandler{TPacket}"/> which does nothing.
+    /// An <see cref="IMessageHandler{TPacket}"/> which does nothing.
     /// </summary>
-    public class NullPacketHandler : IPacketHandler
+    public class NullMessageHandler : IMessageHandler
     {
         /// <summary>
-        /// A public instance of a <see cref="NullPacketHandler"/>.
+        /// A public instance of a <see cref="NullMessageHandler"/>.
         /// </summary>
-        public static readonly NullPacketHandler Instance = new();
+        public static readonly NullMessageHandler Instance = new();
 
         /// <inheritdoc/>
-        public Task HandlePacketAsync(ISphynxClient client, SphynxPacket packet, CancellationToken cancellationToken = default)
+        public Task HandleMessageAsync(ISphynxClient client, SphynxMessage message, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

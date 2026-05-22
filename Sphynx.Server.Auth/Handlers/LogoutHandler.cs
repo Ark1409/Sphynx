@@ -13,7 +13,7 @@ using Sphynx.Server.Infrastructure.Services;
 
 namespace Sphynx.Server.Auth.Handlers
 {
-    public class LogoutHandler : IPacketHandler<LogoutRequest>
+    public class LogoutHandler : IMessageHandler<LogoutRequest>
     {
         private readonly IAuthService _authService;
         private readonly ILogger _logger;
@@ -24,10 +24,10 @@ namespace Sphynx.Server.Auth.Handlers
             _logger = logger;
         }
 
-        public async Task HandlePacketAsync(ISphynxClient client, LogoutRequest request, CancellationToken cancellationToken = default)
+        public async Task HandleMessageAsync(ISphynxClient client, LogoutRequest request, CancellationToken cancellationToken = default)
         {
             var logoutResult = await _authService
-                .LogoutUserAsync(request.SessionId, request.AllSessions ? LogoutPolicy.Global : LogoutPolicy.Self, cancellationToken)
+                .LogoutUserAsync(request.Header.SessionId, request.AllSessions ? LogoutPolicy.Global : LogoutPolicy.Self, cancellationToken)
                 .ConfigureAwait(false);
 
             if (logoutResult.ErrorCode != SphynxErrorCode.SUCCESS)
@@ -40,12 +40,12 @@ namespace Sphynx.Server.Auth.Handlers
             {
                 if (request.AllSessions)
                 {
-                    _logger.LogInformation("Successfully logged out of session {SessionId} and {OtherCount} other(s)", request.SessionId,
+                    _logger.LogInformation("Successfully logged out of session {SessionId} and {OtherCount} other(s)", request.Header.SessionId,
                         logoutResult.Data - 1);
                 }
                 else
                 {
-                    _logger.LogInformation("Successfully logged out of session {SessionId}", request.SessionId);
+                    _logger.LogInformation("Successfully logged out of session {SessionId}", request.Header.SessionId);
                 }
             }
 
