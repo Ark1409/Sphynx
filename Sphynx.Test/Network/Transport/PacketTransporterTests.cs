@@ -28,11 +28,9 @@ namespace Sphynx.Test.Network.Transport
         public void PacketTransporter_ShouldSendPacket_WhenSerializerRegistered()
         {
             // Arrange
-            var packets = new SphynxPacket[]
+            var packets = new SphynxMessage[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("access-token".AsGuid()),
-                new MessagePostRequest("access-token".AsGuid(), "room-id".AsGuid(), "Test message")
             };
 
             using var stream = new MemoryStream();
@@ -48,11 +46,9 @@ namespace Sphynx.Test.Network.Transport
         public async Task PacketTransporter_ShouldReceivePacket_WhenSerializerRegistered()
         {
             // Arrange
-            var packets = new SphynxPacket[]
+            var packets = new SphynxMessage[]
             {
                 new LoginRequest("username", "password"),
-                new LogoutRequest("access-token".AsGuid()),
-                new MessagePostRequest("access-token".AsGuid(), "room-id".AsGuid(), "Test message")
             };
 
             using var stream = new MemoryStream();
@@ -65,7 +61,7 @@ namespace Sphynx.Test.Network.Transport
             // Act + Assert
             for (int i = 0; i < packets.Length; i++)
             {
-                SphynxPacket packet = null!;
+                SphynxMessage packet = null!;
 
                 Assert.DoesNotThrowAsync(async () => packet = await _transporter.ReceiveAsync(stream).ConfigureAwait(false));
                 Assert.That(packet, Is.EqualTo(packets[i]));

@@ -87,7 +87,7 @@ namespace Sphynx.Test.Network.Transport
 
             reader.OnChannelReleasing((_, channelId, flags) =>
             {
-                invoked = (flags & ChannelReleaseFlags.CHANNEL_REJECTED) > 0 && channelId == 1;
+                invoked = (flags & ChannelReleaseFlags.CHANNEL_REJECTED) != 0 && channelId == 1;
                 invokeDone.Release();
                 return ValueTask.CompletedTask;
             });
