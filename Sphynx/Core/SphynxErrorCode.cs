@@ -3,7 +3,7 @@
     /// <summary>
     /// Error codes used within the <see cref="Sphynx"/> application.
     /// </summary>
-    public enum SphynxErrorCode : byte
+    public enum SphynxErrorCode : ushort
     {
         /// <summary>
         /// Action has been completed successfully.
@@ -39,6 +39,11 @@
         /// Invalid user ID for user when performing an action.
         /// </summary>
         INVALID_USER,
+
+        /// <summary>
+        /// Invalid group ID or userId when performing an action.
+        /// </summary>
+        INVALID_MEMBERSHIP,
 
         /// <summary>
         /// Attempted to query an invalid or unknown field from the database.

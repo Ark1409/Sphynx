@@ -142,14 +142,32 @@ namespace Sphynx.Network.Serialization
                 _useSequence = true;
             }
 
-            // In both cases, we'll still store a refence to the passed sequence
+            // In both cases, we'll still store a reference to the passed sequence
             _sequence = new SequenceReader<byte>(sequence);
             _hasSequence = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this(sequence: new ReadOnlySequence<byte>(memory))
+        public BinaryDeserializer(ReadOnlyMemory<byte> memory) : this()
         {
+            var sequence = new ReadOnlySequence<byte>(memory);
+
+            // For all intents and purposes, reading directly from a span is currently faster than parsing
+            // a single-segment sequence
+            if (sequence.IsSingleSegment)
+            {
+                _useSequence = false;
+                _span = sequence.FirstSpan;
+                _spanOffset = 0;
+            }
+            else
+            {
+                _useSequence = true;
+            }
+
+            // In both cases, we'll still store a reference to the passed sequence
+            _sequence = new SequenceReader<byte>(sequence);
+            _hasSequence = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -642,6 +660,30 @@ namespace Sphynx.Network.Serialization
 
         #region Common Types
 
+        /// <summary>
+        /// Reads raw bytes from the deserializer into the <paramref name="span"/>.
+        /// </summary>
+        /// <param name="span">The span to read into.</param>
+        /// <returns>The number of bytes read.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int ReadRaw(scoped Span<byte> span)
+        {
+            if (_useSequence)
+            {
+                int readCount = (int)Math.Min(span.Length, _sequence.Remaining);
+                _sequence.UnreadSequence.Slice(0, readCount).CopyTo(span);
+                _sequence.Advance(readCount);
+                return readCount;
+            }
+            else
+            {
+                int readCount = Math.Min(span.Length, _span.Length - _spanOffset);
+                _span.Slice(_spanOffset, readCount).CopyTo(span);
+                _spanOffset += readCount;
+                return readCount;
+            }
+        }
+
         // ReSharper disable once InconsistentNaming
         private static readonly int GuidSize = Unsafe.SizeOf<Guid>();
 
@@ -692,7 +734,7 @@ namespace Sphynx.Network.Serialization
         public SnowflakeId ReadSnowflakeId()
         {
             if (!TryReadSnowflakeId(out var id))
-                throw ThrowReadException(typeof(SnowflakeId));
+                ThrowReadException(typeof(SnowflakeId));
 
             return id;
         }
@@ -728,7 +770,7 @@ namespace Sphynx.Network.Serialization
         public Guid ReadGuid()
         {
             if (!TryReadGuid(out var guid))
-                throw ThrowReadException(typeof(Guid));
+                ThrowReadException(typeof(Guid));
 
             return guid;
         }
@@ -799,7 +841,7 @@ namespace Sphynx.Network.Serialization
         public void ReadString(Span<char> dest)
         {
             if (!TryReadString(dest))
-                throw ThrowReadException(typeof(Span<char>));
+                ThrowReadException(typeof(Span<char>));
         }
 
         public bool TryReadString(out string? str)
@@ -856,7 +898,7 @@ namespace Sphynx.Network.Serialization
         public string? ReadString()
         {
             if (!TryReadString(out string? str))
-                throw ThrowReadException(typeof(string));
+                ThrowReadException(typeof(string));
 
             return str;
         }
@@ -1180,7 +1222,7 @@ namespace Sphynx.Network.Serialization
         public byte ReadUInt8()
         {
             if (!TryReadUInt8(out byte val))
-                throw ThrowReadException(typeof(byte));
+                ThrowReadException(typeof(byte));
 
             return val;
         }
@@ -1195,14 +1237,14 @@ namespace Sphynx.Network.Serialization
 
             if (_useSequence)
             {
-                bool read = _sequence.TryReadLittleEndian(out short val);
+                bool read = _sequence.TryReadBigEndian(out short val);
                 Debug.Assert(read);
 
                 value = Unsafe.As<short, ushort>(ref val);
             }
             else
             {
-                value = BinaryPrimitives.ReadUInt16LittleEndian(_span[_spanOffset..]);
+                value = BinaryPrimitives.ReadUInt16BigEndian(_span[_spanOffset..]);
                 _spanOffset += sizeof(ushort);
             }
 
@@ -1213,7 +1255,7 @@ namespace Sphynx.Network.Serialization
         public ushort ReadUInt16()
         {
             if (!TryReadUInt16(out ushort val))
-                throw ThrowReadException(typeof(ushort));
+                ThrowReadException(typeof(ushort));
 
             return val;
         }
@@ -1228,14 +1270,14 @@ namespace Sphynx.Network.Serialization
 
             if (_useSequence)
             {
-                bool read = _sequence.TryReadLittleEndian(out short val);
+                bool read = _sequence.TryReadBigEndian(out short val);
                 Debug.Assert(read);
 
                 value = val;
             }
             else
             {
-                value = BinaryPrimitives.ReadInt16LittleEndian(_span[_spanOffset..]);
+                value = BinaryPrimitives.ReadInt16BigEndian(_span[_spanOffset..]);
                 _spanOffset += sizeof(short);
             }
 
@@ -1243,10 +1285,10 @@ namespace Sphynx.Network.Serialization
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private short ReadInt16()
+        public short ReadInt16()
         {
             if (!TryReadInt16(out short val))
-                throw ThrowReadException(typeof(short));
+                ThrowReadException(typeof(short));
 
             return val;
         }
@@ -1261,14 +1303,14 @@ namespace Sphynx.Network.Serialization
 
             if (_useSequence)
             {
-                bool read = _sequence.TryReadLittleEndian(out int val);
+                bool read = _sequence.TryReadBigEndian(out int val);
                 Debug.Assert(read);
 
                 value = Unsafe.As<int, uint>(ref val);
             }
             else
             {
-                value = BinaryPrimitives.ReadUInt32LittleEndian(_span[_spanOffset..]);
+                value = BinaryPrimitives.ReadUInt32BigEndian(_span[_spanOffset..]);
                 _spanOffset += sizeof(uint);
             }
 
@@ -1279,7 +1321,7 @@ namespace Sphynx.Network.Serialization
         public uint ReadUInt32()
         {
             if (!TryReadUInt32(out uint val))
-                throw ThrowReadException(typeof(uint));
+                ThrowReadException(typeof(uint));
 
             return val;
         }
@@ -1294,14 +1336,14 @@ namespace Sphynx.Network.Serialization
 
             if (_useSequence)
             {
-                bool read = _sequence.TryReadLittleEndian(out int val);
+                bool read = _sequence.TryReadBigEndian(out int val);
                 Debug.Assert(read);
 
                 value = val;
             }
             else
             {
-                value = BinaryPrimitives.ReadInt32LittleEndian(_span[_spanOffset..]);
+                value = BinaryPrimitives.ReadInt32BigEndian(_span[_spanOffset..]);
                 _spanOffset += sizeof(int);
             }
 
@@ -1312,7 +1354,7 @@ namespace Sphynx.Network.Serialization
         public int ReadInt32()
         {
             if (!TryReadInt32(out int val))
-                throw ThrowReadException(typeof(int));
+                ThrowReadException(typeof(int));
 
             return val;
         }
@@ -1327,14 +1369,14 @@ namespace Sphynx.Network.Serialization
 
             if (_useSequence)
             {
-                bool read = _sequence.TryReadLittleEndian(out long val);
+                bool read = _sequence.TryReadBigEndian(out long val);
                 Debug.Assert(read);
 
                 value = Unsafe.As<long, ulong>(ref val);
             }
             else
             {
-                value = BinaryPrimitives.ReadUInt64LittleEndian(_span[_spanOffset..]);
+                value = BinaryPrimitives.ReadUInt64BigEndian(_span[_spanOffset..]);
                 _spanOffset += sizeof(ulong);
             }
 
@@ -1345,7 +1387,7 @@ namespace Sphynx.Network.Serialization
         public ulong ReadUInt64()
         {
             if (!TryReadUInt64(out ulong val))
-                throw ThrowReadException(typeof(ulong));
+                ThrowReadException(typeof(ulong));
 
             return val;
         }
@@ -1360,14 +1402,14 @@ namespace Sphynx.Network.Serialization
 
             if (_useSequence)
             {
-                bool read = _sequence.TryReadLittleEndian(out long val);
+                bool read = _sequence.TryReadBigEndian(out long val);
                 Debug.Assert(read);
 
                 value = val;
             }
             else
             {
-                value = BinaryPrimitives.ReadInt64LittleEndian(_span[_spanOffset..]);
+                value = BinaryPrimitives.ReadInt64BigEndian(_span[_spanOffset..]);
                 _spanOffset += sizeof(long);
             }
 
@@ -1378,7 +1420,7 @@ namespace Sphynx.Network.Serialization
         public long ReadInt64()
         {
             if (!TryReadInt64(out long val))
-                throw ThrowReadException(typeof(long));
+                ThrowReadException(typeof(long));
 
             return val;
         }
@@ -1393,14 +1435,14 @@ namespace Sphynx.Network.Serialization
 
             if (_useSequence)
             {
-                bool read = _sequence.TryReadLittleEndian(out int val);
+                bool read = _sequence.TryReadBigEndian(out int val);
                 Debug.Assert(read);
 
                 value = BitConverter.Int32BitsToSingle(val);
             }
             else
             {
-                value = BinaryPrimitives.ReadSingleLittleEndian(_span[_spanOffset..]);
+                value = BinaryPrimitives.ReadSingleBigEndian(_span[_spanOffset..]);
                 _spanOffset += sizeof(float);
             }
 
@@ -1411,7 +1453,7 @@ namespace Sphynx.Network.Serialization
         public float ReadSingle()
         {
             if (!TryReadSingle(out float val))
-                throw ThrowReadException(typeof(float));
+                ThrowReadException(typeof(float));
 
             return val;
         }
@@ -1426,14 +1468,14 @@ namespace Sphynx.Network.Serialization
 
             if (_useSequence)
             {
-                bool read = _sequence.TryReadLittleEndian(out long val);
+                bool read = _sequence.TryReadBigEndian(out long val);
                 Debug.Assert(read);
 
                 value = BitConverter.Int64BitsToDouble(val);
             }
             else
             {
-                value = BinaryPrimitives.ReadDoubleLittleEndian(_span[_spanOffset..]);
+                value = BinaryPrimitives.ReadDoubleBigEndian(_span[_spanOffset..]);
                 _spanOffset += sizeof(double);
             }
 
@@ -1444,7 +1486,7 @@ namespace Sphynx.Network.Serialization
         public double ReadDouble()
         {
             if (!TryReadDouble(out double val))
-                throw ThrowReadException(typeof(double));
+                ThrowReadException(typeof(double));
 
             return val;
         }
@@ -1453,7 +1495,8 @@ namespace Sphynx.Network.Serialization
 
         // TODO: Maybe remove this and simply speed-read on non-TryReadXXX methods
         [DoesNotReturn]
-        private Exception ThrowReadException(Type type)
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ThrowReadException(Type type)
         {
             throw new InvalidOperationException($"Could not read {type}");
         }

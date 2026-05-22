@@ -10,8 +10,6 @@ namespace Sphynx.Server.Auth.Persistence
     {
         Task<SphynxErrorInfo<SphynxAuthUser?>> InsertUserAsync(SphynxAuthUser user, CancellationToken cancellationToken = default);
 
-        Task<SphynxErrorInfo> UpdateUserAsync(SphynxAuthUser updatedUser, CancellationToken cancellationToken = default);
-
         Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(Guid userId, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<SphynxAuthUser?>> GetUserAsync(string userName, CancellationToken cancellationToken = default);
 

@@ -2,7 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
+using Sphynx.Utils;
 
 namespace Sphynx.Server
 {
@@ -25,7 +27,7 @@ namespace Sphynx.Server
         /// An event which fired before the server starts. This can be used as a last attempt to inject
         /// some configurations into the server.
         /// </summary>
-        public event Action<SphynxServer>? OnStart;
+        public event Action<SphynxServer>? OnStarting;
 
         /// <summary>
         /// The profile with which to configure the server.
@@ -66,7 +68,7 @@ namespace Sphynx.Server
         /// <param name="name">A user-friendly name for the server.</param>
         public SphynxServer(SphynxServerProfile profile, string? name)
         {
-            ArgumentNullException.ThrowIfNull(profile, nameof(profile));
+            ArgumentNullException.ThrowIfNull(profile);
 
             if (profile.IsDisposed)
                 throw new ArgumentException("Cannot use a disposed profile to configure a server", nameof(profile));
@@ -86,65 +88,71 @@ namespace Sphynx.Server
         public async Task StartAsync(CancellationToken cancellationToken = default)
         {
             ThrowIfStopped();
+            cancellationToken.ThrowIfCancellationRequested();
 
-            await _startSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-            try
+            using (await _startSemaphore.RentAsync(cancellationToken).ConfigureAwait(false))
             {
-                // Propagate exceptions to concurrent callers
-                var serverTask = _serverTask;
-
-                if (serverTask?.Exception is not null)
-                    throw serverTask.Exception;
-
-                if (!_serverCts.IsCancellationRequested)
+                if (_serverTask != null)
                 {
-                    OnStart?.Invoke(this);
-
-                    Logger.LogDebug("Starting {ServerName}...", Name);
-
-                    await RunAsync(cancellationToken).ConfigureAwait(false);
-
-                    Logger.LogDebug("Stopping {ServerName}...", Name);
+                    // Propagate exceptions to concurrent callers
+                    _serverTask.GetAwaiter().GetResult();
+                    return;
                 }
-            }
-            finally
-            {
-                _startSemaphore.Release();
+
+                ThrowIfStopped();
+
+                OnStarting?.Invoke(this);
+
+                Logger.LogDebug("Starting {ServerName}...", Name);
+                await RunAsync(cancellationToken).ConfigureAwait(false);
+                Logger.LogDebug("Stopping {ServerName}...", Name);
             }
 
             await StopAsync().ConfigureAwait(false);
         }
 
+        [MemberNotNull(nameof(_serverTask))]
         private async Task RunAsync(CancellationToken cancellationToken)
         {
             Debug.Assert(_startSemaphore.CurrentCount == 0);
             Debug.Assert(_serverTask == null);
 
-            if (cancellationToken.CanBeCanceled)
+            try
+            {
+                Profile.ConfigureProfile();
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogCritical(ex, "An exception occured whilst configuring the server profile");
+                _serverTask = Task.CompletedTask;
+                return;
+            }
+
+            if (cancellationToken.CanBeCanceled && !_serverCts.IsCancellationRequested)
                 _serverCts = CancellationTokenSource.CreateLinkedTokenSource(_serverCts.Token, cancellationToken);
 
             try
             {
-                if (!_serverCts.IsCancellationRequested)
+                try
                 {
-                    try
-                    {
-                        _isInsideServerTask.Value = true;
-                        await (_serverTask = OnStartAsync(_serverCts.Token)).ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        _isInsideServerTask.Value = false;
-                    }
+                    _isInsideServerTask.Value = true;
+                    await (_serverTask = OnStartAsync(_serverCts.Token)).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _isInsideServerTask.Value = false;
                 }
             }
-            catch (OperationCanceledException ex) when (ex.CancellationToken == _serverCts.Token)
+            catch (Exception ex) when (_serverCts.IsCancellationRequested)
             {
                 // Server stopped
+                // ReSharper disable once NonAtomicCompoundOperator
+                _serverTask ??= Task.FromException(ex);
             }
             catch (Exception ex)
             {
+                // ReSharper disable once NonAtomicCompoundOperator
+                _serverTask ??= Task.FromException(ex);
                 Logger.LogCritical(ex, "An unhandled exception occured during server execution");
             }
         }
@@ -157,11 +165,7 @@ namespace Sphynx.Server
                 throw new OperationCanceledException("The operation was canceled.");
         }
 
-        private void ThrowIfDisposed()
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(GetType().FullName);
-        }
+        private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
         /// <summary>
         /// Called once the server has been instructed to start and should begin running.
@@ -214,6 +218,8 @@ namespace Sphynx.Server
         /// </summary>
         private async ValueTask WaitAsync()
         {
+            Debug.Assert(!_isInsideServerTask.Value);
+
             if (_disposed)
                 return;
 
@@ -262,7 +268,10 @@ namespace Sphynx.Server
             if (_disposed)
                 return;
 
-            OnStart = null;
+            if (_isInsideServerTask.Value)
+                throw new InvalidOperationException($"Cannot dispose from within the client. Call {nameof(StopAsync)}() instead.");
+
+            OnStarting = null;
 
             await StopAsync().ConfigureAwait(false);
             await DisposeServerAsync().ConfigureAwait(false);

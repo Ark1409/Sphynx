@@ -31,8 +31,8 @@ namespace Sphynx.Server.Extensions
         public static SphynxErrorInfo MaskServerError(this in SphynxErrorInfo errorInfo)
         {
             string? message = errorInfo.ErrorCode.IsServerError() && errorInfo.ErrorCode != SphynxErrorCode.SERVER_ERROR
-                ? errorInfo.Message
-                : null;
+                ? null
+                : errorInfo.Message;
 
             return new SphynxErrorInfo(errorInfo.ErrorCode.MaskServerError(), message);
         }
@@ -40,8 +40,8 @@ namespace Sphynx.Server.Extensions
         public static SphynxErrorInfo<T> MaskServerError<T>(this in SphynxErrorInfo<T> errorInfo, bool keepData = true)
         {
             string? message = errorInfo.ErrorCode.IsServerError() && errorInfo.ErrorCode != SphynxErrorCode.SERVER_ERROR
-                ? errorInfo.Message
-                : null;
+                ? null
+                : errorInfo.Message;
 
             return new SphynxErrorInfo<T>(errorInfo.ErrorCode.MaskServerError(), message, keepData ? errorInfo.Data : default);
         }
@@ -49,8 +49,8 @@ namespace Sphynx.Server.Extensions
         public static SphynxErrorInfo<T?> MaskServerError<T>(this in SphynxErrorInfo<T?> errorInfo, bool keepData = true) where T : struct
         {
             string? message = errorInfo.ErrorCode.IsServerError() && errorInfo.ErrorCode != SphynxErrorCode.SERVER_ERROR
-                ? errorInfo.Message
-                : null;
+                ? null
+                : errorInfo.Message;
 
             return new SphynxErrorInfo<T?>(errorInfo.ErrorCode.MaskServerError(), message, keepData ? errorInfo.Data : null);
         }

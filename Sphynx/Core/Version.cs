@@ -1,7 +1,7 @@
 ﻿namespace Sphynx.Core
 {
     /// <summary>
-    /// Represents a version of this application.
+    /// Represents a version number.
     /// </summary>
     public readonly struct Version : IEquatable<Version?>, IComparable<Version>
     {

@@ -1,10 +1,10 @@
-﻿using Sphynx.Core;
-
-namespace Sphynx.Network.Packet.Broadcast
+﻿namespace Sphynx.Network.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_BCAST"/>
-    public sealed class LeftRoomBroadcast : SphynxPacket, IEquatable<LeftRoomBroadcast>
+    public sealed class LeftRoomBroadcast : SphynxBroadcast, IEquatable<LeftRoomBroadcast>
     {
+        /// <inheritdoc/>
+        public override SphynxBroadcastType BroadcastType => SphynxBroadcastType.LEAVE_ROOM_BCAST;
+
         /// <summary>
         /// Room ID of the room the user has left.
         /// </summary>
@@ -14,9 +14,6 @@ namespace Sphynx.Network.Packet.Broadcast
         /// The user ID of the user who left the room.
         /// </summary>
         public Guid LeaverId { get; set; }
-
-        /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
 
         public LeftRoomBroadcast()
         {
@@ -34,7 +31,6 @@ namespace Sphynx.Network.Packet.Broadcast
         }
 
         /// <inheritdoc/>
-        public bool Equals(LeftRoomBroadcast? other) =>
-            base.Equals(other) && RoomId == other?.RoomId && LeaverId == other?.LeaverId;
+        public bool Equals(LeftRoomBroadcast? other) => base.Equals(other) && RoomId == other?.RoomId && LeaverId == other?.LeaverId;
     }
 }

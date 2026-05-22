@@ -12,6 +12,7 @@ namespace Sphynx.Test.Model.User
         {
             UserName = userName;
             UserId = userName.AsGuid();
+            CreatedAt = DateTimeOffset.MinValue.AddYears(userName.Length);
 
             var statuses = Enum.GetValues<SphynxUserStatus>();
             UserStatus = statuses[userName.Length % statuses.Length];
@@ -31,7 +32,7 @@ namespace Sphynx.Test.Model.User
 
         public override bool Equals(SphynxUserInfo? other)
         {
-            return UserId.Equals(other?.UserId) && UserName == other?.UserName && UserStatus == other.UserStatus;
+            return UserId.Equals(other?.UserId) && UserName == other?.UserName && UserStatus == other.UserStatus && CreatedAt == other.CreatedAt;
         }
     }
 }

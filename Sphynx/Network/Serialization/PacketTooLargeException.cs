@@ -8,10 +8,10 @@ namespace Sphynx.Network.Serialization
 {
     public class PacketTooLargeException : SerializationException
     {
-        public SphynxPacket? Packet { get; }
+        public SphynxMessage? Packet { get; }
         public int Size { get; }
 
-        public PacketTooLargeException(SphynxPacket? packet, int size)
+        public PacketTooLargeException(SphynxMessage? packet, int size)
             : this(packet, size, $"Packet {packet?.ToString() ?? string.Empty} is too large ({size} bytes)")
         {
         }
@@ -21,12 +21,12 @@ namespace Sphynx.Network.Serialization
         {
         }
 
-        public PacketTooLargeException(SphynxPacket? packet, int size, string? message)
+        public PacketTooLargeException(SphynxMessage? packet, int size, string? message)
             : this(packet, size, message, null)
         {
         }
 
-        public PacketTooLargeException(SphynxPacket? packet, int size, string? message, Exception? innerException)
+        public PacketTooLargeException(SphynxMessage? packet, int size, string? message, Exception? innerException)
             : base(message, innerException)
         {
             Packet = packet;

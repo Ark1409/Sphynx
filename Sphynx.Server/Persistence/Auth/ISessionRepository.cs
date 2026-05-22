@@ -8,7 +8,7 @@ namespace Sphynx.Server.Persistence.Auth
 {
     public interface ISessionRepository
     {
-        Task<SphynxErrorInfo> InsertAsync(SphynxSessionInfo sessionInfo, CancellationToken cancellationToken = default);
+        Task<SphynxErrorInfo<SphynxSessionInfo?>> InsertAsync(SphynxSessionInfo sessionInfo, CancellationToken cancellationToken = default);
 
         Task<SphynxErrorInfo<SphynxSessionInfo?>> GetAsync(Guid sessionId, CancellationToken cancellationToken = default);
         Task<SphynxErrorInfo<SphynxSessionInfo[]?>> GetAsync(Guid[] sessionIds, CancellationToken cancellationToken = default);

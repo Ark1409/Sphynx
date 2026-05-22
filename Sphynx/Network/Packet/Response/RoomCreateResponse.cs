@@ -1,17 +1,17 @@
 ﻿using Sphynx.Core;
+using Sphynx.Model.Room;
 
 namespace Sphynx.Network.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.ROOM_CREATE_RES"/>
-    public sealed class RoomCreateResponse : SphynxResponse, IEquatable<RoomCreateResponse>
+    public class RoomCreateResponse : SphynxResponse, IEquatable<RoomCreateResponse>
     {
-        /// <summary>
-        /// Room ID assigned to the newly created room.
-        /// </summary>
-        public Guid? RoomId { get; set; }
-
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_CREATE_RES;
+        public override SphynxRequestType ResponseType => SphynxRequestType.CREATE_ROOM_REQ ;
+
+        /// <summary>
+        /// The newly created room.
+        /// </summary>
+        public SphynxRoomInfo? RoomInfo { get; set; }
 
         public RoomCreateResponse()
         {
@@ -31,21 +31,18 @@ namespace Sphynx.Network.Packet.Response
         /// <param name="errorInfo">Error code for room creation attempt.</param>
         public RoomCreateResponse(SphynxErrorInfo errorInfo) : base(errorInfo)
         {
-            // Assume the room is to be created
-            if (errorInfo == SphynxErrorCode.SUCCESS)
-                RoomId = Guid.NewGuid();
         }
 
         /// <summary>
         /// Creates a new <see cref="RoomCreateResponse"/>.
         /// </summary>
-        /// <param name="roomId">Room ID assigned to the newly created room.</param>
-        public RoomCreateResponse(Guid roomId) : base(SphynxErrorCode.SUCCESS)
+        public RoomCreateResponse(SphynxRoomInfo roomInfo) : base(SphynxErrorCode.SUCCESS)
         {
-            RoomId = roomId;
+            ArgumentNullException.ThrowIfNull(roomInfo);
+            RoomInfo = roomInfo;
         }
 
         /// <inheritdoc/>
-        public bool Equals(RoomCreateResponse? other) => base.Equals(other) && RoomId == other?.RoomId;
+        public bool Equals(RoomCreateResponse? other) => base.Equals(other) && RoomInfo == other?.RoomInfo;
     }
 }

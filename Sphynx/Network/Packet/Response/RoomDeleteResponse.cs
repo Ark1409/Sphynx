@@ -2,15 +2,10 @@
 
 namespace Sphynx.Network.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.ROOM_DEL_RES"/>
-    public sealed class RoomDeleteResponse : SphynxResponse, IEquatable<RoomDeleteResponse>
+    public class RoomDeleteResponse : SphynxResponse, IEquatable<RoomDeleteResponse>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_DEL_RES;
-
-        public RoomDeleteResponse()
-        {
-        }
+        public override SphynxRequestType ResponseType => SphynxRequestType.DEL_ROOM_REQ;
 
         /// <summary>
         /// Creates a new <see cref="RoomDeleteResponse"/>.

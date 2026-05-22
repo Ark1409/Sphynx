@@ -3,11 +3,10 @@ using Sphynx.Network.Packet.Response;
 
 namespace Sphynx.Network.Packet.Request
 {
-    /// <inheritdoc cref="SphynxPacketType.LOGOUT_REQ"/>
-    public sealed class LogoutRequest : SphynxRequest<LogoutResponse>, IEquatable<LogoutRequest>
+    public class LogoutRequest : SphynxRequest<LogoutResponse>, IEquatable<LogoutRequest>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_REQ;
+        public override SphynxRequestType RequestType => SphynxRequestType.LOGOUT_REQ;
 
         /// <summary>
         /// Whether to logout of all sessions for this user.
@@ -18,10 +17,7 @@ namespace Sphynx.Network.Packet.Request
         {
         }
 
-        /// <summary>
-        /// Creates a new <see cref="LogoutRequest"/>.
-        /// </summary>
-        public LogoutRequest(Guid sessionId, bool allSessions = false) : base(sessionId)
+        public LogoutRequest(bool allSessions)
         {
             AllSessions = allSessions;
         }
@@ -29,9 +25,6 @@ namespace Sphynx.Network.Packet.Request
         /// <inheritdoc/>
         public bool Equals(LogoutRequest? other) => base.Equals(other);
 
-        public override LogoutResponse CreateResponse(SphynxErrorInfo errorInfo) => new LogoutResponse(errorInfo)
-        {
-            RequestTag = RequestTag
-        };
+        public override LogoutResponse CreateResponse(SphynxErrorInfo errorInfo) => new LogoutResponse(errorInfo);
     }
 }

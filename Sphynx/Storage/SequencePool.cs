@@ -9,9 +9,6 @@ using Nerdbank.Streams;
 
 namespace Sphynx.Storage
 {
-    //
-    // MIT License
-    //
     // Copyright (c) 2017 Yoshifumi Kawai and contributors
     //
     // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -41,10 +38,6 @@ namespace Sphynx.Storage
         /// Individual users that want a different value for this can modify the setting on the rented <see cref="Sequence{T}"/>
         /// or by supplying their own <see cref="IBufferWriter{T}" />.
         /// </remarks>
-        /// <devremarks>
-        /// We use 32KB so that when LZ4Codec.MaximumOutputLength is used on this length it does not require a
-        /// buffer that would require the Large Object Heap.
-        /// </devremarks>
         private const int MinimumSpanLength = 16 * 1024;
 
         private readonly int maxSize;
@@ -53,7 +46,12 @@ namespace Sphynx.Storage
         /// <summary>
         /// The array pool which we share with all <see cref="Sequence{T}"/> objects created by this <see cref="SequencePool"/> instance.
         /// </summary>
-        private readonly ArrayPool<byte> arrayPool;
+        private readonly ArrayPool<byte>? arrayPool;
+
+        /// <summary>
+        /// The memory pool which we share with all <see cref="Sequence{T}"/> objects created by this <see cref="SequencePool"/> instance.
+        /// </summary>
+        private readonly MemoryPool<byte>? memoryPool;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SequencePool"/> class.
@@ -91,6 +89,24 @@ namespace Sphynx.Storage
         }
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="SequencePool"/> class.
+        /// </summary>
+        public SequencePool(MemoryPool<byte> memoryPool) : this(Environment.ProcessorCount * 2, memoryPool)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SequencePool"/> class.
+        /// </summary>
+        /// <param name="maxSize">The maximum size to allow the pool to grow.</param>
+        /// <param name="memoryPool">Memory pool that will be used.</param>
+        public SequencePool(int maxSize, MemoryPool<byte> memoryPool)
+        {
+            this.maxSize = maxSize;
+            this.memoryPool = memoryPool;
+        }
+
+        /// <summary>
         /// Gets an instance of <see cref="Sequence{T}"/>
         /// This is taken from the recycled pool if one is available; otherwise a new one is created.
         /// </summary>
@@ -107,10 +123,11 @@ namespace Sphynx.Storage
 
             // Configure the newly created object to share a common array pool with the other instances,
             // otherwise each one will have its own ArrayPool which would likely waste a lot of memory.
-            return new Rental(this, new Sequence<byte>(this.arrayPool)
-            {
-                MinimumSpanLength = MinimumSpanLength, AutoIncreaseMinimumSpanLength = true
-            });
+            var sequence = this.arrayPool != null ? new Sequence<byte>(this.arrayPool) : new Sequence<byte>(this.memoryPool!);
+            sequence.MinimumSpanLength = MinimumSpanLength;
+            sequence.AutoIncreaseMinimumSpanLength = true;
+
+            return new Rental(this, sequence);
         }
 
         private void Return(Sequence<byte> value)

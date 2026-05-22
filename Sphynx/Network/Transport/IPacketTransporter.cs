@@ -6,7 +6,7 @@ using Sphynx.Network.Packet;
 namespace Sphynx.Network.Transport
 {
     /// <summary>
-    /// Represents a type that marshals and unmarshals <see cref="SphynxPacket">packets</see> to be
+    /// Represents a type that marshals and unmarshals <see cref="SphynxMessage">packets</see> to be
     /// sent and received over streams.
     /// </summary>
     public interface IPacketTransporter
@@ -20,7 +20,7 @@ namespace Sphynx.Network.Transport
         /// <returns>A task representing the send operation.</returns>
         /// <exception cref="ArgumentException">If the <paramref name="stream"/> is not writable.</exception>
         /// <exception cref="TaskCanceledException">If the send request is cancelled.</exception>
-        ValueTask SendAsync(Stream stream, SphynxPacket packet, CancellationToken cancellationToken = default);
+        ValueTask SendAsync(Stream stream, SphynxMessage packet, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Receives a single packet from the underlying <paramref name="stream"/>.
@@ -30,6 +30,6 @@ namespace Sphynx.Network.Transport
         /// <returns>A task representing the reception operation.</returns>
         /// <exception cref="ArgumentException">If the <paramref name="stream"/> is not readable.</exception>
         /// <exception cref="TaskCanceledException">If the reception request is cancelled.</exception>
-        ValueTask<SphynxPacket> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default);
+        ValueTask<SphynxMessage> ReceiveAsync(Stream stream, CancellationToken cancellationToken = default);
     }
 }

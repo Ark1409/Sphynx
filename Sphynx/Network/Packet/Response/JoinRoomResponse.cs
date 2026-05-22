@@ -3,16 +3,15 @@ using Sphynx.Model.Room;
 
 namespace Sphynx.Network.Packet.Response
 {
-    /// <inheritdoc cref="SphynxPacketType.ROOM_JOIN_RES"/>
-    public sealed class JoinRoomResponse : SphynxResponse, IEquatable<JoinRoomResponse>
+    public class JoinRoomResponse : SphynxResponse, IEquatable<JoinRoomResponse>
     {
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.ROOM_JOIN_RES;
+        public override SphynxRequestType ResponseType => SphynxRequestType.JOIN_ROOM_REQ;
 
         /// <summary>
         /// The information for the chat room which was joined.
         /// </summary>
-        public ChatRoomInfo? RoomInfo { get; set; }
+        public SphynxRoomInfo? RoomInfo { get; set; }
 
         public JoinRoomResponse()
         {
@@ -38,13 +37,12 @@ namespace Sphynx.Network.Packet.Response
         /// Creates a new <see cref="JoinRoomResponse"/>.
         /// </summary>
         /// <param name="roomInfo">The information for the chat room which was joined.</param>
-        public JoinRoomResponse(ChatRoomInfo roomInfo) : this()
+        public JoinRoomResponse(SphynxRoomInfo roomInfo) : this()
         {
             RoomInfo = roomInfo;
         }
 
         /// <inheritdoc/>
-        public bool Equals(JoinRoomResponse? other) =>
-            base.Equals(other) && RoomInfo?.Equals(other?.RoomInfo) == true;
+        public bool Equals(JoinRoomResponse? other) => base.Equals(other) && RoomInfo?.Equals(other?.RoomInfo) == true;
     }
 }

@@ -20,6 +20,7 @@ namespace Sphynx.Core
         private static ushort _lastSequence;
         private static readonly object _idLock = new object();
 
+        // TODO: Maybe make snowflake IDs 96-bit
         private const ushort MAX_SEQUENCE = ushort.MaxValue;
         private static readonly ushort MACHINE_ID = GetMachineId();
 
@@ -32,22 +33,18 @@ namespace Sphynx.Core
                 try
                 {
                     if (!string.IsNullOrEmpty(machineName = Dns.GetHostName()))
-                    {
                         return machineName;
+                }
+                catch
+                {
+                    try
+                    {
+                        machineName = Environment.MachineName;
                     }
-                }
-                catch
-                {
-                    // Case handled below
-                }
-
-                try
-                {
-                    machineName = Environment.MachineName;
-                }
-                catch
-                {
-                    machineName = "";
+                    catch
+                    {
+                        machineName = "";
+                    }
                 }
 
                 return machineName;

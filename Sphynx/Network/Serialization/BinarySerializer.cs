@@ -22,7 +22,6 @@ namespace Sphynx.Network.Serialization
     /// </summary>
     public ref struct BinarySerializer
     {
-        // Store "local" reference to default text encoding
         internal static readonly Encoding StringEncoding = new UTF8Encoding(false);
 
         private readonly IBufferWriter<byte> _buffer;
@@ -55,6 +54,15 @@ namespace Sphynx.Network.Serialization
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => _buffer;
+        }
+
+        /// <summary>
+        /// Returns the underlying <see cref="Span{T}"/>, if it exists.
+        /// </summary>
+        public readonly ReadOnlySpan<byte> Span
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _span;
         }
 
         public BinarySerializer(IBufferWriter<byte> buffer)
@@ -445,7 +453,7 @@ namespace Sphynx.Network.Serialization
             var span = HasBuffer ? _buffer.GetSpan(sizeof(int) + StringEncoding.GetMaxByteCount(str.Length)) : _span[(int)_bytesWritten..];
 
             int stringSize = StringEncoding.GetBytes(str, span[sizeof(int)..]);
-            BinaryPrimitives.WriteInt32LittleEndian(span[..sizeof(int)], stringSize);
+            BinaryPrimitives.WriteInt32BigEndian(span[..sizeof(int)], stringSize);
 
             int bytesWritten = sizeof(int) + stringSize;
 
@@ -482,13 +490,23 @@ namespace Sphynx.Network.Serialization
 
         #region Primitives
 
-        internal void WriteRaw(in ReadOnlySequence<byte> raw)
+        /// <summary>
+        /// Writes raw bytes into the serializer.
+        /// </summary>
+        /// <param name="raw">The raw bytes to write.</param>
+        /// <devremarks>This method does not length-prefix the data. This should only be used in custom serialization scenarios.</devremarks>
+        public void WriteRaw(scoped in ReadOnlySequence<byte> raw)
         {
             foreach (var segment in raw)
                 WriteRaw(segment.Span);
         }
 
-        internal void WriteRaw(ReadOnlySpan<byte> raw)
+        /// <summary>
+        /// Writes raw bytes into the serializer.
+        /// </summary>
+        /// <param name="raw">The raw bytes to write.</param>
+        /// <devremarks>This method does not length-prefix the data. This should only be used in custom serialization scenarios.</devremarks>
+        public void WriteRaw(scoped ReadOnlySpan<byte> raw)
         {
             if (HasBuffer)
             {
@@ -611,12 +629,12 @@ namespace Sphynx.Network.Serialization
             if (HasBuffer)
             {
                 var span = _buffer.GetSpan(sizeof(ushort));
-                BinaryPrimitives.WriteUInt16LittleEndian(span, value);
+                BinaryPrimitives.WriteUInt16BigEndian(span, value);
                 _buffer.Advance(sizeof(ushort));
             }
             else
             {
-                BinaryPrimitives.WriteUInt16LittleEndian(_span[(int)_bytesWritten..], value);
+                BinaryPrimitives.WriteUInt16BigEndian(_span[(int)_bytesWritten..], value);
             }
 
             _bytesWritten += sizeof(ushort);
@@ -627,12 +645,12 @@ namespace Sphynx.Network.Serialization
             if (HasBuffer)
             {
                 var span = _buffer.GetSpan(sizeof(short));
-                BinaryPrimitives.WriteInt16LittleEndian(span, value);
+                BinaryPrimitives.WriteInt16BigEndian(span, value);
                 _buffer.Advance(sizeof(short));
             }
             else
             {
-                BinaryPrimitives.WriteInt16LittleEndian(_span[(int)_bytesWritten..], value);
+                BinaryPrimitives.WriteInt16BigEndian(_span[(int)_bytesWritten..], value);
             }
 
             _bytesWritten += sizeof(short);
@@ -643,12 +661,12 @@ namespace Sphynx.Network.Serialization
             if (HasBuffer)
             {
                 var span = _buffer.GetSpan(sizeof(uint));
-                BinaryPrimitives.WriteUInt32LittleEndian(span, value);
+                BinaryPrimitives.WriteUInt32BigEndian(span, value);
                 _buffer.Advance(sizeof(uint));
             }
             else
             {
-                BinaryPrimitives.WriteUInt32LittleEndian(_span[(int)_bytesWritten..], value);
+                BinaryPrimitives.WriteUInt32BigEndian(_span[(int)_bytesWritten..], value);
             }
 
             _bytesWritten += sizeof(uint);
@@ -659,12 +677,12 @@ namespace Sphynx.Network.Serialization
             if (HasBuffer)
             {
                 var span = _buffer.GetSpan(sizeof(int));
-                BinaryPrimitives.WriteInt32LittleEndian(span, value);
+                BinaryPrimitives.WriteInt32BigEndian(span, value);
                 _buffer.Advance(sizeof(int));
             }
             else
             {
-                BinaryPrimitives.WriteInt32LittleEndian(_span[(int)_bytesWritten..], value);
+                BinaryPrimitives.WriteInt32BigEndian(_span[(int)_bytesWritten..], value);
             }
 
             _bytesWritten += sizeof(int);
@@ -675,12 +693,12 @@ namespace Sphynx.Network.Serialization
             if (HasBuffer)
             {
                 var span = _buffer.GetSpan(sizeof(ulong));
-                BinaryPrimitives.WriteUInt64LittleEndian(span, value);
+                BinaryPrimitives.WriteUInt64BigEndian(span, value);
                 _buffer.Advance(sizeof(ulong));
             }
             else
             {
-                BinaryPrimitives.WriteUInt64LittleEndian(_span[(int)_bytesWritten..], value);
+                BinaryPrimitives.WriteUInt64BigEndian(_span[(int)_bytesWritten..], value);
             }
 
             _bytesWritten += sizeof(ulong);
@@ -691,12 +709,12 @@ namespace Sphynx.Network.Serialization
             if (HasBuffer)
             {
                 var span = _buffer.GetSpan(sizeof(long));
-                BinaryPrimitives.WriteInt64LittleEndian(span, value);
+                BinaryPrimitives.WriteInt64BigEndian(span, value);
                 _buffer.Advance(sizeof(long));
             }
             else
             {
-                BinaryPrimitives.WriteInt64LittleEndian(_span[(int)_bytesWritten..], value);
+                BinaryPrimitives.WriteInt64BigEndian(_span[(int)_bytesWritten..], value);
             }
 
             _bytesWritten += sizeof(long);
@@ -707,12 +725,12 @@ namespace Sphynx.Network.Serialization
             if (HasBuffer)
             {
                 var span = _buffer.GetSpan(sizeof(float));
-                BinaryPrimitives.WriteSingleLittleEndian(span, value);
+                BinaryPrimitives.WriteSingleBigEndian(span, value);
                 _buffer.Advance(sizeof(float));
             }
             else
             {
-                BinaryPrimitives.WriteSingleLittleEndian(_span[(int)_bytesWritten..], value);
+                BinaryPrimitives.WriteSingleBigEndian(_span[(int)_bytesWritten..], value);
             }
 
             _bytesWritten += sizeof(float);
@@ -723,12 +741,12 @@ namespace Sphynx.Network.Serialization
             if (HasBuffer)
             {
                 var span = _buffer.GetSpan(sizeof(double));
-                BinaryPrimitives.WriteDoubleLittleEndian(span, value);
+                BinaryPrimitives.WriteDoubleBigEndian(span, value);
                 _buffer.Advance(sizeof(double));
             }
             else
             {
-                BinaryPrimitives.WriteDoubleLittleEndian(_span[(int)_bytesWritten..], value);
+                BinaryPrimitives.WriteDoubleBigEndian(_span[(int)_bytesWritten..], value);
             }
 
             _bytesWritten += sizeof(double);

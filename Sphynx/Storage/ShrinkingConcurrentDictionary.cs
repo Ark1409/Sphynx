@@ -28,8 +28,6 @@ namespace Sphynx.Storage
         //     - GrowTable(Table tables)
         //     - TryRemoveInternal(...)
         //
-        // The MIT License (MIT)
-        //
         // Copyright (c) .NET Foundation and Contributors
         //
         // All rights reserved.

@@ -8,13 +8,13 @@ using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
 using Sphynx.Network.Packet;
 using Sphynx.Server.Client;
-using Sphynx.Server.Extensions;
 using Sphynx.Storage;
+using Sphynx.Utils;
 
 namespace Sphynx.Server
 {
     /// <summary>
-    /// Represents a TCP-oriented <see cref="SphynxServer"/> which accepts <see cref="SphynxPacket"/>s from <see cref="SphynxTcpClient"/>s.
+    /// Represents a TCP-oriented <see cref="SphynxServer"/> which accepts <see cref="SphynxMessage"/>s from <see cref="SphynxTcpClient"/>s.
     /// </summary>
     public class SphynxTcpServer : SphynxServer
     {
@@ -27,7 +27,7 @@ namespace Sphynx.Server
         protected Socket? ServerSocket { get; private set; }
 
         private readonly ConcurrentDictionary<Guid, SphynxTcpClient> _connectedClients = new();
-        private FixedObjectPool<Socket>? _socketPool;
+        private ObjectPool<Socket>? _socketPool;
 
         private readonly SemaphoreSlim _disposeSemaphore = new(1, 1);
         private bool _disposed;
@@ -56,7 +56,7 @@ namespace Sphynx.Server
 
             Logger.LogDebug("Initializing socket pool");
 
-            _socketPool = new FixedObjectPool<Socket>(Profile.Backlog, fastChecks: false);
+            _socketPool = new ObjectPool<Socket>(Profile.Backlog);
 
             Logger.LogDebug("Initializing listening socket");
 
@@ -79,9 +79,9 @@ namespace Sphynx.Server
                     if (Logger.IsEnabled(LogLevel.Information))
                         Logger.LogInformation("Accepted client on {Address}", socket.RemoteEndPoint);
 
-                    InitializeClient(socket, cancellationToken);
+                    StartClient(socket, cancellationToken);
                 }
-                catch (Exception ex) when (ex.IsCancellationException())
+                catch (Exception) when (cancellationToken.IsCancellationRequested)
                 {
                     // Server stopped
                 }
@@ -92,60 +92,44 @@ namespace Sphynx.Server
             }
         }
 
-        private void InitializeClient(Socket clientSocket, CancellationToken cancellationToken)
+        private void StartClient(Socket clientSocket, CancellationToken token) => ThreadPoolHelper.QueueUserWorkItem(static async void (s) =>
         {
-            var state = new StartClientState
+            var server = s.server;
+            var socket = s.socket;
+            var token = s.token;
+
+            SphynxTcpClient? client = null;
+
+            try
             {
-                Server = this,
-                Socket = clientSocket,
-                Token = cancellationToken,
-            };
-
-            ThreadPool.QueueUserWorkItem(static async void (s) =>
+                client = server.CreateTcpClient(socket);
+            }
+            catch (Exception ex)
             {
-                var server = s.Server;
-                var socket = s.Socket;
-                var ct = s.Token;
+                if (server.Logger.IsEnabled(LogLevel.Error))
+                    server.Logger.LogError(ex, "An error occured while initializing client for endpoint {EndPoint}",
+                        socket.RemoteEndPoint);
 
-                SphynxTcpClient? client = null;
+                await server.DisposeClientAsync(client).ConfigureAwait(false);
+                return;
+            }
 
-                try
-                {
-                    client = server.CreateTcpClient(socket);
-                }
-                catch (Exception ex)
-                {
-                    if (server.Logger.IsEnabled(LogLevel.Error))
-                        server.Logger.LogError(ex, "An error occured while initializing client for endpoint {EndPoint}",
-                            socket.RemoteEndPoint);
+            if (server.Logger.IsEnabled(LogLevel.Debug))
+                server.Logger.LogDebug("Initialized client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
 
-                    await server.DisposeClientAsync(client).ConfigureAwait(false);
-                    return;
-                }
+            try
+            {
+                await server.RunClientAsync(client, token).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                if (server.Logger.IsEnabled(LogLevel.Error))
+                    server.Logger.LogError(ex, "Unhandled exception while starting client {Client}", client.ToString());
 
-                if (server.Logger.IsEnabled(LogLevel.Debug))
-                    server.Logger.LogDebug("Initialized client instance for endpoint {EndPoint}", socket.RemoteEndPoint);
-
-                try
-                {
-                    await server.StartClientAsync(client, ct).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    if (server.Logger.IsEnabled(LogLevel.Error))
-                        server.Logger.LogError(ex, "Unhandled exception while starting client for endpoint {EndPoint}", client.EndPoint);
-
-                    await server.DisposeClientAsync(client).ConfigureAwait(false);
-                }
-            }, state, false);
-        }
-
-        private readonly struct StartClientState
-        {
-            public SphynxTcpServer Server { get; init; }
-            public Socket Socket { get; init; }
-            public CancellationToken Token { get; init; }
-        }
+                if (!await server.DisposeClientAsync(client, tryReuse: true).ConfigureAwait(false) && server.Logger.IsEnabled(LogLevel.Trace))
+                    server.Logger.LogTrace("Unable to reuse socket from client {Client}", client.ToString());
+            }
+        }, (server: this, socket: clientSocket, token));
 
         /// <summary>
         /// Called once a client connects to the server. This is executed before the client's run loop.
@@ -160,28 +144,16 @@ namespace Sphynx.Server
         /// <returns>A <see cref="SphynxTcpClient"/> instance for the accepted <paramref name="clientSocket"/>.</returns>
         protected virtual SphynxTcpClient CreateTcpClient(Socket clientSocket)
         {
-            return new SphynxTcpClient(clientSocket, Profile);
+            return new SphynxTcpClient(clientSocket, new SphynxTcpClientOptions(Profile));
         }
 
-        private async Task StartClientAsync(SphynxTcpClient client, CancellationToken cancellationToken)
+        private Task RunClientAsync(SphynxTcpClient client, CancellationToken cancellationToken)
         {
             bool insertedClient = _connectedClients.TryAdd(client.ClientId, client);
             Debug.Assert(insertedClient);
 
             OnClientConnected(client);
-
-            using (client.Logger.BeginScope($"{client.EndPoint} ({client.ClientId})"))
-            {
-                try
-                {
-                    await client.StartAsync(cancellationToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    if (!await DisposeClientAsync(client, tryReuse: true).ConfigureAwait(false))
-                        Logger.LogTrace("Unable to re-use client socket");
-                }
-            }
+            return client.RunAsync(cancellationToken);
         }
 
         private async ValueTask<bool> DisposeClientAsync(SphynxTcpClient? client, bool tryReuse = false)
@@ -189,41 +161,29 @@ namespace Sphynx.Server
             if (client is null)
                 return false;
 
-            _connectedClients.TryRemove(client.ClientId, out _);
-
-            if (!tryReuse)
+            if (!tryReuse || !_connectedClients.TryRemove(new KeyValuePair<Guid, SphynxTcpClient>(client.ClientId, client)))
             {
                 await client.DisposeAsync().ConfigureAwait(false);
                 return false;
             }
 
-            try
+            var socket = client.DetachSocket();
+            if (socket is null)
             {
-                await client.DisposeAsync(disposeSocket: false).ConfigureAwait(false);
-
-                // Test for disposal or invalid state
-                try
-                {
-                    await client.Socket.DisconnectAsync(true).ConfigureAwait(false);
-                }
-                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.NotConnected)
-                {
-                    // TODO: Assume not disposed?
-                }
-
-                if (!_socketPool!.Return(client.Socket))
-                {
-                    client.Socket.Dispose();
-                    return false;
-                }
-
-                return true;
-            }
-            catch
-            {
-                client.Socket.Dispose();
+                await client.DisposeAsync().ConfigureAwait(false);
                 return false;
             }
+
+            // Test for disposal or invalid state before attempting to return to the pool
+            if (socket.Connected || !_socketPool!.Return(socket))
+            {
+                socket.Dispose();
+                await client.DisposeAsync().ConfigureAwait(false);
+                return false;
+            }
+
+            await client.DisposeAsync().ConfigureAwait(false);
+            return true;
         }
 
         public override async ValueTask DisposeAsync()

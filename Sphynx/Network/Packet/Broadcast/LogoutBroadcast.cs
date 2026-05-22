@@ -1,7 +1,6 @@
 namespace Sphynx.Network.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.LOGOUT_BCAST"/>
-    public sealed class LogoutBroadcast : SphynxPacket, IEquatable<LogoutBroadcast>
+    public class LogoutBroadcast : SphynxBroadcast, IEquatable<LogoutBroadcast>
     {
         /// <summary>
         /// User ID of the user who went offline.
@@ -9,7 +8,7 @@ namespace Sphynx.Network.Packet.Broadcast
         public Guid UserId { get; set; }
 
         /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.LOGOUT_BCAST;
+        public override SphynxBroadcastType BroadcastType => SphynxBroadcastType.LOGOUT_BCAST;
 
         public LogoutBroadcast()
         {

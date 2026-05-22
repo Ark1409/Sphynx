@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System.Diagnostics;
+using Sphynx.Utils;
 
 namespace Sphynx.Server.Infrastructure.RateLimiting
 {
@@ -18,15 +19,9 @@ namespace Sphynx.Server.Infrastructure.RateLimiting
         {
             get
             {
-                _semaphore.Wait();
-
-                try
+                using (_semaphore.Rent())
                 {
                     return ReplenishTokens(out _);
-                }
-                finally
-                {
-                    _semaphore.Release();
                 }
             }
         }
@@ -73,6 +68,9 @@ namespace Sphynx.Server.Infrastructure.RateLimiting
             if (count > MaxTokens || (_tokensPerPeriod == 0 && _tokens < count))
                 return ValueTask.FromResult(TimeSpan.MaxValue);
 
+            if (cancellationToken.IsCancellationRequested)
+                return ValueTask.FromCanceled<TimeSpan>(cancellationToken);
+
             return ConsumeInternalAsync(count, cancellationToken);
         }
 
@@ -80,9 +78,7 @@ namespace Sphynx.Server.Infrastructure.RateLimiting
         {
             Debug.Assert(count >= 0 && count <= MaxTokens);
 
-            await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-            try
+            using (await _semaphore.RentAsync(cancellationToken).ConfigureAwait(false))
             {
                 ReplenishTokens(out _);
 
@@ -99,10 +95,6 @@ namespace Sphynx.Server.Infrastructure.RateLimiting
                 _tokens -= count;
 
                 return TimeSpan.Zero;
-            }
-            finally
-            {
-                _semaphore.Release();
             }
         }
 

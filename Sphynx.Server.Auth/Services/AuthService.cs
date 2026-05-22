@@ -51,6 +51,8 @@ namespace Sphynx.Server.Auth.Services
 
             var sessionInfo = await CreateUserSessionAsync(userResult.Data!, loginInfo.ClientAddress, cancellationToken).ConfigureAwait(false);
 
+            // TODO: Broadcast online (to friends..?)
+
             return new SphynxAuthResult(userResult.Data!, sessionInfo.Data!.Value);
         }
 
@@ -203,7 +205,7 @@ namespace Sphynx.Server.Auth.Services
                 _passwordHasher.GenerateSalt(pwdSalt);
                 _passwordHasher.HashPassword(password, pwdSalt, pwdHash);
 
-                return new SphynxAuthUser(Guid.NewGuid(), userName, SphynxUserStatus.ONLINE)
+                return new SphynxAuthUser(Guid.NewGuid(), userName, SphynxUserStatus.ONLINE, DateTimeOffset.UtcNow)
                 {
                     PasswordHash = Convert.ToBase64String(pwdHash),
                     PasswordSalt = Convert.ToBase64String(pwdSalt)

@@ -32,10 +32,13 @@ namespace Sphynx.Server.Persistence.Auth
             _db = db;
         }
 
-        public async Task<SphynxErrorInfo> InsertAsync(SphynxSessionInfo sessionInfo, CancellationToken cancellationToken = default)
+        public async Task<SphynxErrorInfo<SphynxSessionInfo?>> InsertAsync(SphynxSessionInfo sessionInfo, CancellationToken cancellationToken = default)
         {
-            if (sessionInfo.SessionId == default || sessionInfo.UserId == default)
+            if (sessionInfo.UserId == default)
                 return SphynxErrorCode.INVALID_TOKEN;
+
+            if (sessionInfo.SessionId == default)
+                sessionInfo = sessionInfo with { SessionId = Guid.NewGuid() };
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -60,7 +63,7 @@ namespace Sphynx.Server.Persistence.Auth
                 _ = trans.StringSetAsync(userSessionKey, true, ttl, When.NotExists);
 
                 bool transacted = await trans.ExecuteAsync(CommandFlags.DemandMaster).ConfigureAwait(false);
-                return transacted ? SphynxErrorCode.SUCCESS : SphynxErrorCode.DB_WRITE_ERROR;
+                return transacted ? sessionInfo : SphynxErrorCode.DB_WRITE_ERROR;
             }
         }
 

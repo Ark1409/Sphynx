@@ -1,10 +1,10 @@
-﻿using Sphynx.Core;
-
-namespace Sphynx.Network.Packet.Broadcast
+﻿namespace Sphynx.Network.Packet.Broadcast
 {
-    /// <inheritdoc cref="SphynxPacketType.CHAT_JOIN_BCAST"/>
-    public sealed class JoinedRoomBroadcast : SphynxPacket, IEquatable<JoinedRoomBroadcast>
+    public class JoinedRoomBroadcast : SphynxBroadcast, IEquatable<JoinedRoomBroadcast>
     {
+        /// <inheritdoc/>
+        public override SphynxBroadcastType BroadcastType => SphynxBroadcastType.JOIN_ROOM_BCAST;
+
         /// <summary>
         /// Room ID of the room the user has joined.
         /// </summary>
@@ -14,9 +14,6 @@ namespace Sphynx.Network.Packet.Broadcast
         /// The user ID of the user who joined the room.
         /// </summary>
         public Guid JoinerId { get; set; }
-
-        /// <inheritdoc/>
-        public override SphynxPacketType PacketType => SphynxPacketType.CHAT_JOIN_BCAST;
 
         public JoinedRoomBroadcast()
         {
@@ -34,7 +31,6 @@ namespace Sphynx.Network.Packet.Broadcast
         }
 
         /// <inheritdoc/>
-        public bool Equals(JoinedRoomBroadcast? other) =>
-            base.Equals(other) && RoomId == other?.RoomId && JoinerId == other?.JoinerId;
+        public bool Equals(JoinedRoomBroadcast? other) => base.Equals(other) && RoomId == other?.RoomId && JoinerId == other?.JoinerId;
     }
 }

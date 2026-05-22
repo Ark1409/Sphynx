@@ -14,8 +14,8 @@ namespace Sphynx.Server.Persistence.Room
         private readonly IMongoDatabase _database;
         private readonly IMongoCollection<dynamic> _collection;
 
-        public event Action<ChatRoomInfo>? RoomCreated;
-        public event Action<ChatRoomInfo>? RoomDeleted;
+        public event Action<SphynxRoomInfo>? RoomCreated;
+        public event Action<SphynxRoomInfo>? RoomDeleted;
 
         public MongoRoomRepository(IMongoClient client, IMongoDatabase database, IMongoCollection<dynamic> collection)
         {
@@ -24,12 +24,12 @@ namespace Sphynx.Server.Persistence.Room
             _collection = collection;
         }
 
-        public Task<SphynxErrorInfo<ChatRoomInfo?>> InsertRoomAsync(ChatRoomInfo roomInfo, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<SphynxRoomInfo?>> InsertRoomAsync(SphynxRoomInfo roomInfo, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo> UpdateRoomAsync(ChatRoomInfo updatedRoom, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo> UpdateRoomAsync(SphynxRoomInfo updatedRoom, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
@@ -39,12 +39,12 @@ namespace Sphynx.Server.Persistence.Room
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo<ChatRoomInfo?>> GetRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<SphynxRoomInfo?>> GetRoomAsync(SnowflakeId roomId, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        public Task<SphynxErrorInfo<ChatRoomInfo[]?>> GetRoomsAsync(SnowflakeId[] roomIds, CancellationToken cancellationToken = default)
+        public Task<SphynxErrorInfo<SphynxRoomInfo[]?>> GetRoomsAsync(SnowflakeId[] roomIds, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

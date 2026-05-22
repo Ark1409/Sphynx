@@ -1,9 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>12.0</LangVersion>
         <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
         <GenerateDocumentationFile>True</GenerateDocumentationFile>
         <DocumentationFile>$(MSBuildProjectDirectory)\docs\documentation.xml</DocumentationFile>
@@ -38,6 +39,7 @@
 
     <ItemGroup>
         <PackageReference Include="FastEnum" Version="1.8.0"/>
+        <PackageReference Include="MessagePack" Version="3.1.4" />
         <PackageReference Include="Nerdbank.Streams" Version="2.11.92" />
     </ItemGroup>
 
