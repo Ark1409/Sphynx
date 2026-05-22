@@ -6,11 +6,10 @@ using System.Runtime.Serialization;
 using System.Text.Json;
 using Sphynx.Core;
 using Sphynx.Network.Packet;
-using Sphynx.Network.Serialization.Packet;
 
 namespace Sphynx.Network.Serialization
 {
-    public class JsonPacketSerializer : IPacketSerializer<SphynxPacket>
+    public class JsonPacketSerializer : ITypeSerializer<SphynxMessage>
     {
         public JsonWriterOptions WriterOptions { get; set; }
         public JsonReaderOptions ReaderOptions { get; set; }
@@ -22,7 +21,7 @@ namespace Sphynx.Network.Serialization
             SerializerOptions.Converters.Add(new SnowflakeIdConverter());
         }
 
-        public void Serialize(SphynxPacket instance, IBufferWriter<byte> buffer)
+        public void Serialize(SphynxMessage instance, IBufferWriter<byte> buffer)
         {
             // TODO: Pool writers
             using var writer = new Utf8JsonWriter(buffer, WriterOptions);
@@ -37,7 +36,7 @@ namespace Sphynx.Network.Serialization
             writer.WriteEndObject();
         }
 
-        public SphynxPacket? Deserialize(in ReadOnlySequence<byte> buffer, out long bytesRead)
+        public SphynxMessage? Deserialize(in ReadOnlySequence<byte> buffer, out long bytesRead)
         {
             var reader = new Utf8JsonReader(buffer, ReaderOptions);
 
@@ -56,7 +55,7 @@ namespace Sphynx.Network.Serialization
             if (!reader.Read() || reader.GetString() != "$payload")
                 throw new SerializationException("Could not deserialize packet as JSON (could not find payload)");
 
-            var packet = (SphynxPacket?)JsonSerializer.Deserialize(ref reader, type, SerializerOptions);
+            var packet = (SphynxMessage?)JsonSerializer.Deserialize(ref reader, type, SerializerOptions);
 
             if (!reader.Read() || reader.TokenType != JsonTokenType.EndObject)
                 throw new SerializationException("Could not deserialize packet as JSON");
